@@ -4,6 +4,7 @@ import {
   GENERATOR_GRAMMAIRE,
   GRAMMAIRE_LOT57,
   GRAMMAIRE_V23,
+  REMPLACANTS_LOT57B,
   PARTIES_LOT57,
   SAUTS_LOT57,
   SIGNATURE_FIGURE,
@@ -45,7 +46,12 @@ describe("lot 57b : les données de la grammaire dans le générateur", () => {
       expect(f.technicite, e.name).toBeGreaterThanOrEqual(1);
       expect(f.bloc, `${e.name} n'est pas une famille du lot 58`).toBeFalsy();
     }
-    expect(FIGURES.filter((f) => f.grammaire).length).toBe(GRAMMAIRE_LOT57.length);
+    expect(FIGURES.filter((f) => f.grammaire).length).toBe(GRAMMAIRE_LOT57.length + REMPLACANTS_LOT57B.length);
+    for (const f of REMPLACANTS_LOT57B) {
+      expect(figureByName(f.name), f.name).toBe(f);
+      expect(f.since, f.name).toBe(23);
+      expect(sautsDansLAxe(f), `${f.name} : un saut qui demande un geste`).toEqual({ min: 0, max: 0 });
+    }
     expect(SAUTS_LOT57.length).toBe(12);
     expect(TRANSITIONS_LOT57.length).toBe(7);
   });
@@ -108,11 +114,12 @@ describe("lot 57b : les données de la grammaire dans le générateur", () => {
     }
   });
 
-  it("le Rallye n'a plus la voiture fragile (elle ferait un second saut dans l'axe avec sa signature), le Canyon plus la falaise en vedette", () => {
-    expect(themeOfVersion(THEMES.rallye, 22).figures.blocs).toContain("effet-fragile");
-    expect(themeOfVersion(THEMES.rallye, 23).figures.blocs).toBeUndefined();
+  it("le Rallye tire la voiture fragile à appel sur une crête et le Canyon la falaise après un virage : les anciennes figures, au saut « droite → tremplin → axe », leur laissent la place", () => {
+    expect(themeOfVersion(THEMES.rallye, 22).figures.blocs).toEqual(["effet-fragile", ""]);
+    expect(themeOfVersion(THEMES.rallye, 23).figures.blocs).toEqual(["effet-fragile-crete", ""]);
     expect(themeOfVersion(THEMES.canyon, 22).figures.vedettes).toContain("saut-falaise");
     expect(themeOfVersion(THEMES.canyon, 23).figures.vedettes).not.toContain("saut-falaise");
+    expect(themeOfVersion(THEMES.canyon, 23).figures.vedettes).toContain("saut-falaise-courbe");
   });
 });
 

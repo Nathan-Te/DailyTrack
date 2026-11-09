@@ -140,11 +140,11 @@ export const BLOCS_VEDETTES_V22: Readonly<Partial<Record<ThemeName, readonly str
  */
 export const GRAMMAIRE_V23: Readonly<Record<ThemeName, { sauts: readonly string[]; transitions: readonly string[]; vedettes: readonly string[] }>> = {
   stade: { sauts: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle", "saut-step-up"], transitions: ["transition-devers", "transition-esse", "transition-compression"], vedettes: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle"] },
-  rallye: { sauts: ["saut-bosse", "saut-reception-relevee", "saut-herbe"], transitions: ["transition-crete", "transition-devers", "transition-compression"], vedettes: ["saut-bosse", "saut-reception-relevee", "saut-herbe"] },
+  rallye: { sauts: ["saut-bosse", "saut-reception-relevee", "saut-herbe", "effet-fragile-crete"], transitions: ["transition-crete", "transition-devers", "transition-compression"], vedettes: ["saut-bosse", "effet-fragile-crete", "saut-reception-relevee", "saut-herbe"] },
   banquise: { sauts: ["saut-glisse", "saut-courbe", "saut-biais", "saut-reception-relevee"], transitions: ["transition-appui", "transition-esse"], vedettes: ["saut-glisse", "saut-courbe", "saut-biais"] },
   nuit: { sauts: ["saut-biais", "saut-angle", "saut-reception-relevee"], transitions: ["transition-devers", "transition-crete"], vedettes: ["saut-biais", "saut-angle", "saut-reception-relevee"] },
   campagne: { sauts: ["saut-bosse", "saut-herbe", "saut-elan"], transitions: ["transition-crete", "transition-appui", "transition-pente", "transition-retrecissement"], vedettes: ["saut-bosse", "saut-herbe", "transition-pente", "saut-elan"] },
-  canyon: { sauts: ["saut-drop", "saut-step-up", "saut-angle", "saut-double"], transitions: ["transition-compression", "transition-crete", "transition-devers", "transition-esse"], vedettes: ["saut-drop", "saut-step-up", "saut-angle"] },
+  canyon: { sauts: ["saut-drop", "saut-step-up", "saut-angle", "saut-double", "saut-falaise-courbe"], transitions: ["transition-compression", "transition-crete", "transition-devers", "transition-esse"], vedettes: ["saut-drop", "saut-step-up", "saut-angle"] },
   col: { sauts: ["saut-drop", "saut-courbe", "saut-step-up"], transitions: ["transition-pente", "transition-esse", "transition-compression", "transition-devers"], vedettes: ["saut-drop", "saut-courbe", "saut-step-up"] },
   ville: { sauts: ["saut-drop", "saut-chicane", "saut-step-up"], transitions: ["transition-retrecissement", "transition-devers", "transition-compression"], vedettes: ["saut-drop", "saut-chicane", "saut-step-up"] },
 };
@@ -163,12 +163,10 @@ function entrelacer(a: readonly string[], b: readonly string[]): string[] {
 /** Lot 57b (v23) : le thème tel que la v23 le complète — la grammaire, et ce qu'elle remplace (la voiture fragile du Rallye, la falaise du Canyon : voir `GRAMMAIRE_V23`, README du lot 57b). */
 function themeV23(t: Theme): Theme {
   const g = GRAMMAIRE_V23[t.name];
-  // Rallye : sa signature (le saut sur la terre) est déjà un saut « droite → tremplin → axe », et la voiture fragile en pose un autre : il n'y a plus de place pour elle (un seul par circuit).
-  // Canyon : la falaise (vedette) est un saut « droite → tremplin → axe » comme sa signature (la paroi et le long saut) : elle sort de ses vedettes.
   // Les vedettes (une par circuit, à tour de rôle) : celles du thème, entrelacées avec des sauts de la grammaire (un saut de la grammaire en vedette remplace la vedette d'avant : il ne coûte rien en durée).
-  const figures = { ...t.figures, sauts: g.sauts, transitions: g.transitions, ...(t.figures.vedettes ? { vedettes: entrelacer(t.figures.vedettes, g.vedettes) } : {}) };
-  if (t.name === "rallye") delete figures.blocs;
-  if (t.name === "canyon") figures.vedettes = entrelacer(t.figures.vedettes!.filter((v) => v !== "saut-falaise"), g.vedettes);
+  // Rallye : la voiture fragile d'avant a un saut « droite → tremplin → axe » (comme sa signature) : `effet-fragile-crete` lui succède. Canyon : idem pour la falaise (`saut-falaise-courbe`).
+  const figures = { ...t.figures, sauts: g.sauts, transitions: g.transitions, ...(t.figures.vedettes ? { vedettes: entrelacer(t.figures.vedettes.map((v) => (v === "saut-falaise" ? "saut-falaise-courbe" : v)), g.vedettes) } : {}) };
+  if (t.name === "rallye") figures.blocs = ["effet-fragile-crete", ""];
   return { ...t, figures };
 }
 

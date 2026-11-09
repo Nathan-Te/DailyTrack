@@ -1,4 +1,4 @@
-import { GRAMMAIRE_LOT57 } from "./grammaire";
+import { GRAMMAIRE_LOT57, REMPLACANTS_LOT57B } from "./grammaire";
 import { reach, transition } from "./figuresOutils";
 import { exitDelta, parseTokenLu, type BlockSurface, type WidthLetter } from "./track";
 
@@ -74,6 +74,8 @@ export interface Figure {
   grammaire?: boolean;
   /** Lot 57b : le nombre de gestes que la figure demande en plus (approche, appel, vol, réception, sortie ; une transition : 1 ou 2) — le budget de technicité d'un circuit les additionne. */
   technicite?: number;
+  /** Lot 57b : tous les blocs de la figure sont protégés des retouches du circuit fini (comme une famille du lot 58), pas seulement ses blocs spéciaux. */
+  blindee?: boolean;
   build(c: FigureContext): string[] | null;
 }
 
@@ -933,6 +935,7 @@ export const FIGURES: readonly Figure[] = [
   },
   // Lot 57b (générateur v23) : les sauts et les transitions de la grammaire (grammaire.ts) sont des figures.
   ...GRAMMAIRE_LOT57,
+  ...REMPLACANTS_LOT57B,
 ];
 
 export const FIGURE_NAMES: readonly string[] = FIGURES.map((f) => f.name);

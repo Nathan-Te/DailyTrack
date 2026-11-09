@@ -875,7 +875,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
       // Lot 57b (v23) : un saut ou une transition de la grammaire protège ses blocs spéciaux et sa route jusqu'à l'envol (la vitesse du bord est sa fenêtre), mais laisse libres les droites
       // ordinaires de sa sortie : sans cela, le Rallye n'avait plus de place pour sa route bosselée (la marque du thème).
       let fin = w.tokens.length;
-      if (done.figure.grammaire) {
+      if (done.figure.grammaire && !done.figure.blindee) {
         const dernierVide = w.tokens.map((t, k) => (k >= done.before && /^G/.test(t) ? k : -1)).reduce((a, b) => Math.max(a, b), -1);
         fin = dernierVide >= 0 ? dernierVide + 2 : done.before;
       }

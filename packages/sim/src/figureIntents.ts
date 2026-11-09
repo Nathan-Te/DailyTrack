@@ -88,4 +88,6 @@ export const FIGURE_INTENTS: Readonly<Record<string, string>> = {
   "transition-esse": "Deux virages relevés qui descendent : le relevé change de côté pendant que la route plonge.",
   "transition-retrecissement": "La route se resserre en montant, et un virage serré attend derrière la crête.",
   "transition-appui": "Un long virage dont la seconde moitié passe sur la glace ou l'herbe de course : lever le pied en appui.",
+  "effet-fragile-crete": "Voiture fragile : un appel sur une crête qu'on pose bien à plat une marche plus bas (une réception brutale la casse), puis la remise à zéro.",
+  "saut-falaise-courbe": "La falaise (deux cellules de vide, réception deux niveaux plus bas) après un virage large : la plaque pousse, il faut se placer pour la rampe.",
 };

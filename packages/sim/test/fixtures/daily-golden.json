@@ -75,9 +75,9 @@
     {
       "date": "2026-11-04",
       "number": 23,
-      "attempt": 90,
-      "spec": "S/l@start S/t~t B/t~r B/t B/t S/t R2/t S S/l>n S/t S/t S/t K/t GD S/tu S/tu S/tu L2 S/t@cp S/t S/t R2/t~t R3/t S/t S/t U/~r U L2/-~t D S@cp P D D D D D D S S R3 S S S/~r@finish",
-      "authorMs": 39860,
+      "attempt": 49,
+      "spec": "S/n@start S/n>eu~t S/tu B/t~r B/t B/t S/t~t L2/t S R2 R2 L2 S@cp P D D D D S S R3 S S S U2/~r GD D S/~t S@cp S S/t P S/t K/t~r G D/t S/t S/t S/t L2/~t S/u S/u~r S@finish",
+      "authorMs": 37476,
       "palette": "desert",
       "theme": "rallye",
       "trackId": "jour-2026-11-04-g23"
@@ -165,9 +165,9 @@
     {
       "date": "2027-02-28",
       "number": 139,
-      "attempt": 30,
-      "spec": "S/n@start U U U/o S/o D/o D/~s D S/n>e S/s@cp MR/~r MR MR S T S S K G G D S/~s@cp S S S S S/e>n S/n>l S@cp R3/k GD/~r R3/b S/~s S/l>n S P S S/~r S@cp S R2/~s L/s S S/n>e S L S S S/~r@finish",
-      "authorMs": 37362,
+      "attempt": 32,
+      "spec": "S/e@start U U L2/- D S S/e>n S U U U S/~s D D D S/n>l S@cp S S K/~r GD L3 S MR MR MR S/~s P S K/~r G GD D S/~s@cp S S S P S S S S R2 L2/s S S S/~r@finish",
+      "authorMs": 37307,
       "palette": "canyon",
       "theme": "canyon",
       "trackId": "jour-2027-02-28-g23"

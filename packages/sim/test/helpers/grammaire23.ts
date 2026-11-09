@@ -56,7 +56,7 @@ export const circuit23 = (day: number, g = V23): DailyCircuit => {
 };
 export const noms23 = (c: DailyCircuit) => c.figures.map((f) => f.name);
 /** Une figure nouvelle : une famille du lot 58 ou un élément de la grammaire du lot 57. */
-export const estNouvelle = (nom: string) => FIGURES_LOT58.includes(nom) || !!elementGrammaire(nom);
+export const estNouvelle = (nom: string) => FIGURES_LOT58.includes(nom) || !!figureByName(nom)?.grammaire;
 export const avecNouvelle = (c: DailyCircuit) => noms23(c).some(estNouvelle);
 export const sautsDe = (c: DailyCircuit) => classerSauts(parseTrack("t", c.spec));
 
@@ -102,8 +102,8 @@ export function suiteGrammaire(THEMES_DU_FICHIER: readonly ThemeName[]) {
       for (const theme of THEMES_DU_FICHIER) {
         for (const d of DAYS.get(theme)!)
           for (const nom of noms23(circuit23(d))) {
-            const e = elementGrammaire(nom);
-            if (e) expect(e.only!, `${nom} (${theme}, ${formatDay(d)})`).toContain(theme);
+            const e = figureByName(nom);
+            if (e?.grammaire) expect(e.only!, `${nom} (${theme}, ${formatDay(d)})`).toContain(theme);
           }
       }
     });

@@ -50,7 +50,7 @@ for (const theme of THEME_NAMES) {
     dur.push(c.authorMs);
     if (c.fallback) secours++;
     const noms = c.figures.map((f) => f.name);
-    const is57 = noms.some((n) => !!elementGrammaire(n));
+    const is57 = noms.some((n) => !!figureByName(n)?.grammaire);
     const is58 = noms.some((n) => !!figureByName(n)?.bloc);
     if (is57 || is58) nouveau++;
     if (is57) nouveau57++;

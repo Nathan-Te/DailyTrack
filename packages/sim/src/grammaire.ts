@@ -255,3 +255,41 @@ export const TRANSITIONS_LOT57: readonly ElementGrammaire[] = [
 export const GRAMMAIRE_LOT57: readonly ElementGrammaire[] = [...SAUTS_LOT57, ...TRANSITIONS_LOT57];
 const PAR_NOM = new Map(GRAMMAIRE_LOT57.map((e) => [e.name, e] as const));
 export const elementGrammaire = (nom: string | null | undefined): ElementGrammaire | null => (nom ? (PAR_NOM.get(nom) ?? null) : null);
+
+/**
+ * Lot 57b — **les remplaçants de la v23** : deux figures d'avant la grammaire dont le saut est « ligne droite → tremplin → axe » (la voiture fragile du lot 58, la falaise du lot 49) ne
+ * tenaient plus à côté d'une signature qui en est un (Rallye, Canyon : un seul par circuit). Elles ne changent pas (les versions publiées les tirent comme avant) ; ces deux-là leur
+ * succèdent à partir de la v23, avec un saut qui demande un geste.
+ */
+export const REMPLACANTS_LOT57B: readonly Figure[] = [
+  {
+    name: "effet-fragile-crete",
+    label: "Voiture fragile, appel sur une crête",
+    category: "saut",
+    jump: true,
+    off: 0.3,
+    variants: 2,
+    only: ["rallye"],
+    since: SINCE,
+    grammaire: true,
+    blindee: true,
+    technicite: 2,
+    // 8 s de voiture fragile : un appel sur une crête (une montée, pas de tremplin) qu'on pose bien à plat une marche plus bas, puis la remise à zéro. Variante 1 : la tôle ondulée et le tremplin
+    // de la voiture fragile d'avant (ce n'est pas un vide : aucun saut « droite → tremplin → axe »).
+    build: (c) => (c.variant === 0 ? ["S", "Ex", "S", "S", "U2", "GD", "S", "S", "E0", "S"] : ["S", "Ex", "S/u", "S/u", "J", "S", "E0", "S"]),
+  },
+  {
+    name: "saut-falaise-courbe",
+    label: "Saut de la falaise, après un virage",
+    category: "saut",
+    jump: true,
+    off: 1.0,
+    variants: 2,
+    only: ["canyon"],
+    since: SINCE,
+    grammaire: true,
+    technicite: 3,
+    // La falaise d'avant (deux cellules de vide, réception deux niveaux plus bas, après une plaque), mais la plaque vient après un virage large : l'approche n'est plus une droite.
+    build: (c) => ["S", `${c.L}2`, "P", "S", "K", "G", "GD2", "D", "S", "S", "S", "S", c.variant === 0 ? `${c.R}2` : `${c.R}3`, "S"],
+  },
+];

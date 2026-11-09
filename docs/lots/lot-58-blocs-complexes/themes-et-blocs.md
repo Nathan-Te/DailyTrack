@@ -35,7 +35,7 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Tracé** : ligne droite libre de 3 blocs au plus ; les virages changent de sens ; relief : 2–3 collines, 50 % raides.
 - **Vedettes** (une par circuit, à tour de rôle) : Bosses en série sur la terre (`bosses-terre`), Demi-tour qui change de revêtement (`demi-tour-mixte`), Saut à l'élan, en sortie de virage (`saut-sortie-virage`).
 - **Toujours une de** : Épingle large sur terre (`epingle-terre`), Demi-tour large (`demi-tour-large`).
-- **Blocs nouveaux du lot 58** : aucun en v23 (**la voiture fragile n'est plus tirée au Rallye** : sa signature, le saut sur la terre, est déjà un saut « droite → tremplin → axe », et la fragile en posait un autre ; elle revient si son saut devient technique).
+- **Blocs nouveaux du lot 58** (un circuit sur deux) : en v23, Voiture fragile, appel sur une crête (`effet-fragile-crete`, v23) à la place de `effet-fragile` : l'ancienne a un saut « droite → tremplin → axe », comme la signature du Rallye.
 - **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Appel sur une crête (`saut-bosse`), Saut dans un virage (`saut-courbe`), Réception dans un virage relevé (`saut-reception-relevee`), Réception sur l'herbe de course (`saut-herbe`).
 - **Transitions** (à tour de rôle, si le circuit tient en durée) : Crête qui allège (`transition-crete`).
 - **Vedettes de la v23** : `bosses-terre`, `saut-bosse`, `demi-tour-mixte`, `saut-courbe`, `saut-sortie-virage`, `saut-reception-relevee`, `saut-herbe`.
@@ -75,7 +75,7 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Cuve (`cuve-droite`), Mur latéral (`mur-lateral`), Virage en cuve (`virage-cuve`), Saut dans une cuve (`saut-cuve`), Descente, cuve, saut (`descente-cuve-saut`), Saut en sortie de paroi (`saut-paroi`), Turbos enchaînés (`chaine-turbo`), Turbo puis épingle (`turbo-epingle`), Turbo puis grande courbe relevée (`turbo-courbe`), Turbo, saut, virage relevé (`turbo-saut-releve`).
 
 ### Canyon
-- *Lot 57b : la falaise (`saut-falaise`) n'est plus une vedette du Canyon (comme sa signature, la paroi et le long saut, c'est un saut « droite → tremplin → axe », et il n'en tient qu'un par circuit).*
+- *Lot 57b : la falaise (`saut-falaise`) cède sa place de vedette à « Saut de la falaise, après un virage » (`saut-falaise-courbe`, v23) : comme la signature du Canyon, l'ancienne est un saut « droite → tremplin → axe », et il n'en tient qu'un par circuit.*
 - **Tracé** : ligne droite libre de 3 blocs au plus ; 100 % des virages larges deviennent serrés ; 4 virages serrés au plus ; relief : 1–3 collines, 90 % raides.
 - **Vedettes** (une par circuit, à tour de rôle) : Saut de la falaise (`saut-falaise`), Réception dans un virage (`reception-virage`), Saut à l'élan, en sortie de virage (`saut-sortie-virage`).
 - **Blocs nouveaux du lot 58** (un par circuit, à tour de rôle) : Freins coupés (`effet-freins`), Virages relevés à 45° (`releve-fort`).
@@ -161,7 +161,7 @@ Repères : `@start` départ, `@cp` point de contrôle, `@finish` arrivée.
 
 ## 3. Les figures du générateur
 
-86 figures (67 de la v22 et les 19 de la grammaire du lot 57b). **Thèmes** : « tous » sauf mention (une figure propre à des thèmes ne sort que chez eux) ; les interdits de chaque thème sont au § 1. **Depuis** : la première version du générateur qui la tire (sans mention : depuis toujours).
+88 figures (67 de la v22, les 19 de la grammaire du lot 57b et deux remplaçantes de la v23). **Thèmes** : « tous » sauf mention (une figure propre à des thèmes ne sort que chez eux) ; les interdits de chaque thème sont au § 1. **Depuis** : la première version du générateur qui la tire (sans mention : depuis toujours).
 
 ### Techniques (32)
 | figure | ce qu'on y fait | thèmes | depuis |
@@ -243,6 +243,8 @@ Repères : `@start` départ, `@cp` point de contrôle, `@finish` arrivée.
 | **S relevé en descente** `transition-esse` | Deux virages relevés qui descendent : le relevé change de côté pendant que la route plonge. | Col alpin, Stade, Banquise | v23 |
 | **Rétrécissement sur une crête** `transition-retrecissement` | La route se resserre en montant, et un virage serré attend derrière la crête. | Campagne, Ville | v23 |
 | **Changement de revêtement en appui** `transition-appui` | Un long virage dont la seconde moitié passe sur la glace ou l'herbe de course : lever le pied en appui. | Banquise, Campagne, Col alpin | v23 |
+| **Voiture fragile, appel sur une crête** `effet-fragile-crete` — *remplace `effet-fragile` en v23* | Voiture fragile : un appel sur une crête qu'on pose bien à plat une marche plus bas (une réception brutale la casse), puis la remise à zéro. | Rallye | v23 |
+| **Saut de la falaise, après un virage** `saut-falaise-courbe` — *remplace `saut-falaise` en v23* | La falaise (deux cellules de vide, réception deux niveaux plus bas) après un virage large : la plaque pousse, il faut se placer pour la rampe. | Canyon | v23 |
 
 ### Portions rapides (5)
 | figure | ce qu'on y fait | thèmes | depuis |
