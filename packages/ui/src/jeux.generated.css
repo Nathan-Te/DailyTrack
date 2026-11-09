@@ -24,3 +24,11 @@
 .dj-cartouche--rush {
   background: #4B2E83;
 }
+.jeu-etiquette--vertige {
+  --jeu-fond: #F7C59F;
+  --jeu-coque: #8A3B12;
+  --jeu-police: "Rubik Mono One", "Archivo", sans-serif;
+}
+.dj-cartouche--vertige {
+  background: #8A3B12;
+}

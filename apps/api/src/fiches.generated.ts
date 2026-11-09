@@ -464,5 +464,67 @@ export const FICHES_SERVEUR = [
     "reglagesGardes": [],
     "messageOu": "rush",
     "zoneNouveautes": "rush"
+  },
+  {
+    "id": "vertige",
+    "code": "vertige",
+    "etatDepart": "off",
+    "premierJour": "2026-11-02",
+    "categorie": "arcade",
+    "classement": {
+      "colonnes": [
+        {
+          "nom": "temps",
+          "sens": "asc"
+        },
+        {
+          "nom": "submitted_at",
+          "sens": "asc"
+        },
+        {
+          "nom": "player_id",
+          "sens": "asc"
+        }
+      ],
+      "cumul": false,
+      "unite": "ticks",
+      "format": "temps"
+    },
+    "medailles": {
+      "methode": "pourcentage-diamant",
+      "bareme": [
+        130,
+        160,
+        200
+      ]
+    },
+    "versions": {
+      "sim": "packages/vertige-sim/src/constantes.ts:VERTIGE_SIM_VERSION",
+      "generateur": "packages/vertige-sim/src/constantes.ts:VERTIGE_GENERATOR_VERSION"
+    },
+    "jours": {
+      "mode": "fichier-par-jour",
+      "dossier": "apps/vertige/public/jours",
+      "preuveInterditeEnProd": true,
+      "fabrication": {
+        "empreinte": "apps/api/scripts/vertige-empreintes.ts",
+        "figer": {
+          "paquet": "@cdj/vertige-sim",
+          "script": "figer:vertige",
+          "forme": "jours-proteges"
+        }
+      }
+    },
+    "rejeu": {
+      "unitesServeur": 1,
+      "maxTicks": 900
+    },
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "prefixe": "vertige:",
+    "reglagesGardes": [],
+    "messageOu": "vertige",
+    "zoneNouveautes": "vertige",
+    "identiteIncomplete": true
   }
 ] as const;

@@ -1,0 +1,194 @@
+{
+  "id": "vertige",
+  "code": "vertige",
+  "ordre": 7,
+  "nom": {
+    "fr": "Vertige",
+    "en": "Vertige"
+  },
+  "accroche": "portail.vertige.accroche",
+  "etiquette": {
+    "fond": "#F7C59F",
+    "coque": "#8A3B12",
+    "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+    "dessin": "generique"
+  },
+  "identite": {
+    "police": "à choisir",
+    "motif": "à choisir",
+    "illustration": "à choisir",
+    "aujourdhui": false
+  },
+  "etatDepart": "off",
+  "premierJour": "2026-11-02",
+  "categorie": "arcade",
+  "classement": {
+    "colonnes": [
+      {
+        "nom": "temps",
+        "sens": "asc"
+      },
+      {
+        "nom": "submitted_at",
+        "sens": "asc"
+      },
+      {
+        "nom": "player_id",
+        "sens": "asc"
+      }
+    ],
+    "cumul": false,
+    "unite": "ticks",
+    "format": "temps"
+  },
+  "medailles": {
+    "methode": "pourcentage-diamant",
+    "bareme": [
+      130,
+      160,
+      200
+    ]
+  },
+  "partage": {
+    "extras": []
+  },
+  "themes": [
+    "clair",
+    "sombre"
+  ],
+  "versions": {
+    "sim": "packages/vertige-sim/src/constantes.ts:VERTIGE_SIM_VERSION",
+    "generateur": "packages/vertige-sim/src/constantes.ts:VERTIGE_GENERATOR_VERSION"
+  },
+  "jours": {
+    "mode": "fichier-par-jour",
+    "dossier": "apps/vertige/public/jours",
+    "preuveInterditeEnProd": true,
+    "fabrication": {
+      "empreinte": "apps/api/scripts/vertige-empreintes.ts",
+      "figer": {
+        "paquet": "@cdj/vertige-sim",
+        "script": "figer:vertige",
+        "forme": "jours-proteges"
+      }
+    }
+  },
+  "rejeu": {
+    "unitesServeur": 1,
+    "maxTicks": 900
+  },
+  "donnees": {
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "stockage": {
+      "prefixe": "vertige:",
+      "reglagesGardes": []
+    }
+  },
+  "message": {
+    "ou": "vertige"
+  },
+  "zoneNouveautes": "vertige",
+  "musique": {
+    "scenes": [
+      "menu",
+      "theme:clair",
+      "theme:sombre"
+    ]
+  },
+  "admin": {
+    "outils": false
+  },
+  "zones": {
+    "jeu": [
+      "apps/vertige/**",
+      "packages/vertige-sim/**",
+      "apps/api/src/vertige*.ts",
+      "apps/api/test/vertige*.test.ts",
+      "apps/api/scripts/vertige-*.ts",
+      "docs/vertige/**"
+    ],
+    "serveur": [
+      "apps/api/src/vertige*.ts",
+      "apps/api/test/vertige*.test.ts",
+      "apps/api/scripts/vertige-*.ts"
+    ]
+  },
+  "e2e": {
+    "dossier": "apps/vertige/e2e",
+    "suite": "vertige",
+    "fumee": [
+      "determinisme.spec.ts",
+      "partie.spec.ts",
+      "poids.spec.ts"
+    ],
+    "zones": {
+      "vertige-sim": {
+        "globs": [
+          "packages/vertige-sim/**"
+        ]
+      },
+      "vertige-jeu": {
+        "globs": [
+          "apps/vertige/index.html",
+          "apps/vertige/vite.config.ts",
+          "apps/vertige/verify.html",
+          "apps/vertige/src/*"
+        ]
+      },
+      "api-vertige": {
+        "globs": [
+          "apps/api/src/vertige*.ts",
+          "apps/api/scripts/vertige-*.ts"
+        ]
+      }
+    },
+    "specs": {
+      "determinisme.spec.ts": [
+        "vertige-sim",
+        "vertige-jeu",
+        "core-clock"
+      ],
+      "partie.spec.ts": [
+        "vertige-sim",
+        "vertige-jeu",
+        "ui"
+      ],
+      "classement.spec.ts": [
+        "vertige-sim",
+        "vertige-jeu",
+        "api-vertige",
+        "api-jeux"
+      ],
+      "poids.spec.ts": [
+        "vertige-jeu",
+        "ui"
+      ],
+      "ecrans-kit.spec.ts": [
+        "vertige-jeu",
+        "ui"
+      ]
+    },
+    "parts": {
+      "main": 1,
+      "complet": 1,
+      "nuit": 1
+    },
+    "regression": [
+      "ecrans-kit.spec.ts"
+    ]
+  },
+  "budget": {
+    "lignes": [
+      "vertige.jsCss"
+    ],
+    "aLaDemande": [
+      "partie-",
+      "classement-",
+      "reglages-",
+      "retours-",
+      "version-"
+    ]
+  },
+  "temoin": false
+}

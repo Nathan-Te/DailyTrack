@@ -1,0 +1,26 @@
+{
+  "name": "@cdj/vertige-sim",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@cdj/core": "*"
+  },
+  "scripts": {
+    "figer:vertige": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
+    "golden:vertige": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
+    "table:vertige": "esbuild tools/table-sinus.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/table-sinus.mjs --log-level=warning && node dist/table-sinus.mjs"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./calendrier": "./src/calendrier.ts",
+    "./constantes": "./src/constantes.ts",
+    "./reglages": "./src/reglages.ts",
+    "./variante": "./src/variante.ts",
+    "./niveaux": "./src/niveaux.ts",
+    "./rediffusion": "./src/rediffusion.ts"
+  }
+}

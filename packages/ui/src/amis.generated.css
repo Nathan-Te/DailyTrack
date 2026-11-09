@@ -14,3 +14,8 @@
   --sel-actif-fond: var(--dj-encre);
   --sel-actif-texte: #D9C4F0;
 }
+.dj-amis-selecteur.dj-amis-selecteur--vertige {
+  --sel-fond: #F7C59F;
+  --sel-actif-fond: var(--dj-encre);
+  --sel-actif-texte: #F7C59F;
+}
