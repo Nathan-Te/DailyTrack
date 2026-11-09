@@ -10,8 +10,10 @@ import {
   dernierJourAFiger,
   generateurDuDepot,
   installerOutilDeFigeage,
+  joursReparesParLeDeploiement,
   joursSansFichier,
   lireNiveauxServis,
+  reparationsDuJeu,
   verifierBascules,
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 } from "../../../scripts/mise-en-production.mjs";
@@ -42,6 +44,48 @@ describe("lot 33 — figer tous les jours manquants, refuser s'il en reste un", 
     expect(diffs[0]).toContain("be47f97c");
     expect(diffs[0]).toContain("a1ecd408");
     expect(diffs[1]).toContain("ne sert aucun niveau");
+  });
+
+  // Réparation déclarée (`config/reparations-jours.json`) : le garde-fou accepte « servi ≠ fichier » pour l'incident du 06/11/2026 et pour rien d'autre.
+  describe("réparations déclarées d'un jour servi à tort", () => {
+    const reparations = { "2026-11-03": { id: "jour-2026-11-03-g26", servi: "a1ecd408", fichier: "be47f97c" } };
+    const attendus = { "2026-11-03": { id: "jour-2026-11-03-g26", hash: "be47f97c" } };
+
+    it("accepte exactement l'incident déclaré (le serveur sert le hash d'incident, le fichier est le niveau joué) et le dit", () => {
+      const servis = { "2026-11-03": { id: "jour-2026-11-03-g26", hash: "a1ecd408" } };
+      expect(comparerAuServi(attendus, servis, reparations)).toEqual([]);
+      expect(joursReparesParLeDeploiement(attendus, servis, reparations)).toEqual(["2026-11-03"]);
+      // Sans déclaration, c'est toujours une différence (le comportement d'avant).
+      expect(comparerAuServi(attendus, servis)).toHaveLength(1);
+    });
+
+    it("refuse tout autre écart : un autre hash servi, un autre fichier, un autre identifiant, un autre jour, un serveur muet", () => {
+      const servi = (hash: string, id = "jour-2026-11-03-g26") => ({ "2026-11-03": { id, hash } });
+      expect(comparerAuServi(attendus, servi("deadbeef"), reparations)).toHaveLength(1); // le serveur sert autre chose que l'incident connu
+      expect(comparerAuServi({ "2026-11-03": { id: "jour-2026-11-03-g26", hash: "00000000" } }, servi("a1ecd408"), reparations)).toHaveLength(1); // le fichier n'est pas le niveau joué
+      expect(comparerAuServi(attendus, servi("a1ecd408", "jour-2026-11-03-g27"), reparations)).toHaveLength(1); // autre identifiant
+      expect(comparerAuServi({ "2026-11-04": { id: "jour-2026-11-04-g26", hash: "be47f97c" } }, { "2026-11-04": { id: "jour-2026-11-04-g26", hash: "a1ecd408" } }, reparations)).toHaveLength(1); // autre jour
+      expect(comparerAuServi(attendus, {}, reparations)).toEqual(["2026-11-03 : le serveur ne sert aucun niveau"]); // jamais excusé
+      expect(joursReparesParLeDeploiement(attendus, servi("deadbeef"), reparations)).toEqual([]);
+    });
+
+    it("un jour déjà réparé (servi = fichier) n'est ni une différence ni une réparation", () => {
+      const servis = { "2026-11-03": { id: "jour-2026-11-03-g26", hash: "be47f97c" } };
+      expect(comparerAuServi(attendus, servis, reparations)).toEqual([]);
+      expect(joursReparesParLeDeploiement(attendus, servis, reparations)).toEqual([]);
+    });
+
+    it("config/reparations-jours.json : chaque `fichier` déclaré est l'empreinte du fichier figé du dépôt, et `servi` en est différent", () => {
+      const declarees = reparationsDuJeu("jump");
+      expect(Object.keys(declarees).length).toBeGreaterThan(0);
+      for (const [date, r] of Object.entries(declarees) as [string, { id: string; servi: string; fichier: string }][]) {
+        const niveau = JSON.parse(readFileSync(join(__dirname, "..", "public", "levels", `${date}.json`), "utf8")) as { id: string; hash: string };
+        expect({ date, id: niveau.id, hash: niveau.hash }).toEqual({ date, id: r.id, hash: r.fichier });
+        expect(r.servi).not.toBe(r.fichier);
+        expect(r.servi).toMatch(/^[0-9a-f]{8}$/);
+      }
+      expect(reparationsDuJeu("un-jeu-sans-reparation")).toEqual({});
+    });
   });
 
   it("lireNiveauxServis : GET en lecture seule, identifiant et empreinte ; un serveur qui répond mal arrête", async () => {

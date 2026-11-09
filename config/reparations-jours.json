@@ -1,0 +1,38 @@
+{
+ "format": 1,
+ "_aide": "Réparations de jours déjà servis (un jour servi ne change jamais, sauf pour revenir à ce que les joueurs ont réellement joué). Une entrée n'est acceptée par `servi-verifier` (« Mettre en production ») que si le serveur sert EXACTEMENT l'empreinte `servi` ET que le fichier figé a EXACTEMENT l'empreinte `fichier` (même identifiant) : tout autre écart arrête toujours la mise en production. Une fois le jour réparé (servi = fichier), l'entrée ne sert plus et peut être retirée. Règle : docs/regles/racine/adresses-et-mise-en-production.md.",
+ "reparations": [
+  {
+   "jeu": "jump",
+   "date": "2026-11-03",
+   "id": "jour-2026-11-03-g26",
+   "servi": "a1ecd408",
+   "fichier": "be47f97c",
+   "pourquoi": "incident du 06/11/2026 (lot 33) : la mise en production du 06/11 a figé ce jour avec un outil qui ne déclarait pas les niveaux déjà figés ; le fichier est le niveau que tout le monde a joué"
+  },
+  {
+   "jeu": "jump",
+   "date": "2026-11-04",
+   "id": "jour-2026-11-04-g26",
+   "servi": "87339d47",
+   "fichier": "3c564234",
+   "pourquoi": "incident du 06/11/2026 (lot 33) : la mise en production du 06/11 a figé ce jour avec un outil qui ne déclarait pas les niveaux déjà figés ; le fichier est le niveau que tout le monde a joué"
+  },
+  {
+   "jeu": "jump",
+   "date": "2026-11-05",
+   "id": "jour-2026-11-05-g26",
+   "servi": "b3032d69",
+   "fichier": "37283e5a",
+   "pourquoi": "incident du 06/11/2026 (lot 33) : la mise en production du 06/11 a figé ce jour avec un outil qui ne déclarait pas les niveaux déjà figés ; le fichier est le niveau que tout le monde a joué"
+  },
+  {
+   "jeu": "jump",
+   "date": "2026-11-06",
+   "id": "jour-2026-11-06-g26",
+   "servi": "4aa5e402",
+   "fichier": "29108be0",
+   "pourquoi": "incident du 06/11/2026 (lot 33) : la mise en production du 06/11 a figé ce jour avec un outil qui ne déclarait pas les niveaux déjà figés ; le fichier est le niveau que tout le monde a joué"
+  }
+ ]
+}

@@ -639,15 +639,43 @@ export function verifierBascules({ avant, apres, generateurAvant, generateurApre
   return { nouvelles, problemes };
 }
 
-/** Compare les niveaux figés (`attendus` : `{ date: { id, hash } }`) à ce que le serveur sert (`servis`, même forme). Rend les différences en phrases (liste vide : tout s'accorde). */
-export function comparerAuServi(attendus, servis) {
+/**
+ * Compare les niveaux figés (`attendus` : `{ date: { id, hash } }`) à ce que le serveur sert (`servis`, même forme). Rend les différences en phrases (liste vide : tout s'accorde).
+ * `reparations` (`{ date: { id, servi, fichier } }`, `config/reparations-jours.json`, déjà filtré sur le jeu) : **un jour que la production sert à tort** (l'incident du 06/11/2026) et que ce déploiement
+ * remet à ce que les joueurs ont joué n'est pas une différence — mais seulement si le serveur sert EXACTEMENT l'empreinte `servi` et que le fichier a EXACTEMENT l'empreinte `fichier` (même identifiant) :
+ * tout autre écart arrête, comme avant.
+ */
+export function comparerAuServi(attendus, servis, reparations = {}) {
   const diffs = [];
   for (const [date, a] of Object.entries(attendus)) {
     const s = servis[date];
     if (!s) diffs.push(`${date} : le serveur ne sert aucun niveau`);
-    else if (s.id !== a.id || s.hash !== a.hash) diffs.push(`${date} : le fichier figé est ${a.id} (${a.hash}), le serveur sert ${s.id} (${s.hash})`);
+    else if (s.id !== a.id || s.hash !== a.hash) {
+      if (jourARepare(date, a, s, reparations)) continue;
+      diffs.push(`${date} : le fichier figé est ${a.id} (${a.hash}), le serveur sert ${s.id} (${s.hash})`);
+    }
   }
   return diffs;
+}
+
+/** Vrai si ce jour est une réparation déclarée : même identifiant des deux côtés, le serveur sert exactement l'empreinte annoncée (`servi`) et le fichier figé est exactement celle du niveau joué (`fichier`). */
+function jourARepare(date, attendu, servi, reparations) {
+  const r = reparations[date];
+  return !!r && servi.id === attendu.id && (r.id ?? attendu.id) === attendu.id && r.servi === servi.hash && r.fichier === attendu.hash;
+}
+
+/** Les dates que ce déploiement répare (servies à tort, remises à ce que les joueurs ont joué) : pour le dire dans le résumé du run. */
+export function joursReparesParLeDeploiement(attendus, servis, reparations = {}) {
+  return Object.entries(attendus)
+    .filter(([date, a]) => servis[date] && (servis[date].id !== a.id || servis[date].hash !== a.hash) && jourARepare(date, a, servis[date], reparations))
+    .map(([date]) => date);
+}
+
+/** Les réparations déclarées pour un jeu (`config/reparations-jours.json`) : `{ date: { id, servi, fichier } }`. Un fichier absent ou sans entrée du jeu : aucune. */
+export function reparationsDuJeu(jeuId, fichier = new URL("../config/reparations-jours.json", import.meta.url)) {
+  if (!existsSync(fichier)) return {};
+  const lu = JSON.parse(readFileSync(fichier, "utf8"));
+  return Object.fromEntries((lu.reparations ?? []).filter((r) => r.jeu === jeuId).map((r) => [r.date, { id: r.id, servi: r.servi, fichier: r.fichier }]));
 }
 
 /**
@@ -1232,9 +1260,12 @@ if (isMain) {
           return [d, { id: fichier.id, hash: fichier.hash }];
         }));
         const servis = await lireNiveauxServis(opt("--origine"), dates, { route: `/api/${jeu.id}/day` });
-        const d = comparerAuServi(attendus, servis);
+        // Réparations déclarées (`config/reparations-jours.json`) : un jour servi à tort que ce déploiement remet à ce que les joueurs ont joué n'arrête pas, mais le résumé le dit.
+        const reparations = reparationsDuJeu(jeu.id);
+        const d = comparerAuServi(attendus, servis, reparations);
+        const reparees = joursReparesParLeDeploiement(attendus, servis, reparations);
         diffs.push(...d.map((x) => `${jeu.nom} ${x}`));
-        lignes.push(`- ${jeu.nom} : ${dates.length} jour(s) figé(s) à nouveau, comparés au niveau que ${opt("--origine")} sert : ${d.length ? `⛔ ${d.length} différence(s)` : "✅ identiques"}`);
+        lignes.push(`- ${jeu.nom} : ${dates.length} jour(s) figé(s) à nouveau, comparés au niveau que ${opt("--origine")} sert : ${d.length ? `⛔ ${d.length} différence(s)` : "✅ identiques"}${reparees.length ? ` — ♻️ ${reparees.length} jour(s) servi(s) à tort remis à ce que les joueurs ont joué (${reparees.join(", ")} : réparation déclarée, empreintes vérifiées)` : ""}`);
       }
       const text = (lignes.length ? lignes.join("\n") : "- aucun jour figé à comparer au niveau servi") + "\n" + diffs.map((x) => `  - ${x}`).join("\n") + (diffs.length ? "\n" : "");
       if (opt("--resume")) appendFileSync(opt("--resume"), text);
