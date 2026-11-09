@@ -8,6 +8,8 @@ import type { ElementGrammaire } from "./grammaire";
 // par `?scenario=blocs`. Ils attendent le choix de Nathan (garder, retoucher, écarter) avant d'entrer dans le générateur.
 
 export interface ElementBloc extends ElementGrammaire {
+  /** Les thèmes où il irait le mieux (proposition, lot 58). */
+  themes: readonly string[];
   /** La famille du catalogue (README du lot 58) : effet, bombee, releve, tube et mur (lot 58b). */
   famille: "effet" | "bombee" | "releve" | "tube" | "mur";
 }

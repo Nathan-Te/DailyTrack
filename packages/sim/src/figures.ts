@@ -1,4 +1,9 @@
-import { exitDelta, parseToken, type BlockSurface, type WidthLetter } from "./track";
+import { GRAMMAIRE_LOT57, REMPLACANTS_LOT57B } from "./grammaire";
+import { reach, transition } from "./figuresOutils";
+import { exitDelta, parseTokenLu, type BlockSurface, type WidthLetter } from "./track";
+
+// Lot 57b : `transition` et `reach` vivent dans `figuresOutils.ts` (la grammaire des sauts les lit, et `figures.ts` lit la grammaire : pas d'import circulaire).
+export { reach, transition };
 
 // Bibliothèque de figures (lot 20). Une figure est une courte suite de blocs avec une intention, un nom et une catégorie ;
 // le générateur (generator.ts) assemble 5 à 7 figures par circuit, jamais deux fois la même. Chaque figure a des variantes :
@@ -25,6 +30,11 @@ export interface FigureContext {
   width: WidthLetter;
   /** Numéro de variante, de 0 à `variants - 1`. */
   variant: number;
+  /**
+   * Lot 57b (v23) : le thème où la figure se pose (absent pour un essai, un scénario ou une mesure : toutes les variantes sont permises). Une variante qui n'a pas sa place dans
+   * ce thème — l'herbe de course n'est qu'à la Campagne (lot 48), la glace qu'à la Banquise et au Col alpin — renvoie `null` : le générateur en essaie une autre.
+   */
+  theme?: string;
 }
 
 export interface Figure {
@@ -57,6 +67,15 @@ export interface Figure {
    * qu'elle est écrite (ni traits du biome, ni revêtement, ni bosses, ni rebords retirés, ni pente : ses blocs sont protégés).
    */
   bloc?: boolean;
+  /**
+   * Lot 57b (v23) : un saut ou une transition de la grammaire (grammaire.ts). Protégée comme une famille de blocs nouveaux (ni traits du biome, ni revêtement, ni bosses,
+   * ni rebords retirés, ni pente) ; tirée par son tour (`Theme.figures.sauts` / `.transitions`), jamais au poids.
+   */
+  grammaire?: boolean;
+  /** Lot 57b : le nombre de gestes que la figure demande en plus (approche, appel, vol, réception, sortie ; une transition : 1 ou 2) — le budget de technicité d'un circuit les additionne. */
+  technicite?: number;
+  /** Lot 57b : tous les blocs de la figure sont protégés des retouches du circuit fini (comme une famille du lot 58), pas seulement ses blocs spéciaux. */
+  blindee?: boolean;
   build(c: FigureContext): string[] | null;
 }
 
@@ -68,24 +87,6 @@ export function withMod(token: string, mod: string): string {
   const [body, mark] = token.split("@");
   const next = body!.includes("/") ? body + mod : `${body}/${mod}`;
   return mark === undefined ? next : `${next}@${mark}`;
-}
-
-/** Bloc de transition de largeur (une ligne droite de 32 m dont les rebords s'écartent ou se resserrent en douceur). */
-export const transition = (from: WidthLetter, to: WidthLetter) => `S/${from}>${to}`;
-
-const WIDTH_ORDER: readonly WidthLetter[] = ["e", "n", "l"];
-
-/** Blocs de transition pour passer d'une largeur à une autre, un cran à la fois (aucun si elles sont égales). */
-export function reach(from: WidthLetter, to: WidthLetter): string[] {
-  const out: string[] = [];
-  let i = WIDTH_ORDER.indexOf(from);
-  const j = WIDTH_ORDER.indexOf(to);
-  while (i !== j) {
-    const next = i < j ? i + 1 : i - 1;
-    out.push(transition(WIDTH_ORDER[i]!, WIDTH_ORDER[next]!));
-    i = next;
-  }
-  return out;
 }
 
 /** Largeur de la route à la fin d'une suite de blocs (les seuls blocs qui écrivent une largeur sont les transitions). */
@@ -152,7 +153,7 @@ export function extent(seg: readonly string[]): { hi: number; lo: number; net: n
   let hi = 0;
   let lo = 0;
   for (const t of seg) {
-    const p = parseToken(t);
+    const p = parseTokenLu(t);
     y += exitDelta(p.kind, p.rise);
     if (y > hi) hi = y;
     if (y < lo) lo = y;
@@ -932,6 +933,9 @@ export const FIGURES: readonly Figure[] = [
     // Un mur latéral dont le fond disparaît : monter sur la paroi (trois murs latéraux) avant le vide, la longer, redescendre.
     build: (c) => ["S", c.wall, c.wall, c.wall, ...Array<string>(c.variant === 0 ? 3 : 4).fill(`${c.wall}/m`), c.wall, c.wall, "S"],
   },
+  // Lot 57b (générateur v23) : les sauts et les transitions de la grammaire (grammaire.ts) sont des figures.
+  ...GRAMMAIRE_LOT57,
+  ...REMPLACANTS_LOT57B,
 ];
 
 export const FIGURE_NAMES: readonly string[] = FIGURES.map((f) => f.name);
@@ -943,13 +947,13 @@ const BY_NAME = new Map(FIGURES.map((f) => [f.name, f] as const));
 export const figureByName = (name: string | null | undefined): Figure | null => (name ? (BY_NAME.get(name) ?? null) : null);
 
 /** Contexte d'une figure : `left` = premier virage à gauche. */
-export function figureContext(left: boolean, width: WidthLetter, variant: number): FigureContext {
-  return { L: left ? "L" : "R", R: left ? "R" : "L", wall: left ? "ML" : "MR", width, variant };
+export function figureContext(left: boolean, width: WidthLetter, variant: number, theme?: string): FigureContext {
+  return { L: left ? "L" : "R", R: left ? "R" : "L", wall: left ? "ML" : "MR", width, variant, ...(theme ? { theme } : {}) };
 }
 
 /** Blocs d'une figure (variante et miroir donnés) à partir d'une route de la largeur `width`, ou `null` si impossible. */
-export function buildFigure(f: Figure, left: boolean, width: WidthLetter, variant: number): string[] | null {
-  return f.build(figureContext(left, width, variant));
+export function buildFigure(f: Figure, left: boolean, width: WidthLetter, variant: number, theme?: string): string[] | null {
+  return f.build(figureContext(left, width, variant, theme));
 }
 
 const lengths = new Map<string, number>();
@@ -984,7 +988,7 @@ const SURFACE_FACTOR: Record<BlockSurface, number> = { road: 1, dirt: 1.1, ice: 
 export function estimateSeconds(tokens: readonly string[]): number {
   let t = 0;
   for (const token of tokens) {
-    const p = parseToken(token);
+    const p = parseTokenLu(token);
     t += (KIND_SECONDS[p.kind] ?? 0.7) * SURFACE_FACTOR[p.surface];
   }
   return t;

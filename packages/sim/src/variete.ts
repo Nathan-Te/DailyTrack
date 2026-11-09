@@ -1,4 +1,4 @@
-import { curveSize, exitDelta, isCurve, parseToken, turnsLeft } from "./track";
+import { curveSize, exitDelta, isCurve, parseTokenLu, turnsLeft } from "./track";
 
 // Variété des circuits (lot V2) : ce qui fait qu'un circuit « se joue pareil » qu'un autre, lu dans le texte des blocs seul (pur, sans le générateur ni le pilote).
 // Sert au générateur (le motif « boost → longue ligne droite → virage serré », compté en posant chaque figure), à la mesure (`npm run mesure-circuits`) et aux tests.
@@ -22,7 +22,7 @@ const blocs = (spec: string): string[] => spec.split(" ").filter((t) => t && !t.
 
 /** Un bloc droit au sens de la géométrie : droite (revêtement, largeur, repère compris), plaque, super turbo, pente d'une cellule. */
 function droitGeometrique(token: string): boolean {
-  const p = parseToken(token);
+  const p = parseTokenLu(token);
   return !p.cuve && (p.kind === "straight" || p.kind === "boost" || p.kind === "turbo" || p.kind === "up" || p.kind === "down");
 }
 
@@ -31,11 +31,11 @@ export function motifsBoostSerre(tokens: readonly string[]): number {
   let n = 0;
   // Pour chaque virage serré, on remonte la ligne droite qui le précède : une plaque ou un super turbo, puis au moins `LONGUE` blocs droits jusqu'au virage.
   for (let i = 0; i < tokens.length; i++) {
-    const p = parseToken(tokens[i]!);
+    const p = parseTokenLu(tokens[i]!);
     if (!isCurve(p.kind) || curveSize(p.kind) !== 1) continue;
     let apres = 0;
     for (let j = i - 1; j >= 0 && droitGeometrique(tokens[j]!); j--) {
-      const k = parseToken(tokens[j]!).kind;
+      const k = parseTokenLu(tokens[j]!).kind;
       if ((k === "boost" || k === "turbo") && apres >= LONGUE) {
         n++;
         break;
@@ -61,7 +61,7 @@ export function elementsOf(spec: string): Element[] {
     out.push(e);
   };
   for (const t of blocs(spec)) {
-    const p = parseToken(t);
+    const p = parseTokenLu(t);
     if (p.cuve) push("cuve");
     else if (isCurve(p.kind)) push(p.banked ? "relevé" : curveSize(p.kind) === 1 ? "serré" : curveSize(p.kind) === 2 ? "large" : "ample");
     else if (p.kind === "straight") droites++;
@@ -135,7 +135,7 @@ export function profilCircuit(spec: string): ProfilCircuit {
   let ouverts = 0;
   const comptes = Object.fromEntries(ELEMENTS.map((e) => [e, 0])) as Record<Element, number>;
   for (const t of tokens) {
-    const p = parseToken(t);
+    const p = parseTokenLu(t);
     largeurs += p.width ? (p.width.w0 + p.width.w1) / 2 : w;
     if (p.width) w = p.width.w1;
     if (p.edge) bord = p.edge;

@@ -1,6 +1,6 @@
 {
   "simVersion": 14,
-  "generatorVersion": 22,
+  "generatorVersion": 23,
   "circuits": [
     {
       "date": "2026-10-06",
@@ -75,122 +75,122 @@
     {
       "date": "2026-11-04",
       "number": 23,
-      "attempt": 3,
-      "spec": "S/e@start L2/~t L2 R2/t S/t S/t S/t S/t K/t~r GD S/tu S/tu~t S/tu L2/t S/t@cp S/e>n~r S Ex S K GD S S E0 S S/t B/t S/t~t B/t~r B/t S/t R2/t S@cp P D/~t D D D S S L3 S/t S S/~r@finish",
-      "authorMs": 39075,
+      "attempt": 49,
+      "spec": "S/n@start S/n>eu~t S/tu B/t~r B/t B/t S/t~t L2/t S R2 R2 L2 S@cp P D D D D S S R3 S S S U2/~r GD D S/~t S@cp S S/t P S/t K/t~r G D/t S/t S/t S/t L2/~t S/u S/u~r S@finish",
+      "authorMs": 37476,
       "palette": "desert",
       "theme": "rallye",
-      "trackId": "jour-2026-11-04-g22"
+      "trackId": "jour-2026-11-04-g23"
     },
     {
       "date": "2026-11-05",
       "number": 24,
-      "attempt": 4,
-      "spec": "S/n@start S/n>e S L2 Er S U D R2 S E0 S S B S S@cp D R2 S D L2 S D S S S S L S S S R S@cp L S T S S S S S S S S L S S S@finish",
-      "authorMs": 39638,
+      "attempt": 20,
+      "spec": "S/e@start S/e>n S L2 Er S U D R2 S E0 S P S@cp K GU S S S S D L2 S@cp D R2 S D S L S R S L S T S@cp S S S S S S S R S S S@finish",
+      "authorMs": 36411,
       "palette": "ville",
       "theme": "ville",
-      "trackId": "jour-2026-11-05-g22"
+      "trackId": "jour-2026-11-05-g23"
     },
     {
       "date": "2026-11-08",
       "number": 27,
-      "attempt": 3,
-      "spec": "S/l@start S/t S/l>nt S/n>et S/t L/t~h S S/e>n S/z@cp U/z~r U/z U R2/b D/~h D D S@cp S/n>e S P D D D D D D/~r S@cp S R2/b L2/~h S R2 R2/t S/t S/~r@cp S/z R2/z L2 S/z~h S/z S/z S/~r@finish",
-      "authorMs": 39148,
+      "attempt": 95,
+      "spec": "S/l@start L2/~h L2/t S/t S U3/~r D3 S@cp S S L2/~h S S/l>n S/z R2/z L2 S@cp S S/n>e S L3 L2/z S/z S@cp P S S S S R2/b~r S/~h@cp S/t S/t R/t S S S/~r@finish",
+      "authorMs": 38318,
       "palette": "campagne",
       "theme": "campagne",
-      "trackId": "jour-2026-11-08-g22"
+      "trackId": "jour-2026-11-08-g23"
     },
     {
       "date": "2026-11-10",
       "number": 29,
-      "attempt": 0,
-      "spec": "S/n@start S/n>l S S/a S/a L2/a S/a S/a S S/l>n S/n>e S/o S/o L2/o S/o S/~v@cp P D D/~r D D D/~v D S S R3 S ML/~r ML ML ML ML S K GD S S S S/e>n S S C S S@cp L2 S S S@finish",
-      "authorMs": 37424,
+      "attempt": 34,
+      "spec": "S/n@start S/n>e S S C S S@cp R2 S R2/c S S S@cp S S/e>n S/n>l S S/i K/i GD S/i S S S/~v@cp S/l>n S/n>e S/o~r S/o L2/o S/o S S/e>n S P D D/~v D D D D S/~r S L3 R2 S S S@finish",
+      "authorMs": 38122,
       "palette": "nuit",
       "theme": "nuit",
-      "trackId": "jour-2026-11-10-g22"
+      "trackId": "jour-2026-11-10-g23"
     },
     {
       "date": "2026-11-15",
       "number": 34,
       "attempt": 0,
-      "spec": "S/l@start R2/~p R2/g S/g S@cp S/g R2/g L2/g R2/g S/g S@cp P D D D D D D S S@cp R2 S/g S/l>n~r S/g U/g S/g~p D/g S@cp S/n>e R S S S/~r@finish",
-      "authorMs": 33953,
+      "spec": "S/n@start D/~p R2/b-~r L2/b- D/~p S U/~r U U S/~p D D D S@cp S P S S S S L2 S S/n>l~r S@cp R3/k~p GD/~r S/g S/g~p S S/l>n S/g R2/g L2/g S/g S S S/~r@finish",
+      "authorMs": 36425,
       "palette": "neige",
       "theme": "banquise",
-      "trackId": "jour-2026-11-15-g22"
+      "trackId": "jour-2026-11-15-g23"
     },
     {
       "date": "2026-11-16",
       "number": 35,
-      "attempt": 5,
-      "spec": "S/l@start D/o D/o L2/o L2/o D D R2/~p R2 S/~r S/~p S T S@cp S T/~r S S S S S S S R3/~p D L2/b~r L2/g S/g S@cp S/l>n D S/n>e L U S/e>n~p D R L2/b~r U D/~p S/~r@finish",
-      "authorMs": 38549,
+      "attempt": 57,
+      "spec": "S/n@start D D L2/+ U S S S T S S T S@cp S S S S S/~p S L3 D/o~r S/n>eo R/o S/~p@cp S D D S K/~r GD2 D S S L2/b S/~p@cp S/e>n D U/~r R2/b U L2/b U R2/b D/~p D S/~r@finish",
+      "authorMs": 39037,
       "palette": "alpin",
       "theme": "col",
-      "trackId": "jour-2026-11-16-g22"
+      "trackId": "jour-2026-11-16-g23"
     },
     {
       "date": "2026-12-10",
       "number": 59,
-      "attempt": 0,
-      "spec": "S/n@start S/g~p L2/g R2/g L2/g~r S/g S@cp V/q L2/cq V/q S P S S S@cp S R3/~p L2/b~r S/t~p S/n>l S S/l>n S/n>e~r S@cp R S S S U U U S/~p@cp D D D S S/~r@finish",
-      "authorMs": 39394,
+      "attempt": 98,
+      "spec": "S/n@start D/~p L2/b-~r R2/b- D/~p S S/g R2/g L2/g R2/g S/g S/g@cp R2/cq~r L2/cq S P S S/~p@cp S S R3 L2 S S S S/n>e R S@cp S/e>n S U/~r S/~p D S S/~r@finish",
+      "authorMs": 39362,
       "palette": "neige",
       "theme": "banquise",
-      "trackId": "jour-2026-12-10-g22"
+      "trackId": "jour-2026-12-10-g23"
     },
     {
       "date": "2026-12-17",
       "number": 66,
-      "attempt": 1,
-      "spec": "S/l@start D/~h D D R3 S U/~r U U S/l>n S L3/f R3/f S@cp MR MR MR MR MR S/~h K/~r GD S S/~h S L2/b~r K GD S@cp S/~h S T S S S S S L2/b~r S/~h S S/~r@finish",
-      "authorMs": 35895,
+      "attempt": 4,
+      "spec": "S/n@start D/~h L2/b-~r R2/b- D/~h S L2/c~r S/~h S S S@cp L R2/b~r S/~h S K/~r GD S S/~h S@cp U/~r S/~h D S/~r S/n>l S L3/f R3/f S T S@cp S S S S/~h R2/b~r S/~h S S/~r@finish",
+      "authorMs": 36412,
       "palette": "stade",
       "theme": "stade",
-      "trackId": "jour-2026-12-17-g22"
+      "trackId": "jour-2026-12-17-g23"
     },
     {
       "date": "2026-12-25",
       "number": 74,
-      "attempt": 3,
-      "spec": "S/e@start U3 D3 S/t~h S/t S/t L2 S S/e>n S@cp P S S S S L3 S@cp S S K/~r GD S P/~h S S S@cp S L3 S/t R2/t S/z S/z S/z L2 S@cp S/n>e S/t S/t R/t S S S/~r@finish",
-      "authorMs": 37943,
+      "attempt": 0,
+      "spec": "S/n@start S/t~h S/n>et S/t S/t L/t S/~r S S U2 GD D S/~h@cp S S P D D D D D D S@cp S L3 S S/e>n S U3/~r D3 S/~h S S@cp R2/b~r S/~h S B/~r S/~h S/z L3/z S/z S S/~r S@finish",
+      "authorMs": 37253,
       "palette": "campagne",
       "theme": "campagne",
-      "trackId": "jour-2026-12-25-g22"
+      "trackId": "jour-2026-12-25-g23"
     },
     {
       "date": "2027-02-28",
       "number": 139,
-      "attempt": 0,
-      "spec": "S/n@start S S MR MR MR S/~s P S@cp K/~r G GD D S S S S Ef S S@cp L2/b R2/b S E0 S S/n>l S P/~s D/~r D D D S@cp S R2/~s S S/l>n S R3 S S@cp K/~r GD S S/~s S S/n>e R S S S/~r@finish",
-      "authorMs": 39294,
+      "attempt": 32,
+      "spec": "S/e@start U U L2/- D S S/e>n S U U U S/~s D D D S/n>l S@cp S S K/~r GD L3 S MR MR MR S/~s P S K/~r G GD D S/~s@cp S S S P S S S S R2 L2/s S S S/~r@finish",
+      "authorMs": 37307,
       "palette": "canyon",
       "theme": "canyon",
-      "trackId": "jour-2027-02-28-g22"
+      "trackId": "jour-2027-02-28-g23"
     },
     {
       "date": "2028-02-29",
       "number": 505,
-      "attempt": 2,
-      "spec": "S/n@start D/~p D D R3 S/~r U U U S@cp P S K G D/g S/g~p S/g S@cp R2 S S/n>l~r S/g R2/g L2/g S/g S@cp P S S S/~p S L2 S@cp S/l>n S S/n>e R S S S/~r@finish",
-      "authorMs": 36325,
+      "attempt": 92,
+      "spec": "S/l@start P/~p S S S S/~r L2/~p S S/~r@cp S/l>n S U U U S/~p D D D S@cp D/~r L2/b- R2/b- D S P S@cp K G D/g S/g~p S/g S R2 S@cp S/g R2/g L2/g S/g S S S/~r@finish",
+      "authorMs": 37128,
       "palette": "neige",
       "theme": "banquise",
-      "trackId": "jour-2028-02-29-g22"
+      "trackId": "jour-2028-02-29-g23"
     },
     {
       "date": "2030-01-01",
       "number": 1177,
-      "attempt": 2,
-      "spec": "S/n@start L S R S S S R2 Er S U D L2 S@cp E0 S D R2 S D L2 S D S T S@cp S S S S S S S L S S@cp S/n>e S U U U L2 D D D S S S@finish",
-      "authorMs": 39061,
+      "attempt": 52,
+      "spec": "S/e@start T S S S S S S S S L S@cp S/e>n S D D D L S U U U S P S@cp S S R2/b L2/b R2/b S S P S@cp K GU S S S S L S R S S S@finish",
+      "authorMs": 35085,
       "palette": "ville",
       "theme": "ville",
-      "trackId": "jour-2030-01-01-g22"
+      "trackId": "jour-2030-01-01-g23"
     }
   ]
 }

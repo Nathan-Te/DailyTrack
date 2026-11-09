@@ -36,7 +36,8 @@ export function runFictional(track: Track, style: PilotStyle, seed: number, maxS
   // Sauts (lot 17) : même un pilote prudent accélère avant une rampe, il sait qu'un saut se prend avec de la vitesse. Dans les quatre
   // blocs qui précèdent la rampe (et sur elle), il ne lève plus le pied et met plein gaz comme le pilote automatique.
   const jumps = trackJumps(track).map((j) => ({ from: j.kick - 4, to: j.kick }));
-  const drive = createAutopilot(track, { grip: style.grip, look: style.look });
+  // Lot 57b : sur un mur roulable (lot 58b) le pilote doit monter sur la paroi (`wall`), sinon il tombe : aucun pilote fictif ne finissait un Salon qui en avait un (le Stade du e2e du Salon).
+  const drive = createAutopilot(track, { grip: style.grip, look: style.look, wall: track.blocks.some((b) => b.floorless) });
   const rec = new ReplayRecorder();
   const rng = new Rng(seed);
   let wob = 0;

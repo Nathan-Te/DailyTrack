@@ -1,5 +1,5 @@
 import { DEFAULT_CAR_PARAMS } from "./car";
-import { CELL, curveSize, isCurve, parseToken, type BlockKind } from "./track";
+import { CELL, curveSize, isCurve, parseTokenLu, type BlockKind } from "./track";
 import { SURFACES } from "./world";
 
 // Freinage possible après un boost (lot 34) : un modèle **statique** de la vitesse le long d'une suite de blocs, sans faire rouler la voiture,
@@ -61,7 +61,7 @@ export interface Approach {
 
 /** Vitesse de passage estimée d'un virage (bloc de la notation). */
 function turnSpeed(token: string): number {
-  const p = parseToken(token);
+  const p = parseTokenLu(token);
   const size = curveSize(p.kind);
   const m = SURFACES[p.surface];
   const grip = m.slick > 0 ? P.iceCoastGrip : m.grip;
@@ -72,7 +72,7 @@ const isAir = (k: BlockKind) => k === "kick" || k === "gap" || k === "bump" || k
 
 /** Avance l'approche d'un bloc qui n'est pas un virage (`prev` : le bloc d'avant, pour la réception d'un saut). */
 export function advance(a: Approach, token: string, prev?: string): void {
-  const p = parseToken(token);
+  const p = parseTokenLu(token);
   if (isCurve(p.kind)) {
     // Sortie d'un virage : l'approche suivante repart de sa vitesse de passage.
     const v = p.cuve ? CUVE_EXIT : turnSpeed(token);
@@ -110,7 +110,7 @@ export function advance(a: Approach, token: string, prev?: string): void {
   const v2 = a.v > P.maxSpeed ? a.v * a.v - 2 * drag(a.v) * rest - 2 * P.slopeGravity * rise : Math.min(P.maxSpeed * P.maxSpeed, a.v * a.v + 2 * 12 * rest) - 2 * P.slopeGravity * rise;
   a.v = Math.sqrt(Math.max(v2, 100));
   // En l'air (rampe, vide, bosse) et sur la réception d'un saut, le frein ne sert à rien.
-  const landing = prev !== undefined && parseToken(prev).kind === "gap";
+  const landing = prev !== undefined && parseTokenLu(prev).kind === "gap";
   if (isAir(p.kind) || landing) {
     a.free = 0;
     a.peak = a.v;
@@ -155,7 +155,7 @@ export interface BrakingFix {
 }
 
 const isStop = (token: string): boolean => {
-  const p = parseToken(token);
+  const p = parseTokenLu(token);
   return isCurve(p.kind) || !!p.cuve;
 };
 
@@ -176,11 +176,11 @@ export function secureBraking(before: readonly string[], tokens: readonly string
   while (from > 0 && !isStop(before[from - 1]!)) from--;
   let approach = from - before.length;
   for (const token of tokens) {
-    const p = parseToken(token);
+    const p = parseTokenLu(token);
     if (isCurve(p.kind) && !p.cuve) {
       const deficit = brakingDeficit(a, token);
       const fast = deficit > -Infinity && (a.boosted || Math.max(a.peak, a.v) > FAST_APPROACH);
-      const escape = o.escape && !p.banked && !p.open && (prev === undefined || parseToken(prev).kind !== "gap");
+      const escape = o.escape && !p.banked && !p.open && (prev === undefined || parseTokenLu(prev).kind !== "gap");
       if (fast) {
         // Le freinage se corrige toujours par des droites : à 66–88 m/s la bande d'un bas-côté (rebord à 15 m de l'axe) ne suffit pas (mesuré).
         // Une à une : une droite donne de la place pour freiner, mais la voiture y accélère aussi (sous la pointe du plat).

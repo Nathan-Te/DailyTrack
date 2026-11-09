@@ -17,6 +17,7 @@ import {
   BLOCS_LOT58,
   figureByName,
   FIGURES_LOT49,
+  PARTIES_LOT57,
   SAUTS_LOT57,
   TRANSITIONS_LOT57,
   type ElementGrammaire,
@@ -109,7 +110,7 @@ export const figureLabel = (name: string | null, t?: (cle: string) => string): s
 /** La palette d'une figure propre à un thème (`only`, lot 22) : on l'essaie contre son décor ; `null` pour une figure de tous les thèmes. */
 export function figurePalette(name: string | null): PaletteName | null {
   // Lot 57 : un élément de la grammaire se joue sur la palette du premier thème qu'on lui propose.
-  const only = (figureByName(name)?.only?.[0] ?? (elementGrammaire(name) ?? elementBloc(name))?.themes[0]) as ThemeName | undefined;
+  const only = (figureByName(name)?.only?.[0] ?? (elementGrammaire(name)?.only ?? elementBloc(name)?.themes)?.[0]) as ThemeName | undefined;
   return only ? THEMES[only].palette : null;
 }
 
@@ -140,7 +141,7 @@ export function pageFigures(o: OutilsFigures, search: string, page: "figures" | 
   /** Lot 57 : une ligne de la page des sauts et des transitions (titre, ce qu'il demande, ses parties, ses thèmes, ses variantes et le miroir). */
   const ligne = (e: ElementGrammaire): HTMLElement => {
     const pt = (x: string) => o.t(`sauts.partie.${x}`);
-    const pa = e.parties;
+    const pa = PARTIES_LOT57[e.name];
     const boutons = [o.el("a", { classe: ["dj-bouton", "dj-bouton--marque"], attrs: { href: lien(e.name, 0) }, texte: o.t("figures.index.essayer") })];
     if (e.variants > 1) boutons.push(o.el("a", { classe: ["dj-bouton", "dj-bouton--secondaire"], attrs: { href: lien(e.name, 1) }, texte: o.t("figures.index.variante") }));
     boutons.push(o.el("a", { classe: ["dj-bouton", "dj-bouton--secondaire"], attrs: { href: lien(e.name, 0, true) }, texte: o.t("sauts.index.miroir") }));
@@ -153,7 +154,7 @@ export function pageFigures(o: OutilsFigures, search: string, page: "figures" | 
       ...(pa
         ? [o.el("p", { classe: "legende", texte: o.t("sauts.index.parties", { approche: pt(pa.approche), appel: pt(pa.appel), vol: pt(pa.vol), reception: pa.reception.map(pt).join(", "), sortie: pt(pa.sortie), vitesse: pt(pa.vitesse) }) })]
         : []),
-      o.el("p", { classe: "legende", texte: o.t("figures.index.themes", { liste: e.themes.map((th) => o.t(`theme.${th}`)).join(", ") }) }),
+      o.el("p", { classe: "legende", texte: o.t("figures.index.themes", { liste: (e.only ?? []).map((th) => o.t(`theme.${th}`)).join(", ") }) }),
       o.el("div", { classe: ["actions", "actions--duo"] }, ...boutons),
     );
   };

@@ -4,6 +4,7 @@ import {
   AUTHOR_MIN_MS,
   FIGURES,
   THEMES,
+  THEME_NAMES,
   TURF_FIGURES,
   composeSpec,
   dailyCircuit,
@@ -308,10 +309,32 @@ describe("lot 48 : générateur v17, la Campagne sur l'herbe de course (jours de
 
   it("les figures d'herbe de course n'existent que pour la Campagne et à partir de la v17", () => {
     const turf = FIGURES.filter((f) => f.build({ L: "L", R: "R", wall: "ML", width: "n", variant: 0 })?.some((t) => t.includes("/z")));
-    expect(turf.map((f) => f.name).sort()).toEqual([...TURF_FIGURES].sort());
+    // Lot 57b (v23) : « Réception sur l'herbe de course » (`saut-herbe`, grammaire du lot 57) la pose aussi, dans sa variante 0 — et seulement quand le thème est la Campagne
+    // (`FigureContext.theme` : au Rallye, sa variante 0 se refuse et la terre prend la place).
+    expect(turf.map((f) => f.name).sort()).toEqual([...TURF_FIGURES, "saut-herbe"].sort());
     for (const f of turf) {
+      if (f.name === "saut-herbe") {
+        expect(f.since).toBe(23);
+        expect(f.only).toContain("campagne");
+        expect(f.build({ L: "L", R: "R", wall: "ML", width: "n", variant: 0, theme: "rallye" })).toBeNull();
+        expect(f.build({ L: "L", R: "R", wall: "ML", width: "n", variant: 0, theme: "campagne" })!.some((t) => t.includes("/z"))).toBe(true);
+        continue;
+      }
       expect(f.only).toEqual(["campagne"]);
       expect(f.since).toBe(17);
+    }
+  });
+
+  it("lot 57b : aucune figure, dans aucune variante, ne pose d'herbe de course hors de la Campagne (le thème est donné à la pose)", () => {
+    for (const theme of THEME_NAMES) {
+      if (theme === "campagne") continue;
+      for (const f of FIGURES) {
+        if (f.only && !f.only.includes(theme)) continue;
+        for (let v = 0; v < f.variants; v++) for (const left of [true, false]) {
+          const body = f.build({ L: left ? "L" : "R", R: left ? "R" : "L", wall: left ? "ML" : "MR", width: "n", variant: v, theme });
+          expect(body?.some((t) => t.includes("/z")) ?? false, `${f.name} v${v} (${theme})`).toBe(false);
+        }
+      }
     }
   });
 

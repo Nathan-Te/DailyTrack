@@ -577,6 +577,18 @@ export function parseToken(token: string, index = 0): ParsedToken {
   };
 }
 
+const jetonsLus = new Map<string, ParsedToken>();
+/** Lot 57b : `parseToken` mis en cache pour les outils du générateur, qui relisent des milliers de fois les mêmes jetons (l'objet rendu est lu, jamais modifié). */
+export function parseTokenLu(token: string): ParsedToken {
+  let p = jetonsLus.get(token);
+  if (!p) {
+    p = parseToken(token);
+    if (jetonsLus.size > 4000) jetonsLus.clear();
+    jetonsLus.set(token, p);
+  }
+  return p;
+}
+
 /** Blocs qui peuvent être bosselés : les droites, pentes et blocs à effet (pas les virages, bosses, sauts ni cuves). */
 const RIPPLE_KINDS: ReadonlySet<BlockKind> = new Set<BlockKind>(["straight", "up", "down", "boost", "turbo", "cut"]);
 

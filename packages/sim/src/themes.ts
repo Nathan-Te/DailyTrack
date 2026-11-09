@@ -58,8 +58,9 @@ export interface Theme {
    * prend `vedettes[k mod n]` et s'interdit les autres) : deux circuits consécutifs d'un même thème n'ont jamais la même (voir `themeOccurrence`, generator.ts) ;
    * `aussi` (lot V2, v21) : des figures propres à un autre thème (`only`) que celui-ci peut tirer aussi.
    * `blocs` (lot 58, v22) : les familles de blocs nouveaux du thème (`FIGURES_LOT58`) ; chaque circuit en a une.
+   * `sauts`, `transitions` (lot 57b, v23) : les sauts et les transitions de la grammaire du thème ; chaque circuit en a un saut et, si le budget le permet, une transition, à tour de rôle.
    */
-  figures: { favor: readonly string[]; ban: readonly string[]; require?: readonly string[]; requireAlso?: readonly string[]; vedettes?: readonly string[]; aussi?: readonly string[]; blocs?: readonly string[] };
+  figures: { favor: readonly string[]; ban: readonly string[]; require?: readonly string[]; requireAlso?: readonly string[]; vedettes?: readonly string[]; aussi?: readonly string[]; blocs?: readonly string[]; sauts?: readonly string[]; transitions?: readonly string[] };
   /**
    * Bas-côtés (lot 21) : revêtement de la bande au bord de la route (ou le vide) et part (%) des blocs qui peuvent en porter, posés par
    * séries de 3 à 6 blocs (voir `assignShoulders`, generator.ts).
