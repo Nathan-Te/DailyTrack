@@ -53,7 +53,7 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     label: "Saut dans un virage",
     off: 1.0,
     variants: 2,
-    themes: ["stade", "rallye", "col", "banquise"],
+    themes: ["stade", "col", "banquise"],
     technicite: 3,
     // L'appel est lui-même en courbe : on décolle en tournant et on retombe décalé sur une route large ; variante 1 : chute de deux niveaux
     // (on vole plus longtemps : plus de dérive). Le virage large (L2) a été essayé : sa fenêtre ne tient que de 30 à 37 m/s (mesuré), trop étroite.

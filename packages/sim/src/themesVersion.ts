@@ -140,7 +140,7 @@ export const BLOCS_VEDETTES_V22: Readonly<Partial<Record<ThemeName, readonly str
  */
 export const GRAMMAIRE_V23: Readonly<Record<ThemeName, { sauts: readonly string[]; transitions: readonly string[]; vedettes: readonly string[] }>> = {
   stade: { sauts: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle", "saut-step-up"], transitions: ["transition-devers", "transition-esse", "transition-compression"], vedettes: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle"] },
-  rallye: { sauts: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"], transitions: ["transition-crete", "transition-devers", "transition-compression"], vedettes: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"] },
+  rallye: { sauts: ["saut-bosse", "saut-reception-relevee", "saut-herbe"], transitions: ["transition-crete", "transition-devers", "transition-compression"], vedettes: ["saut-bosse", "saut-reception-relevee", "saut-herbe"] },
   banquise: { sauts: ["saut-glisse", "saut-courbe", "saut-biais", "saut-reception-relevee"], transitions: ["transition-appui", "transition-esse"], vedettes: ["saut-glisse", "saut-courbe", "saut-biais"] },
   nuit: { sauts: ["saut-biais", "saut-angle", "saut-reception-relevee"], transitions: ["transition-devers", "transition-crete"], vedettes: ["saut-biais", "saut-angle", "saut-reception-relevee"] },
   campagne: { sauts: ["saut-bosse", "saut-herbe", "saut-elan"], transitions: ["transition-crete", "transition-appui", "transition-pente", "transition-retrecissement"], vedettes: ["saut-bosse", "saut-herbe", "transition-pente", "saut-elan"] },

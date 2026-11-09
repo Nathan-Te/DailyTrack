@@ -75,9 +75,9 @@
     {
       "date": "2026-11-04",
       "number": 23,
-      "attempt": 49,
-      "spec": "S/n@start S/n>eu~t S/tu B/t~r B/t B/t S/t~t L2/t S R2 R2 L2 S@cp P D D D D S S R3 S S S U2/~r GD D S/~t S@cp S S/t P S/t K/t~r G D/t S/t S/t S/t L2/~t S/u S/u~r S@finish",
-      "authorMs": 37476,
+      "attempt": 33,
+      "spec": "S/l@start S/t~t B/t~r S/t B/t B/t S/t~t L2/t S@cp P/~r D D D/~t D S S R3 S S@cp S S U2/~r GD D S/~t S S@cp S/l>n S/t P S/t K/t~r G D/t S/t~t S/t S/t L2 S@cp S/t S/t R3/t~r R2/t S/tu S/u S/u S@finish",
+      "authorMs": 39518,
       "palette": "desert",
       "theme": "rallye",
       "trackId": "jour-2026-11-04-g23"
