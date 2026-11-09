@@ -898,7 +898,8 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   // Points de contrôle (2 à 4), répartis le long du circuit, sur des lignes droites. Un moteur coupé est suivi d'un
   // point de contrôle deux blocs plus loin : « on vit sur son élan » ~1 s, pas jusqu'à la fin du circuit.
   const n = w.tokens.length;
-  const eligible = (i: number) => i > 0 && i < n - 1 && w.tokens[i] === "S";
+  // Lot 57b (v23) : pas de point de contrôle juste après un dévers (la route y penche encore : la porte du point de contrôle n'y laisse pas son passage libre).
+  const eligible = (i: number) => i > 0 && i < n - 1 && w.tokens[i] === "S" && !(rules23 && /\/[ij]/.test(w.tokens[i - 1]!));
   const used2 = new Set<number>();
   const cutAt = w.tokens.indexOf("C");
   if (cutAt >= 0) {

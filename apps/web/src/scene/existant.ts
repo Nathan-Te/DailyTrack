@@ -117,7 +117,8 @@ export function beam(g: Builder, a: V3, b: V3, fwd: [number, number], depth: num
  * hauteur de voiture ; les lampadaires qui étaient posés au sol, huit mètres plus bas, ne se voyaient pas.
  */
 export function addStreetLamps(g: Builder, glow: Builder, pal: Palette, b: Block, log?: PoseLog) {
-  if (pal.scenery !== "city" || !hasCap(b) || b.index % 2 === 0) return;
+  // Lot 57b : ni sur un dévers (`tilt`) ni sur le bloc qui le raccorde (`tilt0`) : son bord monte ou descend en travers.
+  if (pal.scenery !== "city" || !hasCap(b) || b.index % 2 === 0 || b.tilt !== undefined || b.tilt0 !== undefined) return;
   const cap = pal.wallHeight ?? WALL_HEIGHT;
   const side = b.index % 4 === 1 ? 1 : -1;
   const p = onRim(b, 0.5, side, CHAPEAU / 2, cap);
