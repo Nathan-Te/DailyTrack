@@ -53,7 +53,7 @@ export const MAX_ATTEMPTS_SAC = 120;
 /** Lot 57b (v23) : les règles de variété des sauts (un seul saut « droite → tremplin → axe », jamais deux de même combinaison) refusent plus de tentatives ; quelques jours (un Stade du 01/02/2028, mesuré) n'en tenaient aucune en 120. */
 export const MAX_ATTEMPTS_23 = 360;
 /** Lot 57b (v23) : les dernières tentatives d'un jour ne tiennent plus les règles de variété des sauts (un circuit un peu moins varié vaut mieux que le circuit de secours : mesuré, un Nuit sur 480 y arrivait). */
-const TENTATIVES_LIBRES = 180;
+const TENTATIVES_LIBRES = 210;
 const maxAttempts = (generator: number): number => (generator >= GENERATOR_GRAMMAIRE ? MAX_ATTEMPTS_23 : generator >= GENERATOR_SAC_THEMES ? MAX_ATTEMPTS_SAC : MAX_ATTEMPTS);
 /**
  * Vitesse que le pilote doit dépasser au moins une fois (lot 15) : 30 % au-dessus de la pointe du plat. Un circuit sans
@@ -68,7 +68,7 @@ export const FAST_PEAK = DEFAULT_CAR_PARAMS.maxSpeed * 1.3;
 const ESTIMATE_MIN = 30;
 const ESTIMATE_MAX = 44;
 /** Lot 57b (v23) : durée estimée au plus sur les `TENTATIVES_GRAMMAIRE` premières tentatives — mesuré (150 circuits) : au-delà de 41 s estimées, moins d'un circuit sur dix tient dans les 40 s du pilote, et la course d'essai coûte ≈ 35 ms ; les tentatives de repli reprennent les 44 s d'avant (certains jours n'ont aucun circuit sous 41 s). */
-const ESTIMATE_MAX_23 = 41;
+const ESTIMATE_MAX_23 = 40;
 /**
  * Lot 49 (v18) : la première des courses du pilote (adhérence la plus haute, sur le fond) roule seule d'abord ; si elle finit plus de `QUICK_SLACK_MS`
  * au-delà de la fenêtre, la tentative est refusée sans les autres (une adhérence plus basse ou la paroi d'une cuve ne gagnent presque jamais autant :
@@ -945,9 +945,9 @@ export const GENERATOR_BLOCS = 22;
 /** Lot 58 (v22) : tentatives d'un jour qui exigent une famille de blocs nouveaux (au-delà, elle n'est plus qu'une favorite : jamais de circuit de secours pour elle). */
 const TENTATIVES_BLOCS = 30;
 /** Lot 57b (v23) : tentatives d'un jour qui exigent la grammaire (un saut qui demande un geste, une transition si le budget le permet) : les `TENTATIVES_BLOCS` premières exigent aussi une famille de blocs nouveaux, les suivantes la grammaire seule, au-delà le jour reprend les graines du début sans rien exiger. */
-const TENTATIVES_GRAMMAIRE = 120;
+const TENTATIVES_GRAMMAIRE = 90;
 /** Lot 57b (v23) : tentatives « allégées » qui suivent : une transition de la grammaire seule (4 à 7 s, elle tient lieu d'une technique) ; au-delà, plus rien n'est exigé. */
-const TENTATIVES_ALLEGEES = 60;
+const TENTATIVES_ALLEGEES = 30;
 /** Lot 58 (v22) : tentatives d'un jour avec la même famille (son tour), avant de passer à la suivante. */
 const TOUR_BLOCS = 10;
 

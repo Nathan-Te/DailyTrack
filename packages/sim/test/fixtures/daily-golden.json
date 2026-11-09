@@ -75,9 +75,9 @@
     {
       "date": "2026-11-04",
       "number": 23,
-      "attempt": 33,
-      "spec": "S/l@start S/t~t B/t~r S/t B/t B/t S/t~t L2/t S@cp P/~r D D D/~t D S S R3 S S@cp S S U2/~r GD D S/~t S S@cp S/l>n S/t P S/t K/t~r G D/t S/t~t S/t S/t L2 S@cp S/t S/t R3/t~r R2/t S/tu S/u S/u S@finish",
-      "authorMs": 39518,
+      "attempt": 90,
+      "spec": "S/l@start S/t~t B/t~r B/t B/t S/t R2/t S S/l>n S/t S/t S/t K/t GD S/tu S/tu S/tu L2 S/t@cp S/t S/t R2/t~t R3/t S/t S/t U/~r U L2/-~t D S@cp P D D D D D D S S R3 S S S/~r@finish",
+      "authorMs": 39860,
       "palette": "desert",
       "theme": "rallye",
       "trackId": "jour-2026-11-04-g23"
@@ -95,9 +95,9 @@
     {
       "date": "2026-11-08",
       "number": 27,
-      "attempt": 122,
-      "spec": "S/e@start S/t L2/t L2 S S U3 D3 S/~h S S@cp L2/b~r S/~h S S/z R2/z L2 S S/t@cp U/~r U R2/-~h D S S/e>n S P S S S@cp S L2/b~r S/~h S/n>e S/t S/t L/t S S S/~r@finish",
-      "authorMs": 38770,
+      "attempt": 95,
+      "spec": "S/l@start L2/~h L2/t S/t S U3/~r D3 S@cp S S L2/~h S S/l>n S/z R2/z L2 S@cp S S/n>e S L3 L2/z S/z S@cp P S S S S R2/b~r S/~h@cp S/t S/t R/t S S S/~r@finish",
+      "authorMs": 38318,
       "palette": "campagne",
       "theme": "campagne",
       "trackId": "jour-2026-11-08-g23"
@@ -135,9 +135,9 @@
     {
       "date": "2026-12-10",
       "number": 59,
-      "attempt": 151,
-      "spec": "S/l@start S/l>n~p S/n>e R S S S@cp D/~r L2/b- R2/b- D/~p S S/g R2/g L2/g~r S/g S@cp V/q L2/cq V/q S P S@cp S/~p S S R3 S S/g~r@cp S/e>n S/g U/g S/g~p D/g S S/~r@finish",
-      "authorMs": 37217,
+      "attempt": 98,
+      "spec": "S/n@start D/~p L2/b-~r R2/b- D/~p S S/g R2/g L2/g R2/g S/g S/g@cp R2/cq~r L2/cq S P S S/~p@cp S S R3 L2 S S S S/n>e R S@cp S/e>n S U/~r S/~p D S S/~r@finish",
+      "authorMs": 39362,
       "palette": "neige",
       "theme": "banquise",
       "trackId": "jour-2026-12-10-g23"
@@ -175,9 +175,9 @@
     {
       "date": "2028-02-29",
       "number": 505,
-      "attempt": 133,
-      "spec": "S/l@start P/~p S S S S L2 S@cp D/~r L2/b- R2/b- D S S S/g S/g~p@cp K/~r GD S/g S/g~p S/g S/g R2/g S/g S/g@cp S/l>n~r S/g L2/g R2/g S/g S@cp U U S/~p D D S S/~r@finish",
-      "authorMs": 37815,
+      "attempt": 92,
+      "spec": "S/l@start P/~p S S S S/~r L2/~p S S/~r@cp S/l>n S U U U S/~p D D D S@cp D/~r L2/b- R2/b- D S P S@cp K G D/g S/g~p S/g S R2 S@cp S/g R2/g L2/g S/g S S S/~r@finish",
+      "authorMs": 37128,
       "palette": "neige",
       "theme": "banquise",
       "trackId": "jour-2028-02-29-g23"
