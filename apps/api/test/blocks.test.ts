@@ -148,6 +148,17 @@ describe("Blocks sur le serveur", () => {
     expect(info.body.frozenDays).toEqual([DATE]);
   });
 
+  it("l'empreinte ne dit pas d'où vient le jour : un fichier figé avec le code d'aujourd'hui a l'empreinte du jour généré (« Mettre en production » compare le code en production, sans fichier, à la construction, avec ceux qu'il vient de figer)", () => {
+    const dossier = mkdtempSync(join(tmpdir(), "blocks-jours-"));
+    try {
+      const genere = empreinteJour(JOUR, dossier); // aucun fichier : généré
+      writeFileSync(join(dossier, `${DATE}.json`), JSON.stringify(figerJourDuDiamant(JOUR)));
+      expect(empreinteJour(JOUR, dossier)).toEqual(genere);
+    } finally {
+      rmSync(dossier, { recursive: true, force: true });
+    }
+  });
+
   it("un jour figé fige ses seuils : le serveur sert et rend ceux du fichier, même si les seuils de la fiche d'aujourd'hui sont d'autres ; l'empreinte du jour les couvre", async () => {
     const ancien = { author: 7000, gold: 5000, silver: 3500, bronze: 1200 }; // un fichier figé par une version plus ancienne
     expect(ancien.author).not.toBe(SEUILS_MEDAILLES.author);
