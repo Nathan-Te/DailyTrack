@@ -1,9 +1,10 @@
-import { BONUS_PLATEAU_VIDE, COLONNES, NB_ACTIONS, PLAFOND_PIECES, POINTS_EFFACEMENT, POSES_SANS_EFFACEMENT_MAX, TAILLE_SERIE } from "./constantes";
-import type { Contenu } from "./generateur";
+import { BONUS_PLATEAU_VIDE, COLONNES, NB_ACTIONS, PLAFOND_PIECES, POINTS_EFFACEMENT, POSES_SANS_EFFACEMENT_MAX, type ReglageTirage, TAILLE_SERIE } from "./constantes";
+import type { ContenuJouable } from "./generateur";
+import { resoudreReglage, serieAuRang } from "./suite";
 import { compterPleines, effacer, estVide, type Grille, peutPoser, pleines, poser, tientQuelquePart, VIDE } from "./grille";
 import { PIECES, type Piece } from "./pieces";
 
-// LA PARTIE (seed § 3 et 5, règles v2 du lot B8). L'état : la grille (deux entiers), le rang de la série, les pièces restantes de la série (trois emplacements, vides une fois posées), le score, le combo, les poses sans effacement
+// LA PARTIE (seed § 3 et 5, règles v2 du lot B8, v3 du lot B8c : **la partie tire elle-même ses séries**, pour la grille du moment — `suite.ts`). L'état : la grille (deux entiers), le rang de la série, les pièces restantes de la série (trois emplacements, vides une fois posées), le score, le combo, les poses sans effacement
 // depuis le dernier, le combo maximal atteint, la fin. **On reçoit les pièces par séries de trois, et on les pose dans l'ordre qu'on veut** ; la série suivante arrive quand la troisième est posée (aucune pièce suivante n'est montrée).
 // **Une action = (emplacement 0 à 2, colonne, ligne)**, écrite sur un octet : `emplacement × 64 + ligne × 8 + colonne` (0 à 191), la case (colonne, ligne) étant le coin haut-gauche de la boîte de la pièce. Une action illégale
 // (emplacement vide, case occupée, pièce qui déborde) est rejetée **sans changer l'état**. Après chaque pose :
@@ -76,19 +77,20 @@ export class Partie {
   fin: Raison | null = null;
   /** Les trois emplacements de la série en cours : la pièce, ou `null` une fois posée. */
   private restantes: (Piece | null)[] = [];
+  private readonly reglage: ReglageTirage;
 
-  constructor(readonly contenu: Pick<Contenu, "suite" | "depart">) {
+  constructor(readonly contenu: ContenuJouable) {
     this.grille = contenu.depart ?? VIDE;
+    this.reglage = resoudreReglage(contenu.reglage);
     this.remplir();
     this.verifierFin();
   }
 
+  /** La série de rang `serie` arrive : celle qu'un scénario impose, sinon celle que le tirage donne pour la grille du moment (après les effacements de la dernière pose). */
   private remplir(): void {
-    this.restantes = [];
-    for (let k = 0; k < TAILLE_SERIE; k++) {
-      const id = this.contenu.suite[this.serie * TAILLE_SERIE + k];
-      this.restantes.push(id === undefined ? null : PIECES[id]!);
-    }
+    const imposee = this.contenu.imposees?.[this.serie];
+    const pieces = (imposee ? imposee.map((id) => PIECES[id]!) : serieAuRang(this.contenu.graine, this.serie, this.grille, this.reglage, PLAFOND_PIECES)).slice(0, Math.max(0, PLAFOND_PIECES - this.serie * TAILLE_SERIE)); // le plafond coupe la dernière série
+    this.restantes = Array.from({ length: TAILLE_SERIE }, (_, k) => pieces[k] ?? null);
   }
 
   /** Les trois emplacements de la série en cours (une pièce, ou `null` quand elle est posée) ; vide une fois la partie finie. */
@@ -204,7 +206,7 @@ export class ErreurRejeu extends Error {
  * Rejoue une partie entière : la suite des actions (octets `emplacement × 64 + ligne × 8 + colonne`). Refuse — par une `ErreurRejeu` — une action illégale (emplacement vide, case occupée, hors de la grille), une action après la fin,
  * une suite au-delà du plafond et une partie qui n'est pas terminée à la dernière action. C'est le code du jeu ET du serveur.
  */
-export function jouer(contenu: Pick<Contenu, "suite" | "depart">, actions: readonly number[]): Resultat {
+export function jouer(contenu: ContenuJouable, actions: readonly number[]): Resultat {
   if (actions.length > PLAFOND_PIECES) throw new ErreurRejeu("trop_longue", "trop de poses");
   const p = new Partie(contenu);
   for (let i = 0; i < actions.length; i++) {

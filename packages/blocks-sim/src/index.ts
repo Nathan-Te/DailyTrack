@@ -3,6 +3,8 @@ export * from "./calendrier";
 export * from "./pieces";
 export * from "./grille";
 export * from "./suite";
+export * from "./ordre";
+export * from "./empreinte";
 export * from "./generateur";
 export * from "./partie";
 export * from "./nomsScenarios";

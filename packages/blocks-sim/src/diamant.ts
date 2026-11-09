@@ -1,7 +1,7 @@
 import { BONUS_PLATEAU_VIDE, COLONNES, LIGNE_PLEINE, LIGNES, POINTS_EFFACEMENT, POSES_SANS_EFFACEMENT_MAX, TAILLE_SERIE } from "./constantes";
 import { BLOCKS_GENERATOR_VERSION } from "./constantes";
-import { dailyBlocks, type Contenu } from "./generateur";
-import { figerJour, type JourFige } from "./jours";
+import { type ContenuJouable } from "./generateur";
+import { figerJour, type JourFigeV3 } from "./jours";
 import { PIECES, type Piece } from "./pieces";
 import { actionDe, colonneDe, emplacementDe, ligneDe, Partie, type Resultat, type ResultatDeBot } from "./partie";
 import { PIECES_DU_DIAMANT, SEUILS_MEDAILLES, type Seuils } from "./medailles";
@@ -143,7 +143,7 @@ function tientRows(r: ArrayLike<number>, p: Piece, col: number, ligne: number): 
  * **Le plan du Diamant pour les pièces restantes de la série en cours** : la suite d'actions (octets `emplacement × 64 + ligne × 8 + colonne`) à jouer, dans l'ordre, ou une liste vide si rien ne tient. Pur : ne change pas la partie.
  * `k` : la largeur du faisceau (mesures seulement ; le jeu et le serveur prennent `LARGEUR_FAISCEAU`).
  */
-export function planDuDiamant(partie: Pick<Partie, "grille" | "dernieresPieces" | "combo" | "sansEffacement" | "contenu" | "serie" | "finie">, k: number = LARGEUR_FAISCEAU): number[] {
+export function planDuDiamant(partie: Pick<Partie, "grille" | "dernieresPieces" | "combo" | "sansEffacement" | "serie" | "finie">, k: number = LARGEUR_FAISCEAU): number[] {
   if (partie.finie) return [];
   const pieces = partie.dernieresPieces;
   let masque = 0;
@@ -250,7 +250,7 @@ export function coupDuDiamant(partie: Partie): { emplacement: number; col: numbe
  * posées (une série entière à la fois : le bot planifie série par série) ; la partie n'est alors pas finie, le résultat est son score du moment (`raison` « arret ») et ses actions ne sont pas une rediffusion qu'on envoie.
  * Sans `jusqua`, c'est la partie entière, une rediffusion valide.
  */
-export function jouerDiamant(contenu: Pick<Contenu, "suite" | "depart">, k: number = LARGEUR_FAISCEAU, jusqua: number = Infinity): { resultat: ResultatDeBot; actions: number[] } {
+export function jouerDiamant(contenu: ContenuJouable, k: number = LARGEUR_FAISCEAU, jusqua: number = Infinity): { resultat: ResultatDeBot; actions: number[] } {
   const partie = new Partie(contenu);
   const actions: number[] = [];
   while (!partie.finie && partie.poses < jusqua) {
@@ -266,9 +266,9 @@ export function jouerDiamant(contenu: Pick<Contenu, "suite" | "depart">, k: numb
 }
 
 /** La partie du Diamant sur le contenu du jour, arrêtée après `PIECES_DU_DIAMANT` pièces (ou plus tôt, s'il meurt) : celle qu'on regarde (`&bot`) et qu'on revoit. Pas une rediffusion qu'on envoie (la partie n'est pas finie). */
-export const partieDuDiamant = (contenu: Pick<Contenu, "suite" | "depart">): { resultat: ResultatDeBot; actions: number[] } => jouerDiamant(contenu, LARGEUR_FAISCEAU, PIECES_DU_DIAMANT);
+export const partieDuDiamant = (contenu: ContenuJouable): { resultat: ResultatDeBot; actions: number[] } => jouerDiamant(contenu, LARGEUR_FAISCEAU, PIECES_DU_DIAMANT);
 
 /** Le fichier à figer pour un jour : sa suite **et** ses seuils (ceux de cette version du code ; l'outil `figer:blocks` et « Mettre en production » écrivent ce fichier, jamais deux fois). */
-export function figerJourDuDiamant(jour: number, version: number = BLOCKS_GENERATOR_VERSION): JourFige {
-  return figerJour(jour, { ...SEUILS_MEDAILLES }, version);
+export function figerJourDuDiamant(jour: number, version: number = BLOCKS_GENERATOR_VERSION): JourFigeV3 {
+  return figerJour(jour, { ...SEUILS_MEDAILLES }, version) as JourFigeV3;
 }

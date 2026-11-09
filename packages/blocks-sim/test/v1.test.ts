@@ -27,7 +27,7 @@ describe("les règles v1, pour les jours figés avant le lot B8", () => {
     const c = dailyBlocks(parseDay(ref.date)!, 3);
     expect(ref.g).toBe(3);
     expect(empreinteContenu(c)).toBe(ref.empreinte);
-    expect(c.suite.slice(0, 40)).toEqual(ref.debut);
+    expect(c.suite!.slice(0, 40)).toEqual(ref.debut);
   });
   it.each(refs.map((r) => [r.date, r]))("la partie v1 du %s se rejoue au bit près : mêmes règles, même score", (_date, r) => {
     const ref = r as Reference;

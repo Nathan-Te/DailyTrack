@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionDe, BONUS_PLATEAU_VIDE, caseOccupee, colonneDe, contenuDeScenario, dailyBlocks, effacer, emplacementDe, ErreurRejeu, grilleDepuis, grilleEnTexte, jouer, ligneDe, NB_PIECES, Partie, peutPoser, PIECES, PLAFOND_PIECES, pieceParNom, pleines, tientQuelquePart, VIDE } from "../src/index";
+import { actionDe, BONUS_PLATEAU_VIDE, caseOccupee, colonneDe, contenuDeScenario, dailyBlocks, effacer, emplacementDe, ErreurRejeu, grilleDepuis, grilleEnTexte, jouer, ligneDe, NB_PIECES, Partie, peutPoser, PIECES, PLAFOND_PIECES, pieceParNom, pleines, tientQuelquePart, VIDE, serieAuRang } from "../src/index";
 import { contenuDEssai, pieceDeForme } from "./aide";
 
 describe("le catalogue (seed § 4)", () => {
@@ -16,14 +16,14 @@ describe("le catalogue (seed § 4)", () => {
     expect(PIECES.filter((p) => p.famille === "petite").map((p) => p.nom)).toEqual(["domino-0", "domino-1"]);
     expect(() => pieceParNom("mono-0")).toThrow();
   });
-  it("le grand T : 5 cases, boîte 3 × 3, 4 orientations, famille T, poids 7, « très grosse » et boîte 3 × 3 (leurs garde-fous)", () => {
+  it("le grand T : 5 cases, boîte 3 × 3, 4 orientations, famille T, poids 6, « très grosse » et boîte 3 × 3 (leurs garde-fous)", () => {
     const grandsT = PIECES.filter((p) => p.nom.startsWith("grandt"));
     expect(grandsT).toHaveLength(4);
-    for (const p of grandsT) expect(p).toMatchObject({ famille: "tsz", cases: 5, largeur: 3, hauteur: 3, poids: 7, grosseur: 2, boite33: true, tresGrosse: true });
+    for (const p of grandsT) expect(p).toMatchObject({ famille: "tsz", cases: 5, largeur: 3, hauteur: 3, poids: 6, grosseur: 2, boite33: true, tresGrosse: true });
     // Une barre de 3 et une branche de 2 au milieu, dans les quatre sens.
     const formes = grandsT.map((p) => [...p.rangees].map((o) => Array.from({ length: 3 }, (_, c) => ((o >> c) & 1 ? "X" : ".")).join("")).join("/"));
     expect(new Set(formes)).toEqual(new Set(["XXX/.X./.X.", "..X/XXX/..X", ".X./.X./XXX", "X../XXX/X.."]));
-    expect(pieceParNom("grandl-0").poids).toBe(7);
+    expect(pieceParNom("grandl-0").poids).toBe(6);
   });
   it("nombre de cases, boîte et « très grosse » (6 cases ou plus, ou boîte de 3 × 3)", () => {
     expect(PIECES.every((p) => p.cases === p.rangees.reduce((n, o) => n + [...o.toString(2)].filter((b) => b === "1").length, 0))).toBe(true);
@@ -151,7 +151,8 @@ describe("les séries de trois (règles v2, lot B8)", () => {
     expect(p.poser(0, 0, 0)).not.toBeNull();
     expect(p.resultat()).toMatchObject({ raison: "plafond", poses: PLAFOND_PIECES });
     expect(p.pieces.every((x) => x === null)).toBe(true);
-    expect(dailyBlocks(1).suite).toHaveLength(PLAFOND_PIECES);
+    expect(serieAuRang(dailyBlocks(1).graine, 666, VIDE)).toHaveLength(2);
+    expect(serieAuRang(dailyBlocks(1).graine, 667, VIDE)).toHaveLength(0);
     expect(PLAFOND_PIECES % 3).toBe(2);
   });
 });

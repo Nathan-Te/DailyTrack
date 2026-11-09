@@ -1,5 +1,5 @@
 import { BONUS_PLATEAU_VIDE, COLONNES, LIGNES, POINTS_EFFACEMENT, TAILLE_SERIE } from "./constantes";
-import type { Contenu } from "./generateur";
+import type { ContenuJouable } from "./generateur";
 import { compterPleines, effacer, estVide, peutPoser, pleines, poser, rangee } from "./grille";
 import { evaluerGrille, POIDS_DIAMANT } from "./evaluation";
 import { actionDe, Partie, type ResultatDeBot } from "./partie";
@@ -44,7 +44,7 @@ export function coupGlouton(partie: Pick<Partie, "grille" | "pieces" | "finie" |
 }
 
 /** Joue une partie avec le bot moyen : le résultat et les actions (octets). `jusqua` (lot B8b) : s'arrête après ce nombre de pièces posées (la partie, alors non finie, rend son score du moment : `raison` « arret »). */
-export function jouerGlouton(contenu: Pick<Contenu, "suite" | "depart">, jusqua: number = Infinity): { resultat: ResultatDeBot; actions: number[] } {
+export function jouerGlouton(contenu: ContenuJouable, jusqua: number = Infinity): { resultat: ResultatDeBot; actions: number[] } {
   const partie = new Partie(contenu);
   const actions: number[] = [];
   while (!partie.finie && partie.poses < jusqua) {
