@@ -3983,18 +3983,18 @@
      {
       "jeu": "cdj",
       "nom": "DailyTrack",
-      "figes": 63,
+      "figes": "<jours figés du registre>",
       "planifies": 0
      },
      {
       "jeu": "jump",
       "nom": "DailyJump",
-      "figes": 0
+      "figes": "<jours figés du registre>"
      },
      {
       "jeu": "tower",
       "nom": "Tower",
-      "figes": 0
+      "figes": "<jours figés du registre>"
      }
     ],
     "erreurs24h": {

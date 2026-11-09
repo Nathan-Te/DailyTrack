@@ -13,6 +13,7 @@ import {
   distanceProfils,
   elementsOf,
   formatDay,
+  generatorVersionOf,
   longestFreeStraight,
   motifs,
   motifsBoostSerre,
@@ -103,9 +104,11 @@ describe("rythmes (rythmes.ts)", () => {
     expect(dom / total).toBeGreaterThan(0.25);
   });
 
-  it("le premier jour de la v21 n'est jamais rapide (la veille, d'une version d'avant, a pu avoir le motif)", () => {
-    // Le registre nomme les jours servis avec une version d'avant : le premier jour qu'il ne nomme pas suit un jour « ancien ».
-    expect(rythmeDuJour(absent)).not.toBe("rapide");
+  it("le premier jour que le registre ne nomme pas : jamais rapide si la veille est d'une version d'avant les rythmes (elle a pu avoir le motif), sinon jamais le rythme de la veille", () => {
+    // Le registre nomme les jours servis, avec leur version : le premier jour qu'il ne nomme pas suit un jour « ancien » tant que le registre finit par une version d'avant les rythmes. Depuis la mise en
+    // production du 09/11/2026 il finit par la v21 (celle des rythmes) : la veille a un rythme, la règle générale s'applique (testée sur 800 jours ci-dessous).
+    if (generatorVersionOf(absent - 1) < GENERATOR_RYTHMES) expect(rythmeDuJour(absent)).not.toBe("rapide");
+    else expect(rythmeDuJour(absent)).not.toBe(rythmeDuJour(absent - 1));
   });
 });
 

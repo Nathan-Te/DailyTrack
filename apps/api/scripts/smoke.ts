@@ -20,7 +20,7 @@
 //   lot R8 : `--vide` ajoute la vérification d'après la remise à zéro du lancement (aucun classé, génération annoncée), sur l'adresse du service
 //   npm run smoke -w @cdj/api -- https://recette.playdujour.com --lecture-seule --environnement recette --par-hosting --joueur-demo   (lot I3 : le cache de Hosting)
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
-import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
+import { bestPilotRun, dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, declareFrozenGenerators, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
 import { dailyTower, PREMIER_JOUR_TOWER } from "@cdj/tower-sim";
 import { FICHES_SERVEUR } from "../src/fiches.generated";
@@ -116,7 +116,16 @@ const circuit = dailyCircuit(day);
 // Lot R9 : les classements refusent les copies (409 `replay_copy`). Le smoke tourne aussi sur la recette, dont la base garde les courses des passages
 // d'avant : le joueur d'essai court d'une adhérence **tirée au hasard** à chaque passage (une autre course, donc d'autres entrées), jamais celle d'un passage précédent.
 const gripAleatoire = () => Math.round((0.55 + Math.random() * 0.4) * 10_000) / 10_000;
-const run = [gripAleatoire(), gripAleatoire(), gripAleatoire(), 0.9, 0.8].map((grip) => runPilot(circuit.track, { grip })).find((r) => r.valid) ?? runPilot(circuit.track, { grip: 0.9 });
+// PR « Jours figés » #317 (09/11/2026) : certains circuits (un mur roulable, lot 58) ne se finissent que sur la paroi : le premier essai qui finit, sans la paroi puis sur elle (`wall`) ; le smoke ne doit jamais échouer sur le
+// hasard du circuit du jour ou de la session du Salon (il fait partie de « Mettre en production »).
+const premierQuiFinit = (track: Parameters<typeof runPilot>[0], grips: number[]) => {
+  for (const wall of [false, true]) for (const grip of grips) {
+    const r = runPilot(track, { grip, wall });
+    if (r.valid) return r;
+  }
+  return null;
+};
+const run = premierQuiFinit(circuit.track, [gripAleatoire(), gripAleatoire(), gripAleatoire(), 0.9, 0.8]) ?? runPilot(circuit.track, { grip: 0.9 });
 check("le pilote local finit le circuit du jour", run.valid && circuit.track.id === info.body.trackId);
 const tcopy = await call("POST", "/api/submit", { playerId: player, name: NAME, date, replay: encodeReplay(circuit.authorReplay) });
 check("DailyTrack : la copie de la rediffusion de l'auteur (le pilote) est refusée (409 replay_copy)", tcopy.status === 409 && tcopy.body.error === "replay_copy", `${tcopy.status} ${JSON.stringify(tcopy.body)}`);
@@ -143,9 +152,9 @@ check("DailyTrack : une course classée renvoyée sous un autre identifiant est 
 const now = await call("GET", `/api/salon/now?player=${player}`);
 check("Salon : session en cours", now.status === 200 && Number.isInteger(now.body.session), `session ${now.body.session}`);
 const salon = salonCircuit(now.body.session);
-// Le pilote local à quelques adhérences, de la plus vive à la plus prudente : à 0,9 il ne finit pas tous les circuits du Salon (session
-// 2987362 du 19/10/2026, mesuré au lot P2 : il finit à 0,8) ; l'essai ne porte pas sur le pilote mais sur l'envoi d'une course valide.
-const srun = [0.9, 0.8, 0.7, 0.6].map((grip) => runPilot(salon.track, { grip })).find((r) => r.valid) ?? runPilot(salon.track, { grip: 0.9 });
+// Le pilote du générateur (celui qui fixe le temps de l'auteur et valide chaque circuit : adhérences de `PILOT_GRIPS`, paroi d'un mur roulable comprise) finit tout circuit du Salon ; une liste d'adhérences
+// fixe n'en finissait pas 4 % (session 2990427 du 09/11/2026 : un mur roulable) — l'essai ne porte pas sur le pilote mais sur l'envoi d'une course valide.
+const srun = bestPilotRun(salon.track) ?? premierQuiFinit(salon.track, [0.9, 0.8, 0.7, 0.6, 0.5, 0.4]) ?? runPilot(salon.track, { grip: 0.9 });
 check("le pilote local finit le circuit du Salon", srun.valid && salon.track.id === now.body.trackId);
 const ssub = await call("POST", `/api/salon/${now.body.session}/submit`, { playerId: player, name: NAME, replay: encodeReplay(srun.replay) });
 check("Salon : temps accepté (circuit de la session généré à ce premier envoi)", ssub.status === 200 && ssub.body.ms === srun.finishMs, `${ssub.ms} ms`);

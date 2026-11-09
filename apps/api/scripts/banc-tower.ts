@@ -63,7 +63,7 @@ async function connecter(banc: Banc, t: TestApi) {
 
 export async function scenarioTower(): Promise<Trace[]> {
   const R = await chargerRapier();
-  const banc = creerBanc(playerId);
+  const banc = creerBanc(playerId, { sansSeuilsDeTrack: true }); // le banc de Tower ne protège pas les médailles de Track, que le registre des jours fait varier à chaque mise en production (banc.ts)
   const contenu = dailyTower(D(JOUR), TOWER_GENERATOR_VERSION, 0);
   const jouees = new Map<string, string>();
   const partie = (nom: keyof typeof motifs): string => {

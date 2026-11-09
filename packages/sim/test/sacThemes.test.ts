@@ -19,7 +19,12 @@ import {
 
 const N = THEME_NAMES.length;
 const dernier = parseDay(resumeRegistreTrack().jusqua)!; // le dernier jour que le registre nomme
-const premier = dernier + 1; // le premier jour du sac
+const premier = dernier + 1; // le premier jour que le registre ne nomme pas
+// PR « Jours figés » #317 (09/11/2026) : chaque mise en production ajoute au registre des jours **du sac** (le 09/11 : les 03 à 09/11 en v21, que la production a servis) ; la jonction avec l'ancienne règle
+// n'est donc plus à la fin du registre : le dernier jour **ancien** est le dernier dont la version est d'avant le sac, et le premier jour du sac le suit.
+let dernierAncien = dernier;
+while (generatorVersionOf(dernierAncien) >= GENERATOR_SAC_THEMES) dernierAncien--;
+const premierSac = dernierAncien + 1;
 const suite = (depuis: number, jours: number): string[] => Array.from({ length: jours }, (_, i) => themeForDay(depuis + i).name);
 const ecartMax = (s: readonly string[]): number => {
   let max = 0;
@@ -49,12 +54,12 @@ describe("le sac de thèmes de Track (lot V1)", () => {
     expect(ecartMax(s)).toBeLessThanOrEqual(2 * N - 1);
   });
 
-  it("la jonction avec le dernier jour du registre : le premier jour du sac ne répète ni la veille ni l'avant-veille, le suivant pas l'avant-veille (le thème de la veille est lu dans le registre)", () => {
-    const veille = themeForDay(dernier).name;
-    const avantVeille = themeForDay(dernier - 1).name;
-    expect(veille).toBe(themeAncien(dernier).name);
-    expect(avantVeille).toBe(themeAncien(dernier - 1).name);
-    const [a, b] = suite(premier, 2);
+  it("la jonction avec le dernier jour ancien du registre : le premier jour du sac ne répète ni la veille ni l'avant-veille, le suivant pas l'avant-veille (le thème de la veille est lu dans le registre)", () => {
+    const veille = themeForDay(dernierAncien).name;
+    const avantVeille = themeForDay(dernierAncien - 1).name;
+    expect(veille).toBe(themeAncien(dernierAncien).name);
+    expect(avantVeille).toBe(themeAncien(dernierAncien - 1).name);
+    const [a, b] = suite(premierSac, 2);
     expect(a).not.toBe(veille);
     expect(a).not.toBe(avantVeille);
     expect(b).not.toBe(a);
@@ -72,7 +77,7 @@ describe("le sac de thèmes de Track (lot V1)", () => {
   });
 
   it("un jour du registre garde son ancien thème, quelle que soit la dernière version ; une version d'avant le sac imposée aussi", () => {
-    for (let d = parseDay("2026-09-01")!; d <= dernier; d++) {
+    for (let d = parseDay("2026-09-01")!; d <= dernierAncien; d++) {
       expect(themeForDay(d).name, `${d}`).toBe(themeAncien(d).name);
       expect(generatorVersionOf(d), `${d}`).toBeLessThan(GENERATOR_SAC_THEMES);
     }
