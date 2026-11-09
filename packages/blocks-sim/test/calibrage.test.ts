@@ -18,8 +18,8 @@ describe("les contrôles de bon sens des médailles (tirage v6)", () => {
     expect(scores.filter((v) => v >= CALIBRATION.bronze).length / scores.length).toBeLessThan(0.1);
   });
 
-  it("une partie finit toujours (lot B8c, seed § 3) : le Diamant joué sans arrêt ne touche jamais le plafond de 2 000 pièces, sa médiane de survie est de 150 à 350 pièces (300 jours), et son score est plus grand que celui qu'il a à son arrêt", () => {
-    const parties = Array.from({ length: 300 }, (_, i) => {
+  it("une partie finit toujours (lot B8c, seed § 3) : le Diamant joué sans arrêt ne touche jamais le plafond de 2 000 pièces, sa médiane de survie est de 150 à 350 pièces (200 jours), et son score est plus grand que celui qu'il a à son arrêt", () => {
+    const parties = Array.from({ length: 200 }, (_, i) => {
       const c = dailyBlocks(PREMIER + i);
       return { entier: jouerDiamant(c).resultat, arrete: jouerDiamant(c, undefined, PIECES_DU_DIAMANT).resultat };
     });

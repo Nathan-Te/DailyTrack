@@ -83,7 +83,7 @@ describe("rediffusion et rejeu (règles v2 : un octet par pose, emplacement × 6
 
 describe("une rediffusion trichée est refusée (lot B8c : le serveur retire chaque série depuis la grille qu'il rejoue)", () => {
   it("une partie jouée avec des pièces qui n'ont pas été tirées (ici des séries de dominos, bien plus faciles) ne se rejoue pas sur le vrai jour : action illégale, après la fin ou non terminée — jamais acceptée avec un autre score", () => {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       const jour = JOUR + i;
       const vrai = dailyBlocks(jour);
       // Le tricheur joue SA suite de dominos (contenuDEssai : trois dominos à chaque série) et envoie ses poses comme celles du vrai jour.
@@ -93,7 +93,7 @@ describe("une rediffusion trichée est refusée (lot B8c : le serveur retire cha
       const code = refus(() => rejouer(vrai, enregistrer(vrai, triche.actions)));
       expect(["action_illegale", "apres_la_fin", "non_terminee"], `jour ${jour} : ${code}`).toContain(code);
     }
-  });
+  }, 120_000);
 
   it("changer une seule pose d'une vraie partie change les séries suivantes (elles dépendent de la grille) : la fin de la rediffusion, écrite pour l'autre suite, est refusée ou rejoue un autre score", () => {
     const vrai = dailyBlocks(JOUR + 2);

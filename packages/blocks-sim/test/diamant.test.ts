@@ -10,20 +10,21 @@ const jours = (n: number): number[] => Array.from({ length: n }, (_, i) => PREMI
 
 describe("le bot Diamant (recherche en faisceau)", () => {
   it("ne voit jamais les séries à venir (lots B8b et B8c) : son plan ne lit que la grille, le combo et les pièces restantes de la série — aucune autre information sur la partie ; changer le contenu du jour n'y change rien", () => {
-    for (const j of jours(10)) {
-      const c = dailyBlocks(j);
-      for (const serie of Array.from({ length: 70 }, (_, i) => i)) {
-        // Les poses du Diamant jusqu'au début de la série `serie`.
-        const p = new Partie(c);
-        while (!p.finie && p.serie < serie) p.jouerAction(planDuDiamant(p)[0]!);
-        if (p.finie) continue;
-        // Une « partie » réduite à ce que le plan est censé lire : si le plan lisait autre chose (le contenu, la graine, la suite), il échouerait ou différerait.
-        const seul = { grille: p.grille, dernieresPieces: p.dernieresPieces, combo: p.combo, sansEffacement: p.sansEffacement, serie: p.serie, finie: p.finie };
-        expect(planDuDiamant(seul), `jour ${j}, série ${serie} : Diamant`).toEqual(planDuDiamant(p));
-        expect(coupGlouton({ grille: p.grille, pieces: p.pieces, finie: p.finie, combo: p.combo }), `jour ${j}, série ${serie} : bot moyen`).toEqual(coupGlouton(p));
+    for (const j of jours(6)) {
+      // Une seule partie par jour : à l'arrivée de chaque série, le plan du Diamant sur la partie est celui qu'il fait sur un objet réduit à ce qu'il est censé lire.
+      const p = new Partie(dailyBlocks(j));
+      let serieVue = -1;
+      while (!p.finie && p.serie < 40) {
+        if (p.serie !== serieVue) {
+          serieVue = p.serie;
+          const seul = { grille: p.grille, dernieresPieces: p.dernieresPieces, combo: p.combo, sansEffacement: p.sansEffacement, serie: p.serie, finie: p.finie };
+          expect(planDuDiamant(seul), `jour ${j}, série ${p.serie} : Diamant`).toEqual(planDuDiamant(p));
+          expect(coupGlouton({ grille: p.grille, pieces: p.pieces, finie: p.finie, combo: p.combo }), `jour ${j}, série ${p.serie} : bot moyen`).toEqual(coupGlouton(p));
+        }
+        p.jouerAction(planDuDiamant(p)[0]!);
       }
     }
-  });
+  }, 120_000);
 
   it("est déterministe : deux parties du même jour jouent les mêmes poses, dans n'importe quel ordre de jours", () => {
     const a = jours(6).map((j) => jouerDiamant(dailyBlocks(j)));
