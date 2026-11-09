@@ -35,11 +35,27 @@ export function normaliser(valeur: unknown, cle = "", parent = ""): unknown {
   if (valeur && typeof valeur === "object") return Object.fromEntries(Object.entries(valeur).map(([k, v]) => [k, normaliser(v, k, cle)]));
   // Lot K2b : les durées mesurées sur l'horloge réelle (l'état du tableau de bord : `etat.api.ms`, `etat.base.ms`) varient d'un passage à l'autre.
   if (typeof valeur === "number" && cle === "ms" && (parent === "api" || parent === "base")) return "<durée réelle>";
+  // PR « Jours figés » #317 (09/11/2026) : le nombre de jours figés du registre de Track (`joursPrets[].figes`) grandit à chaque mise en production (63 → 70) : le banc garde sa présence, pas sa valeur.
+  if (typeof valeur === "number" && cle === "figes" && parent === "joursPrets") return "<jours figés du registre>";
   if (typeof valeur === "string") {
     if (CLES_ALEATOIRES.has(cle) && valeur.length > 0) return "<aléatoire>";
     if (CLES_HORLOGE_REELLE.has(cle) && valeur.length > 0) return "<horloge réelle>";
     if ((cle === "id" || cle === "groupe") && /^[0-9a-f]{12}$/.test(valeur)) return "<identifiant>";
     if (/^[0-9a-f]{32}$/.test(valeur) && !/^0{16}/.test(valeur)) return "<aléatoire>"; // un identifiant de joueur de test commence par des zéros ; un jeton tiré au hasard, non
+  }
+  return valeur;
+}
+
+/**
+ * Les seuils de médailles de **Track** dans une réponse du portail (`jeux[]` : l'entrée `site: "track"`) : ils suivent la version du générateur du jour, que dit le registre des jours — qui grandit à chaque
+ * mise en production, avec la version que la production a servie (le 09/11/2026 : le 07/11 passe de la v23 à la v21 : PR « Jours figés » #317). Un banc qui n'est pas celui de Track (Tower, un jour de juillet…) ne
+ * les compare pas : ils ne font pas partie de ce qu'il protège (`creerBanc(…, { sansSeuilsDeTrack: true })`) ; le banc de Track, lui, les garde sur des jours que le registre nommait déjà.
+ */
+export function masquerSeuilsDeTrack(valeur: unknown): unknown {
+  if (Array.isArray(valeur)) return valeur.map(masquerSeuilsDeTrack);
+  if (valeur && typeof valeur === "object") {
+    const o = valeur as Record<string, unknown>;
+    return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, k === "seuils" && o.site === "track" ? "<seuils de Track : suivent le registre des jours>" : masquerSeuilsDeTrack(v)]));
   }
   return valeur;
 }
@@ -61,7 +77,7 @@ export interface Banc {
   noter(nom: string, corps: unknown): void;
 }
 
-export function creerBanc(playerId: (n: number) => string): Banc {
+export function creerBanc(playerId: (n: number) => string, options: { sansSeuilsDeTrack?: boolean } = {}): Banc {
   const traces: Trace[] = [];
   let adresse = 0;
   const ip = () => `198.51.${(adresse >> 8) & 255}.${adresse++ & 255}`;
@@ -75,7 +91,7 @@ export function creerBanc(playerId: (n: number) => string): Banc {
         const v = r.headers.get(h);
         if (v !== null) entetes[h] = v;
       }
-      traces.push({ nom: `${nom} — ${method} ${path.replace(/\?.*$/, (q) => q)}`, status: r.status, entetes, corps: normaliser(r.body) });
+      traces.push({ nom: `${nom} — ${method} ${path.replace(/\?.*$/, (q) => q)}`, status: r.status, entetes, corps: normaliser(options.sansSeuilsDeTrack ? masquerSeuilsDeTrack(r.body) : r.body) });
       return r;
     },
     noter(nom, corps) {

@@ -1288,12 +1288,7 @@
      "compte": true,
      "numero": 29,
      "theme": "nuit",
-     "seuils": {
-      "author": 35072,
-      "gold": 36650,
-      "silver": 37527,
-      "bronze": 39631
-     }
+     "seuils": "<seuils de Track : suivent le registre des jours>"
     },
     {
      "jeu": "jump",
@@ -1356,12 +1351,7 @@
      "compte": true,
      "numero": 29,
      "theme": "nuit",
-     "seuils": {
-      "author": 35072,
-      "gold": 36650,
-      "silver": 37527,
-      "bronze": 39631
-     },
+     "seuils": "<seuils de Track : suivent le registre des jours>",
      "etat": {
       "statut": "pas_joue"
      }
@@ -3465,12 +3455,7 @@
      "compte": true,
      "numero": 29,
      "theme": "nuit",
-     "seuils": {
-      "author": 35072,
-      "gold": 36650,
-      "silver": 37527,
-      "bronze": 39631
-     },
+     "seuils": "<seuils de Track : suivent le registre des jours>",
      "etat": {
       "statut": "pas_joue"
      }
@@ -5397,12 +5382,7 @@
      "compte": true,
      "numero": 26,
      "theme": "banquise",
-     "seuils": {
-      "author": 34130,
-      "gold": 35666,
-      "silver": 36519,
-      "bronze": 38567
-     },
+     "seuils": "<seuils de Track : suivent le registre des jours>",
      "etat": {
       "statut": "pas_joue"
      }

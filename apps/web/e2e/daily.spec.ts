@@ -71,10 +71,11 @@ test.describe("jeu (rendu 3D)", () => {
   }
 
   // Lot 36 : le circuit du jour se calcule dans un fil de travail (le générateur n'est plus dans le paquet du jeu) ; il doit être celui de Node, au bit près :
-  // texte, tentative, temps de l'auteur, palette, thème, identifiant — les circuits de référence.
+  // texte, tentative, temps de l'auteur, palette, thème, identifiant — les circuits de référence. **Les dates sont des jours d'une ancienne version que le registre nomme (06/10, 21/10 : v15 ; 28/10 : v16) ou
+  // très en avance (25/12)** : jamais un jour récent, que chaque mise en production fait passer au registre avec la version que la production a servie (le 09/11/2026 : les 03 à 09/11 en v21, PR #317).
   test("le circuit calculé dans le fil de travail du jeu est celui de Node, au bit près", async ({ page }) => {
     test.setTimeout(240_000);
-    for (const expected of golden.circuits.filter((c) => ["2026-10-06", "2026-10-21", "2026-11-05", "2026-12-25"].includes(c.date))) {
+    for (const expected of golden.circuits.filter((c) => ["2026-10-06", "2026-10-21", "2026-10-28", "2026-12-25"].includes(c.date))) {
       await page.goto(`/?debug&seed=${expected.date}`);
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 60_000 });
       const got = await page.evaluate(() => window.__cdj.circuit);
