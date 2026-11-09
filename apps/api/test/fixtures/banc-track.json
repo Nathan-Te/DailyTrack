@@ -16,7 +16,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -3055,7 +3055,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -3151,7 +3151,7 @@
   "corps": {
    "today": "2026-10-14",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "plan": [
     {
      "date": "2026-10-15",
@@ -3210,7 +3210,7 @@
   "corps": {
    "today": "2026-10-14",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "factors": {
     "gold": 1.08,
     "silver": 1.2,
@@ -4950,7 +4950,7 @@
   "corps": {
    "today": "2026-10-14",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "plan": [
     {
      "date": "2026-10-15",
@@ -5226,7 +5226,7 @@
    "attempt": 3,
    "palette": "alpin",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -5659,7 +5659,7 @@
    "session": 2986632,
    "startMs": 1791979200000,
    "endMs": 1791979800000,
-   "trackId": "salon-2986632-g22",
+   "trackId": "salon-2986632-g23",
    "players": 1
   }
  },
@@ -5675,7 +5675,7 @@
    "session": 2986632,
    "startMs": 1791979200000,
    "endMs": 1791979800000,
-   "trackId": "salon-2986632-g22",
+   "trackId": "salon-2986632-g23",
    "players": 2
   }
  },
@@ -5691,7 +5691,7 @@
    "session": 2986632,
    "startMs": 1791979200000,
    "endMs": 1791979800000,
-   "trackId": "salon-2986632-g22",
+   "trackId": "salon-2986632-g23",
    "players": 2
   }
  },
@@ -5787,8 +5787,8 @@
   "corps": {
    "accepted": true,
    "improved": true,
-   "ms": 39248,
-   "bestMs": 39248,
+   "ms": 39317,
+   "bestMs": 39317,
    "rank": 1,
    "participants": 1,
    "board": {
@@ -5801,7 +5801,7 @@
       "rank": 1,
       "ref": "e81e916f8e90b7a5",
       "name": "Salon1",
-      "ms": 39248,
+      "ms": 39317,
       "gap": 0,
       "mine": true
      }
@@ -5810,7 +5810,7 @@
      "rank": 1,
      "ref": "e81e916f8e90b7a5",
      "name": "Salon1",
-     "ms": 39248,
+     "ms": 39317,
      "gap": 0,
      "mine": true
     }
@@ -5827,8 +5827,8 @@
   "corps": {
    "accepted": true,
    "improved": true,
-   "ms": 37020,
-   "bestMs": 37020,
+   "ms": 37169,
+   "bestMs": 37169,
    "rank": 1,
    "participants": 1,
    "board": {
@@ -5841,7 +5841,7 @@
       "rank": 1,
       "ref": "e81e916f8e90b7a5",
       "name": "Salon1",
-      "ms": 37020,
+      "ms": 37169,
       "gap": 0,
       "mine": true
      }
@@ -5850,7 +5850,7 @@
      "rank": 1,
      "ref": "e81e916f8e90b7a5",
      "name": "Salon1",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0,
      "mine": true
     }
@@ -5867,8 +5867,8 @@
   "corps": {
    "accepted": true,
    "improved": true,
-   "ms": 37856,
-   "bestMs": 37856,
+   "ms": 37822,
+   "bestMs": 37822,
    "rank": 2,
    "participants": 2,
    "board": {
@@ -5881,15 +5881,15 @@
       "rank": 1,
       "ref": "e81e916f8e90b7a5",
       "name": "Salon1",
-      "ms": 37020,
+      "ms": 37169,
       "gap": 0
      },
      {
       "rank": 2,
       "ref": "d75ccdfeba63c3f5",
       "name": "Salon2",
-      "ms": 37856,
-      "gap": 836,
+      "ms": 37822,
+      "gap": 653,
       "mine": true
      }
     ],
@@ -5897,8 +5897,8 @@
      "rank": 2,
      "ref": "d75ccdfeba63c3f5",
      "name": "Salon2",
-     "ms": 37856,
-     "gap": 836,
+     "ms": 37822,
+     "gap": 653,
      "mine": true
     }
    }
@@ -5914,8 +5914,8 @@
   "corps": {
    "accepted": true,
    "improved": true,
-   "ms": 37020,
-   "bestMs": 37020,
+   "ms": 37169,
+   "bestMs": 37169,
    "rank": 2,
    "participants": 3,
    "board": {
@@ -5928,14 +5928,14 @@
       "rank": 1,
       "ref": "e81e916f8e90b7a5",
       "name": "Salon1",
-      "ms": 37020,
+      "ms": 37169,
       "gap": 0
      },
      {
       "rank": 2,
       "ref": "c884706c86bb329c",
       "name": "Salon3",
-      "ms": 37020,
+      "ms": 37169,
       "gap": 0,
       "mine": true
      },
@@ -5943,15 +5943,15 @@
       "rank": 3,
       "ref": "d75ccdfeba63c3f5",
       "name": "Salon2",
-      "ms": 37856,
-      "gap": 836
+      "ms": 37822,
+      "gap": 653
      }
     ],
     "me": {
      "rank": 2,
      "ref": "c884706c86bb329c",
      "name": "Salon3",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0,
      "mine": true
     }
@@ -5975,22 +5975,22 @@
      "rank": 1,
      "ref": "e81e916f8e90b7a5",
      "name": "Salon1",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0
     },
     {
      "rank": 2,
      "ref": "c884706c86bb329c",
      "name": "Salon3",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0
     },
     {
      "rank": 3,
      "ref": "d75ccdfeba63c3f5",
      "name": "Salon2",
-     "ms": 37856,
-     "gap": 836,
+     "ms": 37822,
+     "gap": 653,
      "mine": true
     }
    ],
@@ -5998,8 +5998,8 @@
     "rank": 3,
     "ref": "d75ccdfeba63c3f5",
     "name": "Salon2",
-    "ms": 37856,
-    "gap": 836,
+    "ms": 37822,
+    "gap": 653,
     "mine": true
    }
   }
@@ -6021,7 +6021,7 @@
      "rank": 1,
      "ref": "e81e916f8e90b7a5",
      "name": "Salon1",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0,
      "mine": true
     },
@@ -6029,22 +6029,22 @@
      "rank": 2,
      "ref": "c884706c86bb329c",
      "name": "Salon3",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0
     },
     {
      "rank": 3,
      "ref": "d75ccdfeba63c3f5",
      "name": "Salon2",
-     "ms": 37856,
-     "gap": 836
+     "ms": 37822,
+     "gap": 653
     }
    ],
    "me": {
     "rank": 1,
     "ref": "e81e916f8e90b7a5",
     "name": "Salon1",
-    "ms": 37020,
+    "ms": 37169,
     "gap": 0,
     "mine": true
    }
@@ -6082,9 +6082,9 @@
     "player_id": "00000000000000000000000000000001",
     "ref": "e81e916f8e90b7a5",
     "name": "Salon1",
-    "ms": 37020,
-    "splits": "[10831,13897,23688,30330]",
-    "replay": "e6d580588bc9105a",
+    "ms": 37169,
+    "splits": "[14772,28665]",
+    "replay": "af0377e1cbd3a287",
     "submitted_at": 1791979212000,
     "car": "civile.0.course.0"
    },
@@ -6093,9 +6093,9 @@
     "player_id": "00000000000000000000000000000002",
     "ref": "d75ccdfeba63c3f5",
     "name": "Salon2",
-    "ms": 37856,
-    "splits": "[11054,14156,24393,31161]",
-    "replay": "0f7730ddffa2407f",
+    "ms": 37822,
+    "splits": "[14945,29156]",
+    "replay": "02392b2fba59b37f",
     "submitted_at": 1791979218000,
     "car": "civile.0.course.0"
    },
@@ -6104,9 +6104,9 @@
     "player_id": "00000000000000000000000000000003",
     "ref": "c884706c86bb329c",
     "name": "Salon3",
-    "ms": 37020,
-    "splits": "[10831,13897,23688,30330]",
-    "replay": "e6d580588bc9105a",
+    "ms": 37169,
+    "splits": "[14772,28665]",
+    "replay": "af0377e1cbd3a287",
     "submitted_at": 1791979218000,
     "car": "civile.0.course.0"
    }
@@ -6122,8 +6122,8 @@
   "corps": {
    "accepted": true,
    "improved": true,
-   "ms": 39248,
-   "bestMs": 39248,
+   "ms": 39317,
+   "bestMs": 39317,
    "rank": 4,
    "participants": 4,
    "board": {
@@ -6136,29 +6136,29 @@
       "rank": 1,
       "ref": "e81e916f8e90b7a5",
       "name": "Salon1",
-      "ms": 37020,
+      "ms": 37169,
       "gap": 0
      },
      {
       "rank": 2,
       "ref": "c884706c86bb329c",
       "name": "Salon3",
-      "ms": 37020,
+      "ms": 37169,
       "gap": 0
      },
      {
       "rank": 3,
       "ref": "d75ccdfeba63c3f5",
       "name": "Salon2",
-      "ms": 37856,
-      "gap": 836
+      "ms": 37822,
+      "gap": 653
      },
      {
       "rank": 4,
       "ref": "46182137108b6263",
       "name": "Salon4",
-      "ms": 39248,
-      "gap": 2228,
+      "ms": 39317,
+      "gap": 2148,
       "mine": true
      }
     ],
@@ -6166,8 +6166,8 @@
      "rank": 4,
      "ref": "46182137108b6263",
      "name": "Salon4",
-     "ms": 39248,
-     "gap": 2228,
+     "ms": 39317,
+     "gap": 2148,
      "mine": true
     }
    }
@@ -6201,29 +6201,29 @@
      "rank": 1,
      "ref": "e81e916f8e90b7a5",
      "name": "Salon1",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0
     },
     {
      "rank": 2,
      "ref": "c884706c86bb329c",
      "name": "Salon3",
-     "ms": 37020,
+     "ms": 37169,
      "gap": 0
     },
     {
      "rank": 3,
      "ref": "d75ccdfeba63c3f5",
      "name": "Salon2",
-     "ms": 37856,
-     "gap": 836
+     "ms": 37822,
+     "gap": 653
     },
     {
      "rank": 4,
      "ref": "46182137108b6263",
      "name": "Salon4",
-     "ms": 39248,
-     "gap": 2228
+     "ms": 39317,
+     "gap": 2148
     }
    ],
    "me": null
@@ -6773,7 +6773,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -6923,7 +6923,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -7171,7 +7171,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -7536,7 +7536,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -7621,7 +7621,7 @@
    "attempt": 0,
    "palette": "alpin",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -7963,7 +7963,7 @@
    "attempt": 2,
    "palette": "desert",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
@@ -8304,7 +8304,7 @@
    "attempt": 0,
    "palette": "ville",
    "simVersion": 14,
-   "generatorVersion": 22,
+   "generatorVersion": 23,
    "generation": 0
   }
  },
