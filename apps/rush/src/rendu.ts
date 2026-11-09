@@ -30,7 +30,7 @@ const COMPOSITION = `
   varying vec2 vUv;
   uniform sampler2D tScene; uniform sampler2D tProfondeur; uniform sampler2D tBloom;
   uniform vec2 px; uniform float proche; uniform float loin; uniform float largeur; uniform vec3 encre; uniform vec3 teinte;
-  uniform float vignette; uniform float forceBloom;
+  uniform float vignette; uniform float forceBloom; uniform float saturation; uniform float contraste;
   float inv(vec2 uv){ float z = texture2D(tProfondeur, uv).r * 2.0 - 1.0; return (loin + proche - z * (loin - proche)) / (2.0 * proche * loin); }
   vec3 srgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c)); }
   void main(){
@@ -38,7 +38,8 @@ const COMPOSITION = `
     // Étalonnage chaud : une teinte, un peu de saturation, une courbe douce, l'épaule des hautes lumières.
     c *= teinte;
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-    c = mix(vec3(l), c, 1.0);
+    c = mix(vec3(l), c, saturation);
+    c = max((c - 0.45) * contraste + 0.45, vec3(0.0));
     vec3 haut = max(c - vec3(0.8), vec3(0.0));
     c = min(c, vec3(0.8)) + vec3(0.2) * (vec3(1.0) - exp(-haut * 5.0));
     vec2 q = vUv * 2.0 - 1.0;
@@ -48,8 +49,12 @@ const COMPOSITION = `
     vec2 d = px * largeur;
     float c0 = inv(vUv);
     float e = (abs(inv(vUv - vec2(d.x, 0.0)) + inv(vUv + vec2(d.x, 0.0)) - 2.0 * c0) + abs(inv(vUv - vec2(0.0, d.y)) + inv(vUv + vec2(0.0, d.y)) - 2.0 * c0)) / c0;
-    float trait = smoothstep(0.00025, 0.0009, e);
-    o = mix(o, srgb(encre), trait * 0.96);
+    // Deux traits (lot BR-A2) : la SILHOUETTE (un saut de profondeur : plein, il s'estompe dans la brume des îles lointaines) et les TRAITS INTÉRIEURS (un pli de la profondeur sans saut : les arêtes d'un bloc, le contour d'une plaque) — plus fins en intensité,
+    // qui s'éteignent avec la distance : un décor dense ne se couvre pas de bruit.
+    float dist = 1.0 / max(c0, 1e-5);
+    float sil = smoothstep(0.0009, 0.0035, e) * (1.0 - 0.75 * smoothstep(80.0, 150.0, dist));
+    float pli = smoothstep(0.00035, 0.0012, e) * (1.0 - smoothstep(0.0009, 0.0035, e)) * (1.0 - smoothstep(28.0, 62.0, dist)) * 0.55;
+    o = mix(o, srgb(encre), max(sil * 0.96, pli));
     gl_FragColor = vec4(o, 1.0);
   }`;
 
@@ -58,8 +63,11 @@ export interface ReglageRendu {
   bloom: number;
   vignette: number;
   teinte: [number, number, number];
+  /** Lot BR-A2 : la saturation (1 : inchangée) et le contraste autour du gris moyen (1 : inchangé). */
+  saturation: number;
+  contraste: number;
 }
-export const RENDU_DEFAUT: ReglageRendu = { bloom: 1.1, vignette: 0.22, teinte: [1.0, 1.0, 0.97] };
+export const RENDU_DEFAUT: ReglageRendu = { bloom: 1.1, vignette: 0.22, teinte: [1.0, 1.0, 0.97], saturation: 1, contraste: 1 };
 
 const encre = (hex: number): [number, number, number] => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255].map((v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))) as [number, number, number];
 
@@ -103,6 +111,8 @@ export class Rendu {
         teinte: { value: [1.0, 1.0, 0.97] },
         vignette: { value: 0.22 },
         forceBloom: { value: 1.1 },
+        saturation: { value: 1 },
+        contraste: { value: 1 },
       },
       depthTest: false,
       depthWrite: false,
@@ -192,6 +202,8 @@ export class Rendu {
     u.teinte!.value = this.reglage.teinte;
     u.vignette!.value = this.reglage.vignette;
     u.forceBloom!.value = this.reglage.bloom;
+    u.saturation!.value = this.reglage.saturation;
+    u.contraste!.value = this.reglage.contraste;
     this.passe(this.compo, this.ldr);
     this.fxaa.uniforms.tDiffuse!.value = this.ldr!.texture;
     this.passe(this.fxaa, null);

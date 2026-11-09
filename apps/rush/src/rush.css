@@ -1,6 +1,6 @@
 /* Lot BR0c : les PASTILLES du HUD (cœurs, barre du golem, boutons) suivent la cible `docs/rush/maquettes/cible-ia.png` : un bord d'encre épais (3 px), des coins ronds, un fond crème, le nom en Archivo Black (`--dj-police-marque`). La bande du haut (chrono, pause) est celle du kit. */
 .rush-monde {
-  --rush-bord: calc(var(--dj-trait) + 1px); /* 3 px */
+  --rush-bord: calc(var(--dj-trait) + 2px); /* lot BR-A2 : 4 px — des pastilles ÉPAISSES, comme la cible */
 }
 /* « Rush » : seulement ce qui est propre au jeu — la scène 3D, ses surimpressions (cœurs en haut à gauche, barre du golem en bas au centre), les commandes des doigts et le panneau des sensations. Les écrans sont ceux du kit (`@cdj/kit/jeu.css`).
    Charte (révision 7, 17) et cible `docs/rush/maquettes/cible-ia.png` : compact ; le centre reste libre ; commandes aux bords, joystick à gauche, « Coup » et « Esquive » côte à côte à droite, chacun avec son icône ; bordures de 2 px, ombre nette. Aucune couleur écrite ici : les jetons seulement. */
@@ -36,15 +36,15 @@
   left: max(var(--dj-espace-2), env(safe-area-inset-left));
   display: flex;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 7px 12px;
   background: var(--dj-creme);
   border: var(--rush-bord) solid var(--dj-encre);
-  border-radius: 16px;
-  box-shadow: 2px 3px 0 var(--dj-encre);
+  border-radius: 18px;
+  box-shadow: 2px 4px 0 var(--dj-encre);
 }
 .rush-coeur {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   fill: var(--dj-terre);
   stroke: var(--dj-encre);
   stroke-width: 2.2;
@@ -62,12 +62,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 7px 16px;
   background: var(--dj-creme);
   color: var(--dj-encre);
   border: var(--rush-bord) solid var(--dj-encre);
-  border-radius: 16px;
-  box-shadow: 2px 3px 0 var(--dj-encre);
+  border-radius: 18px;
+  box-shadow: 2px 4px 0 var(--dj-encre);
   font-family: "Archivo Black", var(--dj-police-corps, sans-serif);
   font-size: 16px;
   line-height: 1;
@@ -99,12 +99,12 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--dj-espace-3);
-  padding: 8px 14px;
+  padding: 9px 16px;
   background: var(--dj-creme);
   color: var(--dj-encre);
   border: var(--rush-bord) solid var(--dj-encre);
-  border-radius: 14px;
-  box-shadow: 2px 3px 0 var(--dj-encre);
+  border-radius: 18px;
+  box-shadow: 2px 4px 0 var(--dj-encre);
 }
 .rush-boss[hidden] {
   display: none;
@@ -122,10 +122,10 @@
 }
 .rush-boss__piste {
   position: relative;
-  height: 24px;
+  height: 26px;
   background: var(--dj-ecran);
   border: var(--rush-bord) solid var(--dj-encre);
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
 }
 .rush-boss__vie {
@@ -217,7 +217,7 @@
   bottom: max(var(--dj-espace-3), env(safe-area-inset-bottom));
   display: flex;
   align-items: flex-end;
-  gap: var(--dj-espace-4);
+  gap: var(--dj-espace-3);
 }
 .rush-bouton {
   pointer-events: auto;
@@ -228,7 +228,7 @@
   border-radius: var(--dj-rayon-avatar);
   background: var(--dj-creme);
   color: var(--dj-encre);
-  box-shadow: 2px 3px 0 var(--dj-encre);
+  box-shadow: 2px 4px 0 var(--dj-encre);
   cursor: pointer;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
@@ -256,20 +256,37 @@
   transform: translate(2px, 2px);
   box-shadow: 0 0 0 var(--dj-encre);
 }
-/* Lot BR5 : le bouton « Compétence » et son anneau de recharge (--recharge de 0 à 1) ; prêt, il s'illumine et pulse. Au doigt : au-dessus des deux autres ; au PC : une pastille ronde en bas à droite. Jamais de rouge (réservé au danger). */
+/* Lot BR5 : le bouton « Compétence » et son anneau de recharge (--recharge de 0 à 1) ; prêt, il s'illumine et pulse. Lot BR-A2 : au doigt, la grille de la cible — « Coup » et « Esquive » côte à côte, « Compétence » ronde au-dessus d'eux, entre les deux ; au PC : une pastille ronde en bas à droite. Jamais de rouge (réservé au danger). */
 .rush-actions {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 260px;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "comp comp" "coup esquive";
+  justify-items: end;
+  align-items: end;
+  gap: 18px var(--dj-espace-3);
+}
+.rush-actions > .rush-bouton--coup {
+  grid-area: coup;
+}
+.rush-actions > .rush-bouton--esquive {
+  grid-area: esquive;
+}
+.rush-actions > .rush-bouton--comp {
+  grid-area: comp;
+  justify-self: center;
 }
 .rush-bouton--comp {
   position: relative;
-  order: -1;
-  flex: 0 0 auto;
-  margin: 0 12px 14px auto;
   width: 84px;
   height: 84px;
   border-radius: 50%;
+}
+.rush-bouton--comp .rush-bouton__nom {
+  display: none; /* le nom reste dans `aria-label` : l'éclat et son anneau suffisent (la cible n'écrit rien dans le rond) */
+}
+.rush-bouton--comp .rush-bouton__icone {
+  width: 62%;
+  height: 62%;
 }
 .rush-bouton--comp::before {
   content: "";

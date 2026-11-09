@@ -163,3 +163,38 @@ describe("la lisibilité des quatre nouveaux ennemis sur chaque thème (lot BR6)
     });
   }
 });
+
+// Lot BR-A2 : le sol n'est plus seulement des dalles — la TERRE battue des chemins et l'HERBE de leurs bords (deux tons chacune, `terre`, `terre2`, `herbeSol`, `herbeSol2` de la palette) portent les ennemis du chemin, le chevalier et les annonces. Même mesure (ΔE76) :
+// les ennemis et le chevalier tranchent sur ces quatre tons (≥ 25, le seuil du sol du BR1), les annonces aussi (le cercle corail à 55 %, le cercle d'atterrissage cyan). Le golem et les boss ne combattent que sur les dalles de l'arène (≥ 40, testé plus haut).
+describe("la lisibilité sur la terre battue et l'herbe de chaque thème (lot BR-A2)", () => {
+  for (const [nom, p] of Object.entries(PALETTES)) {
+    const tons = { terre: p.terre, terre2: p.terre2, herbeSol: p.herbeSol, herbeSol2: p.herbeSol2 };
+    describe(nom, () => {
+      const ennemis: Record<string, number> = {
+        gelée: COULEURS.gelee,
+        "chauve-souris": COULEURS.chauve,
+        chevalier: COULEURS.armure,
+        gélaton: GELATON_COULEUR,
+        cracheur: COULEURS.cracheur,
+        chaman: COULEURS.chaman,
+        totem: COULEURS.totemBois,
+        "porte-bouclier": COULEURS.pbCorps,
+        élite: COULEURS.elite,
+      };
+      for (const [id, c] of Object.entries(ennemis)) {
+        it(`${id} tranche sur la terre et l'herbe : écart ≥ 25`, () => {
+          for (const [ton, valeur] of Object.entries(tons)) expect(ecart(c, valeur), `${id} sur ${ton} (${nom})`).toBeGreaterThanOrEqual(25);
+        });
+      }
+      it("les annonces (cercle corail à 55 %, cercle d'atterrissage cyan) se lisent sur la terre et l'herbe : écart ≥ 25", () => {
+        for (const [ton, valeur] of Object.entries(tons)) {
+          expect(ecart(melange(valeur, COULEURS.corail, 0.55), valeur), `corail sur ${ton}`).toBeGreaterThanOrEqual(25);
+          expect(ecart(melange(valeur, COULEURS.joueur, ALPHAS_JOUEUR.fond + ALPHAS_JOUEUR.rempli), valeur), `cyan sur ${ton}`).toBeGreaterThanOrEqual(25);
+        }
+      });
+      it("la terre ne se confond pas avec les dalles (écart ≥ 12) : on lit le chemin", () => {
+        for (const sol of [p.sol, p.sol2]) for (const t of [p.terre, p.terre2]) expect(ecart(sol, t), `dalle contre terre (${nom})`).toBeGreaterThanOrEqual(12);
+      });
+    });
+  }
+});
