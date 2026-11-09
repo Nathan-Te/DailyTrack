@@ -1,7 +1,7 @@
-// Les MODÈLES TIERS de Rush (lot BR-A3), de bout en bout, sur la machine qui a les packs (jamais en CI : rien de ce qui sort d'ici ne se commite, le dépôt est public) :
+// Les MODÈLES TIERS de Rush (lot BR-A3), de bout en bout, sur la machine qui a les packs (jamais en CI : les packs ne sont que là ; seuls les `.glb` compressés de l'étape 3 se commitent, décision de Nathan du 2026-11-09, docs/rush/licences-tiers.md) :
 //  1. EXTRACTION : les fichiers utiles de chaque .unitypackage (`sources.json`) dans `.brut/<pack>/` (`extraire.py`, Python sans site : `python -I`) ;
 //  2. BLENDER : un script par modèle (`golem.py`, …) → `build/<nom>.glb` non compressé (`construire.py`) ;
-//  3. GLTFPACK : la compression (meshopt, quantification, clips compris) dans `apps/rush/public/modeles-tiers/<nom>.glb`, dossier IGNORÉ par git ; le jeu les charge s'ils sont là (sinon : les formes procédurales).
+//  3. GLTFPACK : la compression (meshopt, quantification, clips compris) dans `apps/rush/public/modeles-tiers/<nom>.glb` (commités) ; le jeu les charge s'ils sont là (sinon : les formes procédurales).
 //   npm run modeles-tiers -w @cdj/rush [-- golem gelee] [-- --vignettes] [-- --sans-extraction] [-- --sans-blender]
 // Variables : BLENDER (sinon le chemin habituel de Windows), RUSH_ASSET_STORE (sinon %APPDATA%/Unity/Asset Store-5.x), PYTHON (sinon `python`).
 // gltfpack 1.1.0 par `npx` (aucune dépendance ajoutée), comme pour les modèles du lot BR-A1 : `-cc` (meshopt), `-kn` (nœuds nommés), `-km`, et les textures gardées en PNG (la version WASI de gltfpack ne compresse pas les textures : README du lot).
@@ -38,7 +38,6 @@ if (!args.includes("--sans-blender")) {
   execFileSync(BLENDER, ["-b", "--factory-startup", "--python-exit-code", "1", "-P", join(ICI, "construire.py"), "--", ...choisis, ...args.filter((a) => a === "--vignettes")], { stdio: ["ignore", "inherit", "inherit"] });
 }
 mkdirSync(PUBLIC, { recursive: true });
-writeFileSync(join(PUBLIC, ".gitignore"), "# Lot BR-A3 : les modèles tiers convertis (packs de l'Asset Store) ne se commitent JAMAIS : le dépôt est public (docs/rush/licences-tiers.md).\n*\n");
 const rapport = JSON.parse(readFileSync(join(BUILD, "rapport.json"), "utf8"));
 const mesures = existsSync(join(BUILD, "mesures.json")) ? JSON.parse(readFileSync(join(BUILD, "mesures.json"), "utf8")) : {};
 for (const nom of choisis) {

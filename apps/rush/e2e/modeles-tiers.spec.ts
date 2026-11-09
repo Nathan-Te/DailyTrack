@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { API, appareil, lancer } from "./appareil";
 
-// Lot BR-A3 : les modèles tiers (l'essai de style). En CI les fichiers n'existent pas (ils ne sont jamais commités : le dépôt est public) : le jeu doit le constater et garder ses formes procédurales.
-// Sur la machine de Nathan (après `npm run modeles-tiers -w @cdj/rush`), les mêmes tests vérifient que les modèles remplacent les formes et que leurs clips suivent la simulation.
+// Lot BR-A3 : les modèles tiers (l'essai de style). Les fichiers sont commités (`public/modeles-tiers/`) ; sans eux (une copie qui ne les a pas), le jeu doit le constater et garder ses formes procédurales.
+// Avec les fichiers (en CI depuis qu'ils sont commités), les mêmes tests vérifient que les modèles remplacent les formes et que leurs clips suivent la simulation.
 // Rien n'est sauté : chaque test lit ce que le serveur sert vraiment et vérifie le comportement qui en découle.
 const BASE = `/?api=${API}&debug&manuel&tactile=0`;
 interface Tiers {

@@ -378,7 +378,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   scene.add(fantomeVu.racine);
   const sFantome = suivi(0, 0);
 
-  // Lot BR-A3 : les MODÈLES TIERS de l'essai de style (packs convertis, jamais commités : `apps/rush/modeles-tiers/`), chargés à la demande s'ils sont sur la machine (`&modeles=0` : non).
+  // Lot BR-A3 : les MODÈLES TIERS de l'essai de style (packs convertis par `apps/rush/modeles-tiers/`, servis par `public/modeles-tiers/`), chargés à la demande s'ils sont là (`&modeles=0` : non).
   // Ils REMPLACENT la forme procédurale du chevalier, du golem, de la gelée et de la chauve-souris quand ils arrivent ; les autres acteurs gardent la leur.
   const tiers = {
     prets: false,

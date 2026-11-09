@@ -2,8 +2,8 @@
 
 Session locale (machine de Nathan : les packs de l'Asset Store, Blender 5.1). Aucun changement de la simulation : `packages/rush-sim` n'est pas touché, le golden est identique (tests de `rush-sim` verts).
 
-## 0. Le dépôt est PUBLIC : aucun fichier des packs n'est commité
-`gh repo view --json visibility` → `PUBLIC`. Décision de Nathan (en séance) : **essai local, rien commité** — la conversion écrit dans des dossiers ignorés (`apps/rush/modeles-tiers/.brut/`, `build/`, `apps/rush/public/modeles-tiers/`), le jeu charge les modèles s'ils sont là, sinon garde ses formes procédurales (CI, production). Sont commités : le code, les scripts de conversion, les inventaires, les captures d'écran.
+## 0. Le dépôt est PUBLIC : les modèles convertis sont commités sur décision de Nathan
+`gh repo view --json visibility` → `PUBLIC`. Décision de Nathan (en séance) : d'abord **essai local, rien commité** ; puis, l'essai fait, **les quatre `.glb` compressés (`apps/rush/public/modeles-tiers/`, 437 Ko) sont ajoutés à la branche pour l'aperçu en ligne de la PR, le dépôt devant passer privé sous peu**. Les fichiers bruts des packs et les intermédiaires restent ignorés (`apps/rush/modeles-tiers/.brut/`, `build/`). Sans les `.glb`, le jeu garde ses formes procédurales ; en production il ne les charge jamais. Un fichier poussé sur un dépôt public reste dans l'historique et les copies déjà faites, même après le passage en privé (`docs/rush/licences-tiers.md`).
 **Avant toute mise en production** (`docs/rush/licences-tiers.md`) : rendre le dépôt privé, ou brancher un stockage privé hors dépôt au déploiement (un seau non public que la construction de la mise en production télécharge avec un secret de la CI).
 
 ## 1. Licences et inventaire
@@ -72,4 +72,4 @@ Modèles (gzip) : golem 70,0 Ko (2 658 triangles, 56 os, 8 clips), gelée 16,0 K
 **Oui, convertir ainsi** : le saut de qualité est net (formes rondes, animations, golem crédible) pour 200 Ko et moins d'appels de dessin que le procédural. Il faut d'abord : (1) **trancher dépôt privé ou stockage privé** (rien ne part aux joueurs sans) ; (2) décider si l'apparence peut dépasser le rayon de la sim (gelées, chauves-souris plus grosses que leur collision, comme la cible) ; (3) l'animation cuite en texture pour les hordes. **Plan proposé** : BR-A4 — stockage, chargement du boss du jour seulement, les 7 monstres (Dungeon Mason et Meshtint, essayer la Cyclops Bat), VAT des gélatons ; BR-A5 — les quatre autres boss (Treant Forest, tortue roulée, chauve-souris mage, reine gelée couronnée) ; BR-A6 — le décor (inventaire de *Low Poly Fantasy Arena* et *Toon Adventure Island*, vases) et les thèmes carrière et sous-bois ; un lot de la plateforme pour le HUD de la cible.
 
 ## Pour les joueurs
-rien (jeu `off` ; modèles jamais servis en production ; la caméra, la palette de la prairie et le contour changent pour l'essai, à valider par Nathan avant toute publication)
+rien (jeu `off` ; modèles jamais chargés en production ; la caméra, la palette de la prairie et le contour changent pour l'essai, à valider par Nathan avant toute publication)

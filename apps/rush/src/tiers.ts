@@ -6,7 +6,7 @@ import { CALQUE_COQUE, coqueSkinnee, peau } from "./cel";
 import { CLIPS_REQUIS, type Clip, type NomTiers } from "./clipsTiers";
 
 // Lot BR-A3 : les MODÈLES TIERS (packs de l'Asset Store convertis par `apps/rush/modeles-tiers/`) — un essai de style. Chargé À LA DEMANDE (un morceau à part : GLTFLoader, le décodeur meshopt),
-// seulement hors production (`essai.modeles` : `&modeles=0` l'éteint), et seulement si les fichiers sont là (`public/modeles-tiers/` n'est jamais commité : le dépôt est public). Sinon : les formes procédurales.
+// seulement hors production (`essai.modeles` : `&modeles=0` l'éteint), et seulement si les fichiers sont là (`public/modeles-tiers/` : commités depuis la décision de Nathan du 2026-11-09, absents d'une copie qui ne les aurait pas). Sinon : les formes procédurales.
 //  · un modèle = UN `SkinnedMesh` (une texture de couleur de base, la rampe toon du jeu par `peau`), son squelette et ses clips nommés d'après les états de la sim ;
 //  · un ACTEUR = une copie (squelette compris), son `AnimationMixer`, et `jouer(clip)` : un FONDU vers le nouveau clip, ou le temps imposé (mode `progression`) ;
 //  · le contour : en haute, le post-traitement (silhouette seule : la marque dans l'alpha) ; en basse, une coque skinnée sur le calque des coques — jamais les deux.

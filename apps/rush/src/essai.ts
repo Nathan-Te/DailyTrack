@@ -51,7 +51,7 @@ export interface Essai {
   nv: number;
   /** Les sensations collées dans l'adresse (JSON brut), ou `null`. */
   sensations: unknown;
-  /** Lot BR-A3 : charger les modèles tiers s'ils sont là (`public/modeles-tiers/`, jamais commités) ; `&modeles=0` garde les formes procédurales. Jamais sur la production. */
+  /** Lot BR-A3 : charger les modèles tiers s'ils sont là (`public/modeles-tiers/`) ; `&modeles=0` garde les formes procédurales. Jamais sur la production. */
   modeles: boolean;
   /** Vrai dès qu'une option d'essai change la partie : elle n'est alors pas classable. */
   essai: boolean;

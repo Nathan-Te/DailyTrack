@@ -1,6 +1,6 @@
 # Rush — licences des assets tiers
 
-Tenu à jour par chaque lot qui convertit un asset tiers (lot BR-A3 : premier essai). **Aucun fichier issu d'un pack ne se commite : le dépôt `Nathan-Te/DailyTrack` est PUBLIC** (vérifié le 2026-11-09 par `gh repo view --json visibility` : `PUBLIC`). Les packs restent dans le cache de l'Asset Store de la machine de Nathan ; la chaîne de conversion (`apps/rush/modeles-tiers/`, des scripts) les lit là, écrit ses fichiers dans des dossiers ignorés par git (`apps/rush/modeles-tiers/.brut/`, `build/`, `apps/rush/public/modeles-tiers/`), et le jeu ne les charge que hors production, s'ils sont présents.
+Tenu à jour par chaque lot qui convertit un asset tiers (lot BR-A3 : premier essai). Le dépôt `Nathan-Te/DailyTrack` est **PUBLIC** (vérifié le 2026-11-09 par `gh repo view --json visibility` : `PUBLIC`). **Décision de Nathan du 2026-11-09** (après l'essai local) : **les `.glb` compressés et prêts à servir** (`apps/rush/public/modeles-tiers/`, 437 Ko) **se commitent** pour que l'aperçu en ligne de la PR les montre, **le dépôt devant passer privé sous peu**. Les fichiers bruts des packs (FBX, textures d'origine, `.unitypackage`) ne se commitent jamais : ils restent dans le cache de l'Asset Store de la machine de Nathan, et la chaîne de conversion (`apps/rush/modeles-tiers/`) écrit ses fichiers intermédiaires dans des dossiers ignorés (`.brut/`, `build/`). Le jeu ne charge les modèles que hors production. **Attention : un fichier poussé sur un dépôt public reste dans l'historique et dans les copies déjà faites (clones, forks), même après le passage en privé** ; seule une réécriture de l'historique l'en retirerait du dépôt lui-même.
 
 ## Les packs
 
@@ -23,10 +23,10 @@ Le champ « License type : Extension Asset » paraît sur toutes ces pages (et s
 
 - **Permis** (EULA du 4 décembre 2024, § 2.2.1 ; FAQ d'Unity de juillet 2025) : intégrer l'asset dans un produit, le **modifier** pour cela (conversion glTF, recoloration, échelle), le distribuer **incorporé et embarqué** dans ce produit, y compris hors du moteur Unity (un jeu Three.js).
 - **Interdit** : le redistribuer comme fichier autonome (téléchargement séparé, dépôt public, paquet de fichiers sources), le partager avec qui ne l'a pas acheté, entraîner une IA dessus. Un jeu web sert forcément ses glTF au navigateur : la limite concrète est de ne jamais les proposer comme fichiers à part.
-- Donc : **les assets ne vivent que dans le jeu construit**, jamais dans le dépôt, jamais en téléchargement séparé.
+- Donc : **les assets ne vivent que dans le jeu construit**, jamais en téléchargement séparé ; leur présence dans un dépôt public est un écart assumé par Nathan, le temps de passer le dépôt en privé.
 
 ## Avant de les mettre en production (décision de Nathan)
 
-Deux voies, à trancher avant tout lot qui servirait ces modèles aux joueurs :
-1. **Rendre le dépôt privé** : les `.glb` convertis se commitent alors avec le jeu (comme ceux du lot BR-A1), la CI les construit et les sert.
+Deux voies, à trancher avant tout lot qui servirait ces modèles aux joueurs (Nathan a annoncé la première le 2026-11-09) :
+1. **Rendre le dépôt privé** : les `.glb` convertis se commitent avec le jeu (comme ceux du lot BR-A1 ; c'est déjà le cas depuis le lot BR-A3), la CI les construit et les sert.
 2. **Garder le dépôt public** et brancher un **stockage privé hors dépôt** au déploiement : un seau privé (par exemple un bucket Google Cloud non public) où `npm run modeles-tiers` dépose les `.glb`, que l'étape de construction de la mise en production télécharge dans `apps/rush/public/modeles-tiers/` avec un secret de la CI. La CI de PR, elle, n'en a pas besoin (le jeu retombe sur les formes procédurales et `e2e/modeles-tiers.spec.ts` vérifie les deux cas).
