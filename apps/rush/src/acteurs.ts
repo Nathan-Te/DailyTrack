@@ -3,11 +3,13 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import { ANNONCE, ANNONCE_PLONGEON, BOND_ANNONCE, BOND_VOL, CHAUVE, COMPETENCE, COUP, ESQUIVE, MARCHE, ONDE, PIERRES, PLONGEON, POING, RECUPERE, REPOS, RUGIT, type Chevalier, type Durees, type Golem, type Monstre } from "@cdj/rush-sim";
 import { aplat, piece, type Piece } from "./cel";
 import { bloc, fusionner, placer, teindre } from "./formes";
+import { modele, pieceDe, type NomModele } from "./modeles";
 import { BLANC, COULEURS, ENCRE } from "./palette";
 
 // Les personnages de Rush (lot BR0c) : des GROS BLOCS arrondis à l'ombrage lisse (le golem), un chevalier CHIBI (gros casque rond à fente, petit corps), des gelées en dôme écrasé, des chauves-souris à grandes ailes à doigts. **Tout est procédural** :
 // chaque image, `animer*` pose le corps selon l'état de la simulation (balancement, écrasement, rotation, le coup en trois temps : anticipation, phase active, récupération), sans animation enregistrée. Les repères : le personnage regarde vers +Z,
 // l'unité est le mètre, les pieds sont à y = 0. Les pièces qui bougent ensemble sont FUSIONNÉES (une forme : un appel de dessin) ; le contour est celui du post-traitement (haute qualité) ou des coques (basse) : voir `cel.ts`.
+// Lot BR-A1 : chaque pièce prend la forme du MODÈLE chargé (`modeles.ts` : fait dans Blender, une pièce nommée par groupe animé, son origine au pivot du groupe) ; sans modèle, la forme procédurale d'avant (`forme`).
 
 export const sph = (r: number, l = 18, h = 12): SphereGeometry => new SphereGeometry(r, l, h);
 export const bornes = (v: number, a: number, b: number): number => Math.min(b, Math.max(a, v));
@@ -18,6 +20,13 @@ export const lisser = (a: number, b: number, x: number): number => {
   const t = bornes((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 };
+
+/** La forme d'une pièce : celle du modèle chargé (lot BR-A1), sinon la forme procédurale (`repli`, construite seulement si besoin). */
+export function forme(m: NomModele, piece: string, repli: () => BufferGeometry): BufferGeometry {
+  return pieceDe(m, piece) ?? repli();
+}
+/** Vrai si le modèle est chargé : le code n'applique plus alors les échelles qui ajustaient une forme procédurale (le modèle est dessiné à sa taille). */
+export const aModele = (m: NomModele): boolean => modele(m) !== null;
 
 // --- Les formes (construites une fois, partagées) ---------------------------------------------------------------------------------------------------------------------------------------------------
 /** Un dôme de gelée : une demi-sphère à l'ombrage lisse, un petit REFLET brillant en haut à gauche (un bouton de lumière, pas une grande tache), le bas un peu plus sombre. Posée au sol. */
@@ -82,13 +91,16 @@ export interface Yeux {
   teinte(c: number): void;
 }
 const matiereYeux = new MeshBasicMaterial({ vertexColors: true });
-export function yeux(ecart: number, y: number, z: number, r: number, pupille = 0.55): Yeux {
-  const formes: BufferGeometry[] = [];
-  for (const s of [-1, 1]) {
-    formes.push(teindre(placer(sph(1, 10, 7), { x: s * ecart, s: r }), BLANC));
-    formes.push(teindre(placer(sph(1, 8, 6), { x: s * ecart, y: -r * 0.1, z: r * 0.62, s: r * pupille }), ENCRE));
-  }
-  const mesh = new Mesh(fusionner(formes), matiereYeux.clone());
+export function yeux(ecart: number, y: number, z: number, r: number, pupille = 0.55, modeleDes?: NomModele): Yeux {
+  const geo = forme(modeleDes ?? "chevalier", modeleDes ? "yeux" : "", () => {
+    const formes: BufferGeometry[] = [];
+    for (const s of [-1, 1]) {
+      formes.push(teindre(placer(sph(1, 10, 7), { x: s * ecart, s: r }), BLANC));
+      formes.push(teindre(placer(sph(1, 8, 6), { x: s * ecart, y: -r * 0.1, z: r * 0.62, s: r * pupille }), ENCRE));
+    }
+    return fusionner(formes);
+  });
+  const mesh = new Mesh(geo, matiereYeux.clone());
   mesh.position.set(0, y, z);
   return {
     mesh,
@@ -163,29 +175,31 @@ export function creerChevalier(): ChevalierVu {
     matieres.push(p.matiere);
     return p;
   };
-  ajouter(interieur, noter(piece(CORPS_CHEVALIER, 0xffffff, true, true)), 0, 0.4, 0);
-  const tete = ajouter(interieur, noter(piece(CASQUE, 0xffffff, true, true)), 0, 0.95, -0.16);
+  const M = "chevalier";
+  const m = aModele(M);
+  ajouter(interieur, noter(piece(forme(M, "corps", () => CORPS_CHEVALIER), 0xffffff, true, true)), 0, 0.4, 0);
+  const tete = ajouter(interieur, noter(piece(forme(M, "tete", () => CASQUE), 0xffffff, true, true)), 0, 0.95, -0.16);
   tete.groupe.rotation.x = 0.1; // le casque penche un peu vers l'avant : la fente se voit d'en haut
-  const o = yeux(0.12, 0.97, 0.26, 0.05, 0.5);
+  const o = yeux(0.12, 0.97, 0.26, 0.05, 0.5, m ? M : undefined);
   interieur.add(o.mesh);
   const plume = new Group();
   plume.position.set(0, 1.24, -0.3);
-  plume.add(noter(piece(PLUME, 0xffffff, true, true)).groupe);
+  plume.add(noter(piece(forme(M, "plume", () => PLUME), 0xffffff, true, true)).groupe);
   interieur.add(plume);
   // L'épée, tenue à droite : le groupe pivote autour de la main.
   const epee = new Group();
   epee.position.set(0.4, 0.5, 0.12);
-  ajouter(epee, noter(piece(EPEE, 0xffffff, true, true)), 0, 0, 0);
+  ajouter(epee, noter(piece(forme(M, "arme", () => EPEE), 0xffffff, true, true)), 0, 0, 0);
   interieur.add(epee);
   // Un petit bouclier rond à gauche, de profil.
-  const bouclier = ajouter(interieur, noter(piece(placer(new SphereGeometry(0.2, 14, 10), { s: [0.4, 1, 1] }), COULEURS.armure)), -0.34, 0.45, 0.1);
+  const bouclier = ajouter(interieur, noter(piece(forme(M, "bouclier", () => teindre(placer(new SphereGeometry(0.2, 14, 10), { s: [0.4, 1, 1] }), COULEURS.armure)), 0xffffff, true, true)), -0.34, 0.45, 0.1);
   bouclier.groupe.rotation.z = 0.1;
   const pg = new Group();
   const pd = new Group();
   for (const [g, s] of [[pg, -1], [pd, 1]] as const) {
     g.position.set(s * 0.15, 0.1, 0);
-    const p = noter(piece(sph(0.15, 12, 8), COULEURS.plume));
-    p.groupe.scale.set(1, 0.7, 1.4);
+    const p = noter(piece(forme(M, s < 0 ? "pied_g" : "pied_d", () => teindre(sph(0.15, 12, 8), COULEURS.plume)), 0xffffff, true, true));
+    if (!m) p.groupe.scale.set(1, 0.7, 1.4); // le modèle dessine ses bottes à leur taille
     g.add(p.groupe);
     interieur.add(g);
   }
@@ -502,10 +516,11 @@ export function creerGolem(): GolemVu {
     matieres.push(p.matiere);
     return p;
   };
-  ajouter(corps, noter(piece(troncDuGolem(), 0xffffff, true, true)), 0, 0, 0);
+  const M = "golem";
+  ajouter(corps, noter(piece(forme(M, "corps", troncDuGolem), 0xffffff, true, true)), 0, 0, 0);
   const tete = new Group();
   tete.position.set(0, 5.3, 1.05);
-  ajouter(tete, noter(piece(teteDuGolem(), 0xffffff, true, true)), 0, 0, 0);
+  ajouter(tete, noter(piece(forme(M, "tete", teteDuGolem), 0xffffff, true, true)), 0, 0, 0);
   // Les yeux : deux fentes AMBRE lumineuses sous les sourcils (aplats sans lumière, une lueur > 1 : le post-traitement la fait fleurir), chacune avec son halo.
   const yeuxG: Mesh[] = [];
   const halos: Sprite[] = [];
@@ -530,10 +545,11 @@ export function creerGolem(): GolemVu {
     const epaule = new Group();
     epaule.position.set(s * 2.55, 3.15, 0);
     epaule.userData.reposZ = s * 0.32; // les bras s'écartent un peu : un gorille, pas un totem
-    ajouter(epaule, noter(piece(hautDuBras(s), 0xffffff, true, true)), 0, 0, 0);
+    const cote = s < 0 ? "_g" : "_d";
+    ajouter(epaule, noter(piece(forme(M, "bras" + cote, () => hautDuBras(s)), 0xffffff, true, true)), 0, 0, 0);
     const coude = new Group();
     coude.position.set(0, -1.45, 0);
-    ajouter(coude, noter(piece(avantBrasEtPoing(s), 0xffffff, true, true)), 0, 0, 0);
+    ajouter(coude, noter(piece(forme(M, "avant_bras" + cote, () => avantBrasEtPoing(s)), 0xffffff, true, true)), 0, 0, 0);
     epaule.add(coude);
     corps.add(epaule);
     bras.push(epaule);
@@ -543,7 +559,7 @@ export function creerGolem(): GolemVu {
   for (const s of [-1, 1]) {
     const j = new Group();
     j.position.set(s * 0.85, 0.65, 0);
-    const p = noter(piece(JAMBE(s === 1 ? 71 : 72), 0xffffff, true, true));
+    const p = noter(piece(forme(M, s < 0 ? "jambe_g" : "jambe_d", () => JAMBE(s === 1 ? 71 : 72)), 0xffffff, true, true));
     j.add(p.groupe);
     racine.add(j);
     jambes.push(j);

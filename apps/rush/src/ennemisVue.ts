@@ -2,7 +2,7 @@ import { BoxGeometry, BufferGeometry, BufferAttribute, Color, ConeGeometry, Cyli
 import { MONSTRES_IDS, ANNONCE_PLONGEON, CHAMAN, CHAUVE, CRACHE_ANNONCE, CRACHEUR, GELATON, GELEE, PB_ANNONCE, PB_OUVERT, PLONGEON, PORTE_BOUCLIER, REPOS, TOTEM, TOTEM_ANNONCE, TOTEM_PERIODE, type Durees, type Monstre, type Partie, type Projectile } from "@cdj/rush-sim";
 import { cleBoss } from "./bosses";
 import { CAMERA_DEFAUT } from "./camera";
-import { bornes, GEO, lerp, lisser, sortie, sph } from "./acteurs";
+import { aModele, bornes, forme, GEO, lerp, lisser, sortie, sph } from "./acteurs";
 import { CALQUE_COQUE, coqueInstanciee, lisse, plat } from "./cel";
 import { bloc, fusionner, placer, teindre } from "./formes";
 import { BLANC, COULEURS, ENCRE } from "./palette";
@@ -11,6 +11,8 @@ import { BLANC, COULEURS, ENCRE } from "./palette";
 // bougent séparément (les ailes de la chauve-souris, le bouclier du porte-bouclier, l'orbe du chaman) étant des tas à part qui reçoivent chacune leur matrice. Les gélatons de BR5 en étaient le premier exemple ; les gelées, les chauves-souris et les
 // quatre nouveaux ennemis (cracheur, chaman, totem, porte-bouclier) les suivent. Les ÉLITES ont une taille ×1,5, une couronne et un halo d'or. Le bouclier posé par un chaman est une bulle bleue claire reliée au chaman par un trait.
 // Les repères : le mètre ; les pieds à y = 0 ; l'avant d'un corps est +z (le yaw le tourne vers où il regarde).
+// Lot BR-A1 : chaque tas prend la pièce du MODÈLE chargé (`modeles.ts` : `corps`, et pour la chauve-souris `yeux`, `ailes_g`, `ailes_d`, pour le porte-bouclier `bouclier`), la forme procédurale restant le repli ; le
+// projectile du cracheur et la couronne des élites aussi. Les modèles sont dessinés à leur taille : le code n'applique plus l'échelle 0,62 du gélaton.
 
 /** Un tas instancié : la forme ombrée (elle porte une ombre) et sa coque de contour (basse qualité). */
 export class Tas {
@@ -259,6 +261,9 @@ export interface OptionsTas {
   elite: boolean;
 }
 
+/** Le rayon de collision du projectile du cracheur (`CRACHE_RAYON` de `partie.ts` : 26 cm ; un élite ×1,5) : le modèle est dessiné au rayon 1. */
+export const RAYON_PROJECTILE = 0.26;
+
 /** Combien de monstres de chaque type un tas porte au plus (au-delà, les plus loin ne sont pas dessinés). */
 export const MAX_PAR_TYPE = { gelee: 64, gelaton: 96, chauve: 48, cracheur: 40, chaman: 24, totem: 12, pb: 32, elites: 24, bulles: 64, lueurs: 48 } as const;
 
@@ -267,18 +272,22 @@ export const MAX_PAR_TYPE = { gelee: 64, gelaton: 96, chauve: 48, cracheur: 40, 
  */
 export class MonstresVus {
   readonly groupe = new Group();
-  private readonly gelee = new Tas(formeGelee(), MAX_PAR_TYPE.gelee);
-  private readonly gelaton = new Tas(fusionner([placer(GEO.geleeD.clone(), { s: [1.5, 1.2, 1.5] }), ...paireDYeux(0.23, 0.39, 0.56, 0.1)]), MAX_PAR_TYPE.gelaton);
-  private readonly chauve = new Tas(formeChauve(), MAX_PAR_TYPE.chauve);
-  private readonly aileG = new Tas(GEO.aileG, MAX_PAR_TYPE.chauve);
-  private readonly aileD = new Tas(GEO.aileD, MAX_PAR_TYPE.chauve);
+  private readonly gelee = new Tas(forme("gelee", "corps", formeGelee), MAX_PAR_TYPE.gelee);
+  private readonly gelaton = new Tas(forme("gelaton", "corps", () => fusionner([placer(GEO.geleeD.clone(), { s: [1.5, 1.2, 1.5] }), ...paireDYeux(0.23, 0.39, 0.56, 0.1)])), MAX_PAR_TYPE.gelaton);
+  /** L'échelle du gélaton : sa forme procédurale est celle de la gelée réduite (0,62) ; son modèle est à sa taille. */
+  private readonly echelleGelaton = aModele("gelaton") ? 1 : 0.62;
+  private readonly chauve = new Tas(forme("chauve-souris", "corps", formeChauve), MAX_PAR_TYPE.chauve);
+  private readonly aileG = new Tas(forme("chauve-souris", "ailes_g", () => GEO.aileG), MAX_PAR_TYPE.chauve);
+  private readonly aileD = new Tas(forme("chauve-souris", "ailes_d", () => GEO.aileD), MAX_PAR_TYPE.chauve);
   private readonly yeuxChauve: Tas;
-  private readonly cracheur = new Tas(formeCracheur(), MAX_PAR_TYPE.cracheur);
-  private readonly chaman = new Tas(formeChaman(), MAX_PAR_TYPE.chaman);
-  private readonly totem = new Tas(formeTotem(), MAX_PAR_TYPE.totem);
-  private readonly pb = new Tas(formePorteBouclier(), MAX_PAR_TYPE.pb);
-  private readonly bouclier = new Tas(formeBouclierPB(), MAX_PAR_TYPE.pb);
-  private readonly couronnes = new Tas(formeCouronne(), MAX_PAR_TYPE.elites, { coque: false, ombre: false });
+  private readonly cracheur = new Tas(forme("cracheur", "corps", formeCracheur), MAX_PAR_TYPE.cracheur);
+  private readonly chaman = new Tas(forme("chaman", "corps", formeChaman), MAX_PAR_TYPE.chaman);
+  private readonly totem = new Tas(forme("totem", "corps", formeTotem), MAX_PAR_TYPE.totem);
+  private readonly pb = new Tas(forme("porte-bouclier", "corps", formePorteBouclier), MAX_PAR_TYPE.pb);
+  private readonly bouclier = new Tas(forme("porte-bouclier", "bouclier", formeBouclierPB), MAX_PAR_TYPE.pb);
+  private readonly couronnes = new Tas(forme("couronne", "corps", formeCouronne), MAX_PAR_TYPE.elites, { coque: false, ombre: false });
+  /** Lot BR-A1 : le projectile du cracheur, un modèle (au rayon 1) allumé comme une lueur ; sans modèle, une sphère des `lueurs`. */
+  private readonly projectiles: Tas | null;
   private readonly halos: Tas;
   private readonly bulles: Tas;
   private readonly lueurs: Tas;
@@ -301,7 +310,8 @@ export class MonstresVus {
 
   constructor() {
     const yeux = new MeshBasicMaterial({ vertexColors: true });
-    this.yeuxChauve = new Tas(formeYeuxChauve(), MAX_PAR_TYPE.chauve, { matiere: yeux, coque: false, ombre: false });
+    this.yeuxChauve = new Tas(forme("chauve-souris", "yeux", formeYeuxChauve), MAX_PAR_TYPE.chauve, { matiere: yeux, coque: false, ombre: false });
+    this.projectiles = aModele("projectile") ? new Tas(forme("projectile", "corps", formeLueur), MAX_PAR_TYPE.lueurs, { matiere: new MeshBasicMaterial({ vertexColors: true, fog: false }), coque: false, ombre: false }) : null;
     const lueur = new MeshBasicMaterial({ fog: false });
     this.lueurs = new Tas(formeLueur(), MAX_PAR_TYPE.lueurs, { matiere: lueur, coque: false, ombre: false });
     const halo = new RingGeometry(0.82, 1, 28);
@@ -315,7 +325,7 @@ export class MonstresVus {
     this.liens = new LineSegments(g, new LineBasicMaterial({ color: COULEURS.bulle, transparent: true, opacity: 0.8, fog: false }));
     this.liens.frustumCulled = false;
     this.liens.renderOrder = 3;
-    this.tous = [this.gelee, this.gelaton, this.chauve, this.aileG, this.aileD, this.yeuxChauve, this.cracheur, this.chaman, this.totem, this.pb, this.bouclier, this.couronnes, this.halos, this.bulles, this.lueurs];
+    this.tous = [this.gelee, this.gelaton, this.chauve, this.aileG, this.aileD, this.yeuxChauve, this.cracheur, this.chaman, this.totem, this.pb, this.bouclier, this.couronnes, this.halos, this.bulles, this.lueurs, ...(this.projectiles ? [this.projectiles] : [])];
     for (const t of this.tous) {
       this.groupe.add(t.corps);
       if (t.coque) this.groupe.add(t.coque);
@@ -369,7 +379,7 @@ export class MonstresVus {
       }
       case GELATON: {
         const a = attitudeGelaton(m, temps, tick, d);
-        const k = 0.62 * taille * a.pop;
+        const k = this.echelleGelaton * taille * a.pop;
         const sy = a.sy * (1 - ecrase);
         const l = (k / Math.sqrt(sy)) * (1 + ecrase * 0.55);
         this.baseEn(mx + a.tremble, a.y, mz, yaw, 1);
@@ -541,10 +551,19 @@ export class MonstresVus {
   /** Où sont les chamans de l'image (identifiant → position en mètres), rempli par l'appelant avant les poses. */
   chamans: Map<number, { x: number; z: number }> | null = null;
 
-  /** Un projectile de cracheur : une boule orange vive à hauteur de poitrine, qui palpite. */
+  /** Un projectile de cracheur : une boule orange vive à hauteur de poitrine, qui palpite ; le modèle (lot BR-A1) a le rayon de sa collision, ses gouttes vers l'arrière de sa course. */
   poserProjectile(q: Projectile, mx: number, mz: number, temps: number): void {
-    const r = (q.elite === 1 ? 0.3 : 0.2) * (1 + Math.sin(temps * 24 + q.id) * 0.1);
-    this.orbe(mx, 0.75, mz, 0, 0, 0, r, COULEURS.projectile, 1.5);
+    const pulse = 1 + Math.sin(temps * 24 + q.id) * 0.1;
+    if (!this.projectiles) {
+      this.orbe(mx, 0.75, mz, 0, 0, 0, (q.elite === 1 ? 0.3 : 0.2) * pulse, COULEURS.projectile, 1.5);
+      return;
+    }
+    const r = (q.elite === 1 ? RAYON_PROJECTILE * 1.5 : RAYON_PROJECTILE) * pulse;
+    this.p.set(mx, 0.75, mz);
+    this.q.setFromAxisAngle(this.axeY, Math.atan2(q.vx, q.vy));
+    this.s.set(r, r, r);
+    this.mat.compose(this.p, this.q, this.s);
+    this.projectiles.poser(this.mat, 0, this.c.setScalar(1.5));
   }
 
   detruire(): void {

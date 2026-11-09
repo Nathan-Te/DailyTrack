@@ -1335,6 +1335,10 @@
           "competences.spec.ts": [
             "rush-sim",
             "rush-jeu"
+          ],
+          "modeles.spec.ts": [
+            "rush-sim",
+            "rush-jeu"
           ]
         },
         "parts": {
