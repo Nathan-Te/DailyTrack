@@ -85,6 +85,8 @@ export const en: Catalogues<typeof fr>["en"] = {
   "figures.sautHerbe.quoi": "You land on racing grass (or dirt) and turn on it: the grip changes on touchdown.",
   "figures.sautChicane.titre": "Jump, then chicane",
   "figures.sautChicane.quoi": "A two-level drop, then a chicane right away: brake as soon as the wheels touch.",
+  "figures.sautGlisse.titre": "Landing on ice",
+  "figures.sautGlisse.quoi": "Take off sideways or mid-turn and land on ice: the car slides, let it run without throttle.",
   "figures.transitionCrete.titre": "Crest that unloads",
   "figures.transitionCrete.quoi": "The corner starts at the top: the car is light as you turn in.",
   "figures.transitionCompression.titre": "Compression",

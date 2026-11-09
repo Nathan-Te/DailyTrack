@@ -156,7 +156,8 @@ describe("circuit du jour : construction", () => {
     const attempts = DAYS.map((d) => circuit(d).attempt);
     expect(attempts.some((a) => a > 0)).toBe(true);
     // Lot V1 (v20) : avec le sac de thèmes, la Banquise du 02/12/2026 demande 51 tentatives (le budget de la v20 est de 120, `MAX_ATTEMPTS_SAC`) ; avant, aucun jour de la fenêtre ne passait 25.
-    expect(Math.max(...attempts)).toBeLessThan(60);
+    // Lot 57b (v23) : les 60 premières tentatives exigent la grammaire ; un jour où aucune ne tient reprend les graines du début sans rien exiger (`TENTATIVES_GRAMMAIRE`), donc passe 60.
+    expect(Math.max(...attempts)).toBeLessThan(120);
     // composeSpec est lui-même déterministe et peut échouer proprement (null) sans lever d'erreur.
     expect(composeSpec(JOUR_TEST, 0)).toBe(composeSpec(JOUR_TEST, 0));
   });
@@ -201,7 +202,8 @@ describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () =>
       track.blocks.forEach((b, i) => {
         if (i > 0) expect(b.w0, `${spec} @${i}`).toBe(track.blocks[i - 1]!.w1);
         if (b.w0 !== b.w1) {
-          expect(b.kind, `${spec} @${i}`).toBe("straight");
+          // Lot 57b : « Rétrécissement sur une crête » (`transition-retrecissement`, grammaire du lot 57) resserre la route sur une montée.
+          expect(["straight", "up"], `${spec} @${i}`).toContain(b.kind);
           expect(Math.abs(b.w1 - b.w0), `${spec} @${i}`).toBeLessThanOrEqual(6); // un seul cran à la fois : 14 ↔ 20 ↔ 26 m
         }
       });

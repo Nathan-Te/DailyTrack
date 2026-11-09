@@ -84,6 +84,8 @@ export const fr = {
   "figures.sautHerbe.quoi": "On retombe sur l'herbe de course (ou la terre) et on tourne dessus : l'adhérence change au contact.",
   "figures.sautChicane.titre": "Saut, puis chicane",
   "figures.sautChicane.quoi": "Une chute de deux niveaux, puis tout de suite une chicane : freiner dès que les roues touchent.",
+  "figures.sautGlisse.titre": "Réception en glisse",
+  "figures.sautGlisse.quoi": "Décoller de travers ou en tournant et retomber sur la glace : la voiture glisse, on la laisse aller sans gaz.",
   "figures.transitionCrete.titre": "Crête qui allège",
   "figures.transitionCrete.quoi": "Le virage commence au sommet : la voiture est légère au moment de braquer.",
   "figures.transitionCompression.titre": "Compression au creux",

@@ -28,6 +28,6 @@ export const SIM_VERSION = 14;
  * que le registre note (écrit par « Mettre en production »), et l'ancienne version reste dans le code tant qu'un jour du registre s'en sert. Historique : 15 (jusqu'au
  * 27/10/2026), 16 (freinage possible après un boost, lot 34), 17 (herbe de course, lot 48), 18 (identité des thèmes, lot 49 ; la v17 n'a servi aucun jour), 19 (médailles assouplies du lot G1 de la plateforme : les circuits sont ceux de la v18, seuls leurs
  * seuils changent, `GENERATOR_MEDAILLES_G1` de medals.ts), 20 (lot V1 de la plateforme : le sac de thèmes, jamais deux jours de suite le même thème ; les circuits ne changent que par leur
- * thème : `GENERATOR_SAC_THEMES`, dailyId.ts).
+ * thème : `GENERATOR_SAC_THEMES`, dailyId.ts), 21 (variété : rythmes et fiches de biomes, lot V2), 22 (blocs plus complexes, lot 58), 23 (les sauts et les transitions de la grammaire du lot 57, lot 57b : `GENERATOR_GRAMMAIRE`, grammaire.ts).
  */
-export const GENERATOR_VERSION = 22;
+export const GENERATOR_VERSION = 23;

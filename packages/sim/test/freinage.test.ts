@@ -41,7 +41,7 @@ const circuit = (day: number) => {
 describe("la version du générateur d'un jour (lot 34, registre du lot R11)", () => {
   it("un jour du registre garde sa version (v15 jusqu'au 27/10/2026), un jour absent et le Salon prennent la dernière, une version imposée change l'identifiant", () => {
     expect(GENERATOR_BEFORE_34).toBe(15);
-    expect(GENERATOR_VERSION).toBe(22); // lot 58 (Track) : les familles de blocs nouveaux (effets, route bombée, 45°, tube de glace, mur roulable) ; lot V2 (Track) : rythmes, fiches de biomes, motif « boost → longue ligne droite → virage serré » plafonné ; lot V1 (plateforme) : le sac de thèmes (les circuits de la v19 ne changent que par leur thème) ; lot G1 : la v19 a les circuits de la v18 (identité des thèmes, lot 49), seules les médailles changent ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
+    expect(GENERATOR_VERSION).toBe(23); // lot 57b (Track) : les sauts et les transitions de la grammaire du lot 57 ; lot 58 (Track) : les familles de blocs nouveaux (effets, route bombée, 45°, tube de glace, mur roulable) ; lot V2 (Track) : rythmes, fiches de biomes, motif « boost → longue ligne droite → virage serré » plafonné ; lot V1 (plateforme) : le sac de thèmes (les circuits de la v19 ne changent que par leur thème) ; lot G1 : la v19 a les circuits de la v18 (identité des thèmes, lot 49), seules les médailles changent ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
     expect(generatorVersionOf(PREMIER_JOUR)).toBe(15);
     expect(generatorVersionOf(parseDay("2026-10-26")!)).toBe(15);
     expect(dailyTrackId(parseDay("2026-10-26")!)).toBe("jour-2026-10-26-g15");
@@ -134,7 +134,7 @@ describe("générateur v16 : la règle tient sur les circuits du jour d'après l
       const tokens = c.spec.split(" ");
       for (let i = 1; i < tokens.length - 1; i++) {
         const b = c.track.blocks[i]!;
-        if (!isCurve(b.kind) || b.cuve || b.banked || b.open) continue;
+        if (!isCurve(b.kind) || b.cuve || b.banked || b.open || b.ramp) continue; // lot 57b : un virage-tremplin (`/k`) garde ses rebords, comme la rampe `K`
         const a = approachAfter(tokens.slice(0, i));
         if (!(brakingDeficit(a, tokens[i]!) > -Infinity && (a.boosted || Math.max(a.peak, a.v) > FAST_APPROACH))) continue;
         if (c.track.blocks[i - 1]!.kind === "gap") continue;

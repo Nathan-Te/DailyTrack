@@ -32,3 +32,4 @@ export * from "./variete";
 export * from "./grammaire";
 export * from "./blocs";
 export * from "./sautsClasse";
+export * from "./technicite";

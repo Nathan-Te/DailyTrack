@@ -6,6 +6,9 @@ import { THEMES, type Theme, type ThemeName } from "./themes";
 // (palettes, noms, thème du jour) ; ces tables ne servent qu'au générateur (fil de travail) et aux tests. Changer un thème à partir d'une version = une
 // entrée ici, jamais une valeur de `THEMES` (les jours d'avant la bascule gardent leur thème au bit près).
 
+/** Lot 57b : la première version du générateur qui tire les sauts et les transitions de la grammaire du lot 57 (`grammaire.ts`, `GRAMMAIRE_V23`). */
+export const GENERATOR_GRAMMAIRE = 23;
+
 /** Figures d'herbe de course (lot 48, propres à la Campagne, générateur v17). */
 export const TURF_FIGURES = ["ample-herbe", "chicane-herbe", "droite-herbe"] as const;
 
@@ -126,6 +129,49 @@ export const BLOCS_VEDETTES_V22: Readonly<Partial<Record<ThemeName, readonly str
   banquise: ["tube-glace"],
 };
 
+/**
+ * Lot 57b (générateur v23) — **les sauts et les transitions de la grammaire du lot 57**, par thème, dans l'ordre de leur tour : le circuit d'apparition `k` du thème prend
+ * `sauts[k mod n]` et `transitions[k mod m]` (comme les familles de blocs du lot 58 : deux circuits consécutifs n'ont pas le même saut). Chaque circuit a un saut ; sa transition
+ * tient lieu d'une technique quand le budget de durée le permet. Chaque nom est une figure `grammaire` dont `only` contient le thème (`test/grammaire23.test.ts`).
+ * Les poids viennent des fiches (lot 49), du catalogue du lot 57 et de la demande de Nathan (08/11/2026) : Canyon — contrebas, vers plus haut, double saut ; Rallye — appels sur
+ * crête, réceptions en virage ; Stade — biais, réception dans un relevé, dans un virage ; Banquise — réception en glisse ; Col alpin — contrebas dans les descentes, virages en pente,
+ * S relevé en descente ; Campagne — appels sur crête, réception sur l'herbe de course, changement de revêtement en appui ; Ville — entre les rues (contrebas, chicane) ; Nuit — biais et angle.
+ * Un saut « droite → tremplin → axe » ne se pose qu'un par circuit (`fauteSauts`) : les thèmes dont la signature en est un (Rallye, Canyon) tirent en priorité ceux qui n'en sont pas.
+ */
+export const GRAMMAIRE_V23: Readonly<Record<ThemeName, { sauts: readonly string[]; transitions: readonly string[]; vedettes: readonly string[] }>> = {
+  stade: { sauts: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle", "saut-step-up"], transitions: ["transition-devers", "transition-esse"], vedettes: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle"] },
+  rallye: { sauts: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"], transitions: ["transition-crete"], vedettes: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"] },
+  banquise: { sauts: ["saut-glisse"], transitions: ["transition-appui", "transition-esse"], vedettes: ["saut-glisse", "saut-glisse"] },
+  nuit: { sauts: ["saut-biais", "saut-angle", "saut-reception-relevee"], transitions: ["transition-devers", "transition-crete"], vedettes: ["saut-biais", "saut-angle", "saut-reception-relevee"] },
+  campagne: { sauts: ["saut-bosse", "saut-herbe", "saut-elan"], transitions: ["transition-crete", "transition-appui", "transition-pente", "transition-retrecissement"], vedettes: ["saut-bosse", "saut-herbe", "transition-pente", "saut-elan"] },
+  canyon: { sauts: ["saut-drop", "saut-step-up", "saut-angle", "saut-double"], transitions: ["transition-compression", "transition-crete"], vedettes: ["saut-drop", "saut-step-up", "saut-angle"] },
+  col: { sauts: ["saut-drop", "saut-courbe", "saut-step-up"], transitions: ["transition-pente", "transition-esse", "transition-compression", "transition-devers"], vedettes: ["saut-drop", "saut-courbe", "saut-step-up"] },
+  ville: { sauts: ["saut-drop", "saut-chicane", "saut-step-up"], transitions: ["transition-retrecissement", "transition-devers"], vedettes: ["saut-drop", "saut-chicane", "saut-step-up"] },
+};
+
+/** Les éléments de `b` glissés entre ceux de `a`, à intervalles réguliers (deux apparitions de suite ne tombent jamais sur le même, tant que `b` n'a pas deux fois le même nom de suite). */
+function entrelacer(a: readonly string[], b: readonly string[]): string[] {
+  const out: string[] = [];
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    if (i < a.length) out.push(a[i]!);
+    if (i < b.length) out.push(b[i]!);
+  }
+  return out;
+}
+
+/** Lot 57b (v23) : le thème tel que la v23 le complète — la grammaire, et ce qu'elle remplace (la voiture fragile du Rallye, la falaise du Canyon : voir `GRAMMAIRE_V23`, README du lot 57b). */
+function themeV23(t: Theme): Theme {
+  const g = GRAMMAIRE_V23[t.name];
+  // Rallye : sa signature (le saut sur la terre) est déjà un saut « droite → tremplin → axe », et la voiture fragile en pose un autre : il n'y a plus de place pour elle (un seul par circuit).
+  // Canyon : la falaise (vedette) est un saut « droite → tremplin → axe » comme sa signature (la paroi et le long saut) : elle sort de ses vedettes.
+  // Les vedettes (une par circuit, à tour de rôle) : celles du thème, entrelacées avec des sauts de la grammaire (un saut de la grammaire en vedette remplace la vedette d'avant : il ne coûte rien en durée).
+  const figures = { ...t.figures, sauts: g.sauts, transitions: g.transitions, ...(t.figures.vedettes ? { vedettes: entrelacer(t.figures.vedettes, g.vedettes) } : {}) };
+  if (t.name === "rallye") delete figures.blocs;
+  if (t.name === "canyon") figures.vedettes = entrelacer(t.figures.vedettes!.filter((v) => v !== "saut-falaise"), g.vedettes);
+  return { ...t, figures };
+}
+
 /** Le thème tel que le générateur `generator` le connaît (lot 48 : la Campagne roule sur l'herbe de course à partir de la v17 ; lot 49 : les fiches à partir de la v18 ; lot V2 : la fiche du biome à partir de la v21 ; lot 58 : les blocs nouveaux à partir de la v22). */
 export function themeOfVersion(theme: Theme, generator: number): Theme {
   const changes = generator >= 17 ? THEMES_48[theme.name] : undefined;
@@ -138,6 +184,6 @@ export function themeOfVersion(theme: Theme, generator: number): Theme {
   const t21 = v21 ? { ...t49, ...v21.theme, figures: { ...t49.figures, favor: [...t49.figures.favor, ...(v21.favor ?? [])], ...(v21.aussi ? { aussi: v21.aussi } : {}) } } : t49;
   const blocs = generator >= 22 ? BLOCS_V22[t.name] : undefined;
   const vedettes = generator >= 22 ? BLOCS_VEDETTES_V22[t.name] : undefined;
-  if (vedettes) return { ...t21, figures: { ...t21.figures, vedettes: [...(t21.figures.vedettes ?? []), ...vedettes] } };
-  return blocs ? { ...t21, figures: { ...t21.figures, blocs } } : t21;
+  const t22 = vedettes ? { ...t21, figures: { ...t21.figures, vedettes: [...(t21.figures.vedettes ?? []), ...vedettes] } } : blocs ? { ...t21, figures: { ...t21.figures, blocs } } : t21;
+  return generator >= GENERATOR_GRAMMAIRE ? themeV23(t22) : t22;
 }

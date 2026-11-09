@@ -87,8 +87,10 @@ describe("bibliothèque de figures", () => {
   });
 
   it("offre au moins deux sens (miroir) et plusieurs variantes pour la plupart des figures", () => {
-    const withVariants = FIGURES.filter((f) => f.variants >= 2).length;
-    expect(withVariants).toBeGreaterThanOrEqual(FIGURES.length - 3);
+    // Lot 57b : les sauts et les transitions de la grammaire (lot 57) gardent les variantes de leurs prototypes (plusieurs n'en ont qu'une) : on compte les autres.
+    const bibliotheque = FIGURES.filter((f) => !f.grammaire);
+    const withVariants = bibliotheque.filter((f) => f.variants >= 2).length;
+    expect(withVariants).toBeGreaterThanOrEqual(bibliotheque.length - 3);
     const t = buildFigure(figureByName("slalom-route")!, true, "n", 0)!;
     const m = buildFigure(figureByName("slalom-route")!, false, "n", 0)!;
     expect(t).not.toEqual(m);
@@ -259,7 +261,7 @@ describe("composition d'un circuit par figures", () => {
         } else run = 0;
         expect(run, spec).toBeLessThanOrEqual(1);
       }
-      expect(tight, spec).toBeLessThanOrEqual(theme === "ville" ? 4 : 2); // Ville : angles droits (lot 22)
+      expect(tight, spec).toBeLessThanOrEqual(theme === "ville" || theme === "canyon" ? 4 : 2); // Ville : angles droits (lot 22) ; Canyon : jusqu'à quatre virages serrés (lot V2, v21 : `maxTight` de sa fiche)
       // Lot 34 (v16) : les droites de freinage ajoutées derrière une portion rapide s'ajoutent au plafond.
       expect(longestPlainStraight(spec.split(" ")), spec).toBeLessThanOrEqual(MAX_PLAIN_STRAIGHT + (generatorVersionOf(day) >= 16 ? MAX_BRAKING_ADD : 0));
     }
@@ -328,7 +330,7 @@ describe("rotation par jour (sans générer les jours précédents)", () => {
       const k = themeOccurrence(day, theme.name);
       const restDay = v18 ? k + Math.floor(k / (theme.figures.vedettes?.length ?? 3)) : day;
       // Lot 58 (v22) : la famille de blocs nouveaux exigée du thème (`blocs`) n'est jamais au repos non plus.
-      const exempt = [SIGNATURE_FIGURE[theme.signature], ...(theme.figures.require ?? []), ...(v18 ? [...(theme.figures.requireAlso ?? []), vedetteOf(theme, k)] : []), ...(theme.figures.blocs ?? [])];
+      const exempt = [SIGNATURE_FIGURE[theme.signature], ...(theme.figures.require ?? []), ...(v18 ? [...(theme.figures.requireAlso ?? []), vedetteOf(theme, k)] : []), ...(theme.figures.blocs ?? []), ...(theme.figures.sauts ?? []), ...(theme.figures.transitions ?? [])]; // lot 57b : les sauts et les transitions de la grammaire non plus (à leur tour)
       for (const f of c.figures) {
         const fig = figureByName(f.name)!;
         if (isRested(f.name, restDay) && !(v18 && (fig.braking || fig.category === "rapide" || fig.turbo))) expect(exempt, `jour ${day} : ${f.name}`).toContain(f.name);
