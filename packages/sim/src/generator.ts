@@ -447,7 +447,7 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
     const fitting = pick((f) => figureSeconds(f) <= room);
     if (fitting) add(fitting);
     else if (chosen.length < FIGURES_MIN) {
-      const pool_ = pool.filter(allowed).sort((a, b) => figureSeconds(a) - figureSeconds(b));
+      const pool_ = pool.filter((f) => allowed(f)).sort((a, b) => figureSeconds(a) - figureSeconds(b));
       if (!add(pool_[0] ?? null)) break;
     } else break;
   }
