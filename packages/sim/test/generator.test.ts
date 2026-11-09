@@ -21,6 +21,7 @@ import {
   formatDay,
   generatorVersionOf,
   GENERATOR_RYTHMES,
+  MAX_ATTEMPTS_23,
   medalFor,
   medalsFor,
   paletteForDay,
@@ -156,8 +157,8 @@ describe("circuit du jour : construction", () => {
     const attempts = DAYS.map((d) => circuit(d).attempt);
     expect(attempts.some((a) => a > 0)).toBe(true);
     // Lot V1 (v20) : avec le sac de thèmes, la Banquise du 02/12/2026 demande 51 tentatives (le budget de la v20 est de 120, `MAX_ATTEMPTS_SAC`) ; avant, aucun jour de la fenêtre ne passait 25.
-    // Lot 57b (v23) : les 60 premières tentatives exigent la grammaire ; un jour où aucune ne tient reprend les graines du début sans rien exiger (`TENTATIVES_GRAMMAIRE`), donc passe 60.
-    expect(Math.max(...attempts)).toBeLessThan(120);
+    // Lot 57b (v23) : les 120 premières tentatives exigent la grammaire, les 60 suivantes une transition seule, puis le jour reprend les graines du début sans rien exiger : un jour difficile passe 120 (mesuré : 183 pour un jour de cette fenêtre).
+    expect(Math.max(...attempts)).toBeLessThan(MAX_ATTEMPTS_23);
     // composeSpec est lui-même déterministe et peut échouer proprement (null) sans lever d'erreur.
     expect(composeSpec(JOUR_TEST, 0)).toBe(composeSpec(JOUR_TEST, 0));
   });

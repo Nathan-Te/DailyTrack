@@ -49,7 +49,7 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     label: "Saut en biais",
     off: 0.6,
     variants: 2,
-    themes: ["stade", "nuit"],
+    themes: ["stade", "nuit", "banquise"],
     technicite: 3,
     parties: { approche: "descente", appel: "devers", vol: "tournant", reception: ["decalee", "basse"], sortie: "droite", vitesse: "elan" },
     // La route s'élargit, penche vers un côté, et la rampe aussi : on décolle de travers (roulis, un peu de dérive) ; variante 0 : réception en
@@ -73,7 +73,7 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     label: "Saut dans un virage",
     off: 1.0,
     variants: 2,
-    themes: ["stade", "rallye", "col"],
+    themes: ["stade", "rallye", "col", "banquise"],
     technicite: 3,
     parties: { approche: "droite", appel: "virage", vol: "tournant", reception: ["decalee", "basse"], sortie: "droite", vitesse: "elan" },
     // L'appel est lui-même en courbe : on décolle en tournant et on retombe décalé sur une route large ; variante 1 : chute de deux niveaux
@@ -85,7 +85,7 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     label: "Réception dans un virage relevé",
     off: 0.8,
     variants: 2,
-    themes: ["stade", "nuit", "rallye"],
+    themes: ["stade", "nuit", "rallye", "banquise"],
     technicite: 2,
     parties: { approche: "virage", appel: "plat", vol: "axe", reception: ["basse", "virage"], sortie: "droite", vitesse: "elan" },
     // Élan d'un virage, rampe, et on retombe au début d'un virage relevé : la pente aide à tenir la corde dès le contact.
@@ -212,7 +212,7 @@ export const TRANSITIONS_LOT57: readonly ElementGrammaire[] = [
     category: "technique",
     off: 0.3,
     variants: 1,
-    themes: ["col", "canyon"],
+    themes: ["col", "canyon", "rallye", "stade", "ville"],
     technicite: 1,
     // Le virage commence au creux : la voiture écrase ses ressorts et tient mieux ; on peut y entrer plus vite.
     build: (c) => ["S", "D", "D", `${c.L}2/+`, "U", "S"],
@@ -223,7 +223,7 @@ export const TRANSITIONS_LOT57: readonly ElementGrammaire[] = [
     category: "technique",
     off: 0.6,
     variants: 2,
-    themes: ["col", "nuit", "stade", "ville"],
+    themes: ["col", "nuit", "stade", "ville", "rallye", "canyon"],
     technicite: 1,
     // La route penche peu à peu (un bloc pour s'incliner, un pour se redresser) : vers l'intérieur du virage qui suit (variante 0, elle aide) ou
     // vers l'extérieur (variante 1, le contre-dévers pousse dehors).
@@ -248,7 +248,7 @@ export const TRANSITIONS_LOT57: readonly ElementGrammaire[] = [
     variants: 1,
     relief: true,
     banked: true,
-    themes: ["col", "stade", "banquise"],
+    themes: ["col", "stade", "banquise", "canyon"],
     technicite: 2,
     // Deux virages relevés qui descendent : le relevé change de côté pendant que la route plonge.
     build: (c) => ["S", "D", `${c.L}2/b-`, `${c.R}2/b-`, "D", "S"],

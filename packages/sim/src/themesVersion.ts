@@ -139,14 +139,14 @@ export const BLOCS_VEDETTES_V22: Readonly<Partial<Record<ThemeName, readonly str
  * Un saut « droite → tremplin → axe » ne se pose qu'un par circuit (`fauteSauts`) : les thèmes dont la signature en est un (Rallye, Canyon) tirent en priorité ceux qui n'en sont pas.
  */
 export const GRAMMAIRE_V23: Readonly<Record<ThemeName, { sauts: readonly string[]; transitions: readonly string[]; vedettes: readonly string[] }>> = {
-  stade: { sauts: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle", "saut-step-up"], transitions: ["transition-devers", "transition-esse"], vedettes: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle"] },
-  rallye: { sauts: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"], transitions: ["transition-crete"], vedettes: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"] },
-  banquise: { sauts: ["saut-glisse"], transitions: ["transition-appui", "transition-esse"], vedettes: ["saut-glisse", "saut-glisse"] },
+  stade: { sauts: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle", "saut-step-up"], transitions: ["transition-devers", "transition-esse", "transition-compression"], vedettes: ["saut-biais", "saut-reception-relevee", "saut-courbe", "saut-angle"] },
+  rallye: { sauts: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"], transitions: ["transition-crete", "transition-devers", "transition-compression"], vedettes: ["saut-bosse", "saut-courbe", "saut-reception-relevee", "saut-herbe"] },
+  banquise: { sauts: ["saut-glisse", "saut-courbe", "saut-biais", "saut-reception-relevee"], transitions: ["transition-appui", "transition-esse"], vedettes: ["saut-glisse", "saut-courbe", "saut-biais"] },
   nuit: { sauts: ["saut-biais", "saut-angle", "saut-reception-relevee"], transitions: ["transition-devers", "transition-crete"], vedettes: ["saut-biais", "saut-angle", "saut-reception-relevee"] },
   campagne: { sauts: ["saut-bosse", "saut-herbe", "saut-elan"], transitions: ["transition-crete", "transition-appui", "transition-pente", "transition-retrecissement"], vedettes: ["saut-bosse", "saut-herbe", "transition-pente", "saut-elan"] },
-  canyon: { sauts: ["saut-drop", "saut-step-up", "saut-angle", "saut-double"], transitions: ["transition-compression", "transition-crete"], vedettes: ["saut-drop", "saut-step-up", "saut-angle"] },
+  canyon: { sauts: ["saut-drop", "saut-step-up", "saut-angle", "saut-double"], transitions: ["transition-compression", "transition-crete", "transition-devers", "transition-esse"], vedettes: ["saut-drop", "saut-step-up", "saut-angle"] },
   col: { sauts: ["saut-drop", "saut-courbe", "saut-step-up"], transitions: ["transition-pente", "transition-esse", "transition-compression", "transition-devers"], vedettes: ["saut-drop", "saut-courbe", "saut-step-up"] },
-  ville: { sauts: ["saut-drop", "saut-chicane", "saut-step-up"], transitions: ["transition-retrecissement", "transition-devers"], vedettes: ["saut-drop", "saut-chicane", "saut-step-up"] },
+  ville: { sauts: ["saut-drop", "saut-chicane", "saut-step-up"], transitions: ["transition-retrecissement", "transition-devers", "transition-compression"], vedettes: ["saut-drop", "saut-chicane", "saut-step-up"] },
 };
 
 /** Les éléments de `b` glissés entre ceux de `a`, à intervalles réguliers (deux apparitions de suite ne tombent jamais sur le même, tant que `b` n'a pas deux fois le même nom de suite). */

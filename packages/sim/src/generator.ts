@@ -438,7 +438,7 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   // Lot 49 (v18) : la vedette tient lieu d'une des deux techniques (elle est le moment fort du thème ; sans cela le circuit sort trop long).
   // Lot 57b (v23) : la vedette ne tient lieu d'une technique que si elle n'en est pas une (sinon un circuit dont la vedette est la seule technique n'en avait qu'une).
   const vedetteTechnique = regles23 && !!vedette && figureByName(vedette)?.category === "technique";
-  const minTechniques = vedette && !vedetteTechnique && false ? MIN_TECHNIQUES - 1 : vedette ? MIN_TECHNIQUES - 1 : MIN_TECHNIQUES;
+  const minTechniques = vedette && !vedetteTechnique ? MIN_TECHNIQUES - 1 : MIN_TECHNIQUES;
   while (count_((f) => f.category === "technique") < minTechniques) if (!add(pick((f) => f.category === "technique"))) return null;
   // Le reste, au poids : jusqu'à cinq figures quoi qu'il arrive (les plus courtes si le budget est dépassé), puis tant que le budget le permet.
   const total = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
@@ -491,6 +491,14 @@ export function themeOccurrence(day: number, theme: ThemeName, generator = gener
     occurrences.set(key, k);
   }
   return k;
+}
+/**
+ * Lot 57b (v23) : la vedette d'une tentative. Après les `TENTATIVES_GRAMMAIRE` premières tentatives d'un jour, elle redevient l'une de celles d'avant la grammaire (la rotation du thème sans
+ * les sauts de la grammaire) — certains jours (un Nuit de 2028, mesuré) n'ont aucun circuit avec la vedette de la grammaire qu'ils reçoivent ; les vedettes validées au lot 49 en ont toujours un.
+ */
+export function vedetteDeLaTentative(theme: Theme, occurrence: number, attempt: number, generator: number): string | null {
+  const ancienne = generator >= GENERATOR_GRAMMAIRE && attempt >= TENTATIVES_GRAMMAIRE;
+  return vedetteOf(ancienne ? { ...theme, figures: { ...theme.figures, vedettes: theme.figures.vedettes?.filter((v) => !figureByName(v)?.grammaire) } } : theme, occurrence);
 }
 /** La vedette d'une apparition du thème (lot 49), ou `null` pour un thème sans vedettes. */
 export function vedetteOf(theme: Theme, occurrence: number): string | null {
@@ -675,7 +683,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   // Lot 49 (v18) : le numéro d'apparition du thème, sa vedette et le sens de l'ordre des figures ; un thème sans super turbo n'en pose aucun.
   const rules49 = generator >= 18;
   const occurrence = rules49 ? themeOccurrence(day, theme.name, generator) : 0;
-  const vedette = rules49 ? vedetteOf(theme, occurrence) : null;
+  const vedette = rules49 ? vedetteDeLaTentative(theme, occurrence, attempt, generator) : null;
   const order49: Order49 | null = rules49 ? { theme: theme.name, even: occurrence % 2 === 0 } : null;
   const noTurbo = rules49 && theme.turboChance === 0;
   // Lot V2 (v21) : le rythme du jour, les poids (rythme puis biome), le motif « boost → longue ligne droite → virage serré » (un jour rapide seulement, une fois) et la

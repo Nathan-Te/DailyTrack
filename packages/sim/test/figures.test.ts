@@ -27,6 +27,7 @@ import {
   themeOccurrence,
   themeOfVersion,
   vedetteOf,
+  vedetteDeLaTentative,
   parseTrack,
   reach,
   reliefOf,
@@ -221,7 +222,8 @@ describe("composition d'un circuit par figures", () => {
       const c = circuit(day);
       const figs = c.figures.map((f) => figureByName(f.name)!);
       const theme = themeOfVersion(THEMES[c.theme], generatorVersionOf(day));
-      const vedette = generatorVersionOf(day) >= 18 ? vedetteOf(theme, themeOccurrence(day, c.theme)) : null;
+      // Lot 57b (v23) : la vedette de la tentative retenue (après 120 tentatives, une vedette d'avant la grammaire).
+      const vedette = generatorVersionOf(day) >= 18 ? vedetteDeLaTentative(theme, themeOccurrence(day, c.theme), c.attempt, generatorVersionOf(day)) : null;
       if (vedette) expect(figs.map((f) => f.name), c.date).toContain(vedette);
       expect(figs.filter((f) => f.category === "technique").length + (vedette && figureByName(vedette)!.category !== "technique" ? 1 : 0), `${c.date} : ${figs.map((f) => f.name).join(" ")}`).toBeGreaterThanOrEqual(2);
       expect(figs.some(isFast), c.date).toBe(true);

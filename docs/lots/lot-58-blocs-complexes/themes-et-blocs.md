@@ -1,6 +1,8 @@
 # Track — les thèmes et les blocs du jeu
 
-État du code à la fin du lot 58 : **générateur v22**, simulation v14. Relevé dans le code (`themes.ts`, `themesVersion.ts`, `figures.ts`, `track.ts`), pas recopié de mémoire : à refaire si le générateur change (une nouvelle version, un thème, une figure).
+État du code à la fin du **lot 57b** : **générateur v23**, simulation v14. Relevé dans le code (`themes.ts`, `themesVersion.ts`, `figures.ts`, `grammaire.ts`, `track.ts`), pas recopié de mémoire : à refaire si le générateur change (une nouvelle version, un thème, une figure). (Le fichier vit encore dans le dossier du lot 58, qui l'a créé ; le lot 57b l'a mis à jour.)
+
+**Lot 57b (v23)** : les sauts et les transitions de la grammaire du lot 57 sont des figures du générateur — un saut qui demande un geste et, si la durée le permet, une transition dans (presque) chaque circuit ; au plus un saut « ligne droite → tremplin → axe » par circuit ; jamais deux sauts de même combinaison ; voir « Sauts et transitions de la grammaire » dans chaque thème et § 3.
 
 Un circuit du jour = 5 à 7 **figures** (de courtes suites de blocs avec une intention) posées à la suite, sur le **thème** du jour (sac de thèmes : jamais deux jours de suite le même), validé par le pilote automatique (30–40 s). Le thème décide des figures (favorites, vedettes, interdites, familles nouvelles), des revêtements, des largeurs, du relief et des bas-côtés.
 
@@ -23,6 +25,9 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Tracé** : 60 % des virages larges deviennent amples ; relief : 1–3 collines, 60 % raides.
 - **Vedettes** (une par circuit, à tour de rôle) : Tremplin en sortie de relevé (`tremplin-releve`), Réception dans un virage (`reception-virage`), Chicane avant le tremplin (`chicane-tremplin`), Turbo, saut, virage relevé (`turbo-saut-releve`).
 - **Blocs nouveaux du lot 58** (un par circuit, à tour de rôle) : Direction bloquée (`effet-direction`), Freins coupés (`effet-freins`), Régulateur (`effet-regulateur`), Route bombée (`route-bombee`), Virages relevés à 45° (`releve-fort`), Mur roulable (`mur-roulable`).
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Saut en biais (`saut-biais`), Réception dans un virage relevé (`saut-reception-relevee`), Saut dans un virage (`saut-courbe`), Réception en angle (`saut-angle`), Saut vers plus haut (`saut-step-up`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Dévers qui naît et meurt (`transition-devers`), S relevé en descente (`transition-esse`).
+- **Vedettes de la v23** : `tremplin-releve`, `saut-biais`, `reception-virage`, `saut-reception-relevee`, `chicane-tremplin`, `saut-courbe`, `turbo-saut-releve`, `saut-angle`.
 - **Favorites** (poids ×4) : Turbo puis grande courbe relevée (`turbo-courbe`), Saut vers un virage relevé (`saut-releve`), Saut en sortie de paroi (`saut-paroi`), Saut et virage (`saut-virage`), Descente, cuve, saut (`descente-cuve-saut`), Plaque puis virage (`plaque-virage`), Turbos enchaînés (`chaine-turbo`), Relevé puis plat inverse (`releve-contre`), S relevé (`esse-relevee`).
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Épingle large sur terre (`epingle-terre`), Étranglement et virage sur terre (`etranglement-terre`), Saut sur la terre (`saut-terre`), Changement de revêtement (`changement-revetement`).
 
@@ -30,7 +35,10 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Tracé** : ligne droite libre de 3 blocs au plus ; les virages changent de sens ; relief : 2–3 collines, 50 % raides.
 - **Vedettes** (une par circuit, à tour de rôle) : Bosses en série sur la terre (`bosses-terre`), Demi-tour qui change de revêtement (`demi-tour-mixte`), Saut à l'élan, en sortie de virage (`saut-sortie-virage`).
 - **Toujours une de** : Épingle large sur terre (`epingle-terre`), Demi-tour large (`demi-tour-large`).
-- **Blocs nouveaux du lot 58** (un circuit sur deux) : Voiture fragile (`effet-fragile`).
+- **Blocs nouveaux du lot 58** : aucun en v23 (**la voiture fragile n'est plus tirée au Rallye** : sa signature, le saut sur la terre, est déjà un saut « droite → tremplin → axe », et la fragile en posait un autre ; elle revient si son saut devient technique).
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Appel sur une crête (`saut-bosse`), Saut dans un virage (`saut-courbe`), Réception dans un virage relevé (`saut-reception-relevee`), Réception sur l'herbe de course (`saut-herbe`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Crête qui allège (`transition-crete`).
+- **Vedettes de la v23** : `bosses-terre`, `saut-bosse`, `demi-tour-mixte`, `saut-courbe`, `saut-sortie-virage`, `saut-reception-relevee`, `saut-herbe`.
 - **Favorites** (poids ×4) : Saut sur la terre (`saut-terre`), Épingle large sur terre (`epingle-terre`), Demi-tour large (`demi-tour-large`), Changement de revêtement (`changement-revetement`), Saut (`saut-simple`), Virage aveugle en haut d'une montée (`virage-aveugle`), Crête puis virage (`crete-virage`), Plaque en haut d'une descente (`descente-plaque`), Virage en descente (`virage-descente`), Slalom (`slalom-route`), S serré-large (`s-serre-large`).
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Cuve (`cuve-droite`), Mur latéral (`mur-lateral`), Virage en cuve (`virage-cuve`), Saut dans une cuve (`saut-cuve`), Descente, cuve, saut (`descente-cuve-saut`), Saut en sortie de paroi (`saut-paroi`), Turbos enchaînés (`chaine-turbo`), Turbo puis épingle (`turbo-epingle`), Turbo puis grande courbe relevée (`turbo-courbe`), Turbo, saut, virage relevé (`turbo-saut-releve`).
 
@@ -38,6 +46,9 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Tracé** : 40 % des virages larges deviennent amples ; 1 virage serré au plus ; relief : 1–2 collines, 10 % raides.
 - **Vedettes** (une par circuit, à tour de rôle) : Saut vers la glace (`saut-glace`), Demi-tour qui passe sur la glace (`demi-tour-glace`), Slalom de glace (`slalom-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Tube de glace (`tube-glace`).
 - **Blocs nouveaux du lot 58** : en vedette : Tube de glace (`tube-glace`).
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Réception en glisse (`saut-glisse`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Changement de revêtement en appui (`transition-appui`), S relevé en descente (`transition-esse`).
+- **Vedettes de la v23** : `saut-glace`, `saut-glisse`, `demi-tour-glace`, `saut-glisse`, `slalom-glace`, `glace-coupe-virage`, `tube-glace`.
 - **Favorites** (poids ×4) : Chicane sur la glace (`chicane-glace`), Changement de revêtement (`changement-revetement`), S relevé (`esse-relevee`), Demi-tour large (`demi-tour-large`), Rétrécissement et virage (`pincement`), Slalom (`slalom-route`).
 - **Jamais** : Étranglement et virage sur terre (`etranglement-terre`), Saut sur la terre (`saut-terre`), Turbos enchaînés (`chaine-turbo`), Turbo puis épingle (`turbo-epingle`), Turbo puis grande courbe relevée (`turbo-courbe`), Turbo, saut, virage relevé (`turbo-saut-releve`).
 
@@ -45,6 +56,9 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Tracé** : relief : 2–3 collines, 60 % raides ; moteur coupé possible.
 - **Vedettes** (une par circuit, à tour de rôle) : Fil du rasoir (`fil-du-rasoir`), Tremplin en sortie de relevé (`tremplin-releve`), Réception dans un virage (`reception-virage`).
 - **Blocs nouveaux du lot 58** (un par circuit, à tour de rôle) : Route bombée (`route-bombee`), Direction bloquée (`effet-direction`).
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Saut en biais (`saut-biais`), Réception en angle (`saut-angle`), Réception dans un virage relevé (`saut-reception-relevee`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Dévers qui naît et meurt (`transition-devers`), Crête qui allège (`transition-crete`).
+- **Vedettes de la v23** : `fil-du-rasoir`, `saut-biais`, `tremplin-releve`, `saut-angle`, `reception-virage`, `saut-reception-relevee`.
 - **Favorites** (poids ×4) : Descente, cuve, saut (`descente-cuve-saut`), Saut en sortie de paroi (`saut-paroi`), Moteur coupé avant un virage (`coupe-virage`), Saut et virage (`saut-virage`), Double saut (`double-saut`), Virage aveugle en haut d'une montée (`virage-aveugle`), Virage en descente (`virage-descente`), Turbo puis épingle (`turbo-epingle`), Plaque puis épingle (`plaque-epingle`).
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Épingle large sur terre (`epingle-terre`), Étranglement et virage sur terre (`etranglement-terre`), Saut sur la terre (`saut-terre`), Changement de revêtement (`changement-revetement`).
 
@@ -54,13 +68,20 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Toujours une de** : Crête puis virage (`crete-virage`), Virage aveugle en haut d'une montée (`virage-aveugle`).
 - **Et toujours une de** : Virage ample en herbe (`ample-herbe`), Chicane herbe-route (`chicane-herbe`), Ligne droite d'herbe (`droite-herbe`).
 - **Blocs nouveaux du lot 58** : aucun.
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Appel sur une crête (`saut-bosse`), Réception sur l'herbe de course (`saut-herbe`), Saut à l'élan, sans freiner (`saut-elan`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Crête qui allège (`transition-crete`), Changement de revêtement en appui (`transition-appui`), Virages en montée et en descente (`transition-pente`), Rétrécissement sur une crête (`transition-retrecissement`).
+- **Vedettes de la v23** : `demi-tour-mixte`, `saut-bosse`, `saut-sortie-virage`, `saut-herbe`, `droite-herbe`, `transition-pente`, `ample-herbe`, `saut-elan`.
 - **Favorites** (poids ×4) : Étranglement et virage sur terre (`etranglement-terre`), Épingle large sur terre (`epingle-terre`), Changement de revêtement (`changement-revetement`), Virage aveugle en haut d'une montée (`virage-aveugle`), Crête puis virage (`crete-virage`), Virage en descente (`virage-descente`), Gros freinage (`freinage-epingle`), Rétrécissement et virage (`pincement`), Chicane herbe-route (`chicane-herbe`), Colline (`colline-douce`).
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Cuve (`cuve-droite`), Mur latéral (`mur-lateral`), Virage en cuve (`virage-cuve`), Saut dans une cuve (`saut-cuve`), Descente, cuve, saut (`descente-cuve-saut`), Saut en sortie de paroi (`saut-paroi`), Turbos enchaînés (`chaine-turbo`), Turbo puis épingle (`turbo-epingle`), Turbo puis grande courbe relevée (`turbo-courbe`), Turbo, saut, virage relevé (`turbo-saut-releve`).
 
 ### Canyon
+- *Lot 57b : la falaise (`saut-falaise`) n'est plus une vedette du Canyon (comme sa signature, la paroi et le long saut, c'est un saut « droite → tremplin → axe », et il n'en tient qu'un par circuit).*
 - **Tracé** : ligne droite libre de 3 blocs au plus ; 100 % des virages larges deviennent serrés ; 4 virages serrés au plus ; relief : 1–3 collines, 90 % raides.
 - **Vedettes** (une par circuit, à tour de rôle) : Saut de la falaise (`saut-falaise`), Réception dans un virage (`reception-virage`), Saut à l'élan, en sortie de virage (`saut-sortie-virage`).
 - **Blocs nouveaux du lot 58** (un par circuit, à tour de rôle) : Freins coupés (`effet-freins`), Virages relevés à 45° (`releve-fort`).
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Saut en contrebas, à l'élan (`saut-drop`), Saut vers plus haut (`saut-step-up`), Réception en angle (`saut-angle`), Double saut enchaîné (`saut-double`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Compression au creux (`transition-compression`), Crête qui allège (`transition-crete`).
+- **Vedettes de la v23** : `reception-virage`, `saut-drop`, `saut-sortie-virage`, `saut-step-up`, `saut-angle`.
 - **Favorites** (poids ×4) : Paroi rocheuse et long saut (`paroi-long-saut`), Demi-tour large (`demi-tour-large`), Crête puis virage (`crete-virage`), Virage aveugle en haut d'une montée (`virage-aveugle`), Colline raide (`colline-raide`), Virage en descente (`virage-descente`), S relevé (`esse-relevee`), Relevé puis plat inverse (`releve-contre`), S serré-large (`s-serre-large`), Rétrécissement et virage (`pincement`), Chicane d'angles droits (`chicane-angles`).
 - **Tire aussi** (propres à un autre thème) : Chicane d'angles droits (`chicane-angles`).
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Épingle large sur terre (`epingle-terre`), Étranglement et virage sur terre (`etranglement-terre`), Saut sur la terre (`saut-terre`), Changement de revêtement (`changement-revetement`), Cuve (`cuve-droite`).
@@ -69,6 +90,9 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Tracé** : 100 % des droites deviennent des pentes ; relief : 3–4 collines, 85 % raides.
 - **Vedettes** (une par circuit, à tour de rôle) : Virages relevés en descente (`devers-descente`), Demi-tour qui passe sur la glace (`demi-tour-glace`), Saut vers la glace (`saut-glace`).
 - **Blocs nouveaux du lot 58** : aucun.
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Saut en contrebas, à l'élan (`saut-drop`), Saut dans un virage (`saut-courbe`), Saut vers plus haut (`saut-step-up`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Virages en montée et en descente (`transition-pente`), S relevé en descente (`transition-esse`), Compression au creux (`transition-compression`), Dévers qui naît et meurt (`transition-devers`).
+- **Vedettes de la v23** : `devers-descente`, `saut-drop`, `demi-tour-glace`, `saut-courbe`, `saut-glace`, `saut-step-up`.
 - **Favorites** (poids ×4) : Descente en lacets (`lacets`), Demi-tour large (`demi-tour-large`), Virage en descente (`virage-descente`), Plaque en haut d'une descente (`descente-plaque`), Colline raide (`colline-raide`), Relevé puis plat inverse (`releve-contre`), S relevé (`esse-relevee`), Plaque puis épingle (`plaque-epingle`), Gros freinage (`freinage-epingle`), Virage aveugle en haut d'une montée (`virage-aveugle`).
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Épingle large sur terre (`epingle-terre`), Étranglement et virage sur terre (`etranglement-terre`), Saut sur la terre (`saut-terre`), Changement de revêtement (`changement-revetement`), Cuve (`cuve-droite`), Mur latéral (`mur-lateral`), Virage en cuve (`virage-cuve`), Saut dans une cuve (`saut-cuve`), Descente, cuve, saut (`descente-cuve-saut`), Saut en sortie de paroi (`saut-paroi`).
 
@@ -77,6 +101,9 @@ Pourcentages : la chance qu'un circuit du thème en ait (sauts, cuves, sections 
 - **Vedettes** (une par circuit, à tour de rôle) : Rues en escalier (`rues-en-escalier`), Chicane avant le tremplin (`chicane-tremplin`), Slalom (`slalom-route`), Demi-tour urbain (`u-urbain`).
 - **Toujours une de** : Demi-tour urbain (`u-urbain`), Gros freinage (`freinage-epingle`), Plaque puis épingle (`plaque-epingle`), Turbo puis épingle (`turbo-epingle`), S serré-large (`s-serre-large`).
 - **Blocs nouveaux du lot 58** (un par circuit, à tour de rôle) : Régulateur (`effet-regulateur`), Direction bloquée (`effet-direction`).
+- **Sauts de la grammaire du lot 57b** (un par circuit, à tour de rôle) : Saut en contrebas, à l'élan (`saut-drop`), Saut, puis chicane (`saut-chicane`), Saut vers plus haut (`saut-step-up`).
+- **Transitions** (à tour de rôle, si le circuit tient en durée) : Rétrécissement sur une crête (`transition-retrecissement`), Dévers qui naît et meurt (`transition-devers`).
+- **Vedettes de la v23** : `rues-en-escalier`, `saut-drop`, `chicane-tremplin`, `saut-chicane`, `slalom-route`, `saut-step-up`, `u-urbain`.
 - **Favorites** (poids ×4) : Chicane d'angles droits (`chicane-angles`), Gros freinage (`freinage-epingle`), Plaque puis épingle (`plaque-epingle`), Turbo puis épingle (`turbo-epingle`), S serré-large (`s-serre-large`), Rétrécissement et virage (`pincement`), Virage en descente (`virage-descente`).
 - **Jamais** : Slalom de glace (`slalom-glace`), Chicane sur la glace (`chicane-glace`), Glace, moteur coupé, virage (`glace-coupe-virage`), Épingle large sur terre (`epingle-terre`), Étranglement et virage sur terre (`etranglement-terre`), Saut sur la terre (`saut-terre`), Changement de revêtement (`changement-revetement`), Cuve (`cuve-droite`), Mur latéral (`mur-lateral`), Virage en cuve (`virage-cuve`), Saut dans une cuve (`saut-cuve`), Descente, cuve, saut (`descente-cuve-saut`), Saut en sortie de paroi (`saut-paroi`), Saut vers une section étroite (`saut-etroit`).
 
@@ -134,7 +161,7 @@ Repères : `@start` départ, `@cp` point de contrôle, `@finish` arrivée.
 
 ## 3. Les figures du générateur
 
-67 figures. **Thèmes** : « tous » sauf mention (une figure propre à des thèmes ne sort que chez eux) ; les interdits de chaque thème sont au § 1. **Depuis** : la première version du générateur qui la tire (sans mention : depuis toujours).
+86 figures (67 de la v22 et les 19 de la grammaire du lot 57b). **Thèmes** : « tous » sauf mention (une figure propre à des thèmes ne sort que chez eux) ; les interdits de chaque thème sont au § 1. **Depuis** : la première version du générateur qui la tire (sans mention : depuis toujours).
 
 ### Techniques (32)
 | figure | ce qu'on y fait | thèmes | depuis |
@@ -194,6 +221,29 @@ Repères : `@start` départ, `@cp` point de contrôle, `@finish` arrivée.
 | **Saut en sortie de paroi** `saut-paroi` | Le mur latéral donne de la vitesse, et le saut part tout de suite après : sortir de la paroi bien aligné. | tous | — |
 | **Voiture fragile** `effet-fragile` — *bloc nouveau* | Voiture fragile : un saut et des bosses à poser bien à plat (une réception brutale la casse), puis la remise à zéro. | Rallye | v22 |
 
+### Sauts et transitions de la grammaire (19, lot 57b)
+| figure | ce qu'on y fait | thèmes | depuis |
+|---|---|---|---|
+| **Saut en biais** `saut-biais` | La route s'élargit et penche, la rampe aussi : on décolle de travers et on retombe décalé, à rattraper en figeant la caisse. | Stade, Nuit | v23 |
+| **Réception en angle** `saut-angle` | On décolle à la fin d'un virage ample : la caisse tourne encore en l'air, et la piste d'arrivée tourne du même côté. | Stade, Nuit, Canyon | v23 |
+| **Saut dans un virage** `saut-courbe` | L'appel est lui-même en courbe : on décolle en tournant et on retombe décalé sur une route large. | Stade, Rallye, Col alpin | v23 |
+| **Réception dans un virage relevé** `saut-reception-relevee` | Élan d'un virage, rampe, et réception au début d'un virage relevé : la pente aide à tenir la corde dès le contact. | Stade, Nuit, Rallye | v23 |
+| **Saut en contrebas, à l'élan** `saut-drop` | Deux niveaux plus bas, sans plaque : l'élan d'un virage (ou d'une descente) suffit ; on retombe loin et il faut freiner pour le virage qui suit. | Canyon, Col alpin, Ville | v23 |
+| **Saut vers plus haut** `saut-step-up` | Le bord d'en face est plus haut : il faut assez d'élan, celui d'une descente et d'une crête raide, ou d'une plaque. | Stade, Canyon, Col alpin, Ville | v23 |
+| **Saut à l'élan, sans freiner** `saut-elan` | Un vide au même niveau sans plaque : la sortie de chicane doit être propre et le pied au plancher ; freiner avant la rampe, c'est tomber court. | Rallye, Campagne | v23 |
+| **Double saut enchaîné** `saut-double` | Deux sauts enchaînés : on retombe sur la pente qui mène au second appel, une réception trop longue ou de travers le fait rater. | Canyon, Rallye | v23 |
+| **Appel sur une crête** `saut-bosse` | Pas de tremplin : c'est le haut d'une montée raide qui fait décoller, on retombe plus bas (parfois sur la terre). | Rallye, Campagne | v23 |
+| **Réception sur l'herbe de course** `saut-herbe` | On retombe sur l'herbe de course (ou la terre) et on tourne dessus : l'adhérence n'est plus celle de la route. | Campagne, Rallye | v23 |
+| **Saut, puis chicane** `saut-chicane` | Une chute de deux niveaux, puis une chicane ou un virage serré : freiner dès que les roues touchent. | Ville, Canyon, Rallye | v23 |
+| **Réception en glisse** `saut-glisse` | Décoller de travers ou en tournant et retomber sur la glace : la voiture glisse, on la laisse aller sans gaz. | Banquise | v23 |
+| **Crête qui allège** `transition-crete` | Le virage commence au sommet : la voiture est légère au moment de braquer, elle glisse si l'on entre trop vite. | Campagne, Rallye, Canyon, Nuit | v23 |
+| **Compression au creux** `transition-compression` | Le virage commence au creux : la voiture écrase ses ressorts et tient mieux, on peut y entrer plus vite. | Col alpin, Canyon | v23 |
+| **Dévers qui naît et meurt** `transition-devers` | La route penche peu à peu avant un virage : vers l'intérieur elle aide, vers l'extérieur (contre-dévers) elle pousse dehors. | Col alpin, Nuit, Stade, Ville | v23 |
+| **Virages en montée et en descente** `transition-pente` | Le virage lui-même monte ou descend : la pente naît et meurt avec l'arc, la voiture se charge et s'allège en tournant. | Col alpin, Campagne | v23 |
+| **S relevé en descente** `transition-esse` | Deux virages relevés qui descendent : le relevé change de côté pendant que la route plonge. | Col alpin, Stade, Banquise | v23 |
+| **Rétrécissement sur une crête** `transition-retrecissement` | La route se resserre en montant, et un virage serré attend derrière la crête. | Campagne, Ville | v23 |
+| **Changement de revêtement en appui** `transition-appui` | Un long virage dont la seconde moitié passe sur la glace ou l'herbe de course : lever le pied en appui. | Banquise, Campagne, Col alpin | v23 |
+
 ### Portions rapides (5)
 | figure | ce qu'on y fait | thèmes | depuis |
 |---|---|---|---|
@@ -230,5 +280,5 @@ Repères : `@start` départ, `@cp` point de contrôle, `@finish` arrivée.
 ## 4. Hors du générateur
 
 - **Prototypes du lot 58** (`?scenario=bloc-<nom>`, page `?scenario=blocs`) : Direction bloquée (`bloc-direction`), Freins coupés (`bloc-freins`), Régulateur (`bloc-regulateur`), Voiture fragile (`bloc-fragile`), Remise à zéro (`bloc-remise`), Route bombée (`bloc-bombee`), Virage relevé à 45° (`bloc-releve-fort`), Tube de glace (`bloc-tube`), Mur roulable (`bloc-mur`). Ce que le générateur en tire est au § 3 (figures « bloc nouveau »).
-- **Grammaire des sauts et des transitions du lot 57** (`?scenario=saut-<nom>`, `transition-<nom>`, page `?scenario=sauts`) — prototypes, **pas encore dans le générateur** : Saut en biais (`saut-biais`), Réception en angle (`saut-angle`), Saut dans un virage (`saut-courbe`), Réception dans un virage relevé (`saut-reception-relevee`), Saut en contrebas, à l'élan (`saut-drop`), Saut vers plus haut (`saut-step-up`), Saut à l'élan, sans freiner (`saut-elan`), Double saut enchaîné (`saut-double`), Appel sur une crête (`saut-bosse`), Réception sur l'herbe de course (`saut-herbe`), Saut, puis chicane (`saut-chicane`), Crête qui allège (`transition-crete`), Compression au creux (`transition-compression`), Dévers qui naît et meurt (`transition-devers`), Virages en montée et en descente (`transition-pente`), S relevé en descente (`transition-esse`), Rétrécissement sur une crête (`transition-retrecissement`), Changement de revêtement en appui (`transition-appui`).
+- **Grammaire des sauts et des transitions du lot 57** (`?scenario=saut-<nom>`, `transition-<nom>`, page `?scenario=sauts`) : **dans le générateur depuis la v23** (§ 3, « Sauts et transitions de la grammaire »).
 - **Écartés par Nathan** (retirés du code) : le propulseur, l'eau (lot 58) ; la boucle (lot 58b, mise de côté : commit `a8e6799`).
