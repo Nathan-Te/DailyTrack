@@ -3,6 +3,7 @@ import type { Bouclier } from "@cdj/rush-sim";
 import { piece } from "./cel";
 import { fusionner, placer, teindre } from "./formes";
 import { COULEURS } from "./palette";
+import { pieceDe } from "./modeles";
 
 // Les COMPÉTENCES à l'écran (lot BR5), en formes simples : la lame du tourbillon, le cercle d'atterrissage du bond (un cyan, JAMAIS rouge : le rouge est réservé au danger, y compris pour ce que le joueur annonce) et son onde de choc, le bouclier lancé, la
 // traînée du coup d'élan. **Rien ici ne touche à la simulation** : le rendu lit l'état (`Partie.c`, `Partie.boucliers`) et les événements.
@@ -142,7 +143,8 @@ export class BouclierVu {
   readonly groupe = new Group();
   private readonly pool: Group[] = [];
   constructor() {
-    const forme = fusionner([
+    // lot BR-A1 : le modèle du bouclier lancé (`modeles.ts`), sinon la forme procédurale
+    const forme = pieceDe("bouclier", "corps") ?? fusionner([
       teindre(new CylinderGeometry(0.5, 0.5, 0.1, 22), COULEURS.bouclier),
       teindre(placer(new TorusGeometry(0.5, 0.06, 6, 22), { rx: Math.PI / 2 }), COULEURS.armure),
       teindre(placer(new SphereGeometry(0.17, 10, 8), { y: 0.07 }), COULEURS.armure),

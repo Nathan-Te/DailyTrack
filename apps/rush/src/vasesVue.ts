@@ -4,11 +4,15 @@ import { M } from "@cdj/rush-sim/constantes";
 import { NB_GENRES_VASE } from "@cdj/rush-sim/niveau";
 import type { VaseVivant } from "@cdj/rush-sim";
 import { CALQUE_COQUE, coqueInstanciee, lisse, plat } from "./cel";
+import { forme } from "./acteurs";
 import { fusionner, placer, teindre } from "./formes";
+import { MODELE_VASE, modele } from "./modeles";
 import type { GenreEclat } from "./effets";
 
 // Les VASES (lot BR5), **en mètres** : des jarres, des tonneaux et de petites caisses posés en groupes de 4 à 12, qui cèdent d'un coup. **DA figée : des formes simples** (une jarre de terre cuite à col étroit, un tonneau cerclé, une petite caisse à lattes).
 // Trois tas instanciés (un par genre) : quelques appels de dessin pour des dizaines de vases. Quand l'un est brisé, ses voisins (à ~1,2 m) sursautent d'un petit coup et retombent : c'est le « retour » de la sensation, jamais lu par la simulation.
+// Lot BR-A1 : les vases sont des MODÈLES (`modeles.ts` : jarre, tonneau, caisse) et chacun a ses ÉCLATS modélisés (`eclat_1` … `eclat_4`, chacun à sa place sur le vase) : à la casse, ils jaillissent de leur place vers
+// l'extérieur, tournoient, rebondissent et s'enfoncent (`EclatsDeVases`, un tas instancié par forme d'éclat, éteint quand il est vide). Sans modèle, la forme procédurale et les seuls éclats en particules.
 
 const TERRE = 0xc9733e;
 const TERRE_CLAIRE = 0xe7a468;
@@ -53,6 +57,10 @@ export interface VasesVus {
   maj(vivants: readonly VaseVivant[], temps: number): void;
   /** Un vase vient de céder en (x, z) mètres : ses voisins à ~1,2 m sautent d'un petit coup, de plus en plus tard avec la distance. */
   secouer(x: number, z: number, temps: number): void;
+  /** Lot BR-A1 : un vase de `genre` cède en (x, z) mètres, frappé vers (dx, dz) : ses éclats modélisés jaillissent. Rend `false` sans modèle (les particules seules). */
+  briser(genre: number, x: number, z: number, dx: number, dz: number, temps: number): boolean;
+  /** Le nombre d'éclats modélisés en vol (essais). */
+  eclatsEnVol(): number;
   /** Le nombre d'instances posées par genre à la dernière image. */
   compte(): readonly number[];
   detruire(): void;
@@ -60,7 +68,9 @@ export interface VasesVus {
 
 export function monterVases(): VasesVus {
   const groupe = new Group();
-  const formes = [jarre(), tonneau(), caisse()];
+  const formes = [forme("jarre", "corps", jarre), forme("tonneau", "corps", tonneau), forme("caisse", "corps", caisse)];
+  const debris = new EclatsDeVases();
+  groupe.add(debris.groupe);
   const matieres: MeshToonMaterial[] = [];
   const coques: ShaderMaterial[] = [];
   const corps: InstancedMesh[] = [];
@@ -99,6 +109,7 @@ export function monterVases(): VasesVus {
   return {
     groupe,
     maj(vivants, temps) {
+      debris.maj(temps);
       derniers = vivants;
       compte.fill(0);
       for (const v of vivants) {
@@ -138,10 +149,150 @@ export function monterVases(): VasesVus {
         sursauts.set(v.id, temps + d * 0.06);
       }
     },
+    briser: (genre, x, z, dx, dz, temps) => debris.lancer(genre, x, z, dx, dz, temps),
+    eclatsEnVol: () => debris.enVol(),
     compte: () => compte,
     detruire() {
+      debris.detruire();
       for (const f of formes) f.dispose();
       for (const x of [...matieres, ...coques]) x.dispose();
     },
   };
+}
+
+// --- Les éclats modélisés (lot BR-A1) ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/** Le nombre d'éclats en vol au plus, par forme d'éclat (genre × numéro). */
+const MAX_ECLATS_PAR_FORME = 24;
+/** La vie d'un éclat (s), la gravité (m/s²). */
+const VIE_ECLAT = 1.5;
+const GRAVITE_ECLAT = 15;
+
+interface EclatVole {
+  forme: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  /** L'axe et la vitesse de rotation (rad/s), l'orientation courante. */
+  axe: Vector3;
+  vrot: number;
+  q: Quaternion;
+  debut: number;
+  rebonds: number;
+}
+
+/** Les éclats des vases brisés : chaque forme d'éclat est un tas instancié, éteint quand il est vide. Une pure sensation : la simulation n'en sait rien. */
+export class EclatsDeVases {
+  readonly groupe = new Group();
+  /** Pour chaque forme : son genre de vase, sa place sur le vase (m), son tas et sa coque. */
+  private readonly formes: { genre: number; place: Vector3; corps: InstancedMesh; coque: InstancedMesh }[] = [];
+  private readonly vols: EclatVole[] = [];
+  private dernier = -1;
+  private readonly matiere = plat(0xffffff, true);
+  private readonly coque = coqueInstanciee();
+  private readonly m = new Matrix4();
+  private readonly s = new Vector3();
+  private readonly p = new Vector3();
+  private readonly dq = new Quaternion();
+  private graine = 1;
+
+  constructor() {
+    MODELE_VASE.forEach((nom, genre) => {
+      const md = modele(nom);
+      if (!md) return;
+      for (const [cle, pc] of md.pieces) {
+        if (!cle.startsWith("eclat_")) continue;
+        const corps = new InstancedMesh(pc.geo, this.matiere, MAX_ECLATS_PAR_FORME);
+        corps.castShadow = true;
+        corps.instanceMatrix.setUsage(DynamicDrawUsage);
+        corps.frustumCulled = false;
+        corps.count = 0;
+        corps.visible = false;
+        const coque = new InstancedMesh(lisse(pc.geo), this.coque, MAX_ECLATS_PAR_FORME);
+        coque.layers.set(CALQUE_COQUE);
+        coque.instanceMatrix.setUsage(DynamicDrawUsage);
+        coque.frustumCulled = false;
+        coque.count = 0;
+        coque.visible = false;
+        this.formes.push({ genre, place: new Vector3(pc.pivot[0], pc.pivot[1], pc.pivot[2]), corps, coque });
+        this.groupe.add(corps, coque);
+      }
+    });
+  }
+  /** Un nombre de 0 à 1 (le hasard des éclats : une suite fixe, jamais lue par la simulation). */
+  private hasard(): number {
+    this.graine = (Math.imul(this.graine, 1103515245) + 12345) >>> 0;
+    return (this.graine >>> 8) / 16777216;
+  }
+  /** Lance les éclats d'un vase de `genre` brisé en (x, z), frappé vers (dx, dz). Rend `false` s'il n'a pas d'éclats modélisés. */
+  lancer(genre: number, x: number, z: number, dx: number, dz: number, temps: number): boolean {
+    let lance = false;
+    const yaw = this.hasard() * Math.PI * 2;
+    const c = Math.cos(yaw);
+    const sn = Math.sin(yaw);
+    this.formes.forEach((f, i) => {
+      if (f.genre !== genre) return;
+      lance = true;
+      // la place de l'éclat sur le vase, tournée d'un angle au hasard ; il part vers l'extérieur, un peu dans le sens du coup, et monte
+      const px = f.place.x * c + f.place.z * sn;
+      const pz = -f.place.x * sn + f.place.z * c;
+      const l = Math.hypot(px, pz) || 1;
+      const v = 2.2 + this.hasard() * 2.2;
+      const axe = new Vector3(this.hasard() - 0.5, this.hasard() - 0.5, this.hasard() - 0.5).normalize();
+      const q = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), yaw);
+      this.vols.push({ forme: i, x: x + px, y: f.place.y, z: z + pz, vx: (px / l) * v + dx * 2.2, vy: 2.6 + this.hasard() * 2.4, vz: (pz / l) * v + dz * 2.2, axe, vrot: 6 + this.hasard() * 8, q, debut: temps, rebonds: 0 });
+    });
+    const max = MAX_ECLATS_PAR_FORME * Math.max(1, this.formes.length);
+    if (this.vols.length > max) this.vols.splice(0, this.vols.length - max);
+    return lance;
+  }
+  /** Chaque image : les éclats tombent, tournoient, rebondissent, puis rapetissent et s'enfoncent sur la fin. */
+  maj(temps: number): void {
+    const dt = this.dernier < 0 ? 0 : Math.min(0.05, Math.max(0, temps - this.dernier));
+    this.dernier = temps;
+    for (const f of this.formes) f.corps.count = f.coque.count = 0;
+    let w = 0;
+    for (const e of this.vols) {
+      const age = temps - e.debut;
+      if (age > VIE_ECLAT || age < 0) continue;
+      this.vols[w++] = e;
+      if (e.rebonds < 2) {
+        e.vy -= GRAVITE_ECLAT * dt;
+        e.x += e.vx * dt;
+        e.y += e.vy * dt;
+        e.z += e.vz * dt;
+        if (e.y < 0.03) {
+          e.y = 0.03;
+          e.rebonds++;
+          e.vy = e.rebonds < 2 ? -e.vy * 0.32 : 0;
+          e.vx *= 0.45;
+          e.vz *= 0.45;
+          e.vrot *= 0.4;
+        }
+        e.q.premultiply(this.dq.setFromAxisAngle(e.axe, e.vrot * dt));
+      }
+      const fin = Math.min(1, Math.max(0, (age - (VIE_ECLAT - 0.35)) / 0.35));
+      const k = 1 - fin;
+      const f = this.formes[e.forme]!;
+      if (f.corps.count >= MAX_ECLATS_PAR_FORME) continue;
+      this.m.compose(this.p.set(e.x, e.y - fin * 0.08, e.z), e.q, this.s.set(k, k, k));
+      f.corps.setMatrixAt(f.corps.count++, this.m);
+      f.coque.setMatrixAt(f.coque.count++, this.m);
+    }
+    this.vols.length = w;
+    for (const f of this.formes) {
+      f.corps.visible = f.coque.visible = f.corps.count > 0;
+      f.corps.instanceMatrix.needsUpdate = f.coque.instanceMatrix.needsUpdate = true;
+    }
+  }
+  /** Le nombre d'éclats en vol. */
+  enVol(): number {
+    return this.vols.length;
+  }
+  detruire(): void {
+    this.matiere.dispose();
+    this.coque.dispose();
+  }
 }

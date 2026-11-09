@@ -1,7 +1,7 @@
 import { ConeGeometry, Group, Mesh, MeshBasicMaterial, OctahedronGeometry, type BufferGeometry, type MeshToonMaterial } from "three";
 import { ANNONCE, B_BELIER, B_CHENE, B_DUC, B_REINE, BOND, ETOURDI, INVOCATION, MARCHE, RACINES_CERCLES, RACINES_LIGNES, RECUPERE, RUGIT, SPORES, Z_BANDE, type Golem, type Zone } from "@cdj/rush-sim";
 import { aplat, piece, type Piece } from "./cel";
-import { ajouter, animerGolem, bornes, clignement, creerGolem, geleeDome, lerp, PIERRE, sortie, sph, yeux, type Acteur, type EntreeGolem, type GolemVu, type Yeux } from "./acteurs";
+import { aModele, ajouter, animerGolem, bornes, clignement, creerGolem, forme, geleeDome, lerp, PIERRE, sortie, sph, yeux, type Acteur, type EntreeGolem, type GolemVu, type Yeux } from "./acteurs";
 import { bloc, fusionner, placer, teindre } from "./formes";
 import { COULEURS } from "./palette";
 
@@ -9,6 +9,7 @@ import { COULEURS } from "./palette";
 // contour d'encre, des yeux qui brillent — et la DA figée du lot : **de la lisibilité, pas d'embellissement**. Chaque boss a UNE couleur dominante qui tranche sur le sol de chaque thème (`test/lisibilite.test.ts` : ΔE ≥ 40) et se
 // reconnaît à sa silhouette. Tout est procédural : `animerBoss` pose le corps d'après l'état de la simulation (état, temps dans l'état, attaque, zones annoncées). Repères : le boss regarde vers +Z, l'unité est le mètre, les pieds
 // sont à y = 0 ; `racine.position.y` est la hauteur de vol (le grand-duc, le bond de la reine), lue par la scène pour l'ombre et la caméra.
+// Lot BR-A1 : chaque pièce prend la forme du MODÈLE chargé (`modeles.ts`, `forme` d'`acteurs.ts`), la forme procédurale restant le repli ; les groupes animés et l'animation ne changent pas.
 
 /** La clé de catalogue du nom d'un boss (`boss.nom.grandDuc` : une clé ne porte pas de tiret). */
 export const cleBoss = (id: string): string => id.replace(/-(\w)/g, (_, c: string) => c.toUpperCase());
@@ -139,14 +140,15 @@ function creerReine(): ReineVu {
   const racine = new Group();
   const corps = new Group();
   racine.add(corps);
-  const dome = p(geleeDome(COULEURS_BOSS.reine.couleur, COULEURS_BOSS.reine.clair));
-  dome.groupe.scale.set(4.0, 4.4, 4.0); // rayon 2 m, 2,2 m de haut
+  const M = "reine";
+  const dome = p(forme(M, "corps", () => geleeDome(COULEURS_BOSS.reine.couleur, COULEURS_BOSS.reine.clair)));
+  if (!aModele(M)) dome.groupe.scale.set(4.0, 4.4, 4.0); // rayon 2 m, 2,2 m de haut (le modèle est dessiné à sa taille)
   corps.add(dome.groupe);
-  const cour = p(couronne());
+  const cour = p(forme(M, "couronne", couronne));
   cour.groupe.position.set(0, 1.9, 0.2);
   cour.groupe.rotation.x = 0.12;
   corps.add(cour.groupe);
-  const o = yeux(0.72, 1.1, 1.58, 0.37, 0.55);
+  const o = yeux(0.72, 1.1, 1.58, 0.37, 0.55, aModele(M) ? M : undefined);
   corps.add(o.mesh);
   return { kind: 1, racine, matieres: [dome.matiere, cour.matiere], corps, yeux: o, haut: 0, reflet: 0 };
 }
@@ -254,11 +256,12 @@ function creerDuc(): DucVu {
     matieres.push(q.matiere);
     return q;
   };
-  ajouter(interieur, noter(p(corpsDuDuc())), 0, 0, 0);
+  const M = "grand-duc";
+  ajouter(interieur, noter(p(forme(M, "corps", corpsDuDuc))), 0, 0, 0);
   const tete = new Group();
   tete.position.set(0, 2.7, 0.15);
-  ajouter(tete, noter(p(teteDuDuc())), 0, 0, 0);
-  const o = yeux(0.52, 0.02, 0.86, 0.3, 0.5);
+  ajouter(tete, noter(p(forme(M, "tete", teteDuDuc))), 0, 0, 0);
+  const o = yeux(0.52, 0.02, 0.86, 0.3, 0.5, aModele(M) ? M : undefined);
   (o.mesh.material as MeshBasicMaterial).color.set(D.oeil).multiplyScalar(2.2); // les grands yeux jaunes brillent (le bloom les fait fleurir)
   tete.add(o.mesh);
   interieur.add(tete);
@@ -266,8 +269,8 @@ function creerDuc(): DucVu {
   for (const s of [-1, 1] as const) {
     const aile = new Group();
     aile.position.set(s * 0.85, 2.6, 0);
-    aile.scale.setScalar(0.82);
-    ajouter(aile, noter(p(aileDuDuc(s))), 0, 0, 0);
+    if (!aModele(M)) aile.scale.setScalar(0.82); // le modèle dessine ses ailes à leur taille
+    ajouter(aile, noter(p(forme(M, s < 0 ? "ailes_g" : "ailes_d", () => aileDuDuc(s)))), 0, 0, 0);
     interieur.add(aile);
     ailes.push(aile);
   }
@@ -390,19 +393,20 @@ function creerBelier(): BelierVu {
     matieres.push(q.matiere);
     return q;
   };
-  ajouter(corps, noter(p(corpsDuBelier())), 0, 0, 0);
+  const M = "belier";
+  ajouter(corps, noter(p(forme(M, "corps", corpsDuBelier))), 0, 0, 0);
   const tete = new Group();
   tete.position.set(0, 2.3, 1.7);
-  ajouter(tete, noter(p(teteDuBelier())), 0, 0, 0);
-  const o = yeux(0.62, 0.3, 1.38, 0.17, 0.6);
+  ajouter(tete, noter(p(forme(M, "tete", teteDuBelier))), 0, 0, 0);
+  const o = yeux(0.62, 0.3, 1.38, 0.17, 0.6, aModele(M) ? M : undefined);
   (o.mesh.material as MeshBasicMaterial).color.set(B.oeil).multiplyScalar(1.8);
   tete.add(o.mesh);
   corps.add(tete);
   const pattes: Group[] = [];
-  [[-1, 1, 311], [1, 1, 312], [-1, -1, 313], [1, -1, 314]].forEach(([sx, sz, g]) => {
+  ([[-1, 1, 311, "patte_ag"], [1, 1, 312, "patte_ad"], [-1, -1, 313, "patte_rg"], [1, -1, 314, "patte_rd"]] as const).forEach(([sx, sz, g, nom]) => {
     const pt = new Group();
-    pt.position.set(sx! * 1.05, 1.5, sz! * 1.35);
-    ajouter(pt, noter(p(patteDuBelier(g!))), 0, 0, 0);
+    pt.position.set(sx * 1.05, 1.5, sz * 1.35);
+    ajouter(pt, noter(p(forme(M, nom, () => patteDuBelier(g)))), 0, 0, 0);
     corps.add(pt);
     pattes.push(pt);
   });
@@ -539,16 +543,17 @@ function creerChene(): CheneVu {
     matieres.push(q.matiere);
     return q;
   };
-  ajouter(corps, noter(p(troncDuChene())), 0, 0, 0);
+  const M = "chene";
+  ajouter(corps, noter(p(forme(M, "corps", troncDuChene))), 0, 0, 0);
   const cime = new Group();
   cime.position.set(0, 5.7, 0);
-  ajouter(cime, noter(p(cimeDuChene())), 0, 0.9, 0);
+  ajouter(cime, noter(p(forme(M, "cime", cimeDuChene))), 0, 0.9, 0);
   corps.add(cime);
   const bras: Group[] = [];
   for (const s of [-1, 1] as const) {
     const b = new Group();
     b.position.set(s * 1.75, 4.9, 0.1);
-    ajouter(b, noter(p(brasDuChene(s))), 0, 0, 0);
+    ajouter(b, noter(p(forme(M, s < 0 ? "bras_g" : "bras_d", () => brasDuChene(s)))), 0, 0, 0);
     corps.add(b);
     bras.push(b);
   }

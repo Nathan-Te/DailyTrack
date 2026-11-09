@@ -97,6 +97,7 @@ import { Controles } from "./controles";
 import { Annonces, Anneaux, ArcCoup, Bandes, Cones, Cratere, Eclats, Gemmes, LignesCourse, Nuages, OndesEpee, Ombres, Racines, Reticule, Traits } from "./effets";
 import { carteVue, competenceVue } from "./cartes";
 import { monterVases, ECLATS_VASE } from "./vasesVue";
+import { chargerModeles, MODELES_COMMUNS, modelesDuContenu } from "./modeles";
 import { BouclierVu, CerclesJoueur, LameTourbillon, OndesChoc, TraineeElan } from "./competencesVue";
 import { carteDesJours } from "./carte";
 import { completerEcranDeFin, partieDeFin, type ResumeFin } from "./fin";
@@ -118,8 +119,21 @@ import { directionDeVisee, pointSurLeSol, ZONE_MORTE_VISEE } from "./visee";
 declare const __JOURS_FIGES__: readonly string[] | undefined;
 const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? [] : __JOURS_FIGES__;
 
-/** Le contenu d'un jour : un scénario d'essai de l'adresse, sinon le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
+/**
+ * Le contenu d'un jour, ses MODÈLES chargés (lot BR-A1) : ceux de toute partie (le chevalier, les vases…) partent tout de suite, ceux du jour (le boss du jour, les monstres présents) dès que le contenu est connu. Un modèle qui ne
+ * vient pas (réseau, délai) laisse sa forme procédurale : la partie se joue quand même.
+ */
 export async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
+  // `&modeles=0` (essai, jamais en production) : les formes procédurales d'avant le lot BR-A1, pour comparer (captures « avant »)
+  if (!BUILD_RESTRICTED && new URLSearchParams(location.search).get("modeles") === "0") return contenuSansModeles(jour, base);
+  const communs = chargerModeles(MODELES_COMMUNS, base);
+  const c = await contenuSansModeles(jour, base);
+  await Promise.all([communs, chargerModeles(modelesDuContenu(c), base)]);
+  return c;
+}
+
+/** Le contenu d'un jour : un scénario d'essai de l'adresse, sinon le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
+async function contenuSansModeles(jour: number, base: string): Promise<Contenu> {
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   const { ameliorations } = essai;
   const comp = essai.competence === null ? undefined : (indiceCompetence(essai.competence) >= 0 ? indiceCompetence(essai.competence) : undefined); // lot BR5 : `&competence=`
@@ -706,8 +720,10 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         // (Pas de secousse d'écran ni d'arrêt sur image : ils restent réservés au 3ᵉ coup et aux attaques du boss.)
         const jarre = e.a === 0;
         son(jarre ? "jarre" : "bois", 0.85 + Math.random() * 0.3);
-        eclats.gerbe(ECLATS_VASE[e.a] ?? "bois", x, 0.55, z, jarre ? 22 : 16, { vitesse: 6.5, taille: jarre ? 0.12 : 0.16, haut: 5.2, duree: 0.95, gravite: 16 });
-        eclats.gerbe(jarre ? "jarre" : "planche", x, 0.4, z, 9, { vitesse: 4, taille: jarre ? 0.2 : 0.22, haut: 3, duree: 0.8, dx: ax, dz: az, eventail: 1.4, gravite: 14 });
+        // lot BR-A1 : les éclats MODÉLISÉS du vase jaillissent de leur place ; les particules ne sont plus que la poussière de céramique ou les échardes
+        const modelise = vasesVue.briser(e.a, x, z, ax, az, temps);
+        eclats.gerbe(ECLATS_VASE[e.a] ?? "bois", x, 0.55, z, modelise ? 10 : jarre ? 22 : 16, { vitesse: 6.5, taille: jarre ? 0.12 : 0.16, haut: 5.2, duree: 0.95, gravite: 16 });
+        if (!modelise) eclats.gerbe(jarre ? "jarre" : "planche", x, 0.4, z, 9, { vitesse: 4, taille: jarre ? 0.2 : 0.22, haut: 3, duree: 0.8, dx: ax, dz: az, eventail: 1.4, gravite: 14 });
         eclats.gerbe("poussiere", x, 0.25, z, 8, { vitesse: 2.6, taille: 0.2, haut: 1.2, duree: 0.6, gravite: 3 });
         vasesVue.secouer(x, z, temps);
         break;
