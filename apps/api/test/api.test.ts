@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GENERATOR_VERSION, PREMIER_JOUR, SIM_VERSION, TICK_RATE, dailyTrackId, decodeReplay, encodeReplay, formatDay, medalsFor, replayRace } from "@cdj/sim";
+import { GENERATOR_VERSION, PREMIER_JOUR, SIM_VERSION, TICK_RATE, dailyTrackId, decodeReplay, encodeReplay, formatDay, medalsFor, replayRace, replayTicks } from "@cdj/sim";
+import { inputsHash, trackInputs } from "../src/copies";
 import { DAY, DAY_MS, NOON, circuitOf, makeApi, parisDayStart, pilotReplay, playerId } from "./helpers";
 
 const DATE = formatDay(DAY);
@@ -261,6 +262,49 @@ describe("circuit du jour côté serveur", () => {
     const again = await makeApi({ db: t.db, seed: false });
     expect((await again.call("GET", `/api/day/${DATE}`)).body.trackId).toBe(c.track.id);
     expect((await submit(again, 1, "Alice", fast.code)).status).toBe(200);
+  });
+
+  // Run « Mettre en production » n° 45 (09/11/2026) : sur la recette, la base garde le circuit d'aujourd'hui écrit par une version intermédiaire d'un lot de générateur (même identifiant
+  // `jour-…-g23`, autre contenu) ; le serveur le relisait tel quel et refusait tout temps (`422 not_finished`) alors que le jeu calculait un autre circuit sous le même nom.
+  const lignePerimee = async (t: Awaited<ReturnType<typeof makeApi>>) => {
+    const { SCHEMA } = await import("../src/db");
+    for (const sql of SCHEMA) await t.db.run(sql);
+    const vrai = circuitOf(DAY);
+    const autre = circuitOf(DAY - 3); // un autre circuit, rangé sous l'identifiant du jour
+    const authorHash = await inputsHash(trackInputs(autre.authorReplay.runs, replayTicks(autre.authorReplay)));
+    await t.db.run("INSERT OR REPLACE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at, author_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [DAY, vrai.track.id, autre.spec, autre.authorMs, autre.attempt, autre.palette, NOON, authorHash]);
+    return vrai;
+  };
+
+  it("recette : un circuit gardé sous l'identifiant du jour mais d'un autre contenu est recalculé, les temps du jeu sont acceptés (run 45)", async () => {
+    const t = await makeApi({ seed: false, environment: "recette" });
+    const vrai = await lignePerimee(t);
+    const r = await submit(t, 1, "Alice", fast.code);
+    expect(r.status).toBe(200);
+    expect(r.body.ms).toBe(fast.finishMs);
+    // La ligne est réécrite avec le vrai circuit : une autre instance (sur la même base) la relit telle quelle.
+    expect((await t.db.first<{ spec: string }>("SELECT spec FROM circuits WHERE day = ?", [DAY]))!.spec).toBe(vrai.spec);
+    const autreInstance = await makeApi({ db: t.db, seed: false, environment: "recette" });
+    expect((await submit(autreInstance, 2, "Bob", slow.code)).status).toBe(200);
+  });
+
+  it("recette : un jour fermé garde sa ligne (ses résultats sont rangés contre elle)", async () => {
+    const t = await makeApi({ seed: false, environment: "recette" });
+    await lignePerimee(t);
+    t.clock.now = NOON + 3 * DAY_MS; // DAY est maintenant fermé (avant-veille d'aujourd'hui)
+    const avant = (await t.db.first<{ spec: string }>("SELECT spec FROM circuits WHERE day = ?", [DAY]))!.spec;
+    await t.call("GET", `/api/day/${DATE}`);
+    expect((await t.db.first<{ spec: string }>("SELECT spec FROM circuits WHERE day = ?", [DAY]))!.spec).toBe(avant);
+  });
+
+  it("production : la ligne gardée est le circuit que les joueurs ont vu, elle n'est jamais recalculée (un jour servi ne change jamais)", async () => {
+    const t = await makeApi({ seed: false, environment: "production" });
+    const vrai = await lignePerimee(t);
+    const avant = (await t.db.first<{ spec: string }>("SELECT spec FROM circuits WHERE day = ?", [DAY]))!.spec;
+    expect(avant).not.toBe(vrai.spec);
+    await t.call("GET", `/api/day/${DATE}`);
+    await submit(t, 1, "Alice", fast.code);
+    expect((await t.db.first<{ spec: string }>("SELECT spec FROM circuits WHERE day = ?", [DAY]))!.spec).toBe(avant);
   });
 
   it("rejouer une course coûte quelques dizaines de millisecondes", async () => {
