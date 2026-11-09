@@ -5,6 +5,7 @@ import { CATALOGUE_FR } from "../src/catalogue.fr";
 import { CATALOGUE_EN } from "../src/catalogue.en";
 import { animerBoss, bossFictif, capDuBoss, cleBoss, courseEnCours, creerBoss, prochaineCourse, type BossVu, type EntreeBoss } from "../src/bosses";
 import { cameraDuBestiaire, ECART_BESTIAIRE } from "../src/bestiaire";
+import { CAMERA_DEFAUT } from "../src/camera";
 import { creerChevalier } from "../src/acteurs";
 
 // Les cinq boss côté vue (lot BR3), sans navigateur : leurs tailles (documentées ici), leur nombre de formes (donc d'appels de dessin), leur animation dans tous les états (aucune valeur folle), leur cap, la caméra du bestiaire et les textes français et anglais.
@@ -175,7 +176,7 @@ describe("la caméra du bestiaire", () => {
   it("les cinq boss (bras et ailes compris) tiennent dans l'image pour un téléphone en paysage, un PC en 16:9 et un écran carré", () => {
     for (const aspect of [844 / 390, 16 / 9, 1]) {
       const c = cameraDuBestiaire(aspect);
-      const cam = new PerspectiveCamera(25, aspect, 0.5, 200);
+      const cam = new PerspectiveCamera(CAMERA_DEFAUT.champ, aspect, 0.5, 200); // le champ de la caméra du jeu (lot BR-A3 : 35° ; 25° avant)
       cam.position.set(...c.position);
       cam.lookAt(...c.regard);
       cam.updateMatrixWorld(true);
@@ -190,7 +191,7 @@ describe("la caméra du bestiaire", () => {
     }
   });
   it("jamais plus près que la distance du jeu : la même échelle de base", () => {
-    expect(cameraDuBestiaire(16 / 9).distance).toBeGreaterThanOrEqual(34);
+    expect(cameraDuBestiaire(16 / 9).distance).toBeGreaterThanOrEqual(CAMERA_DEFAUT.distance);
   });
 });
 

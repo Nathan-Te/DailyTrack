@@ -1,0 +1,13 @@
+{
+  "_": "Les packs Unity des modèles tiers (lot BR-A3) : où les trouver dans le cache de l'Asset Store (%APPDATA%/Unity/Asset Store-5.x, ou RUSH_ASSET_STORE) et quels fichiers en extraire dans .brut/<id>/. Licences : docs/rush/licences-tiers.md.",
+  "packs": {
+    "dm-monstres": {
+      "paquet": "Dungeon Mason/3D ModelsCharactersCreatures/RPG Monster BUNDLE PBR.unitypackage",
+      "motifs": ["Wave01PBR/(Meshes/Character/(Slime|Golem|Bat)Mesh\\.fbx|Animations/(Slime|Golem|Bat)/.*\\.fbx)", "CommonStuffs/Textures/DefaultPBR/Albedo\\.png"]
+    },
+    "kaykit": {
+      "paquet": "Kay Lousberg/3D ModelsCharactersHumanoidsHumans/KayKit - Adventurers Character Pack for Unity.unitypackage",
+      "motifs": ["Models/Characters/Knight\\.fbx", "Accessories/(sword_1handed|shield_round)\\.fbx", "Rig_Medium_(General|MovementBasic|MovementAdvanced|CombatMelee|Special)\\.fbx", "Textures/Knight/knight_texture\\.png"]
+    }
+  }
+}

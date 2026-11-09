@@ -61,8 +61,9 @@ declare global {
   }
 }
 
-export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4181", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"] });
+export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true, ecran?: { width: number; height: number; dpr: number }): Promise<{ context: BrowserContext; page: Page }> {
+  // lot BR-A3 : `ecran` fixe la taille et la densité de pixels dès la création (le contour se vérifie à DPR 1 et 2)
+  const context = await browser.newContext({ baseURL: "http://localhost:4181", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"], ...(ecran ? { viewport: { width: ecran.width, height: ecran.height }, deviceScaleFactor: ecran.dpr } : {}) });
   const decalage = Date.UTC(2026, 10, 6, 12) - Date.now();
   await context.addInitScript(
     ({ decalage, aideVue }) => {

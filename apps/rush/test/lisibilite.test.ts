@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BOSS_IDS } from "@cdj/rush-sim";
 import { PIERRE, PIERRE_CLAIRE, PIERRE_POING, PIERRE_SOMBRE, PIERRE_TETE } from "../src/acteurs";
@@ -5,7 +8,7 @@ import { DOMINANTES_BOSS } from "../src/bosses";
 import { ALPHAS_JOUEUR } from "../src/competencesVue";
 import { ALPHAS_ANNONCE } from "../src/effets";
 import { GELATON_COULEUR } from "../src/gelatons";
-import { COULEURS, PALETTES } from "../src/palette";
+import { COULEURS, ENCRE, PALETTES } from "../src/palette";
 
 // La LISIBILITÉ sur chaque thème (lot BR1) : le golem, les ennemis, le chevalier et les cercles d'annonce se détachent du sol de CHAQUE thème. Sans navigateur : l'écart de couleur CIELAB (ΔE76, un écart de 2,3 se voit à peine,
 // au-delà de 25 la couleur est franchement autre) entre chaque ton de sol et la couleur de base de chaque personnage. Le cercle d'annonce est le corail mélangé à 55 % sur le sol (il est translucide).
@@ -33,6 +36,14 @@ const melange = (a: number, b: number, t: number): number => {
   return (c(16) << 16) | (c(8) << 8) | c(0);
 };
 const plusPetit = (couleur: number, p: (typeof PALETTES)[string]): number => Math.min(ecart(couleur, p.sol), ecart(couleur, p.sol2));
+/**
+ * Lot BR-A3 : la règle de lisibilité devient « ΔE ≥ 25 ET contour ET ombre portée » (elle était « ΔE ≥ 40 de la couleur dominante » pour le golem, les boss et les ennemis du BR6).
+ * Pourquoi : un écart de 40 contre deux tons de sable obligeait le sol à pâlir vers le blanc (et les personnages à foncer) — le voile pâle relevé par Nathan sur BR-A1 et BR-A2. Sur la cible, un
+ * personnage se lit par TROIS choses à la fois : sa couleur (franchement autre au-delà de 25), le trait d'encre de sa silhouette et la tache sombre de son ombre à ses pieds. Les trois se vérifient ici :
+ * l'écart ≥ 25 ; l'encre du contour tranche sur tout sol (≥ 50) ; l'ombre portée assombrit chaque sol d'au moins 15 (la lumière directe pèse assez contre l'ambiance). Que chaque acteur porte bien son
+ * contour (coque ou post-traitement) et son ombre est vérifié côté scène (`test/tiers.test.ts` pour les modèles tiers).
+ */
+const SEUIL = 25;
 
 describe("la lisibilité sur chaque thème (lot BR1)", () => {
   it("il y a trois thèmes", () => {
@@ -40,8 +51,18 @@ describe("la lisibilité sur chaque thème (lot BR1)", () => {
   });
   for (const [nom, p] of Object.entries(PALETTES)) {
     describe(nom, () => {
-      it("le golem (ses pierres principales) se détache nettement du sol : écart ≥ 40", () => {
-        for (const [pierre, c] of Object.entries({ PIERRE, PIERRE_SOMBRE, PIERRE_POING, PIERRE_CLAIRE, PIERRE_TETE })) expect(plusPetit(c.couleur, p), `${pierre} sur ${nom}`).toBeGreaterThanOrEqual(40);
+      it("le golem (ses pierres principales) se détache du sol : écart ≥ 25 (lot BR-A3 ; 40 avant), avec le contour et l'ombre portée", () => {
+        for (const [pierre, c] of Object.entries({ PIERRE, PIERRE_SOMBRE, PIERRE_POING, PIERRE_CLAIRE, PIERRE_TETE })) expect(plusPetit(c.couleur, p), `${pierre} sur ${nom}`).toBeGreaterThanOrEqual(SEUIL);
+      });
+      it("lot BR-A3 : le CONTOUR (l'encre) tranche sur les deux tons du sol, écart ≥ 50", () => {
+        expect(plusPetit(ENCRE, p)).toBeGreaterThanOrEqual(50);
+      });
+      it("lot BR-A3 : l'OMBRE PORTÉE se voit — le sol à l'ombre (la seule ambiance) s'écarte du sol au soleil d'au moins 15", () => {
+        // le sol éclairé ≈ couleur × (ambiance + soleil × cos de l'incidence) ; à l'ombre ≈ couleur × ambiance. Le rapport des deux assombrit le sol (le blanc y reste, la teinte aussi).
+        const [sx, sy, sz] = p.soleil;
+        const cos = sy / Math.hypot(sx, sy, sz);
+        const k = p.intensiteAmbiance / (p.intensiteAmbiance + p.intensiteLumiere * cos);
+        for (const sol of [p.sol, p.sol2]) expect(ecart(melange(0x000000, sol, Math.sqrt(k)), sol), `l'ombre sur ${nom}`).toBeGreaterThanOrEqual(15);
       });
       it("la gelée et la chauve-souris se détachent du sol : écart ≥ 25", () => {
         expect(plusPetit(COULEURS.gelee, p), "gelée").toBeGreaterThanOrEqual(25);
@@ -69,8 +90,8 @@ describe("la lisibilité des cinq boss et de leurs annonces sur chaque thème (l
   });
   for (const [nom, p] of Object.entries(PALETTES)) {
     describe(nom, () => {
-      it("chaque boss : sa couleur dominante (et ses autres grandes masses) tranche sur les deux tons du sol, écart ≥ 40 comme le golem", () => {
-        BOSS_IDS.forEach((id, k) => DOMINANTES_BOSS[k]!.forEach((c, i) => expect(plusPetit(c, p), `${id} (couleur ${i}) sur ${nom}`).toBeGreaterThanOrEqual(40)));
+      it("chaque boss : sa couleur dominante (et ses autres grandes masses) tranche sur les deux tons du sol, écart ≥ 25 comme le golem (lot BR-A3 ; 40 avant)", () => {
+        BOSS_IDS.forEach((id, k) => DOMINANTES_BOSS[k]!.forEach((c, i) => expect(plusPetit(c, p), `${id} (couleur ${i}) sur ${nom}`).toBeGreaterThanOrEqual(SEUIL)));
       });
       const opaque = ALPHAS_ANNONCE.fond + ALPHAS_ANNONCE.rempli; // le disque rempli, juste avant l'impact
       const cercle = (sol: number): number => ecart(melange(sol, COULEURS.corail, opaque), sol);
@@ -147,8 +168,8 @@ describe("la lisibilité des quatre nouveaux ennemis sur chaque thème (lot BR6)
   for (const [nom, p] of Object.entries(PALETTES)) {
     describe(nom, () => {
       for (const [id, couleurs] of Object.entries(DOMINANTES)) {
-        it(`${id} : écart ≥ 40 contre les deux tons du sol`, () => {
-          couleurs.forEach((c, i) => expect(plusPetit(c, p), `${id} (couleur ${i}) sur ${nom}`).toBeGreaterThanOrEqual(40));
+        it(`${id} : écart ≥ 25 contre les deux tons du sol (lot BR-A3 ; 40 avant)`, () => {
+          couleurs.forEach((c, i) => expect(plusPetit(c, p), `${id} (couleur ${i}) sur ${nom}`).toBeGreaterThanOrEqual(SEUIL));
         });
       }
       it("les nouveaux ennemis ne sont pas rouges (le rouge est réservé au danger) : aucune dominante ne tire vers la teinte du corail", () => {
@@ -161,6 +182,22 @@ describe("la lisibilité des quatre nouveaux ennemis sur chaque thème (lot BR6)
         for (const couleurs of Object.values(DOMINANTES)) for (const c of couleurs) expect(rouge(c)).toBe(false);
       });
     });
+  }
+});
+
+// Lot BR-A3 : les MODÈLES TIERS (l'essai de style) : leurs grandes masses de couleur après recoloration (`"dominantes"` de chaque script de `apps/rush/modeles-tiers/`) tranchent sur les deux tons du sol de chaque thème (≥ 25).
+describe("la lisibilité des modèles tiers (lot BR-A3)", () => {
+  const ici = dirname(fileURLToPath(import.meta.url));
+  const scripts = ["golem", "gelee", "chauve_souris"];
+  for (const s of scripts) {
+    const texte = readFileSync(join(ici, "..", "modeles-tiers", `${s}.py`), "utf8");
+    const dominantes = [...(texte.match(/"dominantes": \[([^\]]*)\]/)?.[1] ?? "").matchAll(/"([0-9a-f]{6})"/g)].map((m) => parseInt(m[1]!, 16));
+    it(`${s} : ses dominantes sont déclarées`, () => expect(dominantes.length).toBeGreaterThanOrEqual(2));
+    for (const [nom, p] of Object.entries(PALETTES)) {
+      it(`${s} : chaque dominante tranche sur le sol de ${nom} (≥ 25)`, () => {
+        dominantes.forEach((c, i) => expect(plusPetit(c, p), `${s} (couleur ${i}) sur ${nom}`).toBeGreaterThanOrEqual(SEUIL));
+      });
+    }
   }
 });
 
