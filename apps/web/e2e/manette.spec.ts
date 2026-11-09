@@ -106,10 +106,11 @@ test("portail : un bouton, la bande et Jouer ; la croix, A sur Jump ; dans Jump 
   await expect(page.locator('[data-jeu="track"] a.dj-bouton')).toBeFocused();
   await auditAxe(page, "portail-manette"); // la bande d'aide ne casse aucune règle d'accessibilité
 
-  // 2. La croix vers Jump (à côté, ou dessous selon la mise en page), puis A.
-  for (const direction of [BOUTON.DROITE, BOUTON.BAS]) {
+  // 2. La croix vers Jump, puis A. Depuis le lot U1 les cartouches ont chacune d'autres liens (bouton secondaire, épingle « favori ») : de « Jouer » de Track, la croix passe
+  // à droite (son bouton secondaire), puis descend (l'épingle de Jump, puis « Jouer » de Jump). Une boucle bornée, pas un nombre d'appuis écrit en dur.
+  for (let appui = 0; appui < 6; appui++) {
     if (await page.locator('[data-jeu="jump"] a.dj-bouton').evaluate((e) => e === document.activeElement)) break;
-    await appuyer(page, direction, () => imagesAttendre(page, 3));
+    await appuyer(page, appui === 0 ? BOUTON.DROITE : BOUTON.BAS, () => imagesAttendre(page, 3));
     await imagesAttendre(page);
   }
   await expect(page.locator('[data-jeu="jump"] a.dj-bouton')).toBeFocused();

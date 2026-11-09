@@ -268,6 +268,10 @@ for (const viewport of [
     await expect(choix).toBeVisible();
     await expect(choix).toContainText("Fantôme : ton record");
     expect((await choix.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+    // Cycle du lot 55 : Rien → Le mien → Le premier → Ma sélection → Rien, en sautant ce qui n'existe pas. Dans la démo, le classement existe (sa sélection par défaut a 1 course) :
+    // après « ton record » vient « ma sélection · 1 », puis « aucun ».
+    await choix.click();
+    await expect(choix).toContainText("Fantôme : ma sélection · 1");
     await choix.click();
     await expect(choix).toContainText("Fantôme : aucun");
     // Les autres écrans (réglages, classement…) ont la barre sans le plein écran : on le règle avant de jouer, pas dans un sous-écran.

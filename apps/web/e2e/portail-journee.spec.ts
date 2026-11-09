@@ -303,7 +303,7 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
     await page.reload();
     await expect(page.locator("#classement-liste li")).not.toHaveCount(0);
     await expect(page).toHaveTitle("Classement du jour");
-    await expect(page.locator("h1")).toHaveText("Classement du jour");
+    await expect(page.locator("h1")).toHaveText("Classements");
     // Le haut du classement : tous les classés de la recette garnie (moins de 50), dans l'ordre des places.
     const total = demo.joueur.classesDuJour!;
     await expect(page.locator("#classement-compte")).toHaveText(`${total} joueurs classés`);
@@ -329,7 +329,7 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
     expect(vues.filter((v) => v.url === "/api/portail/classement")).toEqual([{ url: "/api/portail/classement", joueur: DEMO_ID }]);
     await capture(page, `classement-${nom}-fr`);
     await choisirLangue(page, "en");
-    await expect(page.locator("h1")).toHaveText("Today's leaderboard");
+    await expect(page.locator("h1")).toHaveText("Leaderboards");
     await expect(page.locator("#classement-compte")).toHaveText(`${total} players ranked`);
     await expect(moi.locator(".classement-toi")).toHaveText("You");
     await expect(page.locator("#veille")).toHaveText("‹ Previous day");
@@ -425,7 +425,7 @@ test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › »
   await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
   await page.goto(`${SITE_24}/classement/`);
   await expect(page.locator("#classement-liste li")).not.toHaveCount(0);
-  await expect(page.locator("#classement-date")).toHaveText("Sam. 24 oct.");
+  await expect(page.locator("#classement-date")).toHaveText("Samedi 24 octobre");
   // Aujourd'hui : on ne va pas plus loin.
   await expect(page.locator("#lendemain")).toBeDisabled();
   await expect(page.locator("#veille")).toBeEnabled();
@@ -434,22 +434,23 @@ test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › »
   // La veille : un classement figé, lisible, avec les médailles de chaque jeu ; l'adresse garde le jour.
   await page.locator("#veille").click();
   await expect(page).toHaveURL(`${SITE_24}/classement/?date=2026-10-23`);
-  await expect(page.locator("#classement-date")).toHaveText("Ven. 23 oct.");
+  await expect(page.locator("#classement-date")).toHaveText("Vendredi 23 octobre");
   await expect(page.locator("#classement-compte")).toContainText("Jour terminé : ce classement est figé.");
   await expect(page.locator("#classement-liste li")).not.toHaveCount(0);
-  await expect(page.locator("#classement-liste .dj-medaille").first()).toBeVisible();
+  // Lot U2 : les médailles par jeu sont des colonnes à partir de 680 px de large ; en portrait sur téléphone elles sont dans la ligne mais masquées.
+  await expect(page.locator("#classement-liste .dj-medaille").first()).toBeAttached();
   await expect(page.locator("#lendemain")).toBeEnabled();
   await expect(page.locator('#classement-liste li[data-moi="oui"]')).toHaveCount(1); // Démo avait fini Track ce jour-là (sa série)
   await capture(page, "classement-jour-passe-portrait-fr");
   // Recharger garde le jour ; « Lendemain › » revient à aujourd'hui (l'adresse perd le paramètre).
   await page.reload();
-  await expect(page.locator("#classement-date")).toHaveText("Ven. 23 oct.");
+  await expect(page.locator("#classement-date")).toHaveText("Vendredi 23 octobre");
   await page.locator("#lendemain").click();
   await expect(page).toHaveURL(`${SITE_24}/classement/`);
   await expect(page.locator("#classement-compte")).toHaveText(aujourdhui);
   // Lot R8 : les archives commencent à la journée n° 1 (ici le 23/10, épinglé par playwright.config.ts) : « ‹ Veille » est éteint ce jour-là…
   await page.goto(`${SITE_24}/classement/?date=2026-10-23`);
-  await expect(page.locator("#classement-date")).toHaveText("Ven. 23 oct.");
+  await expect(page.locator("#classement-date")).toHaveText("Vendredi 23 octobre");
   await expect(page.locator("#veille")).toBeDisabled();
   // …et un jour d'avant le lancement, demandé par l'adresse, est refusé par le serveur (code `unknown_day`), dit clairement.
   await page.goto(`${SITE_24}/classement/?date=2026-10-14`);
