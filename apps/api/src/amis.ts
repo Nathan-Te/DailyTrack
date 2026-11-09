@@ -146,11 +146,13 @@ export function createAmis(
         );
         return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref), avatar: r.avatar, groupe: emblemeDe(r) })));
       }
-      const rows = await db.all<{ id: string; name: string; ref: string | null }>(
-        "SELECT a.ami AS id, p.name AS name, p.ref AS ref FROM amities a JOIN players p ON p.id = a.ami WHERE a.joueur = ? AND +p.hidden = 0 ORDER BY p.name_key",
+      // **Avec l'image** (empreinte de l'avatar, `p.avatar` : la même ligne, aucune lecture de plus) : l'accueil (« Amis » du classement, « Tes amis aujourd'hui ») lit cette liste sans option ; sans l'image
+      // ses amis n'avaient que leurs initiales alors que « Tous » et les pages montraient leur photo (retour de Nathan, 09/11/2026).
+      const rows = await db.all<{ id: string; name: string; ref: string | null; avatar: string | null }>(
+        "SELECT a.ami AS id, p.name AS name, p.ref AS ref, p.avatar AS avatar FROM amities a JOIN players p ON p.id = a.ami WHERE a.joueur = ? AND +p.hidden = 0 ORDER BY p.name_key",
         [id],
       );
-      return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref) })));
+      return Promise.all(rows.map(async (r) => ({ id: r.id, name: r.name, ref: await refDe(r.id, r.ref), avatar: r.avatar })));
     },
   };
 
