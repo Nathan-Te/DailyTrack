@@ -906,9 +906,23 @@ export function empreintesDuJeu(depot, jeu, { du, au, sortie, jours }) {
   const dossier = join(depot, "apps/api/scripts");
   mkdirSync(dossier, { recursive: true });
   const module_ = basename(jeu.moduleEmpreinte, ".ts");
+  // Le module d'empreinte que CE code a lui-même (le code en production en a un, écrit pour lui), gardé avant que celui d'aujourd'hui ne le recouvre : le repli ci-dessous.
+  const chemin = join(dossier, `${module_}.ts`);
+  const propre = existsSync(chemin) && resolve(join(SCRIPTS_ICI, `${module_}.ts`)) !== resolve(chemin) ? readFileSync(chemin) : null;
   for (const f of ["empreintes.ts", "empreintes-jours.ts", `${module_}.ts`]) copierSiAutre(join(SCRIPTS_ICI, f), join(dossier, f));
   writeFileSync(join(dossier, `empreintes-entree-${jeu.id}.ts`), `import { empreinteJour } from "./${module_}";\nimport { executer } from "./empreintes-jours";\n\nexecuter(empreinteJour, ${JSON.stringify(jeu.id)});\n`);
-  compilerEtLancer(depot, `empreintes-entree-${jeu.id}`, ["--du", du, "--au", au, "--sortie", resolve(sortie), ...(jours ? ["--jours", resolve(jours)] : [])]);
+  const args = ["--du", du, "--au", au, "--sortie", resolve(sortie), ...(jours ? ["--jours", resolve(jours)] : [])];
+  try {
+    compilerEtLancer(depot, `empreintes-entree-${jeu.id}`, args);
+  } catch (e) {
+    // Run « Mettre en production » n° 46 (09/11/2026) : le module d'aujourd'hui peut employer une pièce de `@cdj/<jeu>-sim` que le code en production n'a pas encore (Blocks : `seuilsDuJour` de l'index, ajouté
+    // après l'étiquette) et ne compile pas contre lui — l'hypothèse « ne dépend que des paquets @cdj/* » vaut pour les pièces anciennes seulement. Le code en production a alors son propre module, celui
+    // qui lui va : même forme d'empreinte (identifiant, contenu, seuils), seules les importations diffèrent. Si les deux ne s'accordaient pas, `comparer` le verrait (jour qui change : arrêt), jamais un faux accord.
+    if (!propre) throw e;
+    console.log(`::warning title=Module d'empreinte de ${jeu.nom}::le module d'aujourd'hui ne compile pas contre le code de ${depot} (une pièce de ${jeu.sim ?? jeu.id} y manque) : le module de ce code est utilisé à sa place`);
+    writeFileSync(chemin, propre);
+    compilerEtLancer(depot, `empreintes-entree-${jeu.id}`, args);
+  }
 }
 
 const RACINE_DES_OUTILS = fileURLToPath(new URL("../", import.meta.url));
@@ -947,6 +961,52 @@ export function installerOutilDeFigeage(jeu, prod, outils = RACINE_DES_OUTILS) {
   return join(dirProd, entree);
 }
 
+/**
+ * Lit, **en lecture seule**, l'état de chaque jeu en production (`GET /api/jeux` : route publique, `{ jeux: { track: "on", blocks: "off", … } }`). Un `429` ou une erreur du serveur attend et recommence ;
+ * tout ce qui n'est pas la réponse attendue **arrête** : sans cette lecture, on ne sait pas quels jeux les joueurs ont vus.
+ */
+export async function lireEtatsDesJeux(origine, { fetchImpl = fetch, attendre = (ms) => new Promise((r) => setTimeout(r, ms)), essais = 5 } = {}) {
+  const base = origine.replace(/\/+$/, "");
+  for (let essai = 1; ; essai++) {
+    let res;
+    try {
+      res = await fetchImpl(`${base}/api/jeux`, { method: "GET", headers: { Accept: "application/json" } });
+    } catch (e) {
+      if (essai >= essais) throw new Error(`lecture de l'état des jeux impossible (${e instanceof Error ? e.message : e})`);
+      await attendre(2000 * essai);
+      continue;
+    }
+    if (res.status === 200) {
+      const corps = await res.json();
+      if (typeof corps?.jeux !== "object" || corps.jeux === null || Array.isArray(corps.jeux)) throw new Error("lecture de l'état des jeux : réponse inattendue (pas de liste `jeux`)");
+      return corps.jeux;
+    }
+    if ((res.status === 429 || res.status >= 500) && essai < essais) {
+      await attendre(2000 * essai);
+      continue;
+    }
+    throw new Error(`lecture de l'état des jeux : le serveur répond ${res.status}`);
+  }
+}
+
+/**
+ * **Les jeux que la production ne sert pas** (run 46 de « Mettre en production », 09/11/2026) : un jeu `off` ou `preview` en production n'a montré aucun jour aux joueurs (`off` : ni page ni API ; `preview` : la
+ * clé de l'éditeur seulement, résultats à part et effacés au passage en `on`). Il n'a donc **rien à conserver** : ses jours se régénèrent avec le nouveau code, comme ceux d'un jeu que le code en production ne
+ * connaît pas encore (lot TP) — sans cela, tout changement de générateur d'un jeu en préparation (Blocks, Rush) arrête la mise en production sur des jours que personne n'a vus. `etats` : `{ id: "on" | "off" | "preview" }`.
+ * **Seul un état explicitement `off` ou `preview` compte** : un jeu absent de la liste, ou à l'état inconnu, reste protégé (en cas de doute, on conserve). Rend les identifiants de la chaîne, dans son ordre.
+ */
+export function jeuxNonServis(etats, ids = CHAINE.map((j) => j.id)) {
+  return ids.filter((id) => etats[id] === "off" || etats[id] === "preview");
+}
+
+/** Le fichier `--non-servis` (écrit par la commande `non-servis`) : l'ensemble des identifiants de jeux à laisser de côté ; sans fichier, aucun. */
+export function lireNonServis(fichier) {
+  if (!fichier) return new Set();
+  const lu = JSON.parse(readFileSync(fichier, "utf8"));
+  if (!Array.isArray(lu?.jeux) || lu.jeux.some((j) => typeof j !== "string")) throw new Error(`${fichier} : liste de jeux attendue ({ "jeux": ["blocks", …] })`);
+  return new Set(lu.jeux);
+}
+
 /** Le calendrier des bascules du générateur d'un jeu (`bascules.json` à côté de son fichier de versions) dans `depot` : son contenu, ou `null`. */
 export function calendrierDesBascules(jeu, depot) {
   const fichier = jeu.versions?.generateur?.split(":")[0];
@@ -971,7 +1031,7 @@ export function generateurDuDepot(jeu, depot) {
  *  - **à fichiers, forme `jours-proteges`** (Tower) : les jours protégés qui n'ont pas de fichier sont figés avec le code en production puis posés dans le dépôt visé ; s'il en manque un, arrêt.
  * Écrit l'artefact `jours` dans `sortie` : `proteges.json` et, pour chaque jeu, `<id>/` (son registre, ou `jours/*.json`).
  */
-export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, sortie, temp, resume, bascule, instant }) {
+export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, sortie, temp, resume, bascule, instant, nonServis = new Set() }) {
   prod = resolve(prod);
   cible = resolve(cible);
   sortie = resolve(sortie);
@@ -982,6 +1042,11 @@ export function figerJeux({ prod, cible, proteges, veille, reference, jusqua, so
   for (const jeu of CHAINE) {
     const sortieJeu = join(sortie, jeu.id);
     mkdirSync(sortieJeu, { recursive: true });
+    // Un jeu que la production ne sert pas (`off` ou `preview`, commande `non-servis`) n'a montré aucun jour : rien à figer avec le code en production, rien à conserver.
+    if (nonServis.has(jeu.id)) {
+      ajouterAuResume(resume, `### ${jeu.nom} : jeu non servi par la production\n\n- Aucun jour de ${jeu.nom} n'a été vu par un joueur (le jeu n'est pas \`on\` en production) : rien à figer avec le code en production, ses jours sont régénérés avec le nouveau code.\n`);
+      continue;
+    }
     if (jeu.mode === "registre") {
       // Lot R11 : le registre des jours. Ce que la production sert pour chaque jour jusqu'à la veille de la bascule s'ajoute à celui du dépôt ; un jour qui diffère (ou un jour du dépôt au-delà de la veille)
       // arrête la mise en production. La construction (cible) l'a ensuite : ses empreintes sont celles de la production.
@@ -1244,7 +1309,16 @@ if (isMain) {
       joursServis(jeuDeLaChaine(opt("--jeu")), a, b, opt("--jusqua") ?? "origin/main");
     } else if (cmd === "figer-jeux") {
       // Lot K4b : le garde-fou des jours, pour chaque jeu de la chaîne (lots R6, R11, R16). Se lance dans le dépôt des outils (tout l'historique : `jours-servis` le lit).
-      figerJeux({ prod: opt("--prod"), cible: opt("--cible"), proteges: opt("--proteges"), veille: opt("--veille"), reference: opt("--reference"), jusqua: opt("--jusqua") ?? "origin/main", sortie: opt("--sortie"), temp: opt("--temp"), resume: opt("--resume"), bascule: opt("--bascule"), instant: opt("--instant") ? Number(opt("--instant")) : undefined });
+      figerJeux({ nonServis: lireNonServis(opt("--non-servis")), prod: opt("--prod"), cible: opt("--cible"), proteges: opt("--proteges"), veille: opt("--veille"), reference: opt("--reference"), jusqua: opt("--jusqua") ?? "origin/main", sortie: opt("--sortie"), temp: opt("--temp"), resume: opt("--resume"), bascule: opt("--bascule"), instant: opt("--instant") ? Number(opt("--instant")) : undefined });
+    } else if (cmd === "non-servis") {
+      // Run 46 : les jeux que la production ne sert pas (`off`, `preview`) n'ont montré aucun jour : « Mettre en production » ne leur garde rien (figeage, empreintes). Lecture seule de `GET /api/jeux`.
+      const etats = await lireEtatsDesJeux(opt("--origine"));
+      const ids = jeuxNonServis(etats);
+      writeFileSync(resolve(opt("--sortie")), JSON.stringify({ jeux: ids, etats }, null, 1) + "\n");
+      const lignes = CHAINE.map((j) => `${j.nom} : ${etats[j.id] ?? "état inconnu"}${ids.includes(j.id) ? " → non servi, rien à conserver" : ""}`);
+      const texte = `### État des jeux en production (lecture seule)\n\n${lignes.map((l) => `- ${l}`).join("\n")}\n`;
+      if (opt("--resume")) appendFileSync(opt("--resume"), texte);
+      process.stdout.write(texte);
     } else if (cmd === "servi-verifier") {
       // Lot 33 : les jours qu'on vient de figer avec le code en production sont comparés, en lecture seule, à ce que le serveur de production sert EN CE MOMENT (jusqu'à aujourd'hui compris : demain n'est pas servi).
       // `--sortie` : l'artefact `jours` de `figer-jeux` (`<jeu>/nouveaux.json`, `<jeu>/jours/AAAA-MM-JJ.json`). Une différence arrête : le fichier n'est pas le niveau que les joueurs ont vu.
@@ -1288,7 +1362,12 @@ if (isMain) {
       // Les empreintes des jours de chaque jeu pour le code du dépôt `a`. Les modules de jeu (`jours.fabrication.empreinte`) et le pilote sont ceux de CE dépôt, copiés dans le dépôt visé (le code en
       // production ne les a pas) : ils ne dépendent que des paquets @cdj/*. Un jeu que ce code ne contient pas n'a rien servi : aucune empreinte, rien à conserver pour lui.
       const depot = resolve(a);
+      const nonServis = lireNonServis(opt("--non-servis")); // le code en production seulement : un jeu qu'elle ne sert pas n'a rien montré (commande `non-servis`)
       for (const jeu of CHAINE) {
+        if (nonServis.has(jeu.id)) {
+          console.log(`${jeu.nom} : non servi par la production (ni \`on\`), aucune empreinte (rien à conserver pour lui)`);
+          continue;
+        }
         if (!existsSync(join(depot, "packages", jeu.sim))) {
           console.log(`${jeu.nom} : absent de ce code, aucune empreinte (rien à conserver pour lui)`);
           continue;

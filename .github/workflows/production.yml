@@ -303,6 +303,12 @@ jobs:
       - name: Installer le code en production (il fige ses propres jours)
         working-directory: prod
         run: npm ci --ignore-scripts
+      # Run 46 : un jeu que la production ne sert pas (`off`, `preview` : Blocks, Rush…) n'a montré aucun jour à un joueur ; « Mettre en production » ne lui garde rien (ni figeage avec le code en production, ni empreintes
+      # à comparer) : sinon tout changement de générateur d'un jeu en préparation arrêtait le bouton sur des jours que personne n'a vus. Lecture seule de `GET /api/jeux` ; un jeu absent de la liste reste protégé.
+      - name: Les jeux que la production ne sert pas (rien à conserver pour eux — lecture seule)
+        run: |
+          node outils/scripts/mise-en-production.mjs non-servis --origine "$(node outils/scripts/domaine.mjs adresse production)" --sortie "$RUNNER_TEMP/non-servis.json" --resume "$GITHUB_STEP_SUMMARY" \
+            || { echo "::error title=Mise en production arrêtée::l'état des jeux en production n'a pas pu être lu (lecture seule de /api/jeux) : sans lui, on ne sait pas quels jours les joueurs ont vus"; exit 1; }
       # Lot K4b — **tous les jeux, par leur fiche** (`jours.fabrication`, `scripts/mise-en-production.mjs figer-jeux`) : aucun jeu n'est nommé ici. Pour chaque jeu, avec le code EN PRODUCTION :
       #   - un jeu à registre (lot R11) : ce que la production sert jusqu'à la veille de la bascule s'ajoute au registre de la construction ; un jour qui diffère arrête ;
       #   - un jeu dont les fichiers sont des jours figés (lot R6) : les jours que la production sert sont remis, son script `figer` écrit tout jusqu'à la veille, les jours sans résultat sont retirés (le
@@ -319,7 +325,7 @@ jobs:
         run: |
           # Lot 33 (incident du 06/11/2026) : un jeu à fichiers par jour fige TOUT jour non figé jusqu'à DEMAIN avec le code en production (outil d'aujourd'hui), compare chaque fichier à ce que ce code sert sans lui,
           # refuse le calendrier des bascules du générateur fixé à aujourd'hui ou avant, et s'arrête s'il reste un jour déjà servi sans fichier figé.
-          node scripts/mise-en-production.mjs figer-jeux --prod "$GITHUB_WORKSPACE/prod" --cible "$GITHUB_WORKSPACE/cible" --proteges "$RUNNER_TEMP/proteges.json" \
+          node scripts/mise-en-production.mjs figer-jeux --prod "$GITHUB_WORKSPACE/prod" --cible "$GITHUB_WORKSPACE/cible" --proteges "$RUNNER_TEMP/proteges.json" --non-servis "$RUNNER_TEMP/non-servis.json" \
             --veille "$VEILLE" --bascule "$BASCULE" --instant "$INSTANT" --reference "$REFERENCE" --jusqua origin/main --sortie "$RUNNER_TEMP/jours" --temp "$RUNNER_TEMP" --resume "$GITHUB_STEP_SUMMARY" \
             || { echo "::error title=Mise en production arrêtée::un jour d'un jeu ne s'accorde pas avec ce que la production sert, n'a pas pu être figé avec le code en production, reste servi sans fichier figé, ou le calendrier des bascules du générateur est refusé : la liste est dans ce job et dans le résumé du run"; exit 1; }
       # Lot 33 : en production, les jours qu'on vient de figer (jusqu'à aujourd'hui) sont comparés, en lecture seule, au niveau que le serveur de production sert EN CE MOMENT. (Essai et répétition : la recette n'est pas
@@ -342,7 +348,7 @@ jobs:
           (cd cible && npm ci --ignore-scripts)
           # Les jours d'avant le lancement « restent tels quels » : la comparaison part du plus ancien fichier figé (lot R11), pas de la journée n° 1.
           PREMIER="$(jq -r .debut "$RUNNER_TEMP/proteges.json")"
-          node outils/scripts/mise-en-production.mjs empreintes prod --du "$PREMIER" --au "$DERNIER" --sortie "$RUNNER_TEMP/empreintes/prod.json"
+          node outils/scripts/mise-en-production.mjs empreintes prod --du "$PREMIER" --au "$DERNIER" --sortie "$RUNNER_TEMP/empreintes/prod.json" --non-servis "$RUNNER_TEMP/non-servis.json"
           node outils/scripts/mise-en-production.mjs empreintes cible --du "$PREMIER" --au "$DERNIER" --sortie "$RUNNER_TEMP/empreintes/cible.json"
           simulee=(); [ "$MODE" != repetition ] || simulee=(--simulee)
           node outils/scripts/mise-en-production.mjs comparer "$RUNNER_TEMP/empreintes/prod.json" "$RUNNER_TEMP/empreintes/cible.json" "$BASCULE" "${simulee[@]}" --proteges "$RUNNER_TEMP/proteges.json" --instant "$INSTANT" --resume "$GITHUB_STEP_SUMMARY" --sortie "$GITHUB_OUTPUT" > /dev/null \

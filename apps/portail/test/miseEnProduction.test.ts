@@ -18,7 +18,10 @@ import {
   joursDuRegistre,
   joursProteges,
   joursRegeneres,
+  lireEtatsDesJeux,
+  lireNonServis,
   lireResultats,
+  jeuxNonServis,
   niveauxAEffacer,
   resumeProteges,
   registreDesJours,
@@ -783,5 +786,76 @@ describe("poser-jours : ce que « Mettre en production » a produit pour chaque 
     expect(execFileSync("node", [CLI, "jeux"], { encoding: "utf8" }).trim()).toBe("track jump tower blocks rush");
     expect(execFileSync("node", [CLI, "jeux", "--mode", "registre"], { encoding: "utf8" }).trim()).toBe("track");
     expect(execFileSync("node", [CLI, "jeux", "--mode", "fichier-par-jour"], { encoding: "utf8" }).trim()).toBe("jump tower blocks rush");
+  });
+
+  // Run 46 (09/11/2026) : un jeu que la production ne sert pas n'a rien montré à un joueur : « Mettre en production » ne lui garde rien.
+  describe("les jeux que la production ne sert pas", () => {
+    const sansAttente = async () => {};
+    const reponse = (status: number, corps: unknown) => ({ status, headers: new Headers(), json: async () => corps });
+
+    it("jeuxNonServis : seul un état explicitement `off` ou `preview` compte ; absent ou inconnu = protégé (dans l'ordre de la chaîne)", () => {
+      const ids = ["track", "jump", "tower", "blocks", "rush"];
+      expect(jeuxNonServis({ track: "on", jump: "on", tower: "on", blocks: "off", rush: "preview" }, ids)).toEqual(["blocks", "rush"]);
+      expect(jeuxNonServis({ track: "on", jump: "on" }, ids)).toEqual([]); // absents de la liste : conservés
+      expect(jeuxNonServis({ track: "on", jump: "on", tower: "bientôt", blocks: null, rush: undefined }, ids)).toEqual([]); // état inconnu : conservé
+      expect(jeuxNonServis({ track: "on", jump: "on", tower: "on", blocks: "on", rush: "on" }, ids)).toEqual([]);
+    });
+
+    it("jeuxNonServis, sur la chaîne des fiches : Track et Jump (publics) ne sont jamais écartés tant que leur état est `on`", () => {
+      expect(jeuxNonServis({ track: "on", jump: "on", tower: "off", blocks: "off", rush: "off" })).toEqual(["tower", "blocks", "rush"]);
+    });
+
+    it("lireEtatsDesJeux : GET en lecture seule de /api/jeux, la liste des états ; une réponse mal formée arrête", async () => {
+      const appels: string[] = [];
+      const fetchImpl = async (url: string, init: { method: string }) => {
+        appels.push(`${init.method} ${url}`);
+        return reponse(200, { jeux: { track: "on", blocks: "off" } });
+      };
+      expect(await lireEtatsDesJeux("https://playdujour.com/", { fetchImpl: fetchImpl as never })).toEqual({ track: "on", blocks: "off" });
+      expect(appels).toEqual(["GET https://playdujour.com/api/jeux"]);
+      for (const mauvais of [{}, { jeux: null }, { jeux: ["track"] }, { jeux: "on" }, null]) {
+        await expect(lireEtatsDesJeux("https://x", { fetchImpl: (async () => reponse(200, mauvais)) as never })).rejects.toThrow(/réponse inattendue/);
+      }
+    });
+
+    it("lireEtatsDesJeux : un 429 ou une erreur du serveur recommence, un refus ou un serveur injoignable arrête (jamais « aucun jeu écarté » par défaut)", async () => {
+      let n = 0;
+      const pas: number[] = [];
+      const capricieux = async () => (++n < 3 ? reponse(n === 1 ? 429 : 503, {}) : reponse(200, { jeux: { rush: "off" } }));
+      expect(await lireEtatsDesJeux("https://x", { fetchImpl: capricieux as never, attendre: async (ms: number) => void pas.push(ms) })).toEqual({ rush: "off" });
+      expect(n).toBe(3);
+      expect(pas).toHaveLength(2);
+      await expect(lireEtatsDesJeux("https://x", { fetchImpl: (async () => reponse(403, {})) as never, attendre: sansAttente })).rejects.toThrow(/403/);
+      await expect(lireEtatsDesJeux("https://x", { fetchImpl: (async () => { throw new Error("réseau"); }) as never, attendre: sansAttente, essais: 2 })).rejects.toThrow(/impossible/);
+      await expect(lireEtatsDesJeux("https://x", { fetchImpl: (async () => reponse(503, {})) as never, attendre: sansAttente, essais: 2 })).rejects.toThrow(/503/);
+    });
+
+    it("lireNonServis : sans fichier, aucun jeu écarté ; un fichier mal formé arrête", () => {
+      expect([...lireNonServis(undefined)]).toEqual([]);
+      const dossier = mkdtempSync(join(tmpdir(), "non-servis-"));
+      try {
+        const bon = join(dossier, "bon.json");
+        writeFileSync(bon, JSON.stringify({ jeux: ["blocks", "rush"], etats: {} }));
+        expect([...lireNonServis(bon)]).toEqual(["blocks", "rush"]);
+        const mauvais = join(dossier, "mauvais.json");
+        writeFileSync(mauvais, JSON.stringify({ jeux: "blocks" }));
+        expect(() => lireNonServis(mauvais)).toThrow(/liste de jeux attendue/);
+      } finally {
+        rmSync(dossier, { recursive: true, force: true });
+      }
+    });
+
+    it("comparerEmpreintes : un jeu laissé de côté côté production (comme un jeu qu'elle ne connaît pas) est régénéré, jamais « en différence » ; un jeu servi qui change arrête toujours", () => {
+      const e = (id: string, h: string) => ({ id, h, ok: true });
+      const cible = { blocks: { "2026-11-05": e("blocks-2026-11-05-g6", "bb") }, track: { "2026-11-05": e("jour-2026-11-05-g23", "t2") } };
+      const proteges = { format: 1, premier: "2026-10-27", veille: "2026-11-09", jours: { "2026-11-05": "1 classé(s)" }, resultats: {} };
+      const sansBlocks = comparerEmpreintes({ track: { "2026-11-05": e("jour-2026-11-05-g23", "t2") } }, cible, "2026-11-10", "2026-10-27", proteges);
+      expect(sansBlocks.ok).toBe(true);
+      expect(sansBlocks.jeux.blocks.differences).toEqual([]);
+      const avecBlocks = comparerEmpreintes({ blocks: { "2026-11-05": e("blocks-2026-11-05-g3", "aa") }, track: { "2026-11-05": e("jour-2026-11-05-g22", "t1") } }, cible, "2026-11-10", "2026-10-27", proteges);
+      expect(avecBlocks.ok).toBe(false);
+      expect(avecBlocks.jeux.blocks.differences).toHaveLength(1);
+      expect(avecBlocks.jeux.track.differences).toHaveLength(1);
+    });
   });
 });
