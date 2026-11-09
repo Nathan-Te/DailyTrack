@@ -70,10 +70,10 @@ export const PALETTES: Readonly<Record<string, PaletteMonde>> = {
     particules: { genre: "poussiere", couleur: 0xf0d2a0, couleur2: 0xe0b878, nombre: 200, taille: 0.2 }, rais: 0.15, brumeBasse: 0.3,
   },
   "sousbois": {
-    fond: 0xa6c9a4, sol: 0xd6e3a6, sol2: 0xc3d58c, mur: 0x3e7a3c, murHaut: 0x5a9a4c, lumiere: 0xfff1bf, ambiance: 0xcfe2b4, intensiteLumiere: 1.75, intensiteAmbiance: 1.05, hemiCiel: 0xc2dcbb, hemiSol: 0xa9c283, brume: 0xa4c9a2,
-    tranche: 0x8f8a58, falaise: 0x6e5f44, falaise2: 0x8a7a58, herbe: 0x6fae5a, herbe2: 0x4f9148, bois: 0x8e5f36, bois2: 0x62412a, nuage: 0xeaf6e4, cielHaut: 0x7fb4a6, cielBas: 0xc4dcc0,
-    terre: 0xb09a62, terre2: 0xa08a54, herbeSol: 0x4a8c3c, herbeSol2: 0x3d7a32, brumeProche: 40, brumeLoin: 120, soleil: [7, 19, -2],
-    etalonnage: { bloom: 1.3, vignette: 0.42, teinte: [0.9, 0.99, 0.88], saturation: 1.1, contraste: 1.12 },
+    fond: 0xb4c2b0, sol: 0xe4e8b8, sol2: 0xd4dca4, mur: 0x3e7a3c, murHaut: 0x5a9a4c, lumiere: 0xffe9b6, ambiance: 0xdcdcc6, intensiteLumiere: 1.8, intensiteAmbiance: 1.05, hemiCiel: 0xd0d8d0, hemiSol: 0xb8b08c, brume: 0xb9c3b2,
+    tranche: 0x8f8a58, falaise: 0x6e5f44, falaise2: 0x8a7a58, herbe: 0x6fae5a, herbe2: 0x4f9148, bois: 0x8e5f36, bois2: 0x62412a, nuage: 0xf0f2ea, cielHaut: 0x93b0bd, cielBas: 0xd2dacf,
+    terre: 0xb09a68, terre2: 0xa08a5a, herbeSol: 0x558842, herbeSol2: 0x487a38, brumeProche: 40, brumeLoin: 120, soleil: [7, 19, -2],
+    etalonnage: { bloom: 1.3, vignette: 0.4, teinte: [0.97, 0.97, 0.92], saturation: 1.0, contraste: 1.1 },
     particules: { genre: "lucioles", couleur: 0xe6ff7a, couleur2: 0xb8ff9a, nombre: 90, taille: 0.16 }, rais: 0.9, brumeBasse: 0.8,
   },
 };

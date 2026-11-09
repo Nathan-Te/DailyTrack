@@ -24,6 +24,7 @@ Avant : `br-a2-avant-*.png` (le jour, la salle d'épreuve, le boss, la vitrine ;
 | 1 | `br-a2-tour1-planche-{a,b,vitrines}.png` | **carrière** : sol presque blanc, soleil trop dur ; **sous-bois** : lavé, sans ombre ni brume ; peu d'îles lointaines ; cercle de l'épreuve trop pâle ; encoches de l'anneau du boss trop larges ; entrée de l'arène hors champ dans la capture → sol de la carrière plus gris-bleu (`lisibilite` ≥ 40 gardé), soleil de la carrière à 2,0 ; sous-bois : soleil 1,75, ambiance 1,05, étalonnage sombre et frais (teinte 0,9 / 0,99 / 0,88), vignettage 0,42, brume plus verte ; 2,6 fois plus d'îles ; cercle plus sombre ; encoches fines ; capture à 9 m de l'arène |
 | 2 | `br-a2-tour2-planche-{a,b,vitrines}.png` | brins d'herbe réduits à des pointes noires par le contour ; herbe du sous-bois trop sombre ; damier de la prairie trop pâle et sans contraste entre dalles → brins larges et moins nombreux, fleurs plus grosses, herbe du sous-bois plus claire, contraste du damier dans le matériau, sable de la prairie plus chaud (limité par la tête du golem : ΔE ≥ 40) |
 | 3 | `br-a2-t3-*.png` (18 images) et les comparaisons | écarts restants : §5 |
+| retour de Nathan | `br-a2-t3-*-sousbois.png` refaites | **sous-bois trop verdâtre** (lumière, ciel, brume, étalonnage, dalles toutes vertes) → teinte de l'étalonnage presque neutre (0,97 / 0,97 / 0,92, saturation 1), lumière chaude, ciel gris-bleu, brume grise, hémisphérique neutre, dalles vert-jaune pâle ; l'ombre (vignettage, brume basse), les rais et les lucioles restent ; prairie et carrière inchangées |
 
 ## 4. Mesures
 **Golden** : `packages/rush-sim` non modifié ; `npx vitest run --project sqlite packages/rush-sim` (dont le golden et le déterminisme) vert, golden inchangé au bit près. **Tests** : `apps/rush` (unitaires : 213 tests) vert ; **les 51 tests e2e de Rush (Chromium, en local) verts**, dont `monde.spec.ts` ; `packages/rush-sim` : 358 tests verts, aucun fichier du paquet modifié. `npm run consignes`, `npm run fiches` à jour.
@@ -49,6 +50,9 @@ Avant le lot : 57 à 65 appels et 142 k triangles sur le jour (haute), 58 appels
 - **Le muret** : la cible a des poteaux de bois taillés, aux arêtes écaillées ; les nôtres sont des blocs arrondis (la fabrique est faite pour qu'un modèle les remplace).
 - **La bande du haut** est celle du kit (pas de pastille « RUSH · DAILY RUN », ni de chrono en pastille) ; les boutons du téléphone n'ont pas les icônes pleines de la cible. Lot de plateforme à venir.
 - **Peu de nuages proches** et pas de lumières dorées sur le chemin (les gemmes de la cible) : les gemmes viennent de BR2.
+
+## 5 bis. CI
+Le job « jeu fictif (3/3) » a échoué sur deux tests de **temps de génération de Track** (`packages/sim/test/blocs58-avant-apres.test.ts` : 890 ms contre 857 ; `variete365.test.ts` : 5 044 ms contre 4 500), une zone que ce lot ne touche pas, sur un runner chargé (le job a duré 17 min). Règle d'arrêt : un nouveau commit relance la CI une fois ; s'il échoue encore, c'est à Nathan de trancher, on ne corrige pas.
 
 ## 6. Ce qui n'est pas vérifié
 - **Aucun téléphone réel** : appels et triangles sont mesurés, pas les images par seconde ni la chaleur ; le vent est un calcul de sommet, les particules un `Points` de 260 points : légers, mais **à essayer sur un vrai appareil**. Le passage automatique en basse (30 i/s) reste actif.
