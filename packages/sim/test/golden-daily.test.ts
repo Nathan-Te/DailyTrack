@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { GENERATOR_VERSION, SIM_VERSION, dailyCircuit, generatorVersionOf, parseDay } from "../src/index";
+import { GENERATOR_VERSION, SIM_VERSION, dailyCircuit, generatorVersionOf, parseDay, resumeRegistreTrack } from "../src/index";
 import { versionDeReference } from "./helpers/versions";
 
 // Circuits du jour de référence : le texte exact, le temps de l'auteur et la palette de quelques dates,
@@ -82,11 +82,15 @@ describe("circuits du jour de référence", () => {
   });
 
   it("lot R11 : un jour que le registre ne nomme pas prend la dernière version, un jour qu'il nomme garde la sienne (les vecteurs d'avant le 27/10/2026 sont du registre)", () => {
+    // PR « Jours figés » #317 (09/11/2026) : chaque mise en production ajoute des jours au registre, avec la version que la production a servie (le 09/11 : les 03 à 09/11 en v21, alors que ces vecteurs sont de la
+    // dernière version) : « un jour que le registre ne nomme pas » = un jour après son dernier jour, jamais une date écrite en dur.
+    const { jusqua } = resumeRegistreTrack();
     for (const c of golden.circuits) {
       const day = parseDay(c.date)!;
       const g = versionOfEntry(golden, c.date);
-      if (g === GENERATOR_VERSION) expect(generatorVersionOf(day), c.date).toBe(GENERATOR_VERSION);
-      else if (c.date <= "2026-10-27") expect(generatorVersionOf(day), c.date).toBe(g);
+      if (g === GENERATOR_VERSION) {
+        if (c.date > jusqua) expect(generatorVersionOf(day), c.date).toBe(GENERATOR_VERSION);
+      } else if (c.date <= "2026-10-27") expect(generatorVersionOf(day), c.date).toBe(g);
     }
   });
 
