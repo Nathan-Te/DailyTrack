@@ -1,6 +1,6 @@
 import { GRAMMAIRE_LOT57 } from "./grammaire";
 import { reach, transition } from "./figuresOutils";
-import { exitDelta, parseToken, type BlockSurface, type WidthLetter } from "./track";
+import { exitDelta, parseTokenLu, type BlockSurface, type WidthLetter } from "./track";
 
 // Lot 57b : `transition` et `reach` vivent dans `figuresOutils.ts` (la grammaire des sauts les lit, et `figures.ts` lit la grammaire : pas d'import circulaire).
 export { reach, transition };
@@ -151,7 +151,7 @@ export function extent(seg: readonly string[]): { hi: number; lo: number; net: n
   let hi = 0;
   let lo = 0;
   for (const t of seg) {
-    const p = parseToken(t);
+    const p = parseTokenLu(t);
     y += exitDelta(p.kind, p.rise);
     if (y > hi) hi = y;
     if (y < lo) lo = y;
@@ -985,7 +985,7 @@ const SURFACE_FACTOR: Record<BlockSurface, number> = { road: 1, dirt: 1.1, ice: 
 export function estimateSeconds(tokens: readonly string[]): number {
   let t = 0;
   for (const token of tokens) {
-    const p = parseToken(token);
+    const p = parseTokenLu(token);
     t += (KIND_SECONDS[p.kind] ?? 0.7) * SURFACE_FACTOR[p.surface];
   }
   return t;

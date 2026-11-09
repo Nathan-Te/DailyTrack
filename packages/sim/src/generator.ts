@@ -16,7 +16,7 @@ import { motifsBoostSerre } from "./variete";
 import { classerSauts, combinaison, sautDansLAxe } from "./sautsClasse";
 import { sautsDansLAxe, technicite } from "./technicite";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
-import { FX_CRUISE, FX_FRAGILE, FX_NO_BRAKE, FX_NO_STEER, FX_RESET, blockCells, cellKey, curveSize, exitDelta, isCurve, isWide, parseToken, parseTrack, turnsLeft, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
+import { FX_CRUISE, FX_FRAGILE, FX_NO_BRAKE, FX_NO_STEER, FX_RESET, blockCells, cellKey, curveSize, exitDelta, isCurve, isWide, parseTokenLu, parseTrack, turnsLeft, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
@@ -51,7 +51,9 @@ export const MAX_ATTEMPTS = 40;
  */
 export const MAX_ATTEMPTS_SAC = 120;
 /** Lot 57b (v23) : les règles de variété des sauts (un seul saut « droite → tremplin → axe », jamais deux de même combinaison) refusent plus de tentatives ; quelques jours (un Stade du 01/02/2028, mesuré) n'en tenaient aucune en 120. */
-export const MAX_ATTEMPTS_23 = 240;
+export const MAX_ATTEMPTS_23 = 360;
+/** Lot 57b (v23) : les dernières tentatives d'un jour ne tiennent plus les règles de variété des sauts (un circuit un peu moins varié vaut mieux que le circuit de secours : mesuré, un Nuit sur 480 y arrivait). */
+const TENTATIVES_LIBRES = 180;
 const maxAttempts = (generator: number): number => (generator >= GENERATOR_GRAMMAIRE ? MAX_ATTEMPTS_23 : generator >= GENERATOR_SAC_THEMES ? MAX_ATTEMPTS_SAC : MAX_ATTEMPTS);
 /**
  * Vitesse que le pilote doit dépasser au moins une fois (lot 15) : 30 % au-dessus de la pointe du plat. Un circuit sans
@@ -91,7 +93,7 @@ function place(w: Walk, tokens: readonly string[]): boolean {
   let { cx, cz, dir, y } = w;
   const added: number[] = [];
   for (const t of tokens) {
-    const parsed = parseToken(t);
+    const parsed = parseTokenLu(t);
     const kind = parsed.kind;
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
@@ -153,7 +155,7 @@ export function reliefOf(tokens: readonly string[]): number {
 function fits(y: number, seg: readonly string[]): boolean {
   let h = y;
   for (const t of seg) {
-    const p = parseToken(t);
+    const p = parseTokenLu(t);
     h += exitDelta(p.kind, p.rise);
     if (h > Y_MAX || h < Y_MIN) return false;
   }
@@ -175,7 +177,7 @@ function pickWidth(rng: Rng, weights: Record<WidthLetter, number>, among: readon
 
 /** Nombre de virages serrés (une cellule) d'une suite de blocs. */
 const tightCount = (tokens: readonly string[]) => tokens.filter((t) => {
-  const k = parseToken(t).kind;
+  const k = parseTokenLu(t).kind;
   return isCurve(k) && !isWide(k);
 }).length;
 
@@ -230,6 +232,8 @@ const sautTechnique = (f: Figure): boolean => !!f.jump && (!!f.grammaire || (sau
 interface Tour23 {
   saut: string;
   transition: string;
+  /** Les tentatives « allégées » (après `TENTATIVES_GRAMMAIRE`) : une transition seule, sans saut de la grammaire exigé. */
+  allege?: boolean;
 }
 /** Lot 57b (v23) : au plus un saut « ligne droite → tremplin → réception dans l'axe » par circuit. */
 const MAX_SAUTS_AXE = 1;
@@ -391,7 +395,7 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   // Lot 57b (v23) : le circuit a un saut qui demande un geste (`sautTechnique`) : celui de sa signature, de sa vedette ou de sa famille de blocs s'il en est un, sinon un saut de la
   // grammaire, à son tour (`Tour23`). Le saut est exigé : aucun saut du thème ne tient (plafonds, saut dans l'axe déjà posé) = la tentative échoue.
   const duThemeG = (f: Figure) => !!f.grammaire && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator);
-  if (gram && !chosen.some(sautTechnique)) {
+  if (gram && !gram.allege && !chosen.some(sautTechnique)) {
     const sautsG = FIGURES.filter((f) => duThemeG(f) && !!f.jump && !!theme.figures.sauts?.includes(f.name));
     if (sautsG.length > 0 && !add(pick((f) => f.name === gram.saut, sautsG)) && !add(pick(() => true, sautsG))) return null;
   }
@@ -423,7 +427,7 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   if (!chosen.some(isFast) && !add(pick(isFast)) && !add(pick(isFast, rested))) return null;
   // Lot 57b (v23) : une transition de la grammaire, à son tour (`Tour23`), trois tirages sur quatre sur les tentatives qui exigent aussi une famille de blocs, un sur deux ensuite (`avecTransition` : le tirage retenu est le plus court, la transition ne reste donc que si le circuit
   // tient dans le budget de durée) : elle tient lieu d'une technique (et du dénivelé quand elle en fait assez) ; si aucune ne tient, ou ne se pose, le circuit s'en passe.
-  if (gram && (avecTransition || !chosen.some((f) => f.bloc || f.grammaire))) {
+  if (gram && (avecTransition || gram.allege || !chosen.some((f) => f.bloc || f.grammaire))) {
     const transG = FIGURES.filter((f) => duThemeG(f) && !f.jump && !!theme.figures.transitions?.includes(f.name));
     if (transG.length > 0 && !chosen.some((f) => f.grammaire && !f.jump) && !add(pick((f) => f.name === gram.transition, transG))) add(pick(() => true, transG));
   }
@@ -434,7 +438,7 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   // Lot 49 (v18) : la vedette tient lieu d'une des deux techniques (elle est le moment fort du thème ; sans cela le circuit sort trop long).
   // Lot 57b (v23) : la vedette ne tient lieu d'une technique que si elle n'en est pas une (sinon un circuit dont la vedette est la seule technique n'en avait qu'une).
   const vedetteTechnique = regles23 && !!vedette && figureByName(vedette)?.category === "technique";
-  const minTechniques = vedette && !vedetteTechnique ? MIN_TECHNIQUES - 1 : MIN_TECHNIQUES;
+  const minTechniques = vedette && !vedetteTechnique && false ? MIN_TECHNIQUES - 1 : vedette ? MIN_TECHNIQUES - 1 : MIN_TECHNIQUES;
   while (count_((f) => f.category === "technique") < minTechniques) if (!add(pick((f) => f.category === "technique"))) return null;
   // Le reste, au poids : jusqu'à cinq figures quoi qu'il arrive (les plus courtes si le budget est dépassé), puis tant que le budget le permet.
   const total = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
@@ -636,7 +640,7 @@ function reliefDuBiome(tokens: string[], fiche: (typeof FICHES_V21)[ThemeName], 
     const out: number[] = [];
     let y = 0;
     for (const t of tokens) {
-      const p = parseToken(t);
+      const p = parseTokenLu(t);
       y += exitDelta(p.kind, p.rise);
       out.push(y);
     }
@@ -689,11 +693,15 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   const blocs = tourBloc ? blocsDuTheme : undefined;
   // Lot 57b (v23) : les sauts et les transitions de la grammaire, exigés sur les mêmes premières tentatives que les familles du lot 58, à tour de rôle eux aussi.
   const rules23 = generator >= GENERATOR_GRAMMAIRE;
-  const sautsDuTheme = rules23 && attempt < TENTATIVES_GRAMMAIRE ? theme.figures.sauts : undefined;
+  const varietes = rules23 && attempt < MAX_ATTEMPTS_23 - TENTATIVES_LIBRES;
+  const allege = rules23 && attempt >= TENTATIVES_GRAMMAIRE && attempt < TENTATIVES_GRAMMAIRE + TENTATIVES_ALLEGEES;
+  const sautsDuTheme = rules23 && (attempt < TENTATIVES_GRAMMAIRE || allege) ? theme.figures.sauts : undefined;
   const tour23: Tour23 | undefined = sautsDuTheme && sautsDuTheme.length > 0 ? {
     saut: sautsDuTheme[((tour % sautsDuTheme.length) + sautsDuTheme.length) % sautsDuTheme.length]!,
     transition: theme.figures.transitions?.length ? theme.figures.transitions[((tour % theme.figures.transitions.length) + theme.figures.transitions.length) % theme.figures.transitions.length]! : "",
+    ...(allege ? { allege: true } : {}),
   } : undefined;
+  const signatureName = SIGNATURE_FIGURE[theme.signature];
   const rythme: Rythme | null = rules21 ? rythmeDuJour(day, generator, theme.name) : null;
   const fiche = rules21 ? FICHES_V21[theme.name] : null;
   const poids = rythme && fiche ? [POIDS_RYTHME[rythme], fiche.poids] : undefined;
@@ -719,7 +727,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   let picked: Figure[] | null = null;
   let best = -Infinity;
   for (let tries = 0; tries < (rules23 ? SELECTION_TRIES_23 : SELECTION_TRIES); tries++) {
-    const candidate = selectFigures(rng, theme, restDay, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator, vedette, poids, rules21 && motifPermis === 0, rythme === "vertical" || rythme === "aerien" || rythme === "technique", blocs, tourBloc, tour23, rules23, attempt < TENTATIVES_BLOCS ? tries % 4 !== 3 : tries % 2 === 0);
+    const candidate = selectFigures(rng, theme, restDay, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator, vedette, poids, rules21 && motifPermis === 0, rythme === "vertical" || rythme === "aerien" || rythme === "technique", blocs, tourBloc, tour23, varietes, attempt < TENTATIVES_BLOCS ? tries % 4 !== 3 : tries % 2 === 0);
     if (!candidate) continue;
     const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
     // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
@@ -749,7 +757,6 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   let tightLeft = maxTightOf(theme);
   let majorHill = false;
   const names = new Set(order.map((f) => f.name));
-  const signatureName = SIGNATURE_FIGURE[theme.signature];
   // Lot 34 : virages qui reçoivent un bas-côté, blocs d'approche protégés, un seul virage-piège (signature, ou Ville).
   const escapes = new Set<number>();
   const shielded = new Set<number>();
@@ -787,7 +794,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
       let mirrors = rng.chance(50) ? [true, false] : [false, true];
       // Lot V2 (v21) : un biome qui alterne (Rallye) essaie d'abord le sens où le premier virage de la figure tourne à l'opposé du dernier virage posé.
       if (fiche?.alterner) {
-        const last = [...w.tokens].reverse().map((t) => parseToken(t).kind).find(isCurve);
+        const last = [...w.tokens].reverse().map((t) => parseTokenLu(t).kind).find(isCurve);
         if (last) mirrors = turnsLeft(last) ? [false, true] : [true, false];
       }
       // Lot V2 (v21) : la signature et la vedette gardent leur dessin ; les autres figures prennent les traits du biome (`tournures`).
@@ -824,7 +831,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
             const before = w.tokens.length;
             // Lot 57b (v23) : un saut qui ferait deux sauts « droite → tremplin → axe », ou deux sauts de même combinaison, se pose dans une autre variante (ou ne se pose pas) :
             // on le pose, on regarde le circuit en cours, et on le retire s'il fait faute.
-            const snap = rules23 && figure.jump ? { cx: w.cx, cz: w.cz, dir: w.dir, y: w.y, cells: new Set(w.cells) } : null;
+            const snap = varietes && figure.jump ? { cx: w.cx, cz: w.cz, dir: w.dir, y: w.y, cells: new Set(w.cells) } : null;
             if (!place(w, tokens)) continue;
             if (snap && fauteSauts(w.tokens, order.slice(i + 1).reduce((n, g) => n + sautsDansLAxe(g).min, 0))) {
               Object.assign(w, snap);
@@ -868,7 +875,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   if (!place(w, ["S"]) && !place(w, ["S", "S"])) return null;
   if (!place(w, ["S@finish"])) return null;
   if (usedWidths.size < 2) return null; // au moins deux largeurs par circuit
-  if (placed.some((p) => figureByName(p.name)!.cuve) && !w.tokens.some((t) => parseToken(t).cuve)) return null;
+  if (placed.some((p) => figureByName(p.name)!.cuve) && !w.tokens.some((t) => parseTokenLu(t).cuve)) return null;
   w.tokens[0] = `S/${startWidth}@start`;
   // Lot 34 (v16) : les droites de freinage ajoutées (derrière une portion rapide) s'ajoutent au plafond.
   if (longestPlainStraight(w.tokens) > MAX_PLAIN_STRAIGHT + (rules34 ? MAX_BRAKING_ADD : 0)) return null;
@@ -911,7 +918,7 @@ export function composeFigures(day: number, attempt: number, themeAsked?: Theme 
   if (theme.bumpy[1] > 0) bumpySections(w.tokens, theme.bumpy, rng, rules34 ? shielded : undefined);
   assignShoulders(w.tokens, theme.shoulder, rng, escapes, rules58 ? sansBord : undefined);
   // Lot 49 (v18) : la Nuit (bas-côté de vide) a toujours de la route sans rebords — c'est sa fiche ; sinon, la graine voisine.
-  if (rules49 && theme.shoulder.kind === "void" && !w.tokens.some((t) => parseToken(t).open || t.includes("~v"))) return null;
+  if (rules49 && theme.shoulder.kind === "void" && !w.tokens.some((t) => parseTokenLu(t).open || t.includes("~v"))) return null;
   // Lot 58 (v22) : les règles d'équité des blocs à effet, sur le circuit fini (les figures les tiennent par construction : ceci les garde).
   if (rules58 && fauteEffets(w.tokens)) return null;
   return { spec: w.tokens.join(" "), figures: placed, braking };
@@ -923,6 +930,8 @@ export const GENERATOR_BLOCS = 22;
 const TENTATIVES_BLOCS = 30;
 /** Lot 57b (v23) : tentatives d'un jour qui exigent la grammaire (un saut qui demande un geste, une transition si le budget le permet) : les `TENTATIVES_BLOCS` premières exigent aussi une famille de blocs nouveaux, les suivantes la grammaire seule, au-delà le jour reprend les graines du début sans rien exiger. */
 const TENTATIVES_GRAMMAIRE = 120;
+/** Lot 57b (v23) : tentatives « allégées » qui suivent : une transition de la grammaire seule (4 à 7 s, elle tient lieu d'une technique) ; au-delà, plus rien n'est exigé. */
+const TENTATIVES_ALLEGEES = 60;
 /** Lot 58 (v22) : tentatives d'un jour avec la même famille (son tour), avant de passer à la suivante. */
 const TOUR_BLOCS = 10;
 
@@ -939,7 +948,7 @@ export function fauteEffets(tokens: readonly string[]): string | null {
   let taille = 0;
   let entree = 0;
   for (let i = 0; i < tokens.length; i++) {
-    const p = parseToken(tokens[i]!);
+    const p = parseTokenLu(tokens[i]!);
     if (p.fx === FX_RESET) {
       actif = 0;
       continue;
@@ -975,7 +984,7 @@ export function composeSpec(day: number, attempt: number, theme?: Theme | null, 
 /** Blocs qui reçoivent un revêtement : droites, virages, côtes d'un niveau (pas les effets, bosses, rampes, vides, côtes raides ni le départ / l'arrivée). */
 function surfaceable(token: string, index: number, n: number): boolean {
   if (index === 0 || index >= n - 1 || token.includes("/")) return false;
-  const p = parseToken(token);
+  const p = parseTokenLu(token);
   if (p.cuve) return false; // une cuve garde la route
   // Une montée raide (U2, U3 : pente 0,25 et 0,375) reste sur la route : sur l'herbe, la poussée ne suffit pas à la monter (mesuré :
   // la voiture cale et recule), et une descente raide sur la glace ne se contrôle pas.
@@ -995,7 +1004,7 @@ function openSection(tokens: string[], rng: Rng, shielded?: ReadonlySet<number>)
   let y = 0;
   let low = 0;
   for (const t of tokens) {
-    const p = parseToken(t);
+    const p = parseTokenLu(t);
     entry.push(y);
     y += exitDelta(p.kind, p.rise);
     exit.push(y);
@@ -1003,11 +1012,11 @@ function openSection(tokens: string[], rng: Rng, shielded?: ReadonlySet<number>)
   }
   const ok = (i: number): boolean => {
     if (i < 1 || i >= n - 2 || shielded?.has(i)) return false;
-    const k = parseToken(tokens[i]!).kind;
-    if (k === "kick" || k === "gap" || k === "jump" || parseToken(tokens[i]!).cuve) return false;
+    const k = parseTokenLu(tokens[i]!).kind;
+    if (k === "kick" || k === "gap" || k === "jump" || parseTokenLu(tokens[i]!).cuve) return false;
     // Le bloc d'avant un saut garde ses rebords (la rampe commence sur une route fermée), comme la réception.
-    const next = parseToken(tokens[i + 1]!).kind;
-    const prev = parseToken(tokens[i - 1]!).kind;
+    const next = parseTokenLu(tokens[i + 1]!).kind;
+    const prev = parseTokenLu(tokens[i - 1]!).kind;
     if (next === "kick" || prev === "gap") return false;
     return Math.min(entry[i]!, exit[i]!) - low >= OPEN_MIN_HEIGHT;
   };
@@ -1033,7 +1042,7 @@ function openSection(tokens: string[], rng: Rng, shielded?: ReadonlySet<number>)
 function bumpySections(tokens: string[], count: [number, number], rng: Rng, shielded?: ReadonlySet<number>): void {
   const n = tokens.length;
   // Jamais dans les trois blocs avant une rampe de saut : il faut y garder sa vitesse (les pilotes prudents du jeu de démo ne passaient plus).
-  const beforeKick = (i: number) => tokens.slice(i + 1, i + 4).some((t) => parseToken(t).kind === "kick");
+  const beforeKick = (i: number) => tokens.slice(i + 1, i + 4).some((t) => parseTokenLu(t).kind === "kick");
   const plain = (i: number) => i > 0 && i < n - 1 && !shielded?.has(i) && /^S(\/[a-z>]*)?(@cp)?$/.test(tokens[i]!) && !tokens[i]!.includes("u") && !beforeKick(i);
   const wanted = count[0] + rng.int(count[1] - count[0] + 1);
   for (let k = 0; k < wanted; k++) {
@@ -1066,7 +1075,7 @@ const EDGE_MOD: Record<Theme["shoulder"]["kind"], string> = { grass: "~h", grave
  */
 function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng, forced?: ReadonlySet<number>, sansBord?: ReadonlySet<number>): void {
   const n = tokens.length;
-  const parsed = tokens.map((t) => parseToken(t));
+  const parsed = tokens.map((t) => parseTokenLu(t));
   const eligible = (i: number): boolean => {
     if (i < 1 || i >= n - 1) return false;
     const p = parsed[i]!;
@@ -1147,7 +1156,7 @@ function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: 
 function turfZone(tokens: string[], length: number, rng: Rng, protect?: ReadonlySet<number>): void {
   const n = tokens.length;
   // Lignes droites et pentes seulement : sur l'herbe de course on entre avec sa trajectoire et on la tient (braquer y coûte de la vitesse).
-  const ok = (i: number) => !protect?.has(i) && surfaceable(tokens[i]!, i, n) && !isCurve(parseToken(tokens[i]!).kind);
+  const ok = (i: number) => !protect?.has(i) && surfaceable(tokens[i]!, i, n) && !isCurve(parseTokenLu(tokens[i]!).kind);
   for (let len = length; len >= 3; len--) {
     const starts: number[] = [];
     for (let i = 1; i + len <= n - 1; i++) {
@@ -1216,7 +1225,7 @@ export function generateCircuit(seed: number, theme: Theme, variant: number, id:
     const estimate = estimateSeconds(spec.split(" "));
     if (estimate < ESTIMATE_MIN || estimate > (generator >= GENERATOR_GRAMMAIRE && attempt < TENTATIVES_GRAMMAIRE ? ESTIMATE_MAX_23 : ESTIMATE_MAX)) continue;
     // Lot 57b (v23) : les règles de variété des sauts sur le circuit fini (les retouches de revêtement, de bosses, de rebords et de bas-côtés ne les défont pas, mais on le vérifie).
-    if (generator >= GENERATOR_GRAMMAIRE && fauteSauts(spec.split(" "))) continue;
+    if (generator >= GENERATOR_GRAMMAIRE && attempt < MAX_ATTEMPTS_23 - TENTATIVES_LIBRES && fauteSauts(spec.split(" "))) continue;
     const track = parseTrack(id, spec);
     const first = generator >= 18 ? runPilot(track, { grip: PILOT_GRIPS[0], wall: false }) : undefined;
     if (first && first.valid && first.jumpsOk && first.finishMs > AUTHOR_MAX_MS + QUICK_SLACK_MS) continue;
