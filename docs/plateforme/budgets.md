@@ -20,8 +20,8 @@ Posé le 04/11/2026 (lot B1) sur la construction des e2e, polices découpées co
 | `track.js` | Track | JS du premier chargement | premier | 300 Ko | 284 811 | 15 189 |
 | `track.horsThree` | Track | le code du jeu, hors three.js | premier | 159 Ko | 151 154 | 7 846 |
 | `track.anglais` | Track | catalogue anglais | demande | 9 Ko | 7 902 | 1 098 |
-| `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour | demande | 34 Ko | 29 472 | 3 528 |
-| `track.salon` | Track | fil de travail du Salon | demande | 36 Ko | 31 618 | 3 382 |
+| `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour | demande | 37 Ko | 29 472 | 3 528 |
+| `track.salon` | Track | fil de travail du Salon | demande | 39 Ko | 31 618 | 3 382 |
 | `track.admin` | Track | page d'admin `admin-*.js` (jamais chargée par un joueur) | demande | 14 Ko | 12 278 | 1 722 |
 | `track.decor` | Track | décor 3D à la demande, les huit thèmes (le morceau commun compté une fois) | demande | 15 Ko | 13 043 | 1 957 |
 | `track.palier2` | Track | palier 2 à la demande | demande | 8 Ko | 6 540 | 1 460 |
@@ -70,6 +70,8 @@ Un plafond au-dessus de ce que donne la règle (mesure à la pose + marge de sa 
 | 2026-11-07 | `rush.jsCss` | 44 Ko | 46 Ko | Lot BR4 (relèvement prévu par le prompt du lot, « si c'est indispensable »). Mesure : 43 752 o avant le lot, 44 043 o après (la marge de BR3 : 248 o). Ce qui grossit est **le catalogue français, chargé en entier au premier chargement** : les textes de l'écran de fin (boss du jour, cartes choisies, le Diamant) et de la carte Brise-pierre qui dit sa valeur contre chacun des cinq boss (cinq noms de boss avec leur article), avec le tableau des médailles d'essai. Les chaînes d'essai ont été resserrées (17 clés → 13) et deux clés mortes retirées avant de relever. Le plafond précédent était provisoire (« mesure + 5 %, à confirmer par Nathan », lot BR0). |
 | 2026-11-08 | `track.miniatures` | 33 Ko | 34 Ko | Lot 58 (Track), décision de Nathan (« relève le budget », 08/11/2026). Mesure : 30 187 o sur `main` (f82a321), 32 380 o après le lot (le générateur v22 : huit familles de blocs nouveaux, leurs règles d'équité et de pose ; la simulation des blocs à effet, de la route bombée, du virage à 45°, de la glace de piste et du mur roulable, que le pilote du fil de travail fait rouler). La boucle, qui faisait dépasser le plafond (33 240 o), a été mise de côté. Marge rendue : ≈ 1,6 Ko. |
 | 2026-11-08 | `track.salon` | 35 Ko | 36 Ko | Lot 58 (Track), même décision et même raison (le Salon tire ses circuits du même générateur). Mesure : 32 350 o sur `main` (f82a321), 34 540 o après le lot ; 35 400 o avec la boucle, mise de côté. Marge rendue : ≈ 1,5 Ko. |
+| 2026-11-09 | `track.miniatures` | 34 Ko | 37 Ko | Lot 57b (Track), décision de Nathan (« tu peux monter le budget sans soucis », 09/11/2026). Mesure : 32 380 o après le lot 58, 35 870 o après le lot (le générateur v23 : les 19 sauts et transitions de la grammaire du lot 57, leurs tours et vedettes par thème, les règles de variété des sauts et le budget de technicité). Marge rendue : ≈ 1,1 Ko. |
+| 2026-11-09 | `track.salon` | 36 Ko | 39 Ko | Lot 57b (Track), même décision et même raison (le Salon tire ses circuits du même générateur). Mesure : 34 540 o après le lot 58, 38 130 o après le lot. Marge rendue : ≈ 0,9 Ko. |
 
 ## La musique (lot « musique »)
 
