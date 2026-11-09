@@ -63,7 +63,7 @@ describe("lot 57b : les données de la grammaire dans le générateur", () => {
       expect(g.transitions.length, theme).toBeGreaterThan(0);
       for (const nom of g.sauts) {
         const f = figureByName(nom) as ElementGrammaire;
-        expect(f.genre, `${theme} : ${nom}`).toBe("saut");
+        expect(f.jump, `${theme} : ${nom}`).toBe(true); // lot 57b : les remplaçantes (`REMPLACANTS_LOT57B`) n'ont pas de `genre`
         expect(f.only, `${theme} : ${nom}`).toContain(theme);
       }
       for (const nom of g.transitions) {
