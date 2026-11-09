@@ -12,6 +12,9 @@ const textesDesSeuils = (c: Contenu): string => {
   return `${s.author},${s.gold},${s.silver},${s.bronze}`;
 };
 
+// **L'empreinte ne dit pas d'où vient le jour** (fichier figé ou générateur) : seulement ce qui est servi — l'identifiant, le contenu, les seuils. Run « Mettre en production » n° 47 (09/11/2026) : l'étiquette
+// « fige » / « genere » qu'elle portait faisait toujours différer le code en production (sans fichier : « genere ») de la construction (les fichiers que le code en production vient de figer : « fige ») pour
+// les 26 jours d'un jeu devenu `on` — alors que le fichier est exactement ce que le code sert sans lui, ce que la mise en production veut vérifier.
 export function empreinteJour(day: number, dossier: string | null): EmpreinteJour {
   const date = formatDay(day);
   const fichier = dossier ? join(dossier, `${date}.json`) : null;
@@ -20,7 +23,7 @@ export function empreinteJour(day: number, dossier: string | null): EmpreinteJou
       const c = lireJourFige(JSON.parse(readFileSync(fichier, "utf8")) as unknown);
       if (c) {
         const id = `rush-${date}-g${c.g}`;
-        return { id, h: sha([id, empreinteContenu(c), textesDesSeuils(c), "fige"]), ok: true };
+        return { id, h: sha([id, empreinteContenu(c), textesDesSeuils(c)]), ok: true };
       }
     } catch {
       /* un fichier illisible n'est pas servi : le jour est généré */
@@ -28,5 +31,5 @@ export function empreinteJour(day: number, dossier: string | null): EmpreinteJou
   }
   const c = dailyRush(day, RUSH_GENERATOR_VERSION);
   const id = `rush-${date}-g${c.g}`;
-  return { id, h: sha([id, empreinteContenu(c), textesDesSeuils(c), "genere"]), ok: true };
+  return { id, h: sha([id, empreinteContenu(c), textesDesSeuils(c)]), ok: true };
 }
