@@ -324,6 +324,10 @@
   padding: 0;
   background: var(--dj-papier);
 }
+/* Ta ligne reste surlignée en moutarde (charte § 3.1, règle de `portail.css` que la ligne papier ci-dessus recouvrait) ; le podium marque le pseudo seul. */
+.classement-ligne--moi:not(.classement-place) {
+  background: var(--dj-moutarde);
+}
 .classement-ligne__corps {
   display: grid;
   grid-template-columns: 30px 44px minmax(0, 1fr) auto;

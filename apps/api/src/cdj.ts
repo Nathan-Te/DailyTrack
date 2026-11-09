@@ -266,8 +266,14 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       [day],
     );
     let circuit: Circuit;
+    // Run « Mettre en production » n° 45 (09/11/2026) : **sur la recette, le circuit d'un jour encore ouvert n'est jamais cru sur parole.** La base de la recette est commune aux déploiements de
+    // la recette et aux aperçus de PR : une version intermédiaire d'un lot de générateur (même numéro de version, donc même identifiant `jour-…-g23`, autre contenu) y a gardé le circuit d'aujourd'hui,
+    // que le serveur relisait tel quel — tous les temps rejoués par le serveur étaient alors refusés (`422 not_finished`) alors que le jeu calculait un autre circuit sous le même nom. L'identifiant
+    // ne dit rien du contenu : la recette recalcule (une fois par instance, le résultat reste en mémoire) puis réécrit la ligne. **Jamais en production**, où une ligne gardée est le circuit que les
+    // joueurs ont vu (un jour servi ne change jamais) ; un jour fermé de la recette garde sa ligne (ses résultats sont rangés contre elle).
+    const perimeePossible = platform.environment === "recette" && day >= today() - 1;
     // Lot R9 : un circuit gardé sans l'empreinte de son auteur (écrit avant le lot) est recalculé tant que son jour accepte des temps ; un jour fermé ne sert plus à rien.
-    if (row && row.track_id === expected && (row.author_hash !== null || day < today() - 1)) {
+    if (row && !perimeePossible && row.track_id === expected && (row.author_hash !== null || day < today() - 1)) {
       circuit = {
         day,
         trackId: row.track_id,
