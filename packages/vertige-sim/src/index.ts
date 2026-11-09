@@ -1,6 +1,7 @@
 export * from "./constantes";
 export * from "./trigo";
 export * from "./sensations";
+export * from "./noms";
 export * from "./niveaux";
 export * from "./calendrier";
 export * from "./generateur";

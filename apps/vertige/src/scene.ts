@@ -1,4 +1,4 @@
-import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, YEUX, chargeDe, ecrireTemps, enregistrer, enregistrerScenario, niveau, type Commande, type Contenu, type Reglages } from "@cdj/vertige-sim";
+import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, YEUX, chargeDe, ecrireTemps, enregistrer, enregistrerScenario, niveau, reglagesDe, type Commande, type Contenu, type Reglages } from "@cdj/vertige-sim";
 import { commandesDuJeu } from "@cdj/kit/jeu/commandes";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { BUILD_RESTRICTED, gameStorage } from "@cdj/kit/stockage";
@@ -38,7 +38,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   const niv = niveau(nomNiveau);
   const stockage = gameStorage();
   const confort: Confort = { ...confortDe(essai.confort, lireConfort(stockage)), ...(essai.style ? { style: essai.style } : {}) };
-  let reglages: Reglages = essai.reglages ?? { ...REGLAGES_DEFAUT };
+  let reglages: Reglages = essai.reglages ? reglagesDe(essai.reglages) : { ...REGLAGES_DEFAUT };
 
   const racine = el("div", "vertige-scene");
   racine.setAttribute("role", "img");
@@ -104,7 +104,14 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       dejaVerrouille = true;
       return;
     }
-    if (!sortieVoulue && !termine && !confortOuvert) window.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true }));
+    // Certains navigateurs livrent aussi la touche Échap : on laisse un instant au kit pour se mettre en pause, et on ne l'envoie que si l'écran de pause n'est pas là (jamais deux bascules).
+    if (!sortieVoulue && !termine && !confortOuvert) {
+      setTimeout(() => {
+        const pause = document.getElementById("jeu-pause");
+        if (pause && !pause.hidden) return;
+        if (!termine) window.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true }));
+      }, 60);
+    }
     sortieVoulue = false;
   };
   document.addEventListener("pointerlockchange", surVerrou);
@@ -268,7 +275,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       // Les surimpressions.
       etat.hidden = !(sim.dash > 0 || sim.surMur);
       if (!etat.hidden) etat.textContent = o.t(sim.dash > 0 ? "etat.dash" : "etat.mur");
-      verrou.hidden = controles.verrouille || confortOuvert || termine;
+      verrou.hidden = controles.verrouille || confortOuvert || termine || essai.demo; // le joueur scripté n'a pas besoin de la souris
       const texteVerrou = o.t(dejaVerrouille ? "scene.verrou.reprise" : "scene.verrou");
       if (verrou.textContent !== texteVerrou) verrou.textContent = texteVerrou;
       if (mesure) {
@@ -280,7 +287,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
             void new Response(new Blob([new Uint8Array(chargeDe(enregistre))]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer().then((b) => (tailleGz = b.byteLength), () => undefined);
           }
           const info = monde.renderer.info.render;
-          mesure.textContent = `${Math.round((images * 1000) / (maintenant - depuisMesure))} i/s · ${info.calls} appels · ${Math.round(info.triangles / 1000)} k tri\npas ${sim.tick} · rediffusion ${octets} o (gzip ${tailleGz} o)`;
+          mesure.textContent = `${Math.round((images * 1000) / (maintenant - depuisMesure))} i/s · ${info.calls} appels · ${Math.round(info.triangles / 1000)} k tri\npas ${sim.tick} · rediffusion ${octets} o (gzip ${tailleGz} o)`; // i18n-ok: la mesure d'essai (`?debug&fps`), jamais en production
           images = 0;
           depuisMesure = maintenant;
         }

@@ -1,11 +1,10 @@
 import { CM, M } from "./constantes";
+import type { NomNiveau } from "./noms";
 
 // Les niveaux : un monde de BLOCS ALIGNÉS SUR LES AXES (la simulation ne connaît rien d'autre), écrits en centimètres (centre et taille, comme la maquette), rangés en micromètres. Les décors qui ne
 // bloquent pas (nuages, îlots lointains, bannières, braseros, le cadre qui tourne) sont l'affaire du rendu : un objet de travers n'a jamais de collision. Trois niveaux : le parcours de la maquette
 // (sans le portail), l'arène du bac à sable et le long mur.
 
-export type NomNiveau = "parcours" | "bac-a-sable" | "mur";
-export const NOMS_NIVEAUX: readonly NomNiveau[] = ["parcours", "bac-a-sable", "mur"];
 /** La matière d'un bloc, pour le rendu seulement (la couleur du style). */
 export type Role = "pierre" | "sombre" | "rouge";
 
@@ -119,4 +118,3 @@ export function niveau(nom: NomNiveau): Niveau {
   }
   return n;
 }
-export const estNomNiveau = (s: string): s is NomNiveau => (NOMS_NIVEAUX as readonly string[]).includes(s);

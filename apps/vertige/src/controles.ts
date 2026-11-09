@@ -43,8 +43,10 @@ export class Controles {
       if (!this.verrouille) return;
       const m = e as MouseEvent;
       const k = (UNITES_PAR_POINT * this.sensibilite) / 100;
-      this.regardL -= m.movementX * k;
-      this.regardT -= m.movementY * k;
+      // Au moment où le pointeur se verrouille, certains navigateurs livrent un saut énorme : un seul événement ne tourne jamais de plus de 300 points.
+      const borne = (v: number): number => Math.max(-300, Math.min(300, v));
+      this.regardL -= borne(m.movementX) * k;
+      this.regardT -= borne(m.movementY) * k;
     };
     const pointeur = (): void => {
       this.verrouille = document.pointerLockElement === this.canevas;

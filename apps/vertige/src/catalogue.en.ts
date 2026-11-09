@@ -11,7 +11,6 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "scene.tactile": "Play on a computer, with keyboard and mouse, or with a gamepad.",
   "scene.verrou": "Click to play",
   "scene.verrou.reprise": "Click to take the mouse back",
-  "scene.chargement": "Loading the scenery…",
   "theme.clair": "Light (to replace)",
   "theme.sombre": "Dark (to replace)",
   "accueil.phrase.clair": "To replace: a tagline for the “Light” theme.",

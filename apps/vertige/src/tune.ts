@@ -28,8 +28,8 @@ const NOMS: Record<keyof Reglages, [string, string]> = {
 };
 const CONFORT_NOMS: Record<"sensibilite" | "champ", [string, string]> = { sensibilite: ["Sensibilité (%)", "Sensitivity (%)"], champ: ["Champ de vision (°)", "Field of view (°)"] };
 const TEXTES = {
-  fr: { ouvrir: "Sensations", titre: "Sensations (essai)", note: "Un réglage de la simulation recommence le parcours : la partie n'est plus classable.", roulis: "Inclinaison sur le mur", exporter: "Exporter en JSON", copie: "Copié", retablir: "Rétablir", fermer: "Fermer" },
-  en: { ouvrir: "Feel", titre: "Feel (test)", note: "Changing a simulation setting restarts the course: the run can no longer be ranked.", roulis: "Tilt on the wall", exporter: "Export as JSON", copie: "Copied", retablir: "Reset", fermer: "Close" },
+  fr: { ouvrir: "Sensations", titre: "Sensations (essai)", note: "Un réglage de la simulation recommence le parcours : la partie n'est plus classable.", roulis: "Inclinaison sur le mur", exporter: "Exporter en JSON", copie: "Copié", retablir: "Rétablir", fermer: "Fermer" }, // i18n-ok: le panneau d'essai (`?debug&tune`) a ses deux langues ici, il n'existe pas en production
+  en: { ouvrir: "Feel", titre: "Feel (test)", note: "Changing a simulation setting restarts the course: the run can no longer be ranked.", roulis: "Tilt on the wall", exporter: "Export as JSON", copie: "Copied", retablir: "Reset", fermer: "Close" }, // i18n-ok: le panneau d'essai (`?debug&tune`) a ses deux langues ici, il n'existe pas en production
 } as const;
 
 export interface Tune {

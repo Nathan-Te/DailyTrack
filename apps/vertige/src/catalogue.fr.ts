@@ -8,7 +8,6 @@ export const CATALOGUE_FR = {
   "scene.tactile": "À jouer sur ordinateur, au clavier et à la souris, ou à la manette.",
   "scene.verrou": "Cliquer pour jouer",
   "scene.verrou.reprise": "Cliquer pour reprendre la souris",
-  "scene.chargement": "Chargement du décor…",
   "theme.clair": "Clair (à remplacer)",
   "theme.sombre": "Sombre (à remplacer)",
   "accueil.phrase.clair": "À remplacer : une phrase d'accroche pour le thème « Clair ».",

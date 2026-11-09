@@ -1,4 +1,4 @@
-import { estNomNiveau, reglagesDe, sontLesReglagesDuJeu, type NomNiveau, type Reglages } from "@cdj/vertige-sim";
+import { estNomNiveau, type NomNiveau } from "@cdj/vertige-sim";
 import type { StyleVertige } from "./confort";
 
 // Les options d'ESSAI de Vertige, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9), sauf `style` (un choix de rendu, sans effet sur la partie) :
@@ -17,8 +17,8 @@ export interface Essai {
   demo: boolean;
   /** `?debug` : la porte `window.__vertige` des tests. */
   debug: boolean;
-  /** Les réglages de la simulation collés dans l'adresse (déjà bornés), ou `null`. */
-  reglages: Reglages | null;
+  /** Les réglages de la simulation collés dans l'adresse (le JSON lu, non vérifié : `reglagesDe` de la simulation le fait, dans le corps du jeu — ce fichier est dans le premier chargement), ou `null`. */
+  reglages: unknown;
   /** Les réglages de confort collés dans l'adresse (JSON brut), ou `null`. */
   confort: unknown;
   bloom: boolean;
@@ -36,13 +36,13 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   const nom = q.get("scenario") ?? "";
   const scenario = estNomNiveau(nom) ? nom : null;
   const debug = q.has("debug");
-  let reglages: Reglages | null = null;
+  let reglages: unknown = null;
   let confort: unknown = null;
   const brut = q.get("reglages");
   if (brut) {
     try {
       const j = JSON.parse(brut) as { reglages?: unknown; confort?: unknown };
-      reglages = reglagesDe(j.reglages ?? j);
+      reglages = j.reglages ?? j;
       confort = j.confort ?? null;
     } catch {
       /* un JSON abîmé : les réglages du jeu */
@@ -60,6 +60,6 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     confort,
     bloom: q.get("bloom") !== "0",
     ombres: q.get("ombres") !== "0",
-    essai: scenario !== null || tune || (debug && q.has("demo")) || (reglages !== null && !sontLesReglagesDuJeu(reglages)),
+    essai: scenario !== null || tune || (debug && q.has("demo")) || reglages !== null,
   };
 }

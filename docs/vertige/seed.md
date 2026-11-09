@@ -1,39 +1,35 @@
 # Vertige — seed (vision du jeu)
 
-> **À écrire par Nathan.** Le générateur n'invente pas la vision. Ce gabarit donne les titres ; le seed de Tower (`docs/tower/seed.md`) est un exemple rempli. Tant qu'il est vide, le jeu de départ (un squelette) n'a pas de direction.
+> **Provisoire : la vision de la passation** (`docs/vertige/passation-initiale.md`, versée au lot V0). **Nathan l'écrira en entier après le prototype** (lot V0) ; les titres sont ceux du gabarit.
 
 ## 1. Le jeu en une phrase
 
-*(à écrire)*
+Un plateformer en vue à la première personne : un niveau par jour, le même pour tous, à finir le plus vite possible ; la rediffusion fait preuve. Inspiration : *SEUM: Speedrunners from Hell* (niveaux courts, mouvement nerveux, recommencer en un geste). Image de référence : plateformes de pierre claire et tapis rouges au-dessus des nuages, château, braseros, gemmes, portail rose, et un cadre de pierre qui flotte de travers.
 
 ## 2. Les piliers
 
-*(trois à cinq principes que chaque lot doit respecter)*
+- **Le mouvement avant tout** : course sur les murs et saut de mur, dash ; à venir : changement de gravité (atteindre un plafond ou un mur), portails reliant deux endroits éloignés, une touche d'espace non euclidien.
+- **Un monde de blocs alignés sur les axes, une gravité par quarts de tour** (6 directions) : c'est ce qui rend possible une **simulation déterministe en entiers**, rejouée par le serveur. Les objets de travers sont du décor.
+- **L'angle de vue fait partie des commandes enregistrées** (lacet et tangage à chaque pas, en entiers).
+- **Tout est fait en code**, sans aucun asset : géométrie low poly, lumières, ciel, nuages, mains, animation procédurale.
+- **Un niveau du jour assemblé de modules dont la solution est connue** : le risque principal du jeu.
 
 ## 3. Une partie
 
-*(ce que fait le joueur, du premier geste à l'arrivée ; la durée ; ce qui rend le jour différent d'hier)*
+*(à écrire : la durée visée, 45 s ou 90 s ?)*
 
 ## 4. Le classement et les médailles
 
-*(ce qui se classe — un score ou un temps —, le départage, le Diamant : qui le fixe, comment ; les seuils or, argent, bronze)*
+Au temps (le plus court d'abord), catégorie Arcade : un classement du jour, hors du cumulé, de la journée parfaite et de la série du portail. Le Diamant sera le temps du robot (lot V3). *(seuils or, argent, bronze à écrire)*
 
 ## 5. Le contenu du jour
 
-*(ce qui est tiré de la graine du jour, ce qui ne l'est jamais ; les thèmes)*
+*(à écrire : tirage de modules, thèmes)*
 
 ## 6. Les commandes
 
-*(clavier, manette, tactile)*
+PC d'abord : clavier et souris, et manette. Le téléphone est une question ouverte : des commandes simplifiées, ou « à jouer sur ordinateur ».
 
 ## 7. L'identité visuelle et sonore
 
-*(l'étiquette, le HUD, l'ambiance ; une direction par maquette)*
-
-## 8. Ce que le jeu n'est pas
-
-*(ce qu'on refuse)*
-
-## 9. Plan en lots
-
-*(l'ordre proposé)*
+La direction artistique reste à choisir sur le prototype : « Lumière douce » (proche de l'image : ombres douces, brume, halo, couleurs ACES) ou « Cartouche » (aplats et contour d'encre, comme Tower, Blocks et Rush), ou un mélange.

@@ -1,5 +1,5 @@
 import { VERTIGE_GENERATOR_VERSION } from "./constantes";
-import type { NomNiveau } from "./niveaux";
+import type { NomNiveau } from "./noms";
 
 // Le contenu du jour. Au prototype, tous les jours jouent le MÊME parcours (celui de la maquette, sans le portail) : le niveau du jour assemblé de modules est le lot V2. **Pure** : rien ne vient d'une horloge.
 
