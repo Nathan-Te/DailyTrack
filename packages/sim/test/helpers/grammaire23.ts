@@ -103,7 +103,7 @@ export function suiteGrammaire(THEMES_DU_FICHIER: readonly ThemeName[]) {
         for (const d of DAYS.get(theme)!)
           for (const nom of noms23(circuit23(d))) {
             const e = elementGrammaire(nom);
-            if (e) expect(e.themes, `${nom} (${theme}, ${formatDay(d)})`).toContain(theme);
+            if (e) expect(e.only!, `${nom} (${theme}, ${formatDay(d)})`).toContain(theme);
           }
       }
     });

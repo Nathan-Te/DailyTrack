@@ -138,7 +138,7 @@ const FIGURE_BUDGET = 28;
 const FIGURE_TOTAL_MAX = 31;
 const SELECTION_TRIES = 8;
 /** Lot 57b (v23) : plus de tirages de figures par tentative (un tirage ne coûte presque rien devant une course du pilote) : avec le saut et la transition de la grammaire en plus, peu de tirages tiennent dans le budget de durée. */
-const SELECTION_TRIES_23 = 12;
+const SELECTION_TRIES_23 = 8;
 /**
  * Lot 34 (v16) : les droites de freinage ajoutées (≈ 2,3 par circuit, ≈ 1,6 s) se prennent en partie sur le budget des figures. Mesuré
  * (`npm run measure:generator`, validation par thème) : 1 unité garde la part des circuits dans la fenêtre de l'avant-lot (63 → 65 %) ;

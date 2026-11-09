@@ -1,37 +1,18 @@
 import type { Figure, FigureContext } from "./figures";
 import { reach } from "./figuresOutils";
 import { GENERATOR_GRAMMAIRE } from "./themesVersion";
-import type { Appel, Approche, Elan, Reception, Sortie, Vol } from "./sautsClasse";
 
 // Lot 57 : la grammaire des sauts et des transitions — les prototypes. Un saut se compose d'une approche, d'un appel, d'un vol, d'une réception
 // et d'une sortie (`sautsClasse.ts` les range) ; une transition est un raccord qui demande un geste (crête, creux, dévers, pente en virage…).
 // Chaque élément est une figure (même forme que `FIGURES`, qui les range depuis le lot 57b) jouable seule par `?scenario=<nom>` (les noms commencent par `saut-` ou
 // `transition-` ; `createFigureTrack`, circuits.ts) et listée par `?scenario=sauts`.
 // Lot 57b (générateur v23) : ils entrent dans le générateur — `since: 23` (la v22 et les versions publiées ne les connaissent pas : leurs circuits ne changent pas), `only` = leurs
-// thèmes (`themes`), `grammaire: true` (protégés des retouches du circuit fini), `technicite` (le budget de technicité d'un circuit les additionne). Un saut se tire par son tour
+// thèmes, `grammaire: true` (protégés des retouches du circuit fini), `technicite` (le budget de technicité d'un circuit les additionne). Un saut se tire par son tour
 // dans le thème (`Theme.figures.sauts`, themesVersion.ts), jamais au poids.
-
-/**
- * Les cinq parties d'un saut **telles que `classerSauts` les lit** (première variante, route normale ; lot 57b : l'approche et la sortie ne sont plus celles d'intention du lot 57 —
- * une approche « virage » est un virage dans les trois blocs d'avant la rampe, une sortie « virage » un virage dans les deux blocs qui suivent la réception —, `test/grammaire23.test.ts`
- * les compare).
- */
-export interface PartiesSaut {
-  approche: Approche;
-  appel: Appel;
-  vol: Vol;
-  reception: Reception[];
-  sortie: Sortie;
-  vitesse: Elan;
-}
 
 export interface ElementGrammaire extends Figure {
   /** `saut` : un saut de la grammaire ; `transition` : un raccord qui demande un geste. */
   genre: "saut" | "transition";
-  /** Les cinq parties du saut (absentes pour une transition). */
-  parties?: PartiesSaut;
-  /** Les thèmes où il irait le mieux (proposition pour les poids par thème, phase 3). */
-  themes: readonly string[];
 }
 
 /** Dévers vers le côté du premier virage de la figure (`/i` : la route penche vers la gauche, `/j` : vers la droite). */
@@ -40,8 +21,9 @@ const rep = (t: string, n: number) => Array<string>(n).fill(t);
 
 const SINCE = GENERATOR_GRAMMAIRE;
 
-const saut = (e: Omit<ElementGrammaire, "genre" | "category" | "jump" | "since" | "only" | "grammaire">): ElementGrammaire => ({ ...e, genre: "saut", category: "saut", jump: true, since: SINCE, only: e.themes, grammaire: true });
-const transition = (e: Omit<ElementGrammaire, "genre" | "since" | "only" | "grammaire">): ElementGrammaire => ({ ...e, genre: "transition", since: SINCE, only: e.themes, grammaire: true });
+type Entree = { themes: readonly string[] };
+const saut = ({ themes, ...e }: Omit<ElementGrammaire, "genre" | "category" | "jump" | "since" | "only" | "grammaire"> & Entree): ElementGrammaire => ({ ...e, genre: "saut", category: "saut", jump: true, since: SINCE, only: themes, grammaire: true });
+const transition = ({ themes, ...e }: Omit<ElementGrammaire, "genre" | "since" | "only" | "grammaire"> & Entree): ElementGrammaire => ({ ...e, genre: "transition", since: SINCE, only: themes, grammaire: true });
 
 export const SAUTS_LOT57: readonly ElementGrammaire[] = [
   saut({
@@ -51,7 +33,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["stade", "nuit", "banquise"],
     technicite: 3,
-    parties: { approche: "descente", appel: "devers", vol: "tournant", reception: ["decalee", "basse"], sortie: "droite", vitesse: "elan" },
     // La route s'élargit, penche vers un côté, et la rampe aussi : on décolle de travers (roulis, un peu de dérive) ; variante 0 : réception en
     // dévers du même côté (elle suit la caisse), variante 1 : réception à plat (figer la caisse en l'air).
     build: (c) => [...reach(c.width, "l"), "S", vers(c, "S"), vers(c, "K"), "GD", c.variant === 0 ? vers(c, "S") : "S", "S", "S", "S"],
@@ -63,7 +44,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 1,
     themes: ["stade", "nuit", "canyon"],
     technicite: 4,
-    parties: { approche: "droite", appel: "virage", vol: "tournant", reception: ["basse", "angle"], sortie: "droite", vitesse: "elan" },
     // On décolle à la fin d'un virage ample (virage-tremplin) : la caisse tourne encore ; la piste d'arrivée tourne du même côté. Laisser
     // tourner la caisse en l'air jusqu'à l'axe de la réception, puis figer (frein).
     build: (c) => [...reach(c.width, "l"), "S", `${c.L}3/k`, "GD", `${c.L}3`, "S"],
@@ -75,7 +55,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["stade", "rallye", "col", "banquise"],
     technicite: 3,
-    parties: { approche: "droite", appel: "virage", vol: "tournant", reception: ["decalee", "basse"], sortie: "droite", vitesse: "elan" },
     // L'appel est lui-même en courbe : on décolle en tournant et on retombe décalé sur une route large ; variante 1 : chute de deux niveaux
     // (on vole plus longtemps : plus de dérive). Le virage large (L2) a été essayé : sa fenêtre ne tient que de 30 à 37 m/s (mesuré), trop étroite.
     build: (c) => [...reach(c.width, "l"), "S", ...(c.variant === 0 ? [`${c.L}3/k`, "GD"] : [`${c.L}3/k`, "GD2", "D"]), "S", "S", "S"],
@@ -87,7 +66,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["stade", "nuit", "rallye", "banquise"],
     technicite: 2,
-    parties: { approche: "virage", appel: "plat", vol: "axe", reception: ["basse", "virage"], sortie: "droite", vitesse: "elan" },
     // Élan d'un virage, rampe, et on retombe au début d'un virage relevé : la pente aide à tenir la corde dès le contact.
     build: (c) => [`${c.R}2`, "S", "S", "K", "GD", c.variant === 0 ? `${c.L}2/b` : `${c.L}3/b`, "S"],
   }),
@@ -98,7 +76,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["canyon", "col", "ville"],
     technicite: 2,
-    parties: { approche: "virage", appel: "plat", vol: "axe", reception: ["basse"], sortie: "droite", vitesse: "elan" },
     // Deux niveaux plus bas, sans plaque : l'élan d'un virage suffit ; on retombe loin et il faut freiner pour le virage qui suit.
     // Variante 1 (lot 57b, les descentes du Col alpin) : l'élan vient d'une descente, pas d'un virage.
     // Lot 57b : la droite d'avant la rampe passe de trois blocs à deux (le virage, ample en variante 0 pour garder l'élan, reste dans les trois blocs qui précèdent le bord : c'est ce qui en fait
@@ -112,7 +89,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["stade", "canyon", "col", "ville"],
     technicite: 3,
-    parties: { approche: "descente", appel: "bosse", vol: "axe", reception: ["haute"], sortie: "droite", vitesse: "elan" },
     // Le bord d'en face est plus haut : il faut assez d'élan. Variante 0 : l'élan d'une descente et une crête raide (aucune plaque) ;
     // variante 1 : une plaque et la rampe.
     build: (c) => (c.variant === 0 ? ["S", "D", "D", "D", "U3", "GU", "S", "S", "S"] : ["S", "P", "S", "K", "GU", "S", "S", "S", "S"]),
@@ -124,7 +100,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 1,
     themes: ["rallye", "campagne"],
     technicite: 2,
-    parties: { approche: "droite", appel: "plat", vol: "axe", reception: ["axe"], sortie: "droite", vitesse: "elan" },
     // Un vide au même niveau sans plaque : la sortie de chicane doit être propre et le pied au plancher ; freiner avant la rampe, c'est tomber court.
     build: (c) => ["S", `${c.L}2`, `${c.R}2`, "S", "S", "S", "K", "G", "D", "S", "S", "S"],
   }),
@@ -135,7 +110,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 1,
     themes: ["canyon", "rallye"],
     technicite: 2,
-    parties: { approche: "droite", appel: "plat", vol: "axe", reception: ["axe"], sortie: "droite", vitesse: "elan" },
     // On retombe sur la pente qui mène au second appel : une réception trop longue ou de travers fait rater le second saut.
     build: () => ["S", "S", "S", "K", "G", "D", "K", "GD", "S", "S", "S"],
   }),
@@ -146,7 +120,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["rallye", "campagne"],
     technicite: 2,
-    parties: { approche: "droite", appel: "bosse", vol: "axe", reception: ["basse"], sortie: "droite", vitesse: "elan" },
     // Pas de tremplin : c'est le haut d'une montée raide qui fait décoller ; variante 1 : on retombe sur la terre.
     build: (c) => ["S", "S", "S", "U2", "GD", ...(c.variant === 0 ? ["D", "S", "S", "S"] : ["D/t", "S/t", "S/t", "S/t", "S"])],
   }),
@@ -157,7 +130,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["campagne", "rallye"],
     technicite: 2,
-    parties: { approche: "droite", appel: "plat", vol: "axe", reception: ["basse", "surface"], sortie: "droite", vitesse: "elan" },
     // On retombe sur un autre revêtement et on tourne dessus : l'herbe de course (variante 0) ou la terre (variante 1).
     build: (c) => {
       // Lot 57b : l'herbe de course (variante 0) n'est qu'à la Campagne (lot 48) ; ailleurs, la terre.
@@ -173,7 +145,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["ville", "canyon", "rallye"],
     technicite: 2,
-    parties: { approche: "virage", appel: "plat", vol: "axe", reception: ["basse"], sortie: "droite", vitesse: "elan" },
     // Une chute de deux niveaux, puis une chicane (variante 0) ou un virage serré (variante 1) : freiner dès les roues au sol.
     // Lot 57b : un virage dans les trois blocs d'avant la rampe (approche « virage » pour `classerSauts`, sinon « droite → tremplin → axe »).
     build: (c) => ["S", `${c.R}2`, "S", "S", "K", "GD2", "D", "S", "S", ...(c.variant === 0 ? [`${c.L}2`, `${c.R}2`] : [c.L]), "S"],
@@ -186,7 +157,6 @@ export const SAUTS_LOT57: readonly ElementGrammaire[] = [
     variants: 2,
     themes: ["banquise"],
     technicite: 3,
-    parties: { approche: "droite", appel: "virage", vol: "tournant", reception: ["decalee", "basse", "surface"], sortie: "virage", vitesse: "elan" },
     build: (c) =>
       c.variant === 0
         ? [...reach(c.width, "l"), "S", `${c.L}3/k`, "GD", "S/g", "S/g", "S"]

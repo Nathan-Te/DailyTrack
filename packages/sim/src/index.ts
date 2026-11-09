@@ -30,6 +30,7 @@ export * from "./ressemblance";
 export * from "./rythmes";
 export * from "./variete";
 export * from "./grammaire";
+export * from "./grammaireParties";
 export * from "./blocs";
 export * from "./sautsClasse";
 export * from "./technicite";

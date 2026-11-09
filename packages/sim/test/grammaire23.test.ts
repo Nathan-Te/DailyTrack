@@ -4,6 +4,7 @@ import {
   GENERATOR_GRAMMAIRE,
   GRAMMAIRE_LOT57,
   GRAMMAIRE_V23,
+  PARTIES_LOT57,
   SAUTS_LOT57,
   SIGNATURE_FIGURE,
   TECHNICITE_MAX,
@@ -40,7 +41,7 @@ describe("lot 57b : les données de la grammaire dans le générateur", () => {
       expect(f, e.name).toBe(e);
       expect(f.grammaire, e.name).toBe(true);
       expect(f.since, e.name).toBe(23);
-      expect(f.only, e.name).toEqual(e.themes);
+      expect(f.only, e.name).toEqual(e.only!);
       expect(f.technicite, e.name).toBeGreaterThanOrEqual(1);
       expect(f.bloc, `${e.name} n'est pas une famille du lot 58`).toBeFalsy();
     }
@@ -186,12 +187,12 @@ describe("lot 57b : le rangement des sauts de la grammaire correspond à leurs p
     for (const e of SAUTS_LOT57) {
       const body = e.build({ L: "L", R: "R", wall: "ML", width: "n", variant: 0 })!;
       const s = sauts(["S", "S", "S", "S", ...sansAmorce(body)].join(" "))[0]!;
-      expect(s.appel, e.name).toBe(e.parties!.appel);
-      expect(s.vol, e.name).toBe(e.parties!.vol);
-      expect(s.approche, e.name).toBe(e.parties!.approche);
+      expect(s.appel, e.name).toBe(PARTIES_LOT57[e.name]!.appel);
+      expect(s.vol, e.name).toBe(PARTIES_LOT57[e.name]!.vol);
+      expect(s.approche, e.name).toBe(PARTIES_LOT57[e.name]!.approche);
       // Les « sauts dans l'axe » de la grammaire sont ceux qu'elle annonce comme tels : un élan, un double saut… (le reste demande un geste de plus).
       const axe = sautDansLAxe(s);
-      const annonce = e.parties!.approche === "droite" && e.parties!.appel === "plat" && e.parties!.vol === "axe" && e.parties!.reception.every((r) => r === "axe" || r === "basse" || r === "haute");
+      const annonce = PARTIES_LOT57[e.name]!.approche === "droite" && PARTIES_LOT57[e.name]!.appel === "plat" && PARTIES_LOT57[e.name]!.vol === "axe" && PARTIES_LOT57[e.name]!.reception.every((r) => r === "axe" || r === "basse" || r === "haute");
       expect(axe, e.name).toBe(annonce);
     }
   });
@@ -200,7 +201,7 @@ describe("lot 57b : le rangement des sauts de la grammaire correspond à leurs p
 describe("lot 57b : une figure se pose avec son thème", () => {
   it("l'herbe de course n'est qu'à la Campagne et la glace qu'à la Banquise et au Col alpin, pour chaque saut et chaque transition de la grammaire", () => {
     for (const e of GRAMMAIRE_LOT57)
-      for (const theme of e.themes)
+      for (const theme of e.only!)
         for (let v = 0; v < e.variants; v++) {
           const body = e.build({ L: "L", R: "R", wall: "ML", width: "n", variant: v, theme });
           if (!body) continue;
@@ -212,7 +213,7 @@ describe("lot 57b : une figure se pose avec son thème", () => {
 
   it("chaque élément a, dans chacun de ses thèmes, au moins une variante qui se construit", () => {
     for (const e of GRAMMAIRE_LOT57)
-      for (const theme of e.themes) {
+      for (const theme of e.only!) {
         const variantes = Array.from({ length: e.variants }, (_, v) => e.build({ L: "L", R: "R", wall: "ML", width: "n", variant: v, theme })).filter(Boolean);
         expect(variantes.length, `${e.name} (${theme})`).toBeGreaterThan(0);
       }

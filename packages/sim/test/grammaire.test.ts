@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { essai } from "./helpers/fenetre";
-import { GRAMMAIRE_LOT57, SAUTS_LOT57, TRANSITIONS_LOT57, bestPilotRun, buildFigure, classerSauts, createFigureTrack, parseTrack, trackJumps, type WidthLetter } from "../src/index";
+import { GRAMMAIRE_LOT57, PARTIES_LOT57, SAUTS_LOT57, TRANSITIONS_LOT57, bestPilotRun, buildFigure, classerSauts, createFigureTrack, parseTrack, trackJumps, type WidthLetter } from "../src/index";
 
 // Lot 57 : chaque prototype de la grammaire (saut ou transition) est fini par le pilote automatique, dans chaque variante, dans les deux sens et
 // sur les trois largeurs d'entrée — comme une figure (`figures.test.ts`) — et ses sauts sont pris dans leur fenêtre.
@@ -36,8 +36,8 @@ describe("grammaire du lot 57", () => {
       const track = createFigureTrack(e.name)!;
       expect(trackJumps(track).length, e.name).toBeGreaterThan(0);
       const s = classerSauts(track)[0]!;
-      expect(s.appel, e.name).toBe(e.parties!.appel);
-      expect(s.vol, e.name).toBe(e.parties!.vol);
+      expect(s.appel, e.name).toBe(PARTIES_LOT57[e.name]!.appel);
+      expect(s.vol, e.name).toBe(PARTIES_LOT57[e.name]!.vol);
     }
   });
 });
