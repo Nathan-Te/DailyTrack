@@ -148,16 +148,16 @@ const CONSTRUCTEURS: Record<Genre, Constructeur> = {
     if (v === 1) for (let k = 0; k < 4; k++) f.push(teindre(placer(new IcosahedronGeometry(0.07, 0), { x: (rnd() - 0.5) * 1.0, y: 0.5 + rnd() * 0.4, z: 0.4 + rnd() * 0.3 }), theme === "sousbois" ? 0xd86a5a : 0xff7a8a));
     return vent(fondre(f), 0.1, 1.1, 0.35);
   },
-  /** De l'herbe haute : sept à neuf brins pointus qui plient au vent (0,45 à 0,9 m). */
+  /** De l'herbe haute : cinq à sept brins larges et pointus qui plient au vent (0,4 à 0,8 m ; assez larges pour que le contour ne les noircisse pas). */
   herbeHaute: ({ a }, v) => {
     const rnd = aleatoire(700 + v);
     const f: BufferGeometry[] = [];
-    const n = 7 + v;
+    const n = 5 + v;
     for (let k = 0; k < n; k++) {
       const t = (k / n) * Math.PI * 2 + rnd();
-      const d = 0.08 + rnd() * 0.22;
-      const h = 0.45 + rnd() * 0.45;
-      f.push(cone(0.07 + rnd() * 0.04, h, 4, { x: Math.cos(t) * d, z: Math.sin(t) * d, rz: (rnd() - 0.5) * 0.5, rx: (rnd() - 0.5) * 0.5 }, rnd() < 0.5 ? a.herbe : a.herbe2));
+      const d = 0.08 + rnd() * 0.2;
+      const h = 0.4 + rnd() * 0.4;
+      f.push(cone(0.12 + rnd() * 0.05, h, 4, { x: Math.cos(t) * d, z: Math.sin(t) * d, rz: (rnd() - 0.5) * 0.5, rx: (rnd() - 0.5) * 0.5 }, rnd() < 0.5 ? a.herbe : a.herbe2));
     }
     return vent(fondre(f), 0, 0.9, 1);
   },
@@ -165,12 +165,12 @@ const CONSTRUCTEURS: Record<Genre, Constructeur> = {
   fleurs: ({ a }, v) => {
     const rnd = aleatoire(800 + v);
     const f: BufferGeometry[] = [];
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 4; k++) {
       const x = (rnd() - 0.5) * 0.7;
       const z = (rnd() - 0.5) * 0.7;
       const h = 0.3 + rnd() * 0.22;
-      f.push(cone(0.03, h, 4, { x, z }, a.herbe2));
-      f.push(teindre(placer(new IcosahedronGeometry(0.1, 0), { x, y: h + 0.03, z, s: [1, 0.7, 1] }), FLEUR[(k + v) % FLEUR.length]!));
+      f.push(cone(0.06, h, 4, { x, z }, a.herbe2));
+      f.push(teindre(placer(new IcosahedronGeometry(0.12, 0), { x, y: h + 0.03, z, s: [1, 0.7, 1] }), FLEUR[(k + v) % FLEUR.length]!));
     }
     return vent(fondre(f), 0.05, 0.55, 0.9);
   },

@@ -42,6 +42,9 @@ export interface PorteScene {
   choisirCompetence(i?: number): void;
   sons(): string[];
   calls(): number;
+  /** Lot BR-A2 : les triangles de la dernière image ; ce que la qualité allume (ombres portées, post-traitement) et le nombre d'objets d'ambiance visibles (particules, rais, brume). */
+  triangles(): number;
+  rendu(): { ombres: boolean; postTraitement: boolean; rais: number };
   scene(): { getObjectByName(nom: string): { visible: boolean } | undefined; traverse?(f: (o: never) => void): void };
   camera(): { x: number; y: number; z: number; fov: number };
   qualite(): "haute" | "basse";

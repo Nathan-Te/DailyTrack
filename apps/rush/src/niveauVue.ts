@@ -39,10 +39,11 @@ export function themeDe(a: PaletteMonde): ThemeVu {
 
 // --- Ce que chaque thème pose ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /** Le mur bas d'une case qui borde le jeu : ce qu'on y pose (genre, variante, échelle). La prairie : le muret de bois (la cible), de la haie de temps en temps ; la carrière : des rochers ; le sous-bois : des haies, des rochers moussus. */
-const ECHELLE_ROCHER = 2.1;
+const ECHELLE_ROCHER = 1.9;
 interface Mur {
   genre: Genre;
   v: number;
+  /** L'échelle horizontale (1 : la pièce telle quelle). */
   s: number;
   /** Le poteau d'un muret : il porte des lisses vers ses voisins. */
   poteau: boolean;
@@ -56,19 +57,28 @@ function murDe(theme: ThemeVu, i: number, j: number, borde: boolean): Mur {
   }
   if (theme === "carriere") {
     if (borde && r > 0.9) return { genre: "poteau", v, s: 1, poteau: true };
-    return { genre: "rocher", v, s: ECHELLE_ROCHER * (0.9 + hash(i, j, 8) * 0.3), poteau: false };
+    return { genre: "rocher", v, s: ECHELLE_ROCHER * (0.9 + hash(i, j, 8) * 0.25), poteau: false };
   }
   if (r > 0.9 && borde) return { genre: "poteau", v, s: 1, poteau: true };
   if (r < 0.28) return { genre: "rocher", v, s: ECHELLE_ROCHER * (0.85 + hash(i, j, 8) * 0.25), poteau: false };
   return { genre: "haie", v, s: 1, poteau: false };
 }
-/** La hauteur du sommet le plus haut d'un mur bas d'un thème (mètres, ≤ `MUR_MAX` : on voit toujours par-dessus). */
+/** La hauteur du sommet d'un mur bas : la pièce à son échelle, **jamais au-delà de `MUR_MAX`** (un rocher trop étiré s'aplatit : on voit toujours par-dessus). */
+const hauteurDuMur = (g: BufferGeometry, s: number, ky: number): number => Math.min(hauteurDe(g) * s * ky, MUR_MAX - 0.02);
+/** L'échelle verticale d'un mur bas : celle qu'on voudrait (`ky`, variée par case), écrêtée pour que son sommet reste sous `MUR_MAX`. */
+function echelleVerticale(g: BufferGeometry, s: number, ky: number): number {
+  return hauteurDuMur(g, s, ky) / hauteurDe(g) / s;
+}
+/** La hauteur du sommet le plus haut d'un mur bas d'un thème (mètres, ≤ `MUR_MAX` : on voit toujours par-dessus), mesurée sur toutes les pièces que le thème peut poser. */
 export function hauteurDesMurs(theme: ThemeVu, a: PaletteMonde = PALETTES[theme]!): number {
   const c: ContexteFabrique = { a, theme };
   let h = 0;
   for (let v = 0; v < 8; v++) {
-    const m = murDe(theme, v, 1, true);
-    for (const g of [m, { ...m, genre: "haie" as Genre, s: 1 }, { ...m, genre: "rocher" as Genre, s: ECHELLE_ROCHER * 1.2 }].filter((x) => (theme === "prairie" ? x.genre !== "rocher" : theme === "carriere" ? x.genre !== "haie" : true))) h = Math.max(h, hauteurDe(fabriquer(g.genre, c, g.v)) * g.s);
+    for (const i of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+      const m = murDe(theme, i, v + 1, i % 2 === 0);
+      const g = fabriquer(m.genre, c, m.v);
+      h = Math.max(h, hauteurDuMur(g, m.s, m.genre === "rocher" ? 1.15 : 1.0) * (m.genre === "rocher" ? 1 : 1));
+    }
   }
   return h;
 }
@@ -221,7 +231,9 @@ export function construireNiveau(n: Niveau, a: PaletteMonde, theme: ThemeVu = th
           const jx = (hash(i, j, 12) - 0.5) * 0.3;
           const jz = (hash(i, j, 13) - 0.5) * 0.3;
           const ry = hash(i, j, 14) * 6.28;
-          poser(mur.genre, mur.v, cx + jx, cz + jz, { ry: mur.poteau ? (hash(i, j, 15) - 0.5) * 0.3 : ry, s: mur.s === 1 ? [0.95 + hash(i, j, 8) * 0.15, 1, 0.95 + hash(i, j, 9) * 0.15] : [mur.s, mur.s * (0.85 + hash(i, j, 16) * 0.3), mur.s] });
+          const gMur = fabriquer(mur.genre, ctx, mur.v);
+          const ky = mur.s === 1 ? 1 : 0.85 + hash(i, j, 16) * 0.3;
+          poser(mur.genre, mur.v, cx + jx, cz + jz, { ry: mur.poteau ? (hash(i, j, 15) - 0.5) * 0.3 : ry, s: mur.s === 1 ? [0.95 + hash(i, j, 8) * 0.15, 1, 0.95 + hash(i, j, 9) * 0.15] : [mur.s, mur.s * echelleVerticale(gMur, mur.s, ky), mur.s] });
           // le muret de bois : des lisses jusqu'aux poteaux voisins (devant, à droite, en diagonale)
           if (mur.poteau) {
             for (const [di, dj] of [[1, 0], [0, 1], [1, 1], [-1, 1]] as const) {
@@ -241,7 +253,7 @@ export function construireNiveau(n: Niveau, a: PaletteMonde, theme: ThemeVu = th
           }
           if (hash(i, j, 31) < (borde ? 0.3 : 0.55)) {
             const g = pick(hab.moyennes, hash(i, j, 32));
-            const d = 0.5 + hash(i, j, 33) * 0.5;
+            const d = 0.4 + hash(i, j, 33) * 0.5;
             const t2 = hash(i, j, 34) * 6.28;
             poser(g, Math.floor(hash(i, j, 35) * 4), cx + Math.cos(t2) * d, cz + Math.sin(t2) * d, { ry: ry, s: 0.85 + hash(i, j, 36) * 0.4 });
             poses++;
@@ -249,7 +261,7 @@ export function construireNiveau(n: Niveau, a: PaletteMonde, theme: ThemeVu = th
           for (let k = 0; k < 2; k++) {
             if (hash(i, j, 41 + k) < 0.5) {
               const g = pick(hab.petites, hash(i, j, 43 + k));
-              const d = 0.4 + hash(i, j, 45 + k) * 0.7;
+              const d = 0.3 + hash(i, j, 45 + k) * 0.6;
               const t2 = hash(i, j, 47 + k) * 6.28;
               poser(g, Math.floor(hash(i, j, 49 + k) * 4), cx + Math.cos(t2) * d, cz + Math.sin(t2) * d, { y: 0, ry: t2 * 3, s: 0.9 + hash(i, j, 51 + k) * 0.4 });
               poses++;
@@ -386,7 +398,7 @@ function ilesDuBloc(a: PaletteMonde, theme: ThemeVu, zone: { x0: number; x1: num
   const rnd = aleatoire(graine);
   const ctx: ContexteFabrique = { a, theme };
   const formes: BufferGeometry[] = [];
-  const n = Math.max(1, Math.round(((zone.x1 - zone.x0) * (zone.z1 - zone.z0)) / 2600));
+  const n = Math.max(1, Math.round(((zone.x1 - zone.x0) * (zone.z1 - zone.z0)) / 1500));
   for (let k = 0; k < n; k++) {
     const x = zone.x0 + rnd() * (zone.x1 - zone.x0);
     const z = zone.z0 + rnd() * (zone.z1 - zone.z0);
@@ -437,9 +449,9 @@ function cercleDeLEpreuve(r: number): { maillage: Mesh; maj(vague: number, etat:
         float tick = (1.0 - smoothstep(0.02, 0.05, abs(fract(ang / 6.28318 * 12.0) - 0.5))) * step(0.9, rho) * (1.0 - step(0.97, rho));
         incr = max(incr, tick);
         float lumTick = tick * clamp(uVague - 2.0, 0.0, 1.0);
-        vec3 inlay = vec3(0.22, 0.16, 0.1);
+        vec3 inlay = vec3(0.3, 0.2, 0.12);
         col = mix(inlay, mix(violet, dore, 0.5 + 0.5 * sin(uTemps * 2.0)), clamp(lum + lumTick, 0.0, 1.0)) * 1.0;
-        alpha = max(incr * 0.4, clamp(lum + lumTick, 0.0, 1.0) * 0.92);
+        alpha = max(incr * 0.55, clamp(lum + lumTick, 0.0, 1.0) * 0.95);
         col = mix(col, dore * 1.35, clamp(halo, 0.0, 1.0) * 0.6 * (1.0 - alpha));
         alpha = max(alpha, halo * 0.55);
         gl_FragColor = vec4(col, alpha);

@@ -1335,6 +1335,9 @@
           "competences.spec.ts": [
             "rush-sim",
             "rush-jeu"
+          ],
+          "monde.spec.ts": [
+            "rush-jeu"
           ]
         },
         "parts": {

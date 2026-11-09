@@ -966,10 +966,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   lireFantome(o.fantome ?? (essai.fantome && contenu.scenario === "jour" ? rediffusionDiamantRush(contenu) : null));
 
   // --- Le dessin ---
+  let hauteurImage = 720; // lot BR-A2 : la hauteur de l'image en pixels CSS (la taille d'une particule suit l'écran)
   const redimensionner = (): void => {
     const r = ui.zone3d.getBoundingClientRect();
     const l = Math.max(2, Math.floor(r.width));
     const h = Math.max(2, Math.floor(r.height));
+    hauteurImage = h;
     renderer.setSize(l, h, false);
     rendu.taille(l, h, ratio);
     camera.aspect = l / h;
@@ -1375,7 +1377,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     } else ui.cible(null);
     // Lot BR6 : les portes de la salle d'épreuve montent à la fermeture (24 ticks) et redescendent à la réouverture.
     const ferme = partie.epreuve.etat === 1 ? Math.min(1, (partie.tick - partie.epreuve.debut + alpha) / 24) : 0;
-    ambiance.maj({ x: rig.regard.x, z: rig.regard.z }, temps, qualite, camera, ui.zone3d.clientHeight * ratio);
+    ambiance.maj({ x: rig.regard.x, z: rig.regard.z }, temps, qualite, camera, hauteurImage * ratio);
     decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0, ferme, { temps, vague: partie.epreuve.vague, epreuve: partie.epreuve.etat, qualite });
 
     renderer.info.reset();
@@ -1418,6 +1420,9 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       choisirCompetence: (i?: number) => validerDepart(i ?? competenceDuPilote(partie.contenu.boss)),
       sons: () => sonsAvecKit.joues,
       calls: () => renderer.info.render.calls,
+      /** Lot BR-A2 : les triangles de la dernière image, et ce que la qualité allume : les ombres portées (carte d'ombre), le post-traitement (contour par la profondeur, bloom), la brume basse et les rais. */
+      triangles: () => renderer.info.render.triangles,
+      rendu: () => ({ ombres: renderer.shadowMap.enabled && soleil.castShadow, postTraitement: rendu.qualite === "haute", rais: ambiance.groupe.children.filter((o) => o.visible).length }),
       /** Pose la caméra (position, point regardé) pour un gros plan ; `null` : la caméra du jeu. */
       cameraLibre: (p: [number, number, number] | null, v: [number, number, number] = [0, 0, 0]) => {
         cameraLibre = p ? { p, v } : null;

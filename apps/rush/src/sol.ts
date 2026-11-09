@@ -87,7 +87,7 @@ const MATIERES = `
     vec2 id = floor(q); vec2 f = fract(q);
     float par = mod(id.x + id.y, 2.0);
     float v = h12(id);
-    vec3 c = mix(uSol1, uSol2, par) * (0.95 + 0.09 * v);
+    vec3 c = mix(uSol1, uSol2, par) * (0.95 + 0.09 * v) * mix(1.03, 0.95, par);
     float d = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
     // le biseau : clair en haut à gauche, sombre en bas à droite
     c += 0.055 * (step(f.x, 0.07) + step(f.y, 0.07)) - 0.06 * (step(0.93, f.x) + step(0.93, f.y));
@@ -136,7 +136,7 @@ const MATIERES = `
       vec2 d = p - uArene.xy; float da = length(d);
       float ring = 1.0 - smoothstep(0.05, 0.14, abs(da - (uArene.z - 1.5)));
       float f = fract(atan(d.y, d.x) / 6.28318 * uAccent.w);
-      float tk = (1.0 - smoothstep(0.03, 0.07, abs(f - 0.5))) * step(uArene.z - 2.3, da) * step(da, uArene.z - 0.8);
+      float tk = (1.0 - smoothstep(0.012, 0.03, abs(f - 0.5))) * step(uArene.z - 2.0, da) * step(da, uArene.z - 1.0);
       c = mix(c, uAccent.rgb * 0.92, max(ring * 0.75, tk * 0.8));
     }
     return c;
