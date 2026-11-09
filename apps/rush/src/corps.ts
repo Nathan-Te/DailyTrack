@@ -91,6 +91,7 @@ import { CameraRush, type ModeNiveau, type PointCadre } from "./camera";
 import { eclair } from "./cel";
 import { monterDecor } from "./decor";
 import { monterNiveauVu } from "./niveauVue";
+import { monterAmbiance } from "./ambiance";
 import { FICHE } from "./fiche";
 import "./rush.css"; // le HUD, les boutons et la carte ne servent qu'en partie : leur feuille est chargée avec la scène (jamais dans le premier chargement)
 import { Controles } from "./controles";
@@ -256,7 +257,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   // La lumière (lot BR0c) : une hémisphérique (le ciel bleu, le sable chaud), le soleil (de droite et un peu de face) et son OMBRE PORTÉE : une carte de 1 024 serrée sur l'arène, au bord adouci.
   scene.add(new HemisphereLight(palette.hemiCiel, palette.hemiSol, palette.intensiteAmbiance));
   const soleil = new DirectionalLight(palette.lumiere, palette.intensiteLumiere);
-  soleil.position.set(9, 18, 4);
+  soleil.position.set(...palette.soleil);
   soleil.castShadow = true;
   soleil.shadow.mapSize.set(1024, 1024);
   const cs = soleil.shadow.camera;
@@ -272,11 +273,12 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   soleil.shadow.bias = -0.0005;
   soleil.shadow.normalBias = 0.04;
   scene.add(soleil, soleil.target);
-  scene.fog = new Fog(palette.brume, 55, 150); // une brume légère vers l'horizon
+  scene.fog = new Fog(palette.brume, palette.brumeProche, palette.brumeLoin); // la brume du thème (lot BR-A2 : plus proche dans le sous-bois et la carrière)
 
   // Le niveau de rendu (lot BR0c) : `?qualite=` l'impose ; sinon haute, avec un passage automatique en basse si les images par seconde chutent (jamais de retour en haute dans la partie).
   let qualite: Qualite = essai.qualite ?? "haute";
   const rendu = new Rendu(renderer, scene, camera, qualite);
+  rendu.reglage = { ...palette.etalonnage, teinte: [...palette.etalonnage.teinte] as [number, number, number] }; // lot BR-A2 : l'étalonnage du thème
   const appliquerQualite = (q: Qualite): void => {
     qualite = q;
     rendu.definir(q);
@@ -293,9 +295,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   // Lot BR3 : le bestiaire pose les cinq boss sur un plateau plus large, avec leur nom dessous.
   const salle = bestiaire ? monterBestiaire(ui.racine, palette, scene, (id) => t(`boss.nom.${cleBoss(id)}`)) : null;
   if (bestiaire) ui.racine.dataset.bestiaire = "1";
-  const decor = salle ? salle.decor : niveau ? monterNiveauVu(niveau, palette) : monterDecor(R, palette);
+  // Lot BR-A2 : l'arène porte les couleurs du boss du jour (sauf la vitrine, qui reproduit la cible : pas de bannières).
+  const accentBoss = contenu.scenario === "vitrine" || !partie.golem ? undefined : partie.golem.kind;
+  const decor = salle ? salle.decor : niveau ? monterNiveauVu(niveau, palette, undefined, { boss: accentBoss }) : monterDecor(R, palette, { boss: accentBoss });
   scene.background = decor.ciel;
   scene.add(decor.groupe);
+  const ambiance = monterAmbiance(palette); // lot BR-A2 : pollen, poussière ou lucioles, rais de lumière, brume basse
+  scene.add(ambiance.groupe);
   if (salle) scene.add(salle.groupe);
   const vasesVue = monterVases(); // lot BR5 : les groupes de vases (jarres, tonneaux, petites caisses)
   scene.add(vasesVue.groupe);
@@ -1048,7 +1054,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       camera.lookAt(...k.regard);
       camera.updateMatrixWorld(true);
       soleil.target.position.set(0, 0, 0);
-      soleil.position.set(9, 18, 4);
+      soleil.position.set(...palette.soleil);
       soleil.target.updateMatrixWorld();
       return;
     }
@@ -1056,7 +1062,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       // Le bestiaire : une caméra FIXE qui cadre les cinq boss à la même échelle (jamais de secousse).
       salle.camera(camera, camera.aspect);
       soleil.target.position.set(0, 0, 0);
-      soleil.position.set(9, 18, 4);
+      soleil.position.set(...palette.soleil);
       soleil.target.updateMatrixWorld();
       return;
     }
@@ -1074,7 +1080,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       const tx = Math.round(r.x / pas) * pas;
       const tz = Math.round(r.z / pas) * pas;
       soleil.target.position.set(tx, 0, tz);
-      soleil.position.set(tx + 9, 18, tz + 4);
+      soleil.position.set(tx + palette.soleil[0], palette.soleil[1], tz + palette.soleil[2]);
       soleil.target.updateMatrixWorld();
     }
     if (cameraLibre) {
@@ -1369,7 +1375,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     } else ui.cible(null);
     // Lot BR6 : les portes de la salle d'épreuve montent à la fermeture (24 ticks) et redescendent à la réouverture.
     const ferme = partie.epreuve.etat === 1 ? Math.min(1, (partie.tick - partie.epreuve.debut + alpha) / 24) : 0;
-    decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0, ferme);
+    ambiance.maj({ x: rig.regard.x, z: rig.regard.z }, temps, qualite, camera, ui.zone3d.clientHeight * ratio);
+    decor.maj?.({ x: cx, z: cz }, camera.position, partie.barriere >= 0 ? Math.min(1, (partie.tick - partie.barriere + alpha) / 24) : 0, ferme, { temps, vague: partie.epreuve.vague, epreuve: partie.epreuve.etat, qualite });
 
     renderer.info.reset();
     rendu.dessiner();
@@ -1548,6 +1555,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       ui.zone3d.removeEventListener("pointerdown", clicBas);
       ui.zone3d.removeEventListener("contextmenu", pasDeMenu);
       decor.detruire();
+      ambiance.detruire();
       rendu.detruire();
       observateur.disconnect();
       controles.detruire();

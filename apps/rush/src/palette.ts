@@ -33,6 +33,24 @@ export interface PaletteMonde {
   nuage: number;
   cielHaut: number;
   cielBas: number;
+  // Lot BR-A2 — le sol hors dalles (la terre battue du chemin, l'herbe de ses bords), la lumière et l'ambiance du thème.
+  /** La terre battue (deux tons) et l'herbe des bords (deux tons) : tout sol qui n'est pas une dalle (arène, salle d'épreuve). */
+  terre: number;
+  terre2: number;
+  herbeSol: number;
+  herbeSol2: number;
+  /** La brume : où elle commence et où elle est entière (mètres depuis la caméra). */
+  brumeProche: number;
+  brumeLoin: number;
+  /** La direction du soleil (la position de la lumière par rapport au point regardé, mètres). */
+  soleil: readonly [number, number, number];
+  /** L'étalonnage du thème (post-traitement en haute qualité) : le bloom, le vignettage, la teinte (multiplie le rouge, le vert, le bleu), la saturation et le contraste. */
+  etalonnage: { bloom: number; vignette: number; teinte: readonly [number, number, number]; saturation: number; contraste: number };
+  /** Les particules d'ambiance : `pollen` (jour doux), `poussiere` (carrière), `lucioles` (sous-bois) ; leur couleur, leur nombre (haute qualité ; la moitié en basse) et leur taille en mètres. */
+  particules: { genre: "pollen" | "poussiere" | "lucioles"; couleur: number; couleur2: number; nombre: number; taille: number };
+  /** Les rais de lumière (0 : aucun, 1 : marqués) et la brume basse (0 : aucune, 1 : épaisse). */
+  rais: number;
+  brumeBasse: number;
 }
 
 export const PALETTES: Readonly<Record<string, PaletteMonde>> = {
@@ -40,14 +58,23 @@ export const PALETTES: Readonly<Record<string, PaletteMonde>> = {
   prairie: {
     fond: 0xbfe1f4, sol: 0xf8edcf, sol2: 0xefdcb0, mur: 0x5f9f4f, murHaut: 0x7cbc62, lumiere: 0xfff1d6, ambiance: 0xf4e6c8, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0xe9e4d8, hemiSol: 0xefd9ae, brume: 0xcfe8f7,
     tranche: 0xcfae78, falaise: 0x8a6a4c, falaise2: 0xa88660, herbe: 0x86c06c, herbe2: 0x6aa857, bois: 0xb07a43, bois2: 0x7c5230, nuage: 0xffffff, cielHaut: 0x8fcdf0, cielBas: 0xd6edf8,
+    terre: 0xc9a77a, terre2: 0xb99868, herbeSol: 0x6fae52, herbeSol2: 0x5f9c47, brumeProche: 70, brumeLoin: 170, soleil: [9, 18, 4],
+    etalonnage: { bloom: 1.1, vignette: 0.22, teinte: [1.03, 1.0, 0.95], saturation: 1.1, contraste: 1.04 },
+    particules: { genre: "pollen", couleur: 0xfff2b0, couleur2: 0xffffff, nombre: 260, taille: 0.11 }, rais: 0.25, brumeBasse: 0.1,
   },
   carriere: {
     fond: 0xe6cfae, sol: 0xf0f3f4, sol2: 0xdde4e8, mur: 0x8a7f72, murHaut: 0xa89d8e, lumiere: 0xfff0d2, ambiance: 0xf0e2cc, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0xeee4d6, hemiSol: 0xd8cbb8, brume: 0xeed9bb,
     tranche: 0x9a8f80, falaise: 0x7a6e60, falaise2: 0x978b7a, herbe: 0xa7a46a, herbe2: 0x8c8b58, bois: 0xa5733f, bois2: 0x74502e, nuage: 0xfdf3e3, cielHaut: 0xe9b98a, cielBas: 0xf6e3c8,
+    terre: 0xc4a98a, terre2: 0xb29676, herbeSol: 0x9a9658, herbeSol2: 0x888448, brumeProche: 50, brumeLoin: 135, soleil: [13, 14, 3],
+    etalonnage: { bloom: 0.9, vignette: 0.3, teinte: [1.05, 0.98, 0.9], saturation: 1.02, contraste: 1.1 },
+    particules: { genre: "poussiere", couleur: 0xf0d2a0, couleur2: 0xe0b878, nombre: 200, taille: 0.2 }, rais: 0.15, brumeBasse: 0.3,
   },
   "sousbois": {
     fond: 0xb9d6b4, sol: 0xd6e3a6, sol2: 0xc3d58c, mur: 0x3e7a3c, murHaut: 0x5a9a4c, lumiere: 0xfff4cf, ambiance: 0xe6efc8, intensiteLumiere: 2.0, intensiteAmbiance: 1.35, hemiCiel: 0xdfeccc, hemiSol: 0xc9d79a, brume: 0xc6e0c0,
     tranche: 0x8f8a58, falaise: 0x6e5f44, falaise2: 0x8a7a58, herbe: 0x6fae5a, herbe2: 0x4f9148, bois: 0x8e5f36, bois2: 0x62412a, nuage: 0xf6fff0, cielHaut: 0x9cc8c0, cielBas: 0xdcebd0,
+    terre: 0xb09a62, terre2: 0xa08a54, herbeSol: 0x3f7f35, herbeSol2: 0x336b2c, brumeProche: 36, brumeLoin: 105, soleil: [7, 19, -2],
+    etalonnage: { bloom: 1.3, vignette: 0.36, teinte: [0.97, 1.03, 0.95], saturation: 1.08, contraste: 1.06 },
+    particules: { genre: "lucioles", couleur: 0xe6ff7a, couleur2: 0xb8ff9a, nombre: 90, taille: 0.16 }, rais: 0.9, brumeBasse: 0.8,
   },
 };
 
@@ -111,3 +138,9 @@ export const COULEURS = {
   bulle: 0x9fe6ff,
   projectile: 0xff7a3c,
 } as const;
+
+/** Le thème d'une palette (par identité) ; la prairie à défaut (lot BR-A2 : ici, pour que le décor et la fabrique le demandent sans importer le niveau). */
+export function themeDe(a: PaletteMonde): "prairie" | "carriere" | "sousbois" {
+  for (const k of Object.keys(PALETTES)) if (PALETTES[k] === a) return k as "prairie" | "carriere" | "sousbois";
+  return "prairie";
+}
