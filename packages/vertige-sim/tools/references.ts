@@ -40,6 +40,22 @@ const rediffusions = refs.map((r) => {
   return { nom: r.nom, scenario: r.scenario, date: formatDay(jourRef), g: contenu.g, code: r.scenario ? enregistrerScenario(r.scenario, r.commandes) : enregistrer(contenu, r.commandes), resultat: v.resultat, empreintes: v.empreintes };
 });
 
+// Les parties d'essai du serveur (`apps/api/scripts/vertige-essais.ts`) : douze façons de finir le parcours (le même joueur scripté, un regard de plus en plus tremblant), qui n'ont pas toutes le même temps.
+const essais: { code: string; temps: number }[] = [];
+for (let v = 0; v < 12; v++) {
+  const amp = v * 9;
+  const s = jouerEtapes("parcours", ETAPES_PARCOURS, { tremblement: (n) => [Math.round(amp * Math.sin(n / (5 + v))), Math.round(0.6 * amp * Math.sin(n / (9 + v)))] });
+  if (!s.partie.resultat().arrive) throw new Error(`la partie d'essai ${v} n'arrive pas`);
+  essais.push({ code: enregistrer(contenu, s.commandes), temps: s.partie.resultat().ticks });
+}
+writeFileSync(
+  new URL("../src/partiesEssais.ts", import.meta.url),
+  `// Produit par tools/references.ts (npm run golden:vertige) : ne se modifie pas à la main. Douze parties d'essai du parcours (le joueur scripté, un regard de plus en plus tremblant), pour le module d'essais du serveur.
+// Une partie est la rediffusion d'un jour quelconque : le serveur la réécrit pour le jour qu'il joue (les commandes ne dépendent pas du jour).
+export const PARTIES_ESSAIS: readonly { readonly code: string; readonly temps: number }[] = ${JSON.stringify(essais, null, 2)};
+`,
+);
+
 const sortie = {
   _: "Golden de Vertige (lot V0). Régénérer : npm run golden:vertige -w @cdj/vertige-sim, seulement en montant la version concernée.",
   sim: 1,
@@ -49,4 +65,5 @@ const sortie = {
   rediffusions,
 };
 writeFileSync(new URL("../test/fixtures/golden-vertige.json", import.meta.url), JSON.stringify(sortie, null, 2) + "\n");
+console.log("temps des parties d'essai :", essais.map((e) => e.temps).join(" "));
 console.log("golden écrit :", rediffusions.map((r) => `${r.nom}=${r.resultat.arrive ? r.resultat.ticks : "–"}`).join(" "));

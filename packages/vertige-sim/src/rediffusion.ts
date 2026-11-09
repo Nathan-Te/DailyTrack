@@ -3,7 +3,7 @@ import { decoderEnveloppe, encoderEnveloppe, ErreurEnveloppe, type ContenuEnvelo
 import { DUREE_MAX_TICKS, MAX_CARACTERES, REGARD_MAX, TOUCHES_TOUTES, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION } from "./constantes";
 import { dailyVertige, type Contenu } from "./generateur";
 import { estNomNiveau, niveau } from "./niveaux";
-import { jouer, type Commande, type Resultat } from "./partie";
+import { jouer, type Commande, type Resultat } from "./course";
 
 // La rediffusion d'une partie de Vertige : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, les COMMANDES de chaque pas (touches, lacet et tangage), à 120 pas par seconde.
 //   charge = [nombre de pas] [nombre de changements de touches] ([pas depuis le changement précédent] [touches])…  [nombre de mouvements du regard] ([pas depuis le précédent] [lacet] [tangage])…

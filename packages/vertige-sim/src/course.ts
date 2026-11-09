@@ -1,6 +1,6 @@
 import { CM, DEMI, DUREE_MAX_TICKS, HAUT, REGARD_MAX, TANGAGE_MAX, TOUCHES_TOUTES, TOUR, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT } from "./constantes";
 import type { Boite, Niveau } from "./niveaux";
-import { pas, REGLAGES_DEFAUT, type Reglages } from "./reglages";
+import { pas, REGLAGES_DEFAUT, type Reglages } from "./sensations";
 import { cosinus, idiv, sinus } from "./trigo";
 
 // La partie : un pas de 1/120 s par `avancer(commande)`. Tout est entier (positions en µm, vitesses en µm/s, angles en 1/65 536 de tour) ; les collisions se résolvent axe par axe, contre des boîtes alignées
@@ -269,6 +269,3 @@ export function jouer(niveau: Niveau, commandes: readonly Commande[], reglages: 
   for (let i = 0; i < commandes.length && !p.finie; i++) p.avancer(commandes[i]!);
   return p;
 }
-
-/** Le temps de classement d'un résultat (en pas) : le temps de l'arrivée, ou le pire temps. */
-export const tempsDe = (r: Pick<Resultat, "arrive" | "ticks">): number => (r.arrive ? r.ticks : DUREE_MAX_TICKS);

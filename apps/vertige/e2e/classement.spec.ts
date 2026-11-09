@@ -4,7 +4,7 @@ import { ESSAIS_VERTIGE } from "../../api/scripts/vertige-essais";
 import { API, appareil, jouerLeJour, lancer } from "./appareil";
 
 // « Vertige » — LE parcours du classement, avec le VRAI serveur (l'API de la plateforme montée par le registre des fiches : `apps/api/scripts/vertige-serveur-essai.ts`, port 8796, base en mémoire, refus des copies actif ;
-// son jour est le 06/11/2026, que la page prend aussi). Une partie scriptée envoyée et classée (le pseudo au premier envoi), une copie refusée, puis **le parcours Amis** dans le dialogue du classement : ouvrir la
+// son jour est le 06/11/2026, que la page prend aussi). Une partie scriptée (les commandes du joueur scripté, données à la simulation à la place des touches) envoyée et classée (le pseudo au premier envoi), une copie refusée, puis **le parcours Amis** dans le dialogue du classement : ouvrir la
 // feuille d'un autre joueur, l'ajouter en ami, voir « Amis » ne montrer que lui et toi. Chromium seulement ; rien dans `@navigateurs`.
 test.describe.configure({ mode: "serial" });
 
@@ -36,16 +36,18 @@ test("une partie scriptée est classée par le serveur, sa copie est refusée, e
   const pseudo = `Eve${Date.now() % 100000}`;
   const a = await appareil(browser);
   await lancer(a.page);
-  const attendu = await jouerLeJour(a.page, 15, [3]);
+  await a.page.waitForFunction(() => !!window.__vertige);
+  const attendu = await jouerLeJour(a.page, 4);
   await choisirPseudo(a.page, pseudo);
-  await expect(a.page.locator("#jeu-fin-rang")).toContainText("e sur 3", { timeout: 20_000 }); // classée parmi Carla, Denis et elle
+  await expect(a.page.locator("#jeu-fin-rang")).toContainText("e sur 3", { timeout: 20_000 }); // classée parmi Carla, Denis et elle (la plus lente des trois)
   expect(await a.page.evaluate(() => window.__jeu.envoi().statut)).toBe("ranked");
   await expect(a.page.locator("#jeu-fin-score")).toHaveText(VARIANTE.formatScore(VARIANTE.score(attendu), "fr"));
 
   // La même partie, d'un autre appareil : le serveur reconnaît la copie et la refuse.
   const b = await appareil(browser);
   await lancer(b.page);
-  await jouerLeJour(b.page, 15, [3]);
+  await b.page.waitForFunction(() => !!window.__vertige);
+  await jouerLeJour(b.page, 4);
   await choisirPseudo(b.page, `Bob${Date.now() % 100000}`);
   await expect.poll(() => b.page.evaluate(() => window.__jeu.envoi().statut), { timeout: 20_000 }).toBe("refused");
   await expect(b.page.locator("#jeu-fin-rang")).toContainText("refusée");

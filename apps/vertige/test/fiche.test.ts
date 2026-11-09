@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, dailyVertige, numeroVertige, partieDuBot, PREMIER_JOUR_VERTIGE, themeDuJour, VARIANTE } from "@cdj/vertige-sim";
+import { DUREE_MAX_TICKS, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, numeroVertige, PREMIER_JOUR_VERTIGE, themeDuJour, VARIANTE } from "@cdj/vertige-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_VERTIGE } from "../src/catalogue";
 import { DEFINITION } from "../src/definition";
@@ -40,18 +40,25 @@ describe("« Vertige » : le client suit sa fiche", () => {
       for (const k of [...DEFINITION.aide, "page.titre", "scene.aria", ...DEFINITION.actions.map((a) => `commandes.action.${a.id}`)]) expect(c, `${lang} ${k}`).toHaveProperty([k]);
     }
   });
-  it("la définition : numéro, thème, médaille, texte du score et du partage", () => {
+  it("la définition : numéro, thème, texte du score et du partage ; pas de médaille ni de fantôme au prototype", () => {
     const J = PREMIER_JOUR_VERTIGE + 3;
     expect(DEFINITION.numero(J)).toBe(numeroVertige(J));
     expect(DEFINITION.numero(J)).toBe(4);
     expect(DEFINITION.themeDuJour(J)).toBe(themeDuJour(J));
-    const c = dailyVertige(J);
-    const s = DEFINITION.seuils(c);
-    // La médaille et les textes du score viennent de la variante du jeu (`variante.ts`) : la définition ne fait que les brancher.
-    expect(DEFINITION.medaille(VARIANTE.score(partieDuBot(c)), s)).toBe("author");
-    expect(DEFINITION.medaille(VARIANTE.score({ touches: 0, dernier: 900 }), s)).toBeNull();
-    const exemple = VARIANTE.score({ touches: 17, dernier: 300 });
-    expect(DEFINITION.formatScore(exemple, "fr", (cle) => cle)).toBe(VARIANTE.formatScore(exemple, "fr"));
-    expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe(VARIANTE.scorePartage(exemple, "en"));
+    expect(DEFINITION.sansMedaille).toBe(true);
+    expect(DEFINITION.sansFantome).toBe(true);
+    // Les textes du score viennent de la variante du jeu (`variante.ts`) : la définition ne fait que les brancher.
+    const exemple = VARIANTE.score({ arrive: true, ticks: 741 });
+    expect(DEFINITION.formatScore(exemple, "fr", (cle) => cle)).toBe("6,175 s");
+    expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe("6.175 s");
+    expect(DEFINITION.formatScore(VARIANTE.score({ arrive: false, ticks: 0 }), "fr", (cle) => cle)).toBe(VARIANTE.formatScore([DUREE_MAX_TICKS], "fr"));
+  });
+  it("tourne à 120 pas par seconde et déclare les actions qu'il lit (touches tenues, relance, styles)", () => {
+    expect(DEFINITION.ticksParSeconde).toBe(120);
+    expect(DEFINITION.actions.map((a) => a.id)).toEqual(["avant", "arriere", "gauche", "droite", "saut", "dash", "relancer", "style1", "style2"]);
+    // Les touches sont des codes de touche (la position) : ZQSD d'un AZERTY et WASD d'un QWERTY sont KeyW, KeyA, KeyS, KeyD.
+    expect(DEFINITION.actions.find((a) => a.id === "avant")!.clavier).toContain("KeyW");
+    expect(DEFINITION.actions.find((a) => a.id === "saut")!.manette).toBe("b0");
+    expect(DEFINITION.actions.find((a) => a.id === "dash")!.manette).toBe("b5");
   });
 });

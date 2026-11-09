@@ -1,6 +1,6 @@
 import type { Contenu } from "./generateur";
 import { niveau, type Niveau } from "./niveaux";
-import { Partie, type Commande, type Resultat } from "./partie";
+import { Partie, type Commande, type Resultat } from "./course";
 
 // La vérification au bit près : on rejoue des commandes et on note l'empreinte de TOUT l'état tous les `tous` pas (et à la fin). Deux machines (Node, Chromium, Firefox, WebKit) qui divergent d'un seul bit se
 // voient à la première empreinte différente. Le golden, `apps/vertige/verify.html` et la mesure du lot s'en servent.

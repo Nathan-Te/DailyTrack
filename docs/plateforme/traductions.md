@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2567 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2587 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3284,11 +3284,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `commandes.action.gauche` | Curseur à gauche | Cursor left |
-| `commandes.action.droite` | Curseur à droite | Cursor right |
-| `commandes.action.haut` | Curseur en haut | Cursor up |
-| `commandes.action.bas` | Curseur en bas | Cursor down |
-| `commandes.action.toucher` | Toucher la case | Hit the square |
+| `commandes.action.avant` | Avancer | Move forward |
+| `commandes.action.arriere` | Reculer | Move back |
+| `commandes.action.gauche` | Aller à gauche | Move left |
+| `commandes.action.droite` | Aller à droite | Move right |
+| `commandes.action.saut` | Sauter (et sauter d'un mur) | Jump (and wall jump) |
+| `commandes.action.dash` | Dash | Dash |
+| `commandes.action.relancer` | Recommencer le parcours | Restart the course |
+| `commandes.action.style1` | Style : Lumière douce | Style: Soft light |
+| `commandes.action.style2` | Style : Cartouche | Style: Cartouche |
 
 ### Comment jouer (`aide.*`, `apps/vertige/src/catalogue.*.ts`)
 
@@ -3297,6 +3301,27 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.point1` | À remplacer : le but du jeu en une phrase. | To replace: the goal of the game in one sentence. |
 | `aide.point2` | À remplacer : ce que fait le joueur, en une phrase. | To replace: what the player does, in one sentence. |
 | `aide.point3` | À remplacer : comment les égalités se départagent. | To replace: how ties are broken. |
+
+### confort (`confort.*`, `apps/vertige/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `confort.ouvrir` | Confort | Comfort |
+| `confort.titre` | Confort de jeu | Comfort settings |
+| `confort.sensibilite` | Sensibilité de la souris | Mouse sensitivity |
+| `confort.champ` | Champ de vision | Field of view |
+| `confort.roulis` | Inclinaison de la caméra sur le mur | Camera tilt on the wall |
+| `confort.style` | Style | Style |
+| `confort.style.doux` | Lumière douce | Soft light |
+| `confort.style.cartouche` | Cartouche | Cartouche |
+| `confort.fermer` | Fermer | Close |
+
+### etat (`etat.*`, `apps/vertige/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `etat.dash` | Dash | Dash |
+| `etat.mur` | Course sur le mur | Wall run |
 
 ### kit (`kit.*`, `apps/vertige/src/catalogue.*.ts`)
 
@@ -3401,11 +3426,21 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `page.titre` | Vertige — Du Jour | Vertige — Du Jour |
 
+### Partie (surimpressions) (`hud.*`, `apps/vertige/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.gemmes` | {n} / {total} gemmes | {n} / {total} gems |
+
 ### scene (`scene.*`, `apps/vertige/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | Plateau de jeu (texte à remplacer) | Game board (text to replace) |
+| `scene.aria` | Vue à la première personne de Vertige : un parcours de plateformes au-dessus des nuages | First-person view of Vertige: a course of platforms above the clouds |
+| `scene.tactile` | À jouer sur ordinateur, au clavier et à la souris, ou à la manette. | Play on a computer, with keyboard and mouse, or with a gamepad. |
+| `scene.verrou` | Cliquer pour jouer | Click to play |
+| `scene.verrou.reprise` | Cliquer pour reprendre la souris | Click to take the mouse back |
+| `scene.chargement` | Chargement du décor… | Loading the scenery… |
 
 ### Thèmes (`theme.*`, `apps/vertige/src/catalogue.*.ts`)
 

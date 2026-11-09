@@ -1,4 +1,5 @@
-import { dailyVertige, jouer, VARIANTE, type Resultat } from "@cdj/vertige-sim";
+import { dailyVertige, decoderRediffusion, jouer, niveau, type Commande, type Resultat } from "@cdj/vertige-sim";
+import { PARTIES_ESSAIS } from "@cdj/vertige-sim/essais";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -6,6 +7,13 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 export const API = "http://127.0.0.1:8796";
 export const JOUR = "2026-11-06";
 
+/** La porte `window.__vertige` du jeu (`?debug`) : la simulation, les commandes enregistrées, et `jouer` qui fait jouer des commandes à la place des touches. */
+export interface PorteVertige {
+  sim(): { tick: number; x: number; y: number; z: number; vx: number; vy: number; vz: number; lacet: number; tangage: number; sol: boolean; surMur: boolean; dash: number; chrono: number; fin: number; depart: number; prises: boolean[]; resultat(): Resultat };
+  commandes(): Commande[];
+  jouer(c: Commande[]): void;
+  monde: { hab: { style: string } };
+}
 export interface Porte {
   manuel(oui?: boolean): void;
   avancer(n: number): void;
@@ -18,6 +26,7 @@ export interface Porte {
 declare global {
   interface Window {
     __jeu: Porte;
+    __vertige: PorteVertige;
   }
 }
 
@@ -54,20 +63,14 @@ export async function lancer(page: Page): Promise<void> {
 }
 
 /**
- * Joue la partie du jour à la main, pas à pas : une touche sur la case de chaque cible, `delai` ticks après son apparition (la rediffusion du jeu est donc la suite de ces touches). `sauf` : les rangs des vertige
- * qu'on laisse filer (variante « score ») ou sur lesquelles on hésite (variante « temps »). Rend ce que la simulation (Node, la même) attend de ces touches.
+ * Joue la partie du jour : les commandes de la partie d'essai `variante` (le joueur scripté du parcours, `PARTIES_ESSAIS`) sont données à la simulation à la place des touches, pas à pas (la rediffusion du jeu est donc
+ * ces commandes). Rend ce que la simulation (Node, la même) attend d'elles. La partie reste classable : aucune option d'essai dans l'adresse.
  */
-export async function jouerLeJour(page: Page, delai = 15, sauf: readonly number[] = []): Promise<Resultat> {
-  const contenu = dailyVertige(parseDay(JOUR)!);
-  const touches = VARIANTE.joueur(contenu, () => delai, (i) => sauf.includes(i));
-  await page.evaluate((touches) => {
-    let t = 0;
-    for (const x of touches) {
-      window.__jeu.avancer(x.tick - t);
-      t = x.tick;
-      window.__jeu.action(`case:${x.c}`);
-    }
-    window.__jeu.avancer(1000);
-  }, touches);
-  return jouer(contenu, touches);
+export async function jouerLeJour(page: Page, variante = 0): Promise<Resultat> {
+  const commandes = decoderRediffusion(PARTIES_ESSAIS[variante]!.code).commandes;
+  await page.evaluate((c) => {
+    window.__vertige.jouer(c);
+    window.__jeu.avancer(c.length + 5);
+  }, commandes);
+  return jouer(niveau(dailyVertige(parseDay(JOUR)!).niveau), commandes).resultat();
 }

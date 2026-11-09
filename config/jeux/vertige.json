@@ -75,14 +75,16 @@
   },
   "rejeu": {
     "unitesServeur": 1,
-    "maxTicks": 900
+    "maxTicks": 14400
   },
   "donnees": {
     "tables": [],
     "tableCommune": "resultats_jeu",
     "stockage": {
       "prefixe": "vertige:",
-      "reglagesGardes": []
+      "reglagesGardes": [
+        "vertige:confort"
+      ]
     }
   },
   "message": {

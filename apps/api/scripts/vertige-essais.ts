@@ -1,22 +1,15 @@
-import { mixSeed, Rng } from "@cdj/core";
-import { dailyVertige, enregistrer, jouer, scoreParColonnes, VARIANTE } from "@cdj/vertige-sim";
+import { dailyVertige, decoderRediffusion, enregistrer, rejouer, scoreParColonnes } from "@cdj/vertige-sim";
+import { PARTIES_ESSAIS } from "@cdj/vertige-sim/essais";
 import type { ModuleEssais } from "./essais";
 
-// Le module d'essais de « Vertige » (voir `essais.ts`). La variante 0 touche tout, 13 ticks après l'apparition (le bot, lui, touche à 12 : ce n'est pas sa copie) ; une variante n > 0 réagit au hasard (graine = n) en
-// 13 à 13 + min(n, 11) ticks et laisse filer des vertige de plus en plus nombreuses. Un entier quelconque donne une partie différente (le smoke tire le sien : la recette garde les parties des passages d'avant).
+// Le module d'essais de « Vertige » (voir `essais.ts`). La variante n joue l'une des douze parties d'essai du parcours (`PARTIES_ESSAIS`, produites avec le golden : le même joueur scripté, un regard de plus en plus
+// tremblant) ; un entier quelconque donne une partie (le smoke tire le sien : la recette garde les parties des passages d'avant). La partie est réécrite pour le jour joué : ses commandes ne dépendent pas du jour.
 export const ESSAIS_VERTIGE: ModuleEssais = {
-  variantes: 12,
+  variantes: PARTIES_ESSAIS.length,
   partie(jour, versions, variante) {
     const contenu = dailyVertige(jour, versions.generatorVersion);
-    const rng = new Rng(mixSeed(variante, 0xe55a1));
-    const lenteur = Math.min(variante, 11);
-    // Le joueur scripté de la variante : il laisse filer (`score`) ou hésite (`temps`) une cible de temps en temps ; le hasard de l'essai décide, dans un ordre fixe (la cible ratée, puis son délai).
-    const touches = VARIANTE.joueur(
-      contenu,
-      () => 13 + (variante > 0 ? rng.int(1 + lenteur) : 0),
-      () => variante > 0 && rng.chance(Math.min(60, 4 * variante)),
-    );
-    const r = jouer(contenu, touches);
-    return { rediffusion: enregistrer(contenu, touches), attendu: scoreParColonnes(r) };
+    const modele = PARTIES_ESSAIS[Math.abs(variante) % PARTIES_ESSAIS.length]!;
+    const commandes = decoderRediffusion(modele.code).commandes;
+    return { rediffusion: enregistrer(contenu, commandes), attendu: scoreParColonnes(rejouer(contenu, enregistrer(contenu, commandes))) };
   },
 };

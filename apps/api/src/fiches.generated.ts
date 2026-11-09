@@ -517,12 +517,14 @@ export const FICHES_SERVEUR = [
     },
     "rejeu": {
       "unitesServeur": 1,
-      "maxTicks": 900
+      "maxTicks": 14400
     },
     "tables": [],
     "tableCommune": "resultats_jeu",
     "prefixe": "vertige:",
-    "reglagesGardes": [],
+    "reglagesGardes": [
+      "vertige:confort"
+    ],
     "messageOu": "vertige",
     "zoneNouveautes": "vertige",
     "identiteIncomplete": true

@@ -18,9 +18,10 @@
     ".": "./src/index.ts",
     "./calendrier": "./src/calendrier.ts",
     "./constantes": "./src/constantes.ts",
-    "./reglages": "./src/reglages.ts",
+    "./reglages": "./src/sensations.ts",
     "./variante": "./src/variante.ts",
     "./niveaux": "./src/niveaux.ts",
-    "./rediffusion": "./src/rediffusion.ts"
+    "./rediffusion": "./src/rediffusion.ts",
+    "./essais": "./src/partiesEssais.ts"
   }
 }
