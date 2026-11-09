@@ -327,7 +327,8 @@ describe("rotation par jour (sans générer les jours précédents)", () => {
       // portion rapide peut l'être si aucune autre ne convient (sans super turbo, un thème n'en a que trois ou quatre).
       const k = themeOccurrence(day, theme.name);
       const restDay = v18 ? k + Math.floor(k / (theme.figures.vedettes?.length ?? 3)) : day;
-      const exempt = [SIGNATURE_FIGURE[theme.signature], ...(theme.figures.require ?? []), ...(v18 ? [...(theme.figures.requireAlso ?? []), vedetteOf(theme, k)] : [])];
+      // Lot 58 (v22) : la famille de blocs nouveaux exigée du thème (`blocs`) n'est jamais au repos non plus.
+      const exempt = [SIGNATURE_FIGURE[theme.signature], ...(theme.figures.require ?? []), ...(v18 ? [...(theme.figures.requireAlso ?? []), vedetteOf(theme, k)] : []), ...(theme.figures.blocs ?? [])];
       for (const f of c.figures) {
         const fig = figureByName(f.name)!;
         if (isRested(f.name, restDay) && !(v18 && (fig.braking || fig.category === "rapide" || fig.turbo))) expect(exempt, `jour ${day} : ${f.name}`).toContain(f.name);

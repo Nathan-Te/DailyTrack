@@ -60,4 +60,12 @@ export const FIGURE_INTENTS: Readonly<Record<string, string>> = {
   "virage-cuve": "La paroi extérieure d'un virage se relève : la prendre ou passer par le fond.",
   "colline-douce": "Une montée, une crête, une descente de un à trois niveaux.",
   "colline-raide": "Des pentes de deux ou trois niveaux : creux, dos d'âne, plateau surélevé.",
+  "effet-direction": "Sortir aligné du virage avant le portique violet : le volant ne répond plus 1,5 s, puis la remise à zéro le rend avant le virage suivant.",
+  "effet-freins": "Freins coupés 3 s : lever le pied tôt pour le virage large qui suit, puis la remise à zéro.",
+  "effet-regulateur": "Le régulateur tient 4 s la vitesse d'entrée, gaz et frein sans effet : on ne fait que tourner, puis la remise à zéro.",
+  "effet-fragile": "Voiture fragile : un saut et des bosses à poser bien à plat (une réception brutale la casse), puis la remise à zéro.",
+  "route-bombee": "Une chaussée arrondie sans rebords : rester sur le sommet, les côtés font glisser vers le vide.",
+  "releve-fort": "Des virages amples relevés à 45°, pris à fond, plaqué contre la pente.",
+  "tube-glace": "Façon bobsleigh : des cuves de glace de piste, on monte sur la paroi extérieure des virages.",
+  "mur-roulable": "Monter sur la paroi avant que le fond disparaisse, la longer sans descendre, redescendre à la fin.",
 };

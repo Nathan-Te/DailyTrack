@@ -215,6 +215,8 @@ export const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, numbe
   kerb: [0xe8283a, 0xf4f4f4],
   // Herbe de course (lot 48) : vert tendre, plus clair et plus saturé que tout sol de la Campagne (ΔE 2000 > 12, test/herbe.test.ts) ; tondue en bandes.
   turf: [0x8fe04a, 0x8adb45],
+  // Glace de piste (lot 58) : une glace bleu pervenche, lisse (le tube façon bobsleigh), ΔE > 12 avec la glace (`test/blocsEffet.test.ts`).
+  sled: [0xb7c8f2, 0xadbfee],
 };
 const bank: BankSample = { h: 0, gp: 0, gq: 0 };
 

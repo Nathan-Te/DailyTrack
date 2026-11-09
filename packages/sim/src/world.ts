@@ -1,6 +1,7 @@
 import {
   BOOST_HALF_LENGTH,
   CELL,
+  FX_HALF_LENGTH,
   KERB_WIDTH,
   NO_GROUND,
   SHOULDER_EDGE,
@@ -87,6 +88,9 @@ export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = 
   snow: Object.freeze({ grip: 0.42, traction: 0.5, rolling: 8, slick: 0, turf: 0 }),
   kerb: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0, turf: 0 }),
   turf: Object.freeze({ grip: 0.8, traction: 0.85, rolling: 0.6, slick: 0, turf: 1 }),
+  // Lot 58 — la glace de piste (`S/q`, le tube façon bobsleigh) : aucun roulement, peu de motricité, mais assez d'adhérence pour tenir la paroi d'une cuve
+  // (sur la glace d'avant, 0,3, la voiture n'y tient pas et s'arrête). Jamais sur un ancien circuit.
+  sled: Object.freeze({ grip: 0.75, traction: 0.6, rolling: 0, slick: 0, turf: 0 }),
 });
 
 /** Comportement du revêtement d'un échantillon de sol. */
@@ -105,6 +109,10 @@ export interface Surface {
   /** Plaque de super turbo / bande de moteur coupé sous ce point. */
   turbo: boolean;
   cut: boolean;
+  /** Lot 58 : bande d'un bloc à effet sous ce point (son code, `FX_NO_STEER`…), 0 ailleurs. */
+  fx: number;
+  /** Lot 58 : sur un virage très relevé (`/f`) — le roulis de la caisse n'y suit que la force des pneus (voir `substep`, car.ts). */
+  steep: boolean;
   /** Revêtement (voir `surfaceAt`). */
   kind: SurfaceKind;
 }
@@ -129,7 +137,7 @@ export interface World {
   readonly voidY: number;
 }
 
-export const createSurface = (): Surface => ({ height: 0, gx: 0, gz: 0, boost: false, turbo: false, cut: false, kind: "road" });
+export const createSurface = (): Surface => ({ height: 0, gx: 0, gz: 0, boost: false, turbo: false, cut: false, fx: 0, steep: false, kind: "road" });
 export const createWallHit = (): WallHit => ({ nx: 0, nz: 0, depth: 0 });
 
 /** Sol plat infini, sans rebord (scénario `plat`). */
@@ -142,6 +150,8 @@ export const FLAT_WORLD: World = {
     out.boost = false;
     out.turbo = false;
     out.cut = false;
+    out.fx = 0;
+    out.steep = false;
     out.kind = "road";
   },
   collide() {
@@ -224,7 +234,7 @@ export function trackWorld(track: Track): World {
 
   const hasCuve = track.blocks.some((b) => b.cuve > 0);
   const world: World = {
-    voidY: track.voidY,
+    voidY: track.fallY ?? track.voidY,
     // Toujours présent (même forme d'objet pour tous les circuits : les appels `world.sample` restent monomorphes), vide sans cuve.
     shell: undefined,
 
@@ -235,6 +245,8 @@ export function trackWorld(track: Track): World {
       out.boost = false;
       out.turbo = false;
       out.cut = false;
+      out.fx = 0;
+      out.steep = false;
       if (!b) {
         out.height = NO_GROUND;
         return;
@@ -287,6 +299,7 @@ export function trackWorld(track: Track): World {
         // Virage relevé : la hauteur monte vers l'extérieur ; le gradient (p, q) devient un gradient du monde.
         bankAt(b, p, q, bank);
         out.height += bank.h;
+        if (b.steep) out.steep = true;
         canonVecToWorld(b.dir, bank.gp, bank.gq, wv);
         out.gx += wv.x;
         out.gz += wv.z;
@@ -304,6 +317,7 @@ export function trackWorld(track: Track): World {
       out.boost = b.kind === "boost" && onPad;
       out.turbo = b.kind === "turbo" && onPad;
       out.cut = b.kind === "cut" && Math.abs(q - CELL / 2) <= CUT_HALF_LENGTH;
+      if (b.fx !== undefined && Math.abs(q - CELL / 2) <= FX_HALF_LENGTH) out.fx = b.fx;
     },
 
     collide(x, z, y, radius, out) {

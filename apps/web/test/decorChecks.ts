@@ -4,7 +4,6 @@
 // passage de la voiture, rien au-dessus du vide, une structure tient ensemble, chaque type d'élément a un rôle.
 import {
   CELL,
-  FALL_DEPTH,
   NO_GROUND,
   SHOULDER_EDGE,
   WALL_HEIGHT,
@@ -28,7 +27,7 @@ import {
 import { CHAPEAU, MARGE_PASSAGE, PASSAGE_HAUT, PoseLog, ROLES, TOLERANCE_APPUI, type Pose } from "../src/decorPose";
 import { PALETTE_DEFS } from "../src/trackMesh";
 import { trackGeometry } from "../src/scene/existant";
-import { geometrieP1 } from "../src/scene/composerP1";
+import { geometrieP1, solLointain } from "../src/scene/composerP1";
 import { solSous, terrainDe } from "../src/scene/decor/commun";
 import { DECOR as stade } from "../src/scene/decor/stade";
 import { DECOR as rallye } from "../src/scene/decor/rallye";
@@ -154,7 +153,7 @@ export function relever(track: Track, palette: PaletteName): Pose[] {
 export function verifier(c: Circuit, poses: Pose[]): Faute[] {
   const { track, palette, theme, jour } = c;
   const world = trackWorld(track);
-  const floorY = track.voidY - FALL_DEPTH;
+  const floorY = solLointain(track);
   const hauteurRebord = PALETTE_DEFS[palette].wallHeight ?? WALL_HEIGHT;
   const fautes: Faute[] = [];
   // Lot 44 : le sol relevé du décor (un maillage : la simulation ne le voit pas), l'appui des éléments posés dessus.

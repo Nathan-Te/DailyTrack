@@ -9,7 +9,7 @@
 //     l'assemblage (`construireDecor`) : un thème ne donne que ses recettes (`decor/<thème>.ts`).
 // Règles de pose du lot 37 (apps/web/CLAUDE.md, « Décor : règles de pose ») : un appui, rien au-dessus du vide, rien dans le passage ni devant la caméra, un
 // rôle par élément ; tout passe par le relevé (`PoseLog`), le test de pose (`test/decorPose.test.ts`) le vérifie contre la simulation. **Rendu seul.**
-import { CELL, NO_GROUND, blockHalfWidth, blockHeight, canonQ, cellKey, createSurface, trackWorld, turnsLeft, type Block, type Track, type World } from "@cdj/sim";
+import { CELL, NO_GROUND, bankAt, blockHalfWidth, blockHeight, blockPoint, canonP, canonQ, cellKey, createSurface, curveCenter, trackWorld, turnsLeft, type Block, type Track, type World } from "@cdj/sim";
 import { mix, seeded, shade, world as auMonde, type Box, type Builder, type V3 } from "../../meshKit";
 import { MARGE_DECOR, type PoseKind, type PoseLog } from "../../decorPose";
 import { boite, boiteChanfreinee, pt, repereBloc, tube, type Repere } from "../outils";
@@ -52,6 +52,42 @@ export const ENFOUI_PART = 0.25;
 /** Un bloc près duquel le sol se relève : ni sans rebords (la voiture peut tomber à côté), ni vide de saut. */
 export const releve = (b: Block): boolean => !b.open && b.kind !== "gap";
 const bas = (b: Block) => Math.min(b.y0, b.y0 + b.rise);
+
+const relevement = { h: 0, gp: 0, gq: 0 };
+/**
+ * Lot 58 : la hauteur du bord de la route d'un virage très relevé (`/f`) au point canonique (p, q) — le bord intérieur s'il est plus près que l'extérieur :
+ * il descend jusqu'à 10 m sous la route, le sol relevé et ses bordures le suivent (sans cela l'herbe recouvrait le bas du virage). Pour tout autre bloc,
+ * la hauteur de la route sur son axe (`blockHeight`), comme avant.
+ */
+function bordDeRoute(b: Block, p: number, q: number): number {
+  if (!b.steep) return blockHeight(b, q);
+  const { cp, r: R } = curveCenter(b.kind);
+  const dp = p - cp;
+  const r = Math.sqrt(dp * dp + q * q) || 1;
+  const e = r < R ? R - b.w0 / 2 : R + b.w0 / 2;
+  bankAt(b, cp + (dp * e) / r, (q * e) / r, relevement);
+  return b.y0 + relevement.h;
+}
+
+/** Lot 58 : le point le plus bas du bord d'un virage très relevé dans la cellule (cx, cz) ; `bas(b)` pour tout autre bloc. */
+function basDansCellule(b: Block, cx: number, cz: number): number {
+  if (!b.steep) return bas(b);
+  const { cp, r: R } = curveCenter(b.kind);
+  const side = turnsLeft(b.kind) ? -1 : 1;
+  const ri = R - b.w0 / 2;
+  const pt = { x: 0, z: 0 };
+  let min = b.y0;
+  for (let i = 0; i <= 24; i++) {
+    const a = (Math.PI / 2) * (i / 24);
+    const p = cp + side * ri * Math.cos(a);
+    const q = ri * Math.sin(a);
+    blockPoint(b, p, q, pt);
+    if (Math.floor(pt.x / CELL) !== cx || Math.floor(pt.z / CELL) !== cz) continue;
+    bankAt(b, p, q, relevement);
+    min = Math.min(min, b.y0 + relevement.h);
+  }
+  return min;
+}
 
 /** Le sol relevé d'un circuit : une grille de hauteurs (pas de `PAS_TERRAIN` m), la hauteur en tout point, et la cellule (piste ou non) d'un point. */
 export interface Terrain {
@@ -96,7 +132,7 @@ export function terrainDe(track: Track, sol: number): Terrain {
   for (const [key, b] of track.cells) {
     const idx = (Math.floor(key / 4096) - 1024 - c0x) + ((key % 4096) - 1024 - c0z) * nc;
     sorte[idx] = releve(b) ? 1 : b.kind === "gap" ? 3 : 2;
-    dessus[idx] = bas(b) - TALUS_SOUS_ROUTE;
+    dessus[idx] = basDansCellule(b, Math.floor(key / 4096) - 1024, (key % 4096) - 1024) - TALUS_SOUS_ROUTE;
   }
   for (let k = k0; k <= k1; k++) {
     for (let i = i0; i <= i1; i++) {
@@ -184,7 +220,7 @@ export function terrainDe(track: Track, sol: number): Terrain {
         const h = (x: number, z: number): number => {
           const u = x - cx * CELL;
           const v = z - cz * CELL;
-          const route = blockHeight(b, canonQ(b.dir, u, v)) - TALUS_SOUS_ROUTE;
+          const route = bordDeRoute(b, canonP(b.dir, u, v), canonQ(b.dir, u, v)) - TALUS_SOUS_ROUTE;
           const horsX = Math.min(u, CELL - u) <= Math.min(v, CELL - v);
           const voisin = horsX ? hauteur(u < CELL / 2 ? cx * CELL - 0.1 : (cx + 1) * CELL + 0.1, z) : hauteur(x, v < CELL / 2 ? cz * CELL - 0.1 : (cz + 1) * CELL + 0.1);
           return Math.min(route, voisin);

@@ -89,12 +89,26 @@ export const cuveTop = (W: number, a: number): number => {
 /** Amplitude à partir de laquelle la paroi verticale est prolongée sans limite de hauteur (physique seulement). */
 const CUVE_CONTAIN = 0.5;
 const prof = { d: 0, nm: 0, ny: 1 };
+/** Lot 58b : la distance rendue au-dessus du vide d'un mur roulable (aucun contact). */
+const VIDE = 1e3;
+/** Lot 58b : hauteur (m) de la paroi d'un mur roulable au-dessus de son quart de cercle (celle qu'on dessine) : la bande où l'on roule. */
+export const MUR_ROULABLE_HAUT = 14;
+/** Lot 58b : sous cette part du rayon du quart de cercle, un mur roulable n'a rien (le vide). */
+export const MUR_ROULABLE_BAS = 0.5;
 const wv = { x: 0, z: 0 };
 
 /** Distance signée et normale (composante vers l'extérieur `nm`, verticale `ny`) du point (m, y) au profil d'un côté. */
-function profile(m: number, y: number, W: number, a: number): void {
+function profile(m: number, y: number, W: number, a: number, mur = false, sansFond = false): void {
   const R = cuveRadius(W, a);
   const f = W - R;
+  // Lot 58b — mur roulable : ni fond, ni bas du quart de cercle, ni côté opposé au mur ; seuls le haut du quart de cercle (au-dessus de `MUR_ROULABLE_BAS`
+  // × son rayon) et la paroi verticale portent la voiture (on y est monté avant ; un contact continu, sans fausse réception au passage du vide).
+  if (sansFond && (!mur || m <= f || y < R * MUR_ROULABLE_BAS)) {
+    prof.d = VIDE;
+    prof.nm = 0;
+    prof.ny = 1;
+    return;
+  }
   if (m <= f) {
     prof.d = y;
     prof.nm = 0;
@@ -116,14 +130,15 @@ function profile(m: number, y: number, W: number, a: number): void {
     }
     return;
   }
-  const top = cuveTop(W, a);
+  // Lot 58b — le mur roulable a une crête (`MUR_ROULABLE_HAUT` au-dessus du quart de cercle) : au-delà, on passe par-dessus et l'on tombe.
+  const top = sansFond ? R + MUR_ROULABLE_HAUT : cuveTop(W, a);
   // Une cuve pleine retient la voiture sans limite de hauteur : la crête dessinée n'est qu'une façon de voir (une voiture lancée vers le
   // haut, trop vite, retombe dans la cuve au lieu de passer de l'autre côté). Une paroi en rampe, elle, a sa crête : on passe par-dessus.
-  if (y <= top || a >= CUVE_CONTAIN) {
+  if (y <= top || (a >= CUVE_CONTAIN && !sansFond)) {
     // La paroi, ou (au pied d'un rebord sans quart de cercle, ou sous le fond) le fond : la matière est l'union de la dalle du fond et de
     // la paroi, donc la distance est la plus petite des deux — une voiture tombée le long d'un rebord ne s'enfonce pas sous le fond.
     const dw = W - m;
-    if (y < dw) {
+    if (y < dw && !sansFond) {
       prof.d = y;
       prof.nm = 0;
       prof.ny = 1;
@@ -183,7 +198,7 @@ export function shellAt(b: Block, p: number, q: number, y: number, out: ShellHit
   }
   const left = lam >= 0;
   const bit = left ? CUVE_LEFT : CUVE_RIGHT;
-  profile(left ? lam : -lam, y, W, cuveAmplitude(b, bit, p, q));
+  profile(left ? lam : -lam, y, W, cuveAmplitude(b, bit, p, q), b.floorless === true && (b.cuve & bit) !== 0, b.floorless === true);
   const nl = left ? prof.nm : -prof.nm; // composante de la normale vers la gauche
   out.d = prof.d;
   canonVecToWorld(b.dir, lp, lq, wv);
@@ -215,6 +230,8 @@ export function cuveHeight(b: Block, p: number, q: number): number {
   const a = cuveAmplitude(b, left ? CUVE_LEFT : CUVE_RIGHT, p, q);
   const R = cuveRadius(W, a);
   const f = W - R;
+  // Lot 58b — mur roulable : le vide (la paroi, verticale, n'est pas un sol pour ceux qui lisent une hauteur).
+  if (b.floorless) return NaN;
   if (m <= f || R < 1e-6) return 0;
   const dx = m - f;
   const lim = 0.985 * R; // ≈ 80° : la dernière hauteur d'un sol qui monte presque à la verticale

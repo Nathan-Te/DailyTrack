@@ -8,7 +8,7 @@
 // Nuit qui suivent l'éclairage de piste qu'on pose. Lot 43 : **l'orange est à la voiture seule** (vibreurs, rebords et panneaux rouges passent au
 // cramoisi `ROUGE_PISTE` : ΔE 2000 > 12 avec l'orange de Track, test `scene.test.ts`), feux de départ qui suivent le décompte, panneaux de distance
 // avant les virages serrés, sponsors fictifs (`sponsors.ts`), textes des portiques tirés du catalogue (`Contexte.textes`).
-import { CELL, CUT_HALF_LENGTH, SHOULDER_EDGE, WALL_HEIGHT, blockHalfWidth, isCurve, type Block, type PaletteName, type Track } from "@cdj/sim";
+import { CELL, CUT_HALF_LENGTH, FX_HALF_LENGTH, FX_RESET, SHOULDER_EDGE, WALL_HEIGHT, blockHalfWidth, isCurve, type Block, type PaletteName, type Track } from "@cdj/sim";
 import { Builder, mix, shade, type V3 } from "../meshKit";
 import { distanceSigns, type DistanceSpec, type SignSpec } from "../signage";
 import { CHAPEAU, placed, type PoseKind, type PoseMeta } from "../decorPose";
@@ -126,7 +126,7 @@ function piedJusquAuSol(g: Builder, r: Repere, x: Contexte, _b: Block, g0: numbe
 // --- Portiques : départ et arrivée ------------------------------------------------------------------------------------------------------
 
 interface StylePortique {
-  kind: "arche-depart" | "arche-arrivee";
+  kind: "arche-depart" | "arche-arrivee" | "arche-effet";
   texte: string;
   pilier: number;
   /** La bande verticale sur la face intérieure des piliers (à hauteur de voiture : jamais l'orange). */
@@ -219,6 +219,29 @@ export function arriveeP(c: Calques, x: Contexte, b: Block, q: number) {
   const { r, w } = portiqueP(c, x, b, q, { kind: "arche-arrivee", texte: x.textes?.arrivee ?? "", pilier: MARQUE.encre, interieur: MARQUE.creme, bande: [MARQUE.creme, MARQUE.encre], fond: MARQUE.creme, encre: MARQUE.encre, damier: true });
   x.finition?.portique(c, x, b, q, w, [MARQUE.encre, MARQUE.creme, MARQUE.encre]);
   damierSol(c.route, r, blockHalfWidth(b, q), 2, 2, 0.05, MARQUE.encre, MARQUE.creme);
+}
+
+/**
+ * Lot 58 — les couleurs des blocs à effet (indice : le code `FX_…`) : direction bloquée violet, freins coupés cyan, régulateur bleu, voiture fragile rose,
+ * remise à zéro crème. Jamais l'orange (ΔE 2000 > 12, `test/blocsEffet.test.ts`), chacune loin des autres.
+ */
+export const COULEURS_EFFET: readonly number[] = [0, 0x8b5cf6, 0x16b8d4, 0x2f6fe8, 0xff5fa8, MARQUE.creme];
+
+/**
+ * Lot 58 — un bloc à effet : un portique de sa couleur au-dessus de la bande, son nom sur la poutre (lu de loin, avant d'y être), et la bande peinte
+ * en travers (chevrons d'encre ; damier pour la remise à zéro).
+ */
+export function effetP(c: Calques, x: Contexte, b: Block) {
+  const fx = b.fx!;
+  const couleur = COULEURS_EFFET[fx]!;
+  const { r } = portiqueP(c, x, b, CELL / 2, { kind: "arche-effet", texte: x.textes?.effets?.[fx] ?? "", pilier: MARQUE.encre, interieur: couleur, bande: [couleur, MARQUE.encre], fond: couleur, encre: MARQUE.encre });
+  const hw = blockHalfWidth(b, CELL / 2);
+  const L = FX_HALF_LENGTH;
+  if (fx === FX_RESET) damierSol(c.route, r, hw, 2, L, 0.05, MARQUE.encre, MARQUE.creme);
+  else {
+    sol(c.route, r, -hw, hw, -L, L, 0.04, couleur);
+    for (const a of [-0.4, 1.6]) chevronSol(c.route, r, a, 2.4, 0.6, 0.05, MARQUE.encre);
+  }
 }
 
 // --- Feux de départ ---------------------------------------------------------------------------------------------------------------------
@@ -518,7 +541,8 @@ export function eclairagePisteP(c: Calques, x: Contexte, couleur: number): Eclai
   const flaques: V3[] = [];
   const cap = x.pal.wallHeight ?? WALL_HEIGHT;
   for (const b of x.track.blocks) {
-    if (b.index % 2 !== 0 || !hasCap(b) || b.kind === "kick" || b.mark) continue;
+    // Lot 58 : ni sur une route bombée ni sur le bloc qui la raccorde (`crown`) : son bord descend avec l'arrondi, le pied flottait au-dessus du chapeau.
+    if (b.index % 2 !== 0 || !hasCap(b) || b.kind === "kick" || b.mark || b.crown !== undefined) continue;
     const cote = (b.index >> 1) % 2 === 0 ? 1 : -1;
     const hw = isCurve(b.kind) ? b.w0 / 2 : blockHalfWidth(b, CELL / 2);
     const pied = onRim(b, 0.5, cote, CHAPEAU / 2, cap);

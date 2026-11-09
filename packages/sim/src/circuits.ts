@@ -1,5 +1,6 @@
 import { buildFigure, figureByName } from "./figures";
 import { elementGrammaire } from "./grammaire";
+import { elementBloc } from "./blocs";
 import { parseTrack } from "./track";
 
 /**
@@ -132,7 +133,8 @@ export function createFiguresTrack() {
  */
 export function createFigureTrack(name: string, variant = 0, mirror = false) {
   // Lot 57 : les éléments de la grammaire des sauts et des transitions (`saut-…`, `transition-…`) se jouent de la même façon.
-  const figure = figureByName(name) ?? elementGrammaire(name);
+  // Lot 58 : les prototypes des blocs plus complexes (`bloc-…`) aussi.
+  const figure = figureByName(name) ?? elementGrammaire(name) ?? elementBloc(name);
   if (!figure) return null;
   const body = buildFigure(figure, !mirror, "n", Math.max(0, Math.min(figure.variants - 1, Math.floor(variant))));
   if (!body) return null;

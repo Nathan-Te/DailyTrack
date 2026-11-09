@@ -37,7 +37,7 @@ import {
   type PerspectiveCamera,
   type Texture,
 } from "three";
-import { FALL_DEPTH, type PaletteName, type Track } from "@cdj/sim";
+import type { PaletteName, Track } from "@cdj/sim";
 import { buildHalos } from "../halo";
 import { Builder, mix, seeded } from "../meshKit";
 import { signsFor } from "../signage";
@@ -49,7 +49,7 @@ import { Affiches } from "./outils";
 import { ambianceDOrigine, ciel, silhouettes } from "./ciel";
 import { THEMES_C, occlusionSommets, textureFlaque } from "./lumiere";
 import { texturedCielC } from "./textures";
-import { FeuxDepart, arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP, type EclairagePiste } from "./palier1";
+import { FeuxDepart, arriveeP, coupureP, effetP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP, type EclairagePiste } from "./palier1";
 import { atlasSponsors } from "./sponsors";
 import { HORIZONS, type Ambiance, type Calques, type CalquesDecor, type Contexte, type AnimationPas, type ModuleDecor, type PasScene, type Spectateur, type TribunePosee } from "./types";
 import type { Terrain } from "./decor/commun";
@@ -96,6 +96,10 @@ export interface GeometrieP1 {
   x: Contexte;
 }
 
+// Lot 58 : le sol lointain est dans `sol.ts` (le palier 1 et l'ancienne scène le partagent).
+export { solLointain } from "./sol";
+import { solLointain } from "./sol";
+
 /**
  * Les formes du palier 1 d'un circuit, sans rien de la scène (ni lumière, ni ciel, ni texture : de quoi les mesurer dans un test, `log` et `headless`).
  * Le décor, si son module est donné (`options.decor`).
@@ -105,7 +109,7 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
   const pal = paletteP1(palette, base);
   const tc = THEMES_C[palette];
   const look: Look = { ...LOOKS[palette], exposure: tc.exposition };
-  const floorY = track.voidY - FALL_DEPTH;
+  const floorY = solLointain(track);
   const aerien = !!options.aerial;
   const feux = aerien ? null : new FeuxDepart();
   const calques: Calques = {
@@ -137,6 +141,7 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
     if (b.kind === "boost") plaqueP(calques, x, b);
     if (b.kind === "turbo") turboP(calques, x, b);
     if (b.kind === "cut") coupureP(calques, x, b);
+    if (b.fx !== undefined) effetP(calques, x, b);
     // Les repères et les arches de vitesse : dans le calque de la route (ils ne projettent pas d'ombre, comme les bornes de l'existant).
     if (!aerien) rythmeP({ ...calques, solide: calques.route }, x, b, fast[b.index] ?? false);
     if (b.mark === "checkpoint") porteP(calques, x, b);

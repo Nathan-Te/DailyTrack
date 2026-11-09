@@ -5,7 +5,10 @@
 // **Lot 43 : la route du jeu** (palier 1, premier chargement). L'ancienne route de `trackMesh.ts` est partie avec l'ancienne scène dans `existant.ts`
 // (chargé à la demande) ; le garde-corps de la Ville (lot 37) est porté ici (`gardeCorps`), pour tous les styles.
 import {
+  BANK_SLOPE_STEEP,
   CELL,
+  MUR_ROULABLE_BAS,
+  MUR_ROULABLE_HAUT,
   CUVE_LEFT,
   CUVE_RIGHT,
   JUMP_LIP,
@@ -244,7 +247,26 @@ function shoulderColor(pal: Palette, kind: NonNullable<Block["shoulder"]>, i: nu
   return SURFACE_COLORS[kind][i % 2]!;
 }
 
-const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff };
+const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff, sled: 0x9fd3ec };
+
+/**
+ * Lot 58 : la route bombée — la chaussée en `BANDES` bandes en travers qui suivent l'arrondi (`onBlock` lit `liftAt`), plus claires vers le sommet : la
+ * forme se lit avant d'y être. Les bords (rangées de `addRoad`) sont déjà à la bonne hauteur ; la corde plate qu'il trace reste sous l'arrondi.
+ */
+const BANDES = 8;
+function addCrown(g: Builder, b: Block, color: number, rows: number) {
+  const hw = b.w0 / 2;
+  for (let j = 0; j < BANDES; j++) {
+    const l0 = -hw + (2 * hw * j) / BANDES;
+    const l1 = l0 + (2 * hw) / BANDES;
+    const tone = shade(color, 1.1 - (0.16 * Math.abs(l0 + l1)) / (2 * hw));
+    for (let i = 0; i < rows; i++) {
+      const t0 = i / rows;
+      const t1 = (i + 1) / rows;
+      g.quad(onBlock(b, l1, t0, 0.02), onBlock(b, l0, t0, 0.02), onBlock(b, l0, t1, 0.02), onBlock(b, l1, t1, 0.02), tone);
+    }
+  }
+}
 
 /** Herbe de course (lot 48) : une bande de tonte sur deux, assombrie d'autant, dans le sens de la course ; le bord net, une ligne blanche. */
 export const TONTE_SOMBRE = 0.9;
@@ -310,8 +332,46 @@ function cuveProfile(W: number, aLeft: number, aRight: number): [number, number]
   return [...side(aLeft, 1), ...side(aRight, -1).reverse()];
 }
 
+/**
+ * Lot 58b — la coupe d'un mur roulable : du côté du mur seulement (`sign` : 1 à gauche), de sa crête (`MUR_ROULABLE_HAUT` au-dessus du quart de cercle) au
+ * bas de ce qui porte la voiture (`MUR_ROULABLE_BAS` du rayon) ; ni fond ni autre côté — le vide, comme dans la simulation.
+ */
+function murProfile(W: number, sign: 1 | -1): [number, number][] {
+  const R = cuveRadius(W, 1);
+  const f = W - R;
+  const pts: [number, number][] = [];
+  for (let i = CUVE_WALL_SEGMENTS; i >= 0; i--) pts.push([sign * W, R + (MUR_ROULABLE_HAUT * i) / CUVE_WALL_SEGMENTS]);
+  const bas = Math.acos(1 - MUR_ROULABLE_BAS); // l'angle où le quart de cercle est à `MUR_ROULABLE_BAS` × R
+  for (let i = CUVE_ARC_SEGMENTS - 1; i >= 0; i--) {
+    const phi = bas + (Math.PI / 2 - bas) * (i / CUVE_ARC_SEGMENTS);
+    pts.push([sign * (f + R * Math.sin(phi)), R - R * Math.cos(phi)]);
+  }
+  return pts;
+}
+
 function addCuve(g: Builder, pal: Palette, style: StyleRoute, b: Block, color: number, floorY: number): void {
   const W = b.w0 / 2;
+  if (b.floorless) {
+    // Lot 58b — mur roulable : la paroi seule, aux couleurs de la cuve, son chapeau et sa jupe du côté extérieur ; une bande d'alerte au bas.
+    const sign = b.cuve === CUVE_LEFT ? 1 : -1;
+    const [wa, wb] = style.cuve(pal);
+    const pts = murProfile(W, sign);
+    const rows = 12;
+    for (let i = 0; i < rows; i++) {
+      const q0 = (CELL * i) / rows;
+      const q1 = (CELL * (i + 1)) / rows;
+      const at = (q: number, [lam, y]: [number, number]): V3 => world(b, CELL / 2 + lam, q, b.y0 + y);
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const c = k === pts.length - 2 ? 0xffc21a : (k + i + b.index) % 2 === 0 ? wa : wb;
+        g.quad(at(q0, pts[k]!), at(q0, pts[k + 1]!), at(q1, pts[k + 1]!), at(q1, pts[k]!), c);
+      }
+      const top = pts[0]!;
+      const out: [number, number] = [top[0] + sign * 0.6, top[1]];
+      g.quad(at(q0, top), at(q1, top), at(q1, out), at(q0, out), wa);
+      g.quad(at(q0, out), at(q1, out), [...at(q1, out).slice(0, 1), floorY, at(q1, out)[2]] as V3, [...at(q0, out).slice(0, 1), floorY, at(q0, out)[2]] as V3, style.jupe(pal));
+    }
+    return;
+  }
   const curve = isCurve(b.kind);
   const left = curve && turnsLeft(b.kind);
   const { r: Rc } = curveCenter(b.kind);
@@ -459,7 +519,9 @@ function addPillar(g: Builder, pal: Palette, b: Block, floorY: number, skirt: nu
   const mid = onBlock(b, 0, 0.5, 0);
   const half = blockHalfWidth(b, CELL / 2);
   const color = shade(skirt, 1.15);
-  const top = mid[1] - SLAB;
+  // Lot 58 : sous un virage très relevé, le pilier s'arrête sous le bord intérieur (le plus bas de la route), pas sous l'axe.
+  const top = mid[1] - SLAB - (b.steep ? BANK_SLOPE_STEEP * half : 0);
+  if (top - 1.4 <= floorY) return;
   const fwd = onBlock(b, 0, 0.56, 0);
   const back = onBlock(b, 0, 0.44, 0);
   const dx = fwd[0] - back[0];
@@ -484,7 +546,7 @@ function addSurfaceMarks(g: Builder, b: Block) {
         g.quad(onBlock(b, lat - 0.3, t0, lift), onBlock(b, lat + 0.3, t0, lift), onBlock(b, lat + 0.3, t1, lift), onBlock(b, lat - 0.3, t1, lift), color);
       }
     }
-  } else if (b.surface === "ice") {
+  } else if (b.surface === "ice" || b.surface === "sled") {
     for (let k = 0; k < 5; k++) {
       const t0 = (k + 0.2) / 5;
       const t1 = t0 + 0.06;
@@ -582,8 +644,9 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
         rows = curveRows(b, b.w0 / 2, 0, lissage);
         addRoad(c, pal, style, rows, color, floorY, true, b.surface === "road", skirt, base, run);
       }
-      if (b.surface === "road") style.vibreurs(c.lumineux, rows, pal);
+      if (b.surface === "road" && b.crown === undefined) style.vibreurs(c.lumineux, rows, pal);
       if (b.ramp) addCurveKickMarks(g, b);
+      if (b.crown !== undefined) addCrown(g, b, color, rows.length - 1);
     } else if (b.kind === "jump") {
       const swell = b.w0 !== b.w1 ? 8 : 1;
       addRoad(c, pal, style, straightRows(b, 0, JUMP_LIP, swell, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(skirt, 1.9), base, run);
@@ -603,9 +666,10 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q) + 0.03);
       addRoad(c, pal, style, rows, color, floorY, false, b.surface === "road", skirt, { bare: true }, run);
     } else {
-      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 || b.tilt !== undefined ? 16 : 1;
+      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 || b.tilt !== undefined || b.crown !== undefined ? 16 : 1;
       rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q));
       addRoad(c, pal, style, rows, color, floorY, true, b.surface === "road", skirt, base, run);
+      if (b.crown !== undefined) addCrown(g, b, color, 8);
     }
     if (b.shoulder) {
       const ein = neighborReach(prev, 1);
@@ -622,8 +686,8 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       addLandingMarks(g, b, Math.max(0, drop));
     }
     if (pillars && b.kind !== "gap") addPillar(g, pal, b, floorY, skirt);
-    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut";
-    if (b.surface === "road" && !effect && !b.bumpy && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") style.tirets(g, b, pal);
+    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut" || b.fx !== undefined;
+    if (b.surface === "road" && !effect && !b.bumpy && !b.floorless && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") style.tirets(g, b, pal);
     addSurfaceMarks(g, b);
   }
   // Bouts fermés : un mur en travers de la route au départ et derrière l'arrivée.

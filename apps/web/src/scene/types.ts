@@ -60,6 +60,8 @@ export interface Calques {
 export interface TextesScene {
   depart: string;
   arrivee: string;
+  /** Lot 58 : le nom de chaque bloc à effet sur la poutre de son portique (indice : le code `FX_…`). */
+  effets?: readonly string[];
 }
 
 /**

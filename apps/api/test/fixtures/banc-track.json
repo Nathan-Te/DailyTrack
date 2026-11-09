@@ -16,7 +16,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -3055,7 +3055,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -3151,7 +3151,7 @@
   "corps": {
    "today": "2026-10-14",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "plan": [
     {
      "date": "2026-10-15",
@@ -3210,7 +3210,7 @@
   "corps": {
    "today": "2026-10-14",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "factors": {
     "gold": 1.08,
     "silver": 1.2,
@@ -4950,7 +4950,7 @@
   "corps": {
    "today": "2026-10-14",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "plan": [
     {
      "date": "2026-10-15",
@@ -5226,7 +5226,7 @@
    "attempt": 3,
    "palette": "alpin",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -5659,7 +5659,7 @@
    "session": 2986632,
    "startMs": 1791979200000,
    "endMs": 1791979800000,
-   "trackId": "salon-2986632-g21",
+   "trackId": "salon-2986632-g22",
    "players": 1
   }
  },
@@ -5675,7 +5675,7 @@
    "session": 2986632,
    "startMs": 1791979200000,
    "endMs": 1791979800000,
-   "trackId": "salon-2986632-g21",
+   "trackId": "salon-2986632-g22",
    "players": 2
   }
  },
@@ -5691,7 +5691,7 @@
    "session": 2986632,
    "startMs": 1791979200000,
    "endMs": 1791979800000,
-   "trackId": "salon-2986632-g21",
+   "trackId": "salon-2986632-g22",
    "players": 2
   }
  },
@@ -6084,7 +6084,7 @@
     "name": "Salon1",
     "ms": 37020,
     "splits": "[10831,13897,23688,30330]",
-    "replay": "6d926a56d9a48f16",
+    "replay": "e6d580588bc9105a",
     "submitted_at": 1791979212000,
     "car": "civile.0.course.0"
    },
@@ -6095,7 +6095,7 @@
     "name": "Salon2",
     "ms": 37856,
     "splits": "[11054,14156,24393,31161]",
-    "replay": "30d0da25b73971f3",
+    "replay": "0f7730ddffa2407f",
     "submitted_at": 1791979218000,
     "car": "civile.0.course.0"
    },
@@ -6106,7 +6106,7 @@
     "name": "Salon3",
     "ms": 37020,
     "splits": "[10831,13897,23688,30330]",
-    "replay": "6d926a56d9a48f16",
+    "replay": "e6d580588bc9105a",
     "submitted_at": 1791979218000,
     "car": "civile.0.course.0"
    }
@@ -6773,7 +6773,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -6923,7 +6923,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -7171,7 +7171,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -7536,7 +7536,7 @@
    "attempt": 0,
    "palette": "nuit",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -7621,7 +7621,7 @@
    "attempt": 0,
    "palette": "alpin",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -7963,7 +7963,7 @@
    "attempt": 2,
    "palette": "desert",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },
@@ -8304,7 +8304,7 @@
    "attempt": 0,
    "palette": "ville",
    "simVersion": 14,
-   "generatorVersion": 21,
+   "generatorVersion": 22,
    "generation": 0
   }
  },

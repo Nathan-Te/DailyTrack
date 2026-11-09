@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENERATOR_VERSION, daysFromCivil, parseTrack } from "@cdj/sim";
+import { GENERATOR_RYTHMES, GENERATOR_VERSION, daysFromCivil, parseTrack } from "@cdj/sim";
 import { blocsDuMotif, carteDuJour, planDuCircuit } from "../src/galerie/galerieLogique";
 
 // Lot V2 : la logique de la galerie des circuits à venir (`?debug&galerie=30`). La page elle-même n'a pas de test de navigateur (outil interne, règle R13).
@@ -20,7 +20,7 @@ describe("galerie des circuits (logique)", () => {
     expect(plan.filter((c) => c.motif)).toHaveLength(5);
   });
 
-  it("la carte d'un jour : biome, rythme de la dernière version (aucun avant), temps, motifs et suites partagées avec la veille", { timeout: 60_000 }, () => {
+  it("la carte d'un jour : biome, rythme (depuis la v21, aucun avant), temps, motifs et suites partagées avec la veille", { timeout: 60_000 }, () => {
     const day = daysFromCivil(2028, 3, 1);
     const veille = carteDuJour(day - 1, GENERATOR_VERSION);
     const c = carteDuJour(day, GENERATOR_VERSION, veille);
@@ -29,6 +29,7 @@ describe("galerie des circuits (logique)", () => {
     expect(c.pilotMs).toBeGreaterThan(c.auteurMs);
     expect(c.plan.length).toBeGreaterThan(30);
     expect(c.communsVeille.every((s) => veille.suites.has(s))).toBe(true);
-    expect(carteDuJour(day, GENERATOR_VERSION - 1).rythme).toBeNull();
+    // Lot 58 : la v22 garde les rythmes ; la version d'avant eux (v20) n'en a pas.
+    expect(carteDuJour(day, GENERATOR_RYTHMES - 1).rythme).toBeNull();
   });
 });
