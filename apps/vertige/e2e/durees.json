@@ -4,6 +4,7 @@
     "determinisme.spec.ts": 3,
     "partie.spec.ts": 25,
     "classement.spec.ts": 30,
+    "gravite-portails.spec.ts": 40,
     "poids.spec.ts": 2,
     "ecrans-kit.spec.ts": 12
   },
@@ -11,6 +12,7 @@
     "determinisme.spec.ts": 3,
     "partie.spec.ts": 25,
     "classement.spec.ts": 30,
+    "gravite-portails.spec.ts": 40,
     "poids.spec.ts": 2
   }
 }

@@ -11,16 +11,16 @@ Un plateformer en vue à la première personne : un niveau par jour, le même po
 - **Le mouvement avant tout** : course sur les murs et saut de mur, dash ; à venir : changement de gravité (atteindre un plafond ou un mur), portails reliant deux endroits éloignés, une touche d'espace non euclidien.
 - **Un monde de blocs alignés sur les axes, une gravité par quarts de tour** (6 directions) : c'est ce qui rend possible une **simulation déterministe en entiers**, rejouée par le serveur. Les objets de travers sont du décor.
 - **L'angle de vue fait partie des commandes enregistrées** (lacet et tangage à chaque pas, en entiers).
-- **Tout est fait en code**, sans aucun asset : géométrie low poly, lumières, ciel, nuages, mains, animation procédurale.
+- **Tout est fait en code**, sans aucun asset : géométrie low poly, lumières, ciel, nuages, animation procédurale. **Pas de mains** : le retour de sensation passe par la caméra (champ de vision au dash, roulis sur le mur, léger balancement de la marche).
 - **Un niveau du jour assemblé de modules dont la solution est connue** : le risque principal du jeu.
 
 ## 3. Une partie
 
-*(à écrire : la durée visée, 45 s ou 90 s ?)*
+**La durée visée : de 30 à 45 secondes à haut niveau** (un niveau court, à recommencer en un geste). La partie la plus longue que le serveur rejoue reste 120 s.
 
 ## 4. Le classement et les médailles
 
-Au temps (le plus court d'abord), catégorie Arcade : un classement du jour, hors du cumulé, de la journée parfaite et de la série du portail. Le Diamant sera le temps du robot (lot V3). *(seuils or, argent, bronze à écrire)*
+Au temps (le plus court d'abord), **catégorie Arcade (confirmée)** : un classement du jour, hors du cumulé, de la journée parfaite et de la série du portail. Le Diamant sera le temps du robot (lot V3). *(seuils or, argent, bronze à écrire)*
 
 ## 5. Le contenu du jour
 
@@ -32,4 +32,4 @@ PC d'abord : clavier et souris, et manette. Le téléphone est une question ouve
 
 ## 7. L'identité visuelle et sonore
 
-La direction artistique reste à choisir sur le prototype : « Lumière douce » (proche de l'image : ombres douces, brume, halo, couleurs ACES) ou « Cartouche » (aplats et contour d'encre, comme Tower, Blocks et Rush), ou un mélange.
+**« Lumière douce » est retenue** (proche de l'image : ombres douces, brume, halo, couleurs ACES) ; « Cartouche » est abandonné. Des **niveaux de qualité** (halo, ombres, résolution) sont prévus en V4 pour les petites machines.

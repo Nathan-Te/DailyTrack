@@ -162,6 +162,11 @@
         "api-vertige",
         "api-jeux"
       ],
+      "gravite-portails.spec.ts": [
+        "vertige-sim",
+        "vertige-jeu",
+        "ui"
+      ],
       "poids.spec.ts": [
         "vertige-jeu",
         "ui"

@@ -382,7 +382,7 @@ export class Partie {
     if (etaitAuSol && !this.sol) this.coyote = n.coyote;
     // Les portails : le centre de la boîte a-t-il passé un plan ? (Sinon, les orbes, puis les surfaces de gravité.)
     const traverse = this.liaisons.length > 0 && this.traverser(avant);
-    if (!traverse) this.gravite_(mur);
+    if (!traverse) this.declencherGravite(mur);
     // Les points de reprise, la chute.
     if (this.sol) {
       const f = this.pieds();
@@ -430,7 +430,7 @@ export class Partie {
   }
 
   /** Les orbes puis les surfaces de gravité : la première cause d'une bascule gagne, et jamais pendant le verrou qui suit une bascule. */
-  private gravite_(mur: { nx: number; nz: number; g: boolean } | null): void {
+  private declencherGravite(mur: { nx: number; nz: number; g: boolean } | null): void {
     if (this.basculeVerrou > 0) return;
     const orbes = this.niveau.orbes;
     if (orbes && orbes.length > 0) {
