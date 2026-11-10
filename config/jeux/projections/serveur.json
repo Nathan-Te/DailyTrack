@@ -525,12 +525,7 @@
         "vertige:confort"
       ],
       "messageOu": "vertige",
-      "zoneNouveautes": "vertige",
-      "identiteManque": [
-        "police",
-        "motif",
-        "illustration"
-      ]
+      "zoneNouveautes": "vertige"
     }
   ]
 }

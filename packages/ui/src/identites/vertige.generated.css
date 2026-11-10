@@ -1,3 +1,4 @@
 /* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → ui, identité) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
 @import "../jeux.structure.generated.css";
-.jeu-etiquette--vertige{--jeu-fond:#F7C59F;--jeu-coque:#8A3B12;--jeu-police:"Rubik Mono One", "Archivo", sans-serif;}
+@import "../polices/rubik-mono-one-400.css";
+.jeu-etiquette--vertige{--jeu-fond:#F7C59F;--jeu-coque:#8A3B12;--jeu-police:"Rubik Mono One", "Archivo", sans-serif;--jeu-motif:repeating-linear-gradient(0deg,#e9b995 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,#e9b995 0 1px,transparent 1px 24px),#f7c59f}

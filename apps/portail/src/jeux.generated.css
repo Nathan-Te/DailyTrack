@@ -9,6 +9,7 @@
 .jeu-etiquette--tower{--jeu-fond:#9ED9BE;--jeu-coque:#2F7D62;--jeu-police:"Rubik Mono One", "Archivo", sans-serif;}
 .jeu-etiquette--blocks{--jeu-motif:repeating-linear-gradient(0deg,#b8d8f4 0 22px,#aecbe4 22px 23px)}
 .jeu-etiquette--rush{--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0}
+.jeu-etiquette--vertige{--jeu-motif:repeating-linear-gradient(0deg,#e9b995 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,#e9b995 0 1px,transparent 1px 24px),#f7c59f}
 .admin-zone.admin-zone--cibles {
   background: #F4A6B8;
   color: var(--dj-encre);
