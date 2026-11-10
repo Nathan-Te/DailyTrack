@@ -1,8 +1,8 @@
 // « Vertige » (lot V0, prototype) — la simulation d'un plateformer à la première personne : tout est ENTIER, à pas fixe de 120 Hz.
 // Unités : les positions sont en micromètres (1 m = 1 000 000), les vitesses en micromètres par seconde, les angles en 1/65 536 de tour. Aucun flottant n'entre dans l'état d'une partie.
 
-/** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée. */
-export const VERTIGE_SIM_VERSION = 1;
+/** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée. 2 : la gravité par quarts de tour, les orbes et les portails (lot V1). */
+export const VERTIGE_SIM_VERSION = 2;
 /** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyVertige` produit. */
 export const VERTIGE_GENERATOR_VERSION = 1;
 
