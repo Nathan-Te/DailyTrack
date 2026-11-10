@@ -2,8 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { VARIANTE } from "@cdj/vertige-sim";
 import { appareil, jouerLeJour, lancer } from "./appareil";
 
-// « Vertige » — le parcours de joueur du jeu, sans serveur : l'accueil, une partie jouée touche par touche (le clavier est lu par `event.code`), le HUD, la pause (le temps s'arrête), la relance sur R, le changement
-// de style, le chrono qui part au premier mouvement et s'arrête à l'arrivée, l'écran tactile. Le classement avec le vrai serveur est dans `classement.spec.ts`. Les règles des mouvements sont dans
+// « Vertige » — le parcours de joueur du jeu, sans serveur : l'accueil, une partie jouée touche par touche (le clavier est lu par `event.code`), le HUD, la pause (le temps s'arrête), la relance sur R, le chrono qui part au premier mouvement et s'arrête à l'arrivée, l'écran tactile. Le classement avec le vrai serveur est dans `classement.spec.ts`. Les règles des mouvements sont dans
 // `packages/vertige-sim/test` : ici, seulement ce que le joueur voit et ce que le navigateur lit (touches, souris).
 const sim = (page: Page) =>
   page.evaluate(() => {
@@ -12,7 +11,7 @@ const sim = (page: Page) =>
   });
 
 test.describe("Vertige : une partie", () => {
-  test("accueil, pause, course au clavier, relance sur R, style, dash", async ({ browser }) => {
+  test("accueil, pause, course au clavier, relance sur R, dash", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&scenario=bac-a-sable");
     await expect(page.locator("#jeu-accueil .jeu-etiquette")).toBeVisible();
     await expect(page.locator("#jeu-record")).toHaveText("—");
@@ -50,14 +49,11 @@ test.describe("Vertige : une partie", () => {
     await page.keyboard.up("ShiftLeft");
     await expect(page.locator(".vertige-etat")).toHaveText("Dash");
 
-    // R recommence tout de suite ; 2 passe en « Cartouche », 1 revient à « Lumière douce », et le choix est gardé.
+    // R recommence tout de suite ; les touches 1 et 2 (les deux styles du prototype) ne font plus rien : « Lumière douce » est le seul rendu.
     await page.keyboard.press("KeyR");
     await expect.poll(async () => (await sim(page)).tick).toBe(0);
     await page.keyboard.press("Digit2");
-    expect(await page.evaluate(() => window.__vertige.monde.hab.style)).toBe("cartouche");
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("vertige:confort") ?? "{}").style)).toBe("cartouche");
-    await page.keyboard.press("Digit1");
-    expect(await page.evaluate(() => window.__vertige.monde.hab.style)).toBe("doux");
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("vertige:confort") ?? "{}").style)).toBeUndefined();
     await context.close();
   });
 

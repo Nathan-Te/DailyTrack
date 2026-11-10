@@ -1,4 +1,3 @@
-import { CM } from "./constantes";
 import type { Boite } from "./niveaux";
 import { DIRS, appliquer, croix, mul, trans, type Dir, type Mat, type V3 } from "./orientation";
 
@@ -7,9 +6,10 @@ import { DIRS, appliquer, croix, mul, trans, type Dir, type Mat, type V3 } from 
 // avant que son CENTRE ne passe le plan. Les niveaux sont construits pour que la poche ne contienne aucun bloc (un test le vérifie) : une boîte à cheval sur un plan ne touche donc jamais la géométrie de l'autre côté,
 // et la simulation n'a aucun cas particulier de collision pour les portails (règle « à cheval », `docs/vertige/consignes.md`).
 /** Demi-largeur (0,8 m), demi-hauteur (1,2 m) de l'ouverture, profondeur de la poche (1,0 m ≥ la demi-hauteur 0,9 m de la boîte) : les mêmes pour tous les portails. */
-export const PORTAIL_DEMI_L = 80 * CM;
-export const PORTAIL_DEMI_H = 120 * CM;
-export const PORTAIL_PROFONDEUR = 100 * CM;
+// (Des littéraux, pas des produits de `CM` : les paquets de la construction du jeu s'importent en cercle, un produit calculé à l'initialisation lirait `CM` avant qu'il existe.)
+export const PORTAIL_DEMI_L = 800_000;
+export const PORTAIL_DEMI_H = 1_200_000;
+export const PORTAIL_PROFONDEUR = 1_000_000;
 
 export interface Portail {
   /** Le centre de l'ouverture, sur le plan (µm). */

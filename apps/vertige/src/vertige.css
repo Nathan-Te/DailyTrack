@@ -130,7 +130,6 @@
   grid-template-columns: auto 1fr;
   align-items: center;
 }
-.vertige-confort__styles,
 .vertige-tune__actions {
   display: flex;
   flex-wrap: wrap;

@@ -11,8 +11,6 @@ export const ACTIONS_VERTIGE: readonly ActionCommande[] = [
   { id: "saut", clavier: ["Space"], manette: "b0" },
   { id: "dash", clavier: ["ShiftLeft", "ShiftRight"], manette: "b5" },
   { id: "relancer", clavier: ["KeyR"], manette: null },
-  { id: "style1", clavier: ["Digit1"], manette: null },
-  { id: "style2", clavier: ["Digit2"], manette: null },
 ];
 
 /** Les actions qui se TIENNENT (les autres sont des appuis). */

@@ -9,10 +9,10 @@ export const JOUR = "2026-11-06";
 
 /** La porte `window.__vertige` du jeu (`?debug`) : la simulation, les commandes enregistrées, et `jouer` qui fait jouer des commandes à la place des touches. */
 export interface PorteVertige {
-  sim(): { tick: number; x: number; y: number; z: number; vx: number; vy: number; vz: number; lacet: number; tangage: number; sol: boolean; surMur: boolean; dash: number; chrono: number; fin: number; depart: number; prises: boolean[]; resultat(): Resultat };
+  sim(): { tick: number; x: number; y: number; z: number; vx: number; vy: number; vz: number; lacet: number; tangage: number; sol: boolean; surMur: boolean; dash: number; ori: number; bascules: number; traversees: number; gravite: number; orbesT: number[]; chrono: number; fin: number; depart: number; prises: boolean[]; resultat(): Resultat };
   commandes(): Commande[];
   jouer(c: Commande[]): void;
-  monde: { hab: { style: string } };
+  camera(): { x: number; y: number; z: number; q: number[]; fenetre: boolean; correction: boolean };
 }
 export interface Porte {
   manuel(oui?: boolean): void;

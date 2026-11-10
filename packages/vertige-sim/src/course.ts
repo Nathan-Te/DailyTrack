@@ -41,7 +41,7 @@ const BASCULE_VERROU = 24;
 /** Une orbe ramassée est éteinte 2 s (240 pas), puis se rallume ; une chute la rallume tout de suite. */
 const ORBE_RECHARGE = 240;
 /** La moitié de la boîte, au-dessus des pieds : le centre qui décide des portails, des orbes et des gemmes. */
-const MI_HAUT = HAUT / 2;
+const MI_HAUT = 900_000; // HAUT / 2 (un littéral : voir portails.ts)
 
 /** Une boîte du niveau exprimée dans le repère local d'une orientation. */
 interface BoiteL extends Boite {
