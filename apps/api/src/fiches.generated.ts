@@ -526,7 +526,6 @@ export const FICHES_SERVEUR = [
       "vertige:confort"
     ],
     "messageOu": "vertige",
-    "zoneNouveautes": "vertige",
-    "identiteIncomplete": true
+    "zoneNouveautes": "vertige"
   }
 ] as const;

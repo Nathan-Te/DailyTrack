@@ -14,9 +14,9 @@
     "dessin": "generique"
   },
   "identite": {
-    "police": "à choisir",
-    "motif": "à choisir",
-    "illustration": "à choisir",
+    "police": "Rubik Mono One",
+    "motif": "quadrillage",
+    "illustration": "apps/vertige/public/illustration.svg",
     "aujourdhui": false
   },
   "etatDepart": "off",

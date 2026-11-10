@@ -41,7 +41,8 @@
       "id": "vertige",
       "accroche": "portail.vertige.accroche",
       "cumul": false,
-      "categorie": "arcade"
+      "categorie": "arcade",
+      "illustration": true
     }
   ]
 }

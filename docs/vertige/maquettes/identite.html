@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vertige — identité provisoire sur l’étagère</title>
+<style>
+@font-face{font-family:"Archivo";font-weight:400;src:url(../../../packages/ui/polices/archivo-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:600;src:url(../../../packages/ui/polices/archivo-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:700;src:url(../../../packages/ui/polices/archivo-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo Black";font-weight:400;src:url(../../../packages/ui/polices/archivo-black-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:600;src:url(../../../packages/ui/polices/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Rubik Mono One";font-weight:400;src:url(../../../packages/ui/polices/rubik-mono-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Lilita One";font-weight:400;src:url(../../../packages/ui/polices/lilita-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:800;font-style:italic;src:url(../../../packages/ui/polices/barlow-condensed-latin-800-italic.woff2) format("woff2")}
+:root{
+  /* Valeurs des jetons de @cdj/ui (packages/ui/src/jetons.css), recopiées pour que la page soit autonome. */
+  --creme:#EDE3CF;--creme-2:#E3D6BC;--papier:#FFF6E0;--encre:#2A1E16;--encre-douce:#6B5847;--terre:#C2401F;--terre-texte:#FFF4E0;--moutarde:#E8B23A;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 20px 40px;background:var(--creme);color:var(--encre);font-family:"Archivo",sans-serif;font-size:15px}
+main{max-width:1000px;margin:0 auto}
+h1{margin:0 0 6px;font-family:"Archivo Black",sans-serif;font-weight:400;font-size:26px}
+.intro{margin:0 0 22px;color:var(--encre-douce);max-width:70ch}
+.variante{margin:0 0 30px;padding:18px 18px 20px;background:var(--creme-2);border:3px solid var(--encre);border-radius:6px;box-shadow:5px 5px 0 var(--encre)}
+.variante h2{margin:0 0 14px;font-family:"Archivo Black",sans-serif;font-weight:400;font-size:20px;text-transform:uppercase;letter-spacing:1px}
+.variante h2 small{font-family:"Archivo",sans-serif;font-weight:400;font-size:13px;letter-spacing:0;text-transform:none;color:var(--encre-douce)}
+.variante h2 strong{color:var(--encre)}
+.lettre{display:inline-block;min-width:28px;padding:2px 8px;margin-right:6px;background:var(--moutarde);border:2px solid var(--encre);text-align:center}
+.etagere{display:flex;flex-wrap:wrap;gap:26px 34px;align-items:flex-start}
+.groupe{position:relative;padding-bottom:16px}
+.groupe::after{content:"";position:absolute;left:-8px;right:-8px;bottom:0;height:12px;border-radius:2px;background:var(--encre)}
+.groupe--arcade::after{background:var(--moutarde);border:2px solid var(--encre)}
+.legende{margin:0 0 6px;font-family:"JetBrains Mono",monospace;font-weight:600;font-size:12px;color:var(--encre-douce);text-transform:uppercase;letter-spacing:.5px}
+.rangee{display:flex;gap:22px;align-items:stretch}
+/* La cartouche d'arcade : mêmes règles que .salle-etiquette de apps/portail/src/salle.css (illustration sur le motif, nom dans la police du jeu, info, bouton). */
+.etiquette{position:relative;display:flex;flex-direction:column;width:208px;overflow:hidden;border:2px solid var(--encre);background:var(--fond);color:var(--encre);box-shadow:5px 5px 0 var(--encre)}
+.art{display:flex;align-items:flex-end;justify-content:flex-end;height:104px;padding:8px 12px 0;border-bottom:2px solid var(--encre);background:var(--motif)}
+.dessin{display:block;max-width:45%;height:92px;line-height:0}
+.dessin svg{display:block;width:100%;height:100%;object-fit:contain}
+.nom{position:absolute;top:10px;left:12px;margin:0;font-family:var(--police);font-weight:400;font-style:normal;font-size:26px;line-height:1;color:var(--nom);text-shadow:3px 3px 0 var(--papier)}
+.etiquette--track .nom{font-weight:800;font-style:italic;text-shadow:3px 3px 0 var(--encre)}
+.info{display:flex;flex:1;flex-direction:column;gap:7px;padding:10px 12px 12px}
+.numero{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:12px}
+.bouton{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:auto;border:2px solid var(--encre);border-radius:3px;background:var(--terre);color:var(--terre-texte);font-family:"Archivo Black",sans-serif;font-size:15px;letter-spacing:1px;box-shadow:3px 3px 0 var(--encre)}
+.note{font-size:10.5px;color:var(--encre-douce);line-height:1.2}
+.zoom{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-end;margin-top:22px}
+.zoom__bloc{display:flex;flex-direction:column}
+.art--seul{width:208px;border:2px solid var(--encre)}
+.art--petit{width:125px;height:62px;padding:5px 7px 0;border:2px solid var(--encre)}
+.art--petit .dessin{height:55px}
+.art--grand{width:312px;height:276px;padding:12px 18px 0;border:2px solid var(--encre)}
+.art--grand .dessin{max-width:none;width:285px;height:240px}
+.pied{margin:6px 0 0;color:var(--encre-douce);font-size:13px;max-width:80ch}
+</style>
+</head>
+<body>
+<main>
+  <h1>Vertige — identité provisoire (lot V1b)</h1>
+  <p class="intro">La cartouche de Vertige à l’étagère du portail, à côté de Track, Jump, Tower et Blocks, en trois variantes. <strong>Police</strong> « Rubik Mono One » (celle de l’étiquette), <strong>teinte</strong> abricot <code>#F7C59F</code> / coque <code>#8A3B12</code> (celle de la fiche) ; chaque variante fixe un <strong>motif</strong> et une <strong>illustration</strong> : plateforme de pierre claire, tapis rouge, portail rose, nuages, et un cadre de pierre de travers. La variante <strong>A</strong> est appliquée à la fiche ; B et C restent ici pour en changer d’une ligne (<code>identite.motif</code>, et copier l’illustration voulue dans <code>apps/vertige/public/illustration.svg</code>, puis <code>npm run fiches</code>). Identité <strong>provisoire</strong> : l’identité définitive se refait en V4 avec la direction artistique, avant tout passage en <code>on</code> en production.</p>
+
+  <section class="variante" id="variante-a">
+    <h2><span class="lettre">A</span> quadrillage <small>— le monde en blocs : un quadrillage fin, comme la grille d'un niveau · <strong>retenue pour la recette (appliquée à la fiche)</strong></small></h2>
+    <div class="etagere">
+      <div class="groupe"><p class="legende">Jeux du jour</p><div class="rangee">
+      <article class="etiquette etiquette--track " style="--fond:#1E1B19;--motif:repeating-linear-gradient(45deg,#1e1b19 0 10px,#1f1b19 10px 20px);--police:'Barlow Condensed', 'Archivo', sans-serif;--nom:var(--papier)">
+        <div class="art"></div>
+        <div class="info">
+          <h3 class="nom">TRACK</h3>
+          <span class="numero">N° 9 · Port</span>
+          <span class="bouton">JOUER</span>
+          <span class="note">carte faite à la main, ici simplifiée</span>
+        </div>
+      </article>
+      <article class="etiquette etiquette--jump " style="--fond:#FFD23F;--motif:#ffd23f;--police:'Lilita One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"></div>
+        <div class="info">
+          <h3 class="nom">JUMP</h3>
+          <span class="numero">N° 9 · Chantier</span>
+          <span class="bouton">JOUER</span>
+          <span class="note">carte faite à la main, ici simplifiée</span>
+        </div>
+      </article></div></div>
+      <div class="groupe groupe--arcade"><p class="legende">Arcade</p><div class="rangee">
+      <article class="etiquette etiquette--tower " style="--fond:#9ED9BE;--motif:#9ed9be;--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="70" height="80" viewBox="0 0 70 80">
+  <rect x="2" y="72" width="66" height="6" fill="#2A1E16"/>
+  <g stroke="#2A1E16" stroke-width="3">
+    <rect x="10" y="52" width="48" height="20" fill="#5BA8E0"/>
+    <rect x="14" y="34" width="20" height="18" fill="#E8B23A"/>
+    <rect x="34" y="40" width="16" height="12" fill="#C2401F"/>
+    <rect x="26" y="16" width="16" height="18" fill="#E8B23A"/>
+  </g>
+  <circle cx="20" cy="43" r="3.5" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="28" cy="43" r="3.5" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">TOWER</h3>
+          <span class="numero">N° 9 · Canyon</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article>
+      <article class="etiquette etiquette--blocks " style="--fond:#B8D8F4;--motif:repeating-linear-gradient(0deg,#b8d8f4 0 22px,#aecbe4 22px 23px);--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="80" viewBox="0 0 96 80">
+  <rect x="6" y="70" width="84" height="6" fill="#2A1E16"/>
+  <rect x="10" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="34" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="34" y="22" width="24" height="24" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="58" y="46" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="58" y="22" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+  <circle cx="18" cy="56" r="4" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="26" cy="56" r="4" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="19" cy="57" r="1.8" fill="#2A1E16"/>
+  <circle cx="27" cy="57" r="1.8" fill="#2A1E16"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">BLOCKS</h3>
+          <span class="numero">N° 9 · Banquise</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article>
+      <article class="etiquette etiquette--vertige etiquette--vertige" style="--fond:#F7C59F;--motif:repeating-linear-gradient(0deg,#e9b995 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,#e9b995 0 1px,transparent 1px 24px),#f7c59f;--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="64.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="71.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="64.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="71.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="39.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="43.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="39.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="43.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M8.5 8.5h23v23h-23zM14.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-14 20 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="10" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="50" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="54.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">VERTIGE</h3>
+          <span class="numero">N° 9 · Clair</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article></div></div>
+    </div>
+    <div class="zoom">
+      <div class="zoom__bloc"><p class="legende">À la taille de la cartouche</p><div class="art art--seul" style="--motif:repeating-linear-gradient(0deg,#e9b995 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,#e9b995 0 1px,transparent 1px 24px),#f7c59f;--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="64.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="71.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="64.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="71.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="39.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="43.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="39.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="43.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M8.5 8.5h23v23h-23zM14.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-14 20 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="10" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="50" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="54.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+      <div class="zoom__bloc"><p class="legende">Petite (téléphone, ×0,6)</p><div class="art art--petit" style="--motif:repeating-linear-gradient(0deg,#e9b995 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,#e9b995 0 1px,transparent 1px 24px),#f7c59f;--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="64.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="71.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="64.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="71.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="39.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="43.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="39.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="43.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M8.5 8.5h23v23h-23zM14.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-14 20 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="10" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="50" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="54.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+      <div class="zoom__bloc"><p class="legende">Grossie ×3</p><div class="art art--grand" style="--motif:repeating-linear-gradient(0deg,#e9b995 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,#e9b995 0 1px,transparent 1px 24px),#f7c59f;--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="64.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="71.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="69" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="64.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="71.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="39.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="43.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="42" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="39.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="43.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M8.5 8.5h23v23h-23zM14.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-14 20 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="10" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="50" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="54.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+    </div>
+  </section>
+
+  <section class="variante" id="variante-b">
+    <h2><span class="lettre">B</span> losanges <small>— un damier de losanges, qui rappelle le sol des salles de pierre</small></h2>
+    <div class="etagere">
+      <div class="groupe"><p class="legende">Jeux du jour</p><div class="rangee">
+      <article class="etiquette etiquette--track " style="--fond:#1E1B19;--motif:repeating-linear-gradient(45deg,#1e1b19 0 10px,#1f1b19 10px 20px);--police:'Barlow Condensed', 'Archivo', sans-serif;--nom:var(--papier)">
+        <div class="art"></div>
+        <div class="info">
+          <h3 class="nom">TRACK</h3>
+          <span class="numero">N° 9 · Port</span>
+          <span class="bouton">JOUER</span>
+          <span class="note">carte faite à la main, ici simplifiée</span>
+        </div>
+      </article>
+      <article class="etiquette etiquette--jump " style="--fond:#FFD23F;--motif:#ffd23f;--police:'Lilita One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"></div>
+        <div class="info">
+          <h3 class="nom">JUMP</h3>
+          <span class="numero">N° 9 · Chantier</span>
+          <span class="bouton">JOUER</span>
+          <span class="note">carte faite à la main, ici simplifiée</span>
+        </div>
+      </article></div></div>
+      <div class="groupe groupe--arcade"><p class="legende">Arcade</p><div class="rangee">
+      <article class="etiquette etiquette--tower " style="--fond:#9ED9BE;--motif:#9ed9be;--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="70" height="80" viewBox="0 0 70 80">
+  <rect x="2" y="72" width="66" height="6" fill="#2A1E16"/>
+  <g stroke="#2A1E16" stroke-width="3">
+    <rect x="10" y="52" width="48" height="20" fill="#5BA8E0"/>
+    <rect x="14" y="34" width="20" height="18" fill="#E8B23A"/>
+    <rect x="34" y="40" width="16" height="12" fill="#C2401F"/>
+    <rect x="26" y="16" width="16" height="18" fill="#E8B23A"/>
+  </g>
+  <circle cx="20" cy="43" r="3.5" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="28" cy="43" r="3.5" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">TOWER</h3>
+          <span class="numero">N° 9 · Canyon</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article>
+      <article class="etiquette etiquette--blocks " style="--fond:#B8D8F4;--motif:repeating-linear-gradient(0deg,#b8d8f4 0 22px,#aecbe4 22px 23px);--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="80" viewBox="0 0 96 80">
+  <rect x="6" y="70" width="84" height="6" fill="#2A1E16"/>
+  <rect x="10" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="34" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="34" y="22" width="24" height="24" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="58" y="46" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="58" y="22" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+  <circle cx="18" cy="56" r="4" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="26" cy="56" r="4" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="19" cy="57" r="1.8" fill="#2A1E16"/>
+  <circle cx="27" cy="57" r="1.8" fill="#2A1E16"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">BLOCKS</h3>
+          <span class="numero">N° 9 · Banquise</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article>
+      <article class="etiquette etiquette--vertige etiquette--vertige" style="--fond:#F7C59F;--motif:linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 0 0/24px 24px,linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 12px 12px/24px 24px,#f7c59f;--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="33.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="37.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="33.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="37.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M44.5 8.5h23v23h-23zM50.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(16 56 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="30" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="10" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="14.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">VERTIGE</h3>
+          <span class="numero">N° 9 · Clair</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article></div></div>
+    </div>
+    <div class="zoom">
+      <div class="zoom__bloc"><p class="legende">À la taille de la cartouche</p><div class="art art--seul" style="--motif:linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 0 0/24px 24px,linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 12px 12px/24px 24px,#f7c59f;--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="33.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="37.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="33.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="37.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M44.5 8.5h23v23h-23zM50.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(16 56 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="30" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="10" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="14.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+      <div class="zoom__bloc"><p class="legende">Petite (téléphone, ×0,6)</p><div class="art art--petit" style="--motif:linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 0 0/24px 24px,linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 12px 12px/24px 24px,#f7c59f;--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="33.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="37.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="33.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="37.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M44.5 8.5h23v23h-23zM50.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(16 56 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="30" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="10" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="14.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+      <div class="zoom__bloc"><p class="legende">Grossie ×3</p><div class="art art--grand" style="--motif:linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 0 0/24px 24px,linear-gradient(45deg,#e9b995 25%,transparent 25% 75%,#e9b995 75%) 12px 12px/24px 24px,#f7c59f;--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="33.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="37.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="36" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="33.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="37.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M44.5 8.5h23v23h-23zM50.5 14.5h11v11h-11z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(16 56 20)"/>
+  <rect x="4" y="46" width="68" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M26 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M48 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="4" y="40" width="68" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="30" y="35" width="34" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="10" y="10" width="16" height="30" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="14.5" y="16" width="4.8" height="16" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+    </div>
+  </section>
+
+  <section class="variante" id="variante-c">
+    <h2><span class="lettre">C</span> lignes <small>— des lignes d'horizon, comme les couches de nuages vues d'en haut</small></h2>
+    <div class="etagere">
+      <div class="groupe"><p class="legende">Jeux du jour</p><div class="rangee">
+      <article class="etiquette etiquette--track " style="--fond:#1E1B19;--motif:repeating-linear-gradient(45deg,#1e1b19 0 10px,#1f1b19 10px 20px);--police:'Barlow Condensed', 'Archivo', sans-serif;--nom:var(--papier)">
+        <div class="art"></div>
+        <div class="info">
+          <h3 class="nom">TRACK</h3>
+          <span class="numero">N° 9 · Port</span>
+          <span class="bouton">JOUER</span>
+          <span class="note">carte faite à la main, ici simplifiée</span>
+        </div>
+      </article>
+      <article class="etiquette etiquette--jump " style="--fond:#FFD23F;--motif:#ffd23f;--police:'Lilita One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"></div>
+        <div class="info">
+          <h3 class="nom">JUMP</h3>
+          <span class="numero">N° 9 · Chantier</span>
+          <span class="bouton">JOUER</span>
+          <span class="note">carte faite à la main, ici simplifiée</span>
+        </div>
+      </article></div></div>
+      <div class="groupe groupe--arcade"><p class="legende">Arcade</p><div class="rangee">
+      <article class="etiquette etiquette--tower " style="--fond:#9ED9BE;--motif:#9ed9be;--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="70" height="80" viewBox="0 0 70 80">
+  <rect x="2" y="72" width="66" height="6" fill="#2A1E16"/>
+  <g stroke="#2A1E16" stroke-width="3">
+    <rect x="10" y="52" width="48" height="20" fill="#5BA8E0"/>
+    <rect x="14" y="34" width="20" height="18" fill="#E8B23A"/>
+    <rect x="34" y="40" width="16" height="12" fill="#C2401F"/>
+    <rect x="26" y="16" width="16" height="18" fill="#E8B23A"/>
+  </g>
+  <circle cx="20" cy="43" r="3.5" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="28" cy="43" r="3.5" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">TOWER</h3>
+          <span class="numero">N° 9 · Canyon</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article>
+      <article class="etiquette etiquette--blocks " style="--fond:#B8D8F4;--motif:repeating-linear-gradient(0deg,#b8d8f4 0 22px,#aecbe4 22px 23px);--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="80" viewBox="0 0 96 80">
+  <rect x="6" y="70" width="84" height="6" fill="#2A1E16"/>
+  <rect x="10" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="34" y="46" width="24" height="24" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="34" y="22" width="24" height="24" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="58" y="46" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+  <rect x="58" y="22" width="24" height="24" fill="#7C6BE0" stroke="#2A1E16" stroke-width="3"/>
+  <circle cx="18" cy="56" r="4" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="26" cy="56" r="4" fill="#FFFFFF" stroke="#2A1E16" stroke-width="1.5"/>
+  <circle cx="19" cy="57" r="1.8" fill="#2A1E16"/>
+  <circle cx="27" cy="57" r="1.8" fill="#2A1E16"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">BLOCKS</h3>
+          <span class="numero">N° 9 · Banquise</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article>
+      <article class="etiquette etiquette--vertige etiquette--vertige" style="--fond:#F7C59F;--motif:repeating-linear-gradient(0deg,#f7c59f 0 22px,#e9b995 22px 23px);--police:'Rubik Mono One', 'Archivo', sans-serif;--nom:var(--encre)">
+        <div class="art"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="67.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="63.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="67.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M21 3h34v34h-34zM29.8 11.8h16.3v16.3h-16.3z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-22 38 20)"/>
+  <rect x="8" y="46" width="60" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M30 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M52 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="8" y="40" width="60" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="14" y="35" width="32" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="30" y="10" width="16" height="28" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="34.5" y="16" width="4.8" height="14" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div>
+        <div class="info">
+          <h3 class="nom">VERTIGE</h3>
+          <span class="numero">N° 9 · Clair</span>
+          <span class="bouton">JOUER</span>
+          
+        </div>
+      </article></div></div>
+    </div>
+    <div class="zoom">
+      <div class="zoom__bloc"><p class="legende">À la taille de la cartouche</p><div class="art art--seul" style="--motif:repeating-linear-gradient(0deg,#f7c59f 0 22px,#e9b995 22px 23px);--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="67.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="63.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="67.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M21 3h34v34h-34zM29.8 11.8h16.3v16.3h-16.3z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-22 38 20)"/>
+  <rect x="8" y="46" width="60" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M30 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M52 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="8" y="40" width="60" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="14" y="35" width="32" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="30" y="10" width="16" height="28" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="34.5" y="16" width="4.8" height="14" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+      <div class="zoom__bloc"><p class="legende">Petite (téléphone, ×0,6)</p><div class="art art--petit" style="--motif:repeating-linear-gradient(0deg,#f7c59f 0 22px,#e9b995 22px 23px);--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="67.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="63.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="67.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M21 3h34v34h-34zM29.8 11.8h16.3v16.3h-16.3z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-22 38 20)"/>
+  <rect x="8" y="46" width="60" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M30 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M52 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="8" y="40" width="60" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="14" y="35" width="32" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="30" y="10" width="16" height="28" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="34.5" y="16" width="4.8" height="14" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+      <div class="zoom__bloc"><p class="legende">Grossie ×3</p><div class="art art--grand" style="--motif:repeating-linear-gradient(0deg,#f7c59f 0 22px,#e9b995 22px 23px);--fond:#F7C59F"><span class="dessin"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="64" viewBox="0 0 76 64">
+  <g><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="3.2" cy="55.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="10.4" cy="52.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="8" cy="57.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="3.2" cy="55.2" r="5.6" fill="#FFF6E0"/><circle cx="10.4" cy="52.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.2" cy="54.2" r="5.6" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="70.4" cy="51.8" r="7.2" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="68" cy="56.6" rx="12" ry="4.8" fill="#FFF6E0"/><circle cx="63.2" cy="54.2" r="5.6" fill="#FFF6E0"/><circle cx="70.4" cy="51.8" r="7.2" fill="#FFF6E0"/></g>
+  <g><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="63.5" cy="8.6" r="2.9" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><circle cx="67.3" cy="7.3" r="3.8" fill="#2A1E16" stroke="#2A1E16" stroke-width="3.5"/><ellipse cx="66" cy="9.8" rx="6.3" ry="2.5" fill="#FFF6E0"/><circle cx="63.5" cy="8.6" r="2.9" fill="#FFF6E0"/><circle cx="67.3" cy="7.3" r="3.8" fill="#FFF6E0"/></g>
+  <path d="M21 3h34v34h-34zM29.8 11.8h16.3v16.3h-16.3z" fill="#E8DFC8" fill-rule="evenodd" stroke="#2A1E16" stroke-width="3" stroke-linejoin="round" transform="rotate(-22 38 20)"/>
+  <rect x="8" y="46" width="60" height="12" fill="#CDBF9F" stroke="#2A1E16" stroke-width="3"/><path d="M30 46v12" stroke="#2A1E16" stroke-width="1.5"/><path d="M52 46v12" stroke="#2A1E16" stroke-width="1.5"/><rect x="8" y="40" width="60" height="6" fill="#E8DFC8" stroke="#2A1E16" stroke-width="3"/><rect x="14" y="35" width="32" height="5" fill="#C2401F" stroke="#2A1E16" stroke-width="2.5"/>
+  <rect x="30" y="10" width="16" height="28" rx="8" fill="#E46FA0" stroke="#2A1E16" stroke-width="3"/><rect x="34.5" y="16" width="4.8" height="14" rx="2.4" fill="#F4A6C6"/>
+</svg>
+</span></div></div>
+    </div>
+  </section>
+  <p class="pied">Les motifs sont ceux de <code>fondDuMotif</code> (<code>packages/core</code>), deux tons tirés de la teinte du jeu. Les cartouches suivent <code>.salle-etiquette</code> (<code>apps/portail/src/salle.css</code>) : l’illustration est bornée à 45 % de la largeur et 92 px de haut, alignée en bas à droite ; les marges sont recopiées à l’œil. Track et Jump ont des cartes faites à la main : seuls leur nom et leur teinte sont figurés. Tower et Blocks sont leurs vraies illustrations.</p>
+</main>
+</body>
+</html>
