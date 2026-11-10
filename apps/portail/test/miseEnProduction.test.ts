@@ -727,7 +727,7 @@ describe("les modules d'empreintes se compilent dans un code plus ancien qu'eux"
 // Lot K4b : la chaîne lit les fiches (`jours.fabrication`) — ce que le versement des jours figés ajoute au dépôt vient d'elles.
 describe("la chaîne des jours lit les fiches (lot K4b)", () => {
   it("les chemins du versement : les jours de chaque jeu (dossier ou registre), ce que refait `apresPose`, les empreintes des jours passés", () => {
-    expect(cheminsDuVersement().sort()).toEqual(["apps/api/test/jours-passes.json", "apps/blocks/public/jours", "apps/jump/public/demo", "apps/jump/public/levels", "apps/rush/public/jours", "apps/tower/public/jours", "packages/sim/src/jours-track.json"]);
+    expect(cheminsDuVersement().sort()).toEqual(["apps/api/test/jours-passes.json", "apps/blocks/public/jours", "apps/jump/public/demo", "apps/jump/public/levels", "apps/rush/public/jours", "apps/tower/public/jours", "apps/vertige/public/jours", "packages/sim/src/jours-track.json"]);
   });
 });
 
@@ -783,9 +783,9 @@ describe("poser-jours : ce que « Mettre en production » a produit pour chaque 
     rmSync(join(art, "tower"), { recursive: true });
     const out = execFileSync("node", [CLI, "poser-jours", art], { cwd: depot, encoding: "utf8" });
     expect(out).not.toContain("Tower");
-    expect(execFileSync("node", [CLI, "jeux"], { encoding: "utf8" }).trim()).toBe("track jump tower blocks rush");
+    expect(execFileSync("node", [CLI, "jeux"], { encoding: "utf8" }).trim()).toBe("track jump tower blocks rush vertige");
     expect(execFileSync("node", [CLI, "jeux", "--mode", "registre"], { encoding: "utf8" }).trim()).toBe("track");
-    expect(execFileSync("node", [CLI, "jeux", "--mode", "fichier-par-jour"], { encoding: "utf8" }).trim()).toBe("jump tower blocks rush");
+    expect(execFileSync("node", [CLI, "jeux", "--mode", "fichier-par-jour"], { encoding: "utf8" }).trim()).toBe("jump tower blocks rush vertige");
   });
 
   // Run 46 (09/11/2026) : un jeu que la production ne sert pas n'a rien montré à un joueur : « Mettre en production » ne lui garde rien.

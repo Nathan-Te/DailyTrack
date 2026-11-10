@@ -20,6 +20,9 @@
       "path": "packages/cibles-sim"
     },
     {
+      "path": "packages/vertige-sim"
+    },
+    {
       "path": "packages/rush-sim"
     },
     {
@@ -54,6 +57,9 @@
     },
     {
       "path": "apps/cibles"
+    },
+    {
+      "path": "apps/vertige"
     },
     {
       "path": "apps/rush"

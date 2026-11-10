@@ -1,0 +1,44 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { parseDay } from "@cdj/core";
+import { NOMS_NIVEAUX, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, dailyVertige, decoderRediffusion, empreinteContenu, empreinteNiveau, niveau, rejouer, rejouerScenario, verifier, type NomNiveau } from "../src/index";
+
+// Le golden : produit par `npm run golden:vertige` (jamais écrit à la main), rejoué ici par Node et dans Chromium, Firefox et WebKit par `apps/vertige/e2e/determinisme.spec.ts`.
+const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-vertige.json", import.meta.url), "utf8")) as {
+  sim: number;
+  generateur: number;
+  jours: { date: string; empreinte: string }[];
+  niveaux: { nom: NomNiveau; empreinte: string }[];
+  rediffusions: { nom: string; scenario: string | null; date: string; g: number; code: string; resultat: unknown; empreintes: string[] }[];
+};
+
+describe("golden de Vertige", () => {
+  it("nomme les versions du code", () => {
+    expect({ sim: golden.sim, generateur: golden.generateur }).toEqual({ sim: VERTIGE_SIM_VERSION, generateur: VERTIGE_GENERATOR_VERSION });
+  });
+  it("couvre tous les niveaux", () => {
+    expect(golden.niveaux.map((n) => n.nom)).toEqual([...NOMS_NIVEAUX]);
+  });
+  it.each(golden.jours.map((j) => [j.date, j.empreinte]))("le contenu du %s a l'empreinte %s", (date, empreinte) => {
+    expect(empreinteContenu(dailyVertige(parseDay(date!)!))).toBe(empreinte);
+  });
+  it.each(golden.niveaux.map((n) => [n.nom, n.empreinte]))("le niveau « %s » a l'empreinte %s", (nom, empreinte) => {
+    expect(empreinteNiveau(niveau(nom as NomNiveau))).toBe(empreinte);
+  });
+  it.each(golden.rediffusions.map((r) => [r.nom, r]))("la rediffusion « %s » se rejoue au bit près (résultat et empreintes de l'état)", (_nom, r) => {
+    const ref = r as (typeof golden.rediffusions)[number];
+    const lue = decoderRediffusion(ref.code);
+    const c = ref.scenario ? { niveau: ref.scenario as NomNiveau } : { niveau: dailyVertige(parseDay(ref.date)!, ref.g).niveau };
+    const v = verifier(c, lue.commandes);
+    expect(v.resultat).toEqual(ref.resultat);
+    expect(v.empreintes).toEqual(ref.empreintes);
+    if (ref.scenario) expect(rejouerScenario(ref.code).resultat).toEqual(ref.resultat);
+    else expect(rejouer(dailyVertige(parseDay(ref.date)!, ref.g), ref.code)).toEqual(ref.resultat);
+  });
+  it("le parcours est fini par le joueur scripté, le chrono s'arrête à l'arrivée", () => {
+    const r = golden.rediffusions.find((x) => x.nom === "parcours-robot")!.resultat as { arrive: boolean; ticks: number; pas: number };
+    expect(r.arrive).toBe(true);
+    expect(r.ticks).toBe(r.pas - 1 > 0 ? r.ticks : 0);
+    expect(r.ticks).toBeGreaterThan(300);
+  });
+});

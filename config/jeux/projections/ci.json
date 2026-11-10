@@ -1374,6 +1374,118 @@
         "version-"
       ],
       "outilsAdmin": false
+    },
+    {
+      "id": "vertige",
+      "zones": {
+        "jeu": [
+          "apps/vertige/**",
+          "packages/vertige-sim/**",
+          "apps/api/src/vertige*.ts",
+          "apps/api/test/vertige*.test.ts",
+          "apps/api/scripts/vertige-*.ts",
+          "docs/vertige/**"
+        ],
+        "serveur": [
+          "apps/api/src/vertige*.ts",
+          "apps/api/test/vertige*.test.ts",
+          "apps/api/scripts/vertige-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/vertige/e2e",
+        "suite": "vertige",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "vertige-sim": {
+            "globs": [
+              "packages/vertige-sim/**"
+            ]
+          },
+          "vertige-jeu": {
+            "globs": [
+              "apps/vertige/index.html",
+              "apps/vertige/vite.config.ts",
+              "apps/vertige/verify.html",
+              "apps/vertige/src/*"
+            ]
+          },
+          "api-vertige": {
+            "globs": [
+              "apps/api/src/vertige*.ts",
+              "apps/api/scripts/vertige-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "vertige-sim",
+            "vertige-jeu",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "vertige-sim",
+            "vertige-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "vertige-sim",
+            "vertige-jeu",
+            "api-vertige",
+            "api-jeux"
+          ],
+          "poids.spec.ts": [
+            "vertige-jeu",
+            "ui"
+          ],
+          "ecrans-kit.spec.ts": [
+            "vertige-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        },
+        "regression": [
+          "ecrans-kit.spec.ts"
+        ]
+      },
+      "app": "vertige",
+      "jours": {
+        "dossier": "apps/vertige/public/jours",
+        "registre": null,
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/vertige-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/vertige-sim",
+            "script": "figer:vertige",
+            "forme": "jours-proteges"
+          }
+        }
+      },
+      "sim": "vertige-sim",
+      "budget": [
+        "vertige.jsCss"
+      ],
+      "budgetALaDemande": [
+        "corps-",
+        "course-",
+        "tune-",
+        "partiesEssais-",
+        "partie-",
+        "classement-",
+        "reglages-",
+        "retours-",
+        "version-"
+      ],
+      "outilsAdmin": false
     }
   ]
 }

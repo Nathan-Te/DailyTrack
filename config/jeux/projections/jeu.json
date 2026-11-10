@@ -216,6 +216,36 @@
         "theme:carriere",
         "theme:sousbois"
       ]
+    },
+    {
+      "id": "vertige",
+      "code": "vertige",
+      "ordre": 7,
+      "nom": {
+        "fr": "Vertige",
+        "en": "Vertige"
+      },
+      "etiquette": {
+        "fond": "#F7C59F",
+        "coque": "#8A3B12",
+        "police": "\"Rubik Mono One\", \"Archivo\", sans-serif",
+        "dessin": "generique"
+      },
+      "etatDepart": "off",
+      "format": "temps",
+      "unite": "ticks",
+      "prefixe": "vertige:",
+      "messageOu": "vertige",
+      "zoneNouveautes": "vertige",
+      "themes": [
+        "clair",
+        "sombre"
+      ],
+      "scenes": [
+        "menu",
+        "theme:clair",
+        "theme:sombre"
+      ]
     }
   ],
   "publics": [
@@ -228,7 +258,8 @@
     "tower:",
     "cibles:",
     "blocks:",
-    "rush:"
+    "rush:",
+    "vertige:"
   ],
   "ou": [
     "portail",
@@ -237,7 +268,8 @@
     "tower",
     "cibles",
     "blocks",
-    "rush"
+    "rush",
+    "vertige"
   ],
   "zones": [
     "dujour",
@@ -246,7 +278,8 @@
     "tower",
     "cibles",
     "blocks",
-    "rush"
+    "rush",
+    "vertige"
   ],
   "nomsDeZones": {
     "dujour": "Du Jour",
@@ -255,6 +288,7 @@
     "tower": "Tower",
     "cibles": "Cibles",
     "blocks": "Blocks",
-    "rush": "Rush"
+    "rush": "Rush",
+    "vertige": "Vertige"
   }
 }

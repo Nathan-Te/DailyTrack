@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vertige : maquette jouable</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;700&family=JetBrains+Mono:wght@700&display=swap">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#9CC4EA;font-family:Archivo,sans-serif;color:#2A1E16}
+  canvas{display:block}
+  .plaque{position:fixed;background:#EDE3CF;border:2px solid #2A1E16;border-radius:3px;box-shadow:2px 2px 0 #2A1E16;z-index:5}
+  #chrono{top:14px;left:50%;transform:translateX(-50%);padding:5px 14px;font:700 22px 'JetBrains Mono',monospace;display:flex;gap:16px;align-items:baseline}
+  #chrono small{font:700 13px Archivo}
+  #styles{top:14px;right:14px;display:flex;overflow:hidden}
+  #styles button{border:0;background:none;font:700 14px Archivo;padding:9px 12px;cursor:pointer;color:#2A1E16}
+  #styles button+button{border-left:2px solid #2A1E16}
+  #styles button.on{background:#2A1E16;color:#EDE3CF}
+  #aide{bottom:14px;left:14px;padding:8px 12px;font-size:13px;line-height:1.5;max-width:360px}
+  #aide b{font-family:'Archivo Black'}
+  #etat{bottom:14px;right:14px;padding:6px 10px;font:700 13px Archivo;display:none}
+  #voile{position:fixed;inset:0;display:grid;place-items:center;background:repeating-linear-gradient(135deg,rgba(42,30,22,.82) 0 16px,rgba(51,37,27,.82) 16px 32px);z-index:10;cursor:pointer}
+  #voile .carte{background:#FFF6E0;border:3px solid #2A1E16;border-radius:6px;box-shadow:5px 5px 0 #C2401F;padding:22px 26px;max-width:460px}
+  #voile h1{margin:0 0 4px;font:34px 'Archivo Black';letter-spacing:1px}
+  #voile p{margin:8px 0;font-size:15px;line-height:1.45}
+  #voile .go{display:inline-block;margin-top:10px;background:#C2401F;color:#FFF4E0;font:16px 'Archivo Black';padding:12px 18px;border:2px solid #2A1E16;border-radius:3px;box-shadow:2px 2px 0 #2A1E16}
+  #viseur{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#FFF6E0;box-shadow:0 0 0 1.5px #2A1E16;z-index:4}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="chrono" class="plaque"><span id="temps">0,000</span><small id="gemmes">0 / 4 gemmes</small></div>
+<div id="styles" class="plaque"><button data-s="doux" class="on">Lumière douce</button><button data-s="cartouche">Cartouche</button></div>
+<div id="aide" class="plaque"><b>ZQSD / WASD</b> courir · <b>Espace</b> sauter, sauter d'un mur · <b>Maj</b> dash · <b>contre un mur en l'air + avancer</b> courir sur le mur · <b>R</b> recommencer · <b>1 / 2</b> changer de style</div>
+<div id="etat" class="plaque"></div>
+<div id="viseur"></div>
+<div id="voile"><div class="carte">
+  <h1>VERTIGE</h1>
+  <p>Maquette jouable, titre provisoire. Un parcours court au-dessus des nuages : un pilier, un mur à longer, un trou à franchir au dash, un portail, puis le château.</p>
+  <p>Deux styles à comparer pendant la course : <b>Lumière douce</b> (proche de l'image) et <b>Cartouche</b> (aplats et contour d'encre, comme Tower, Blocks et Rush).</p>
+  <p id="tactile" style="display:none;color:#C2401F"><b>Maquette pour ordinateur, au clavier et à la souris.</b></p>
+  <span class="go">Cliquer pour jouer</span>
+</div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+if (matchMedia('(pointer: coarse)').matches) document.getElementById('tactile').style.display = 'block';
+
+// ---------------------------------------------------------------- moteur
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(84, innerWidth / innerHeight, 0.05, 700);
+camera.rotation.order = 'YXZ';
+scene.add(camera);
+
+// ciel en dégradé
+const ciel = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { haut: { value: new THREE.Color('#5E97E0') }, horizon: { value: new THREE.Color('#F4E4D6') }, bas: { value: new THREE.Color('#EAF0F8') } },
+  vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'uniform vec3 haut; uniform vec3 horizon; uniform vec3 bas; varying vec3 vP; void main(){ float h = vP.y; vec3 c = h > 0.0 ? mix(horizon, haut, pow(smoothstep(0.0, 0.75, h), 0.8)) : mix(horizon, bas, smoothstep(0.0, -0.3, h)); gl_FragColor = vec4(c, 1.0); }',
+}));
+scene.add(ciel);
+
+// lumières
+const hemi = new THREE.HemisphereLight('#BFD8FF', '#C9AFC4', 1.1);
+scene.add(hemi);
+const soleil = new THREE.DirectionalLight('#FFE9C7', 2.6);
+soleil.position.set(40, 90, 30);
+soleil.target.position.set(-6, 0, -45);
+soleil.castShadow = true;
+soleil.shadow.mapSize.set(2048, 2048);
+Object.assign(soleil.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 10, far: 260 });
+soleil.shadow.bias = -0.0008;
+soleil.shadow.normalBias = 0.06;
+scene.add(soleil, soleil.target);
+// le soleil carré de l'image
+const disque = new THREE.Mesh(new THREE.PlaneGeometry(26, 26), new THREE.MeshBasicMaterial({ color: '#FFF7DE', fog: false, toneMapped: false }));
+scene.add(disque);
+const dirSoleil = new THREE.Vector3(-0.35, 0.55, -1).normalize();
+
+// ---------------------------------------------------------------- matériaux des deux styles
+const PALETTE = {
+  doux:      { pierre: '#ECE3DA', sombre: '#C4B6BF', rouge: '#D9443A', bois: '#6B4A33', or: '#F4C24B', flamme: '#FFB347', nuage: '#FFFFFF', portail: '#FF7A9C', encre: '#2A1E16', gant: '#3A302B', peau: '#E8A27C' },
+  cartouche: { pierre: '#E3D6BC', sombre: '#B9A98F', rouge: '#C2401F', bois: '#6B4A33', or: '#E8B23A', flamme: '#E8B23A', nuage: '#FFF6E0', portail: '#E46FA0', encre: '#2A1E16', gant: '#2A1E16', peau: '#F1C7A3' },
+};
+const degrade = (() => { const t = new THREE.DataTexture(new Uint8Array([90, 170, 255]), 3, 1, THREE.RedFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; })();
+const MATS = {};
+for (const s of ['doux', 'cartouche']) {
+  MATS[s] = {};
+  for (const [role, c] of Object.entries(PALETTE[s])) {
+    const lumineux = role === 'or' || role === 'flamme' || role === 'portail';
+    if (s === 'doux') {
+      MATS[s][role] = role === 'flamme' || role === 'portail'
+        ? new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(role === 'portail' ? 1.6 : 2.2), toneMapped: false })
+        : new THREE.MeshStandardMaterial({ color: c, roughness: role === 'or' ? 0.35 : 0.95, metalness: role === 'or' ? 0.2 : 0, flatShading: true, emissive: lumineux ? c : '#000', emissiveIntensity: lumineux ? 0.45 : 0, side: role === 'rouge' ? THREE.DoubleSide : THREE.FrontSide });
+    } else {
+      MATS[s][role] = lumineux ? new THREE.MeshBasicMaterial({ color: c }) : new THREE.MeshToonMaterial({ color: c, gradientMap: degrade, side: role === 'rouge' ? THREE.DoubleSide : THREE.FrontSide });
+    }
+  }
+}
+const encreContour = new THREE.MeshBasicMaterial({ color: '#2A1E16', side: THREE.BackSide });
+let style = 'doux';
+const habilles = []; // { mesh, role, contour }
+
+function habiller(mesh, role, contour = true) {
+  mesh.material = MATS[style][role];
+  let c = null;
+  if (contour) {
+    c = new THREE.Mesh(mesh.geometry, encreContour);
+    mesh.geometry.computeBoundingBox();
+    const t = new THREE.Vector3(); mesh.geometry.boundingBox.getSize(t);
+    const e = Math.min(0.07, 0.35 * Math.min(t.x || 1, t.y || 1, t.z || 1));
+    c.scale.set((t.x + e) / Math.max(t.x, 0.01), (t.y + e) / Math.max(t.y, 0.01), (t.z + e) / Math.max(t.z, 0.01));
+    c.visible = style === 'cartouche';
+    c.castShadow = false;
+    mesh.add(c);
+  }
+  habilles.push({ mesh, role, contour: c });
+  return mesh;
+}
+
+// ---------------------------------------------------------------- le niveau
+const solides = []; // Box3
+function bloc(x, y, z, w, h, d, role = 'pierre', { solide = true, ombre = true, rot = null } = {}) {
+  const m = habiller(new THREE.Mesh(new THREE.BoxGeometry(w, h, d)), role);
+  m.position.set(x, y, z);
+  if (rot) m.rotation.set(...rot);
+  m.castShadow = ombre; m.receiveShadow = true;
+  scene.add(m);
+  if (solide && !rot) solides.push(new THREE.Box3(new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2)));
+  return m;
+}
+const formeBanniere = (() => { const s = new THREE.Shape(); s.moveTo(-0.45, 0); s.lineTo(0.45, 0); s.lineTo(0.45, -2.2); s.lineTo(0.2, -1.85); s.lineTo(0, -2.2); s.lineTo(-0.2, -1.85); s.lineTo(-0.45, -2.2); s.lineTo(-0.45, 0); return new THREE.ShapeGeometry(s); })();
+const bannieres = [];
+function banniere(x, y, z, ry = 0, k = 1) {
+  const m = habiller(new THREE.Mesh(formeBanniere), 'rouge', false);
+  m.position.set(x, y, z); m.rotation.y = ry; m.scale.setScalar(k); m.castShadow = true;
+  scene.add(m); bannieres.push(m); return m;
+}
+const flammes = [];
+function brasero(x, y, z) {
+  const pied = habiller(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 0.9, 6)), 'bois'); pied.position.set(x, y + 0.45, z); pied.castShadow = true; scene.add(pied);
+  const coupe = habiller(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 6)), 'bois'); coupe.position.set(x, y + 1.0, z); coupe.castShadow = true; scene.add(coupe);
+  const f = habiller(new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.75, 5)), 'flamme', false); f.position.set(x, y + 1.5, z); scene.add(f); flammes.push(f);
+  const l = new THREE.PointLight('#FFB347', 6, 7, 2); l.position.set(x, y + 1.7, z); scene.add(l);
+}
+function pilier(x, z, haut, w = 3) {
+  bloc(x, haut - 15, z, w, 30, w, 'pierre');
+  bloc(x, haut + 0.15, z, w + 0.3, 0.3, w + 0.3, 'rouge');
+  banniere(x, haut - 0.1, z + w / 2 + 0.02, 0, 1);
+}
+
+// départ
+bloc(0, -1, 4, 10, 2, 12);
+bloc(0, 0.03, 4, 2.4, 0.06, 12, 'rouge', { solide: false, ombre: false });
+bloc(-7, 4, 2, 4, 14, 8, 'pierre');
+bloc(-7, 11.4, 2, 4.6, 0.8, 8.6, 'sombre');
+banniere(-4.98, 9.5, 2, Math.PI / 2, 1.6);
+brasero(-3.4, 0, 0.5);
+// les piliers
+pilier(0, -6, 0);
+pilier(0.6, -12, 1);
+pilier(2.5, -18, 2);
+// le mur à longer (sans sol dessous)
+bloc(4.6, 4, -29, 1.2, 10, 15, 'sombre');
+banniere(3.98, 7.5, -25, -Math.PI / 2, 1.2);
+banniere(3.98, 7.5, -33, -Math.PI / 2, 1.2);
+// l'atterrissage, puis le trou du dash
+bloc(2, -1, -41, 6, 2, 6);
+bloc(2, 0.03, -41, 1.6, 0.06, 6, 'rouge', { solide: false, ombre: false });
+bloc(2, -1, -53, 5, 2, 5);
+brasero(4, 0, -51.5);
+// le portail A (au bout de la dernière plateforme)
+const PA = new THREE.Object3D(); PA.position.set(2, 1.6, -54.6); scene.add(PA); PA.updateMatrixWorld();
+// la plateforme haute, le portail B (sortie)
+bloc(-14, 14, -71, 6, 2, 8);
+const PB = new THREE.Object3D(); PB.position.set(-14, 16.6, -67.2); scene.add(PB); PB.updateMatrixWorld();
+// le château
+bloc(-14, 13, -86, 16, 2, 16);
+bloc(-14, 14.03, -84, 2.4, 0.06, 12, 'rouge', { solide: false, ombre: false });
+bloc(-19, 20, -93, 4, 12, 4); bloc(-9, 20, -93, 4, 12, 4); bloc(-14, 24.5, -93, 6, 3, 4, 'sombre');
+bloc(-14, 30, -95, 8, 8, 6); bloc(-14, 36, -95, 3, 8, 3); bloc(-14, 40.5, -95, 3.6, 1, 3.6, 'rouge', { solide: false });
+for (const x of [-22, -6]) { bloc(x, 22, -92, 3, 18, 3); bloc(x, 31.5, -92, 3.6, 1, 3.6, 'sombre'); banniere(x, 29, -90.48, 0, 1.3); }
+banniere(-14, 22.8, -90.98, 0, 1.4);
+brasero(-17.5, 14, -88); brasero(-10.5, 14, -88);
+const voileArche = habiller(new THREE.Mesh(new THREE.PlaneGeometry(6, 9)), 'portail', false); voileArche.position.set(-14, 18.5, -92.9); scene.add(voileArche);
+
+// décor lointain : îlots, tours, et le cadre qui tourne
+const alea = (() => { let s = 12345; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+for (let i = 0; i < 26; i++) {
+  const a = alea() * Math.PI * 2, r = 70 + alea() * 120;
+  const x = Math.cos(a) * r - 10, z = Math.sin(a) * r - 50, y = -10 + alea() * 40, w = 3 + alea() * 6, h = 4 + alea() * 18;
+  bloc(x, y, z, w, h, w, alea() < 0.2 ? 'sombre' : 'pierre', { solide: false });
+  if (alea() < 0.5) bloc(x, y + h / 2 + 0.3, z, w + 0.4, 0.6, w + 0.4, alea() < 0.4 ? 'rouge' : 'sombre', { solide: false });
+}
+const cadre = new THREE.Group(); cadre.position.set(26, 14, -38); scene.add(cadre);
+for (const [x, y, w, h] of [[0, 6, 14, 2.2], [0, -6, 14, 2.2], [6, 0, 2.2, 14], [-6, 0, 2.2, 14]]) {
+  const m = habiller(new THREE.Mesh(new THREE.BoxGeometry(w, h, 2.2)), 'pierre'); m.position.set(x, y, 0); m.castShadow = true; cadre.add(m);
+}
+cadre.rotation.set(0.5, -0.6, 0.4);
+
+// nuages
+const nuages = new THREE.Group(); scene.add(nuages);
+for (let i = 0; i < 70; i++) {
+  const g = new THREE.Group();
+  const n = 3 + Math.floor(alea() * 4);
+  for (let j = 0; j < n; j++) {
+    const m = habiller(new THREE.Mesh(new THREE.IcosahedronGeometry(2 + alea() * 3, 0)), 'nuage', false);
+    m.position.set(j * 2.6 - n, alea() * 1.5, alea() * 2); m.scale.y = 0.6; g.add(m);
+  }
+  const a = alea() * Math.PI * 2, r = 20 + alea() * 160;
+  g.position.set(Math.cos(a) * r - 6, -26 + alea() * 22, Math.sin(a) * r - 50);
+  g.scale.setScalar(1 + alea() * 1.5);
+  nuages.add(g);
+}
+
+// gemmes
+const gemmes = [];
+for (const p of [[0.6, 2.4, -12], [3.4, 4.2, -29], [2, 2.2, -47], [-14, 15.6, -78]]) {
+  const m = habiller(new THREE.Mesh(new THREE.OctahedronGeometry(0.38)), 'or'); m.position.set(...p); m.castShadow = true; scene.add(m);
+  gemmes.push({ mesh: m, base: p[1], prise: false });
+}
+// l'arrivée
+const arrivee = new THREE.Vector3(-14, 15.2, -90);
+
+// ---------------------------------------------------------------- les portails
+function cadrePortail(obj) {
+  const g = new THREE.Group();
+  for (const [x, y, w, h] of [[0, 1.75, 2.9, 0.35], [-1.3, 0, 0.35, 3.5], [1.3, 0, 0.35, 3.5]]) {
+    const m = habiller(new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.5)), 'sombre'); m.position.set(x, y, 0); m.castShadow = true; g.add(m);
+  }
+  const lueur = habiller(new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.3, 0.1)), 'portail', false); lueur.position.z = -0.08; g.add(lueur);
+  obj.add(g);
+  return lueur;
+}
+cadrePortail(PA); const lueurB = cadrePortail(PB);
+const cible = new THREE.WebGLRenderTarget(256, 256);
+const ecranPortail = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 3.2), new THREE.ShaderMaterial({
+  uniforms: { tex: { value: cible.texture }, res: { value: new THREE.Vector2(1, 1) } },
+  vertexShader: 'void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: 'uniform sampler2D tex; uniform vec2 res; void main(){ vec4 c = texture2D(tex, gl_FragCoord.xy / res); gl_FragColor = c; }',
+}));
+ecranPortail.position.z = 0.02; PA.add(ecranPortail);
+const vcam = camera.clone(); scene.add(vcam);
+// PA et PB regardent tous deux vers +z : on entre dans A en allant vers -z, on sort de B dans le même sens
+const passage = new THREE.Matrix4().multiplyMatrices(PB.matrixWorld, PA.matrixWorld.clone().invert());
+const passageRot = new THREE.Matrix3().setFromMatrix4(passage);
+const lacetPassage = 0;
+
+// ---------------------------------------------------------------- les mains
+const mains = new THREE.Group(); camera.add(mains);
+function main(cote) {
+  const g = new THREE.Group();
+  const paume = habiller(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.035, 0.12)), 'gant'); g.add(paume);
+  const manche = habiller(new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.16)), 'gant'); manche.position.set(0, -0.01, 0.13); g.add(manche);
+  for (let i = 0; i < 4; i++) { const d = habiller(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.022, 0.07)), 'peau'); d.position.set(-0.036 + i * 0.024, 0.002, -0.085); d.rotation.x = -0.25; g.add(d); }
+  const pouce = habiller(new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.024, 0.06)), 'peau'); pouce.position.set(-0.06 * cote, 0, -0.02); pouce.rotation.y = 0.6 * cote; g.add(pouce);
+  g.position.set(0.27 * cote, -0.27, -0.42); g.rotation.set(0.5, -0.45 * cote, 0.25 * cote); g.scale.setScalar(0.72);
+  mains.add(g); return g;
+}
+const mainG = main(-1), mainD = main(1);
+
+// ---------------------------------------------------------------- post-traitement (style doux)
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.6, 0.85);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+function appliquerStyle(s) {
+  style = s;
+  for (const h of habilles) { h.mesh.material = MATS[s][h.role]; if (h.contour) h.contour.visible = s === 'cartouche'; }
+  const doux = s === 'doux';
+  renderer.toneMapping = doux ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+  renderer.toneMappingExposure = doux ? 1.15 : 1;
+  bloom.enabled = doux;
+  scene.fog = new THREE.Fog(doux ? '#DCE7F5' : '#DCE9F2', doux ? 90 : 110, doux ? 460 : 480);
+  ciel.material.uniforms.haut.value.set(doux ? '#5E97E0' : '#7DB4E6');
+  ciel.material.uniforms.horizon.value.set(doux ? '#F4E4D6' : '#E9F1F7');
+  hemi.intensity = doux ? 1.0 : 1.6; soleil.intensity = doux ? 3.2 : 1.6;
+  soleil.shadow.radius = doux ? 4 : 1;
+  soleil.shadow.bias = doux ? -0.0008 : -0.003; soleil.shadow.normalBias = doux ? 0.06 : 0.12;
+  for (const b of document.querySelectorAll('#styles button')) b.classList.toggle('on', b.dataset.s === s);
+}
+appliquerStyle('doux');
+for (const b of document.querySelectorAll('#styles button')) b.addEventListener('click', (e) => { e.stopPropagation(); appliquerStyle(b.dataset.s); });
+
+// ---------------------------------------------------------------- le joueur
+const DEPART = new THREE.Vector3(0, 0.001, 7);
+const J = { pos: DEPART.clone(), vel: new THREE.Vector3(), lacet: 0, tangage: 0, roulis: 0, sol: false, coyote: 0, tampon: 0, dash: 0, dashRecharge: 0, dashDir: new THREE.Vector3(), mur: null, murT: 0, murVerrou: 0, surMur: false, reprise: DEPART.clone(), repriseLacet: 0, passage: 0 };
+const touches = new Set();
+let verrou = false, depart = null, fin = null, pas = 0;
+const DEMI = 0.3, HAUT = 1.8;
+
+addEventListener('keydown', (e) => {
+  touches.add(e.code);
+  if (e.code === 'Space') J.tampon = 0.12;
+  if (e.code === 'KeyR') recommencer();
+  if (e.code === 'Digit1') appliquerStyle('doux');
+  if (e.code === 'Digit2') appliquerStyle('cartouche');
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') demanderDash = true;
+});
+addEventListener('keyup', (e) => touches.delete(e.code));
+let demanderDash = false;
+const voile = document.getElementById('voile');
+voile.addEventListener('click', () => renderer.domElement.requestPointerLock());
+document.addEventListener('pointerlockchange', () => { verrou = document.pointerLockElement === renderer.domElement; voile.style.display = verrou ? 'none' : 'grid'; });
+addEventListener('mousemove', (e) => {
+  if (!verrou) return;
+  J.lacet -= e.movementX * 0.0022;
+  J.tangage = Math.max(-1.45, Math.min(1.45, J.tangage - e.movementY * 0.0022));
+});
+
+function recommencer() {
+  J.pos.copy(DEPART); J.vel.set(0, 0, 0); J.lacet = 0; J.tangage = 0; J.reprise.copy(DEPART); J.repriseLacet = 0;
+  depart = null; fin = null;
+  for (const g of gemmes) { g.prise = false; g.mesh.visible = true; }
+}
+
+const boite = new THREE.Box3();
+function boiteJoueur(p, marge = 0) { boite.min.set(p.x - DEMI - marge, p.y, p.z - DEMI - marge); boite.max.set(p.x + DEMI + marge, p.y + HAUT, p.z + DEMI + marge); return boite; }
+const chevauche = (a, b) => a.min.x < b.max.x - 1e-5 && a.max.x > b.min.x + 1e-5 && a.min.y < b.max.y - 1e-5 && a.max.y > b.min.y + 1e-5 && a.min.z < b.max.z - 1e-5 && a.max.z > b.min.z + 1e-5;
+function deplacer(axe, d) {
+  if (d === 0) return 0;
+  J.pos[axe] += d;
+  let touche = 0;
+  for (const s of solides) {
+    if (!chevauche(boiteJoueur(J.pos), s)) continue;
+    if (axe === 'y') J.pos.y = d > 0 ? s.min.y - HAUT - 1e-4 : s.max.y + 1e-4;
+    else J.pos[axe] = d > 0 ? s.min[axe] - DEMI - 1e-4 : s.max[axe] + DEMI + 1e-4;
+    touche = Math.sign(d);
+  }
+  return touche;
+}
+function murVoisin() {
+  for (const [axe, sgn] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]]) {
+    const p = J.pos.clone(); p[axe] += sgn * 0.08;
+    for (const s of solides) if (chevauche(boiteJoueur(p), s)) return new THREE.Vector3(axe === 'x' ? -sgn : 0, 0, axe === 'z' ? -sgn : 0);
+  }
+  return null;
+}
+
+const ETAPE = 1 / 120;
+function etape(dt) {
+  const avant = new THREE.Vector3(-Math.sin(J.lacet), 0, -Math.cos(J.lacet));
+  const droite = new THREE.Vector3(Math.cos(J.lacet), 0, -Math.sin(J.lacet));
+  const souhait = new THREE.Vector3();
+  if (touches.has('KeyW') || touches.has('KeyZ')) souhait.add(avant);
+  if (touches.has('KeyS')) souhait.sub(avant);
+  if (touches.has('KeyD')) souhait.add(droite);
+  if (touches.has('KeyA') || touches.has('KeyQ')) souhait.sub(droite);
+  if (souhait.lengthSq() > 0) souhait.normalize();
+  const avance = touches.has('KeyW') || touches.has('KeyZ');
+  if (!depart && souhait.lengthSq() > 0 && !fin) depart = performance.now();
+
+  J.tampon -= dt; J.coyote -= dt; J.dashRecharge -= dt; J.murVerrou -= dt; J.passage -= dt;
+  // dash
+  if (demanderDash && J.dashRecharge <= 0) { J.dash = 0.17; J.dashRecharge = 0.85; J.dashDir.copy(souhait.lengthSq() ? souhait : avant); }
+  demanderDash = false;
+  const mur = !J.sol ? murVoisin() : null;
+  // course sur le mur
+  const vh = Math.hypot(J.vel.x, J.vel.z);
+  J.surMur = !!(mur && avance && vh > 3.5 && J.murT < 1.7 && J.murVerrou <= 0 && J.dash <= 0);
+  if (J.surMur) { J.mur = mur; J.murT += dt; } else if (J.sol) { J.murT = 0; }
+  // saut, saut de mur
+  if (J.tampon > 0) {
+    if (J.sol || J.coyote > 0) { J.vel.y = 9.6; J.tampon = 0; J.coyote = 0; J.sol = false; }
+    else if (mur) { J.vel.addScaledVector(mur, 9.5); J.vel.y = 9.2; J.tampon = 0; J.murVerrou = 0.3; J.murT = 0; }
+  }
+  if (J.dash > 0) {
+    J.dash -= dt; J.vel.x = J.dashDir.x * 23; J.vel.z = J.dashDir.z * 23; J.vel.y = 0;
+  } else {
+    const cible = souhait.clone().multiplyScalar(9.5);
+    const k = J.sol ? 14 : (J.surMur ? 2 : 3.2);
+    J.vel.x += (cible.x - J.vel.x) * Math.min(1, k * dt);
+    J.vel.z += (cible.z - J.vel.z) * Math.min(1, k * dt);
+    if (J.surMur) { J.vel.y = Math.max(J.vel.y - 28 * 0.12 * dt, -1.5); J.vel.addScaledVector(J.mur, -2 * dt); }
+    else J.vel.y -= 28 * dt;
+  }
+  deplacer('x', J.vel.x * dt); deplacer('z', J.vel.z * dt);
+  const vy = deplacer('y', J.vel.y * dt);
+  const etaitAuSol = J.sol;
+  J.sol = vy < 0;
+  if (vy !== 0) J.vel.y = 0;
+  if (etaitAuSol && !J.sol) J.coyote = 0.1;
+
+  // portail A
+  const local = J.pos.clone().add(new THREE.Vector3(0, 1.0, 0)).applyMatrix4(PA.matrixWorld.clone().invert());
+  if (J.passage <= 0 && local.z < 0 && local.z > -0.6 && Math.abs(local.x) < 1.15 && Math.abs(local.y) < 1.6) {
+    J.pos.add(new THREE.Vector3(0, 1.0, 0)).applyMatrix4(passage).sub(new THREE.Vector3(0, 1.0, 0));
+    J.vel.applyMatrix3(passageRot); J.lacet += lacetPassage; J.passage = 0.5;
+  }
+  // reprises, chute
+  if (J.sol && J.pos.z < -38 && J.pos.y < 1) { J.reprise.set(2, 0, -40); J.repriseLacet = 0; }
+  if (J.sol && J.pos.y > 13) { J.reprise.set(-14, 15, -70); J.repriseLacet = 0; }
+  if (J.pos.y < -30) { J.pos.copy(J.reprise); J.vel.set(0, 0, 0); J.lacet = J.repriseLacet; }
+  // gemmes, arrivée
+  for (const g of gemmes) if (!g.prise && g.mesh.position.distanceTo(J.pos.clone().setY(J.pos.y + 0.9)) < 1.3) { g.prise = true; g.mesh.visible = false; }
+  if (!fin && depart && J.pos.distanceTo(arrivee) < 2.2) fin = performance.now();
+}
+
+// ---------------------------------------------------------------- boucle
+const horloge = new THREE.Clock();
+let reste = 0, t = 0;
+const elTemps = document.getElementById('temps'), elGemmes = document.getElementById('gemmes'), elEtat = document.getElementById('etat');
+const fmt = (ms) => (ms / 1000).toFixed(3).replace('.', ',');
+function boucle() {
+  const dt = Math.min(horloge.getDelta(), 0.05); t += dt;
+  if (verrou) { reste += dt; while (reste >= ETAPE) { etape(ETAPE); reste -= ETAPE; pas++; } }
+  // caméra
+  const viseRoulis = J.surMur && J.mur ? -J.mur.dot(new THREE.Vector3(Math.cos(J.lacet), 0, -Math.sin(J.lacet))) * 0.16 : 0;
+  J.roulis += (viseRoulis - J.roulis) * Math.min(1, 8 * dt);
+  camera.position.set(J.pos.x, J.pos.y + 1.62, J.pos.z);
+  camera.rotation.set(J.tangage, J.lacet, J.roulis);
+  const fov = J.dash > 0 ? 96 : 84; camera.fov += (fov - camera.fov) * Math.min(1, 10 * dt); camera.updateProjectionMatrix();
+  // mains
+  const vh = Math.hypot(J.vel.x, J.vel.z);
+  const bal = J.sol ? Math.sin(t * 11) * Math.min(1, vh / 9) : 0;
+  mainG.position.y = -0.27 + bal * 0.012 + (J.sol ? 0 : 0.03); mainD.position.y = -0.27 - bal * 0.012 + (J.sol ? 0 : 0.03);
+  mains.position.z = J.dash > 0 ? -0.06 : 0;
+  // vie du décor
+  for (const g of gemmes) { g.mesh.rotation.y += dt * 1.6; g.mesh.position.y = g.base + Math.sin(t * 2 + g.base) * 0.15; }
+  for (const f of flammes) f.scale.set(1, 0.85 + Math.sin(t * 13 + f.position.x) * 0.15, 1);
+  for (const b of bannieres) b.rotation.x = Math.sin(t * 1.3 + b.position.z * 0.3) * 0.05;
+  cadre.rotation.z += dt * 0.05; cadre.rotation.y += dt * 0.02;
+  nuages.position.x = Math.sin(t * 0.05) * 3;
+  disque.position.copy(camera.position).addScaledVector(dirSoleil, 420); disque.lookAt(camera.position);
+  soleil.position.copy(soleil.target.position).addScaledVector(dirSoleil, 120);
+
+  // portail : vue depuis la sortie
+  const vu = new THREE.Matrix4().multiplyMatrices(passage, camera.matrixWorld);
+  vu.decompose(vcam.position, vcam.quaternion, vcam.scale);
+  vcam.projectionMatrix.copy(camera.projectionMatrix); vcam.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
+  vcam.updateMatrixWorld(true);
+  ecranPortail.visible = false; mains.visible = false; lueurB.visible = false;
+  renderer.setRenderTarget(cible); renderer.render(scene, vcam); renderer.setRenderTarget(null);
+  ecranPortail.visible = true; mains.visible = true; lueurB.visible = true;
+
+  if (style === 'doux') composer.render(); else renderer.render(scene, camera);
+
+  elTemps.textContent = fmt(fin ? fin - depart : depart ? performance.now() - depart : 0);
+  elGemmes.textContent = `${gemmes.filter((g) => g.prise).length} / ${gemmes.length} gemmes`;
+  elEtat.style.display = fin || J.surMur || J.dash > 0 ? 'block' : 'none';
+  elEtat.textContent = fin ? `Arrivée en ${fmt(fin - depart)} s · R pour recommencer` : J.dash > 0 ? 'Dash' : 'Course sur le mur';
+  requestAnimationFrame(boucle);
+}
+function redimensionner() {
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  const pr = renderer.getPixelRatio();
+  cible.setSize(Math.floor(innerWidth * pr * 0.5), Math.floor(innerHeight * pr * 0.5));
+  ecranPortail.material.uniforms.res.value.set(innerWidth * pr, innerHeight * pr);
+}
+addEventListener('resize', redimensionner);
+redimensionner();
+boucle();
+// pour les tests : l'état du joueur
+window.__vertige = { J, jouer: () => { verrou = true; voile.style.display = 'none'; } };
+// pour les captures : ?vue=x,y,z,lacet,tangage
+const q = new URLSearchParams(location.search).get('vue');
+if (q) { const [x, y, z, l, tg] = q.split(',').map(Number); J.pos.set(x, y, z); J.lacet = l; J.tangage = tg; voile.style.display = 'none'; }
+if (new URLSearchParams(location.search).get('style') === 'cartouche') appliquerStyle('cartouche');
+</script>
+</body>
+</html>

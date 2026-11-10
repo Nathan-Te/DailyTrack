@@ -4,10 +4,12 @@ import type { ModuleEssais } from "./essais";
 import { ESSAIS_CIBLES } from "./cibles-essais";
 import { ESSAIS_BLOCKS } from "./blocks-essais";
 import { ESSAIS_RUSH } from "./rush-essais";
+import { ESSAIS_VERTIGE } from "./vertige-essais";
 
 // Le code (`id` de la fiche) → son module d'essais.
 export const ESSAIS_DES_JEUX_NEUFS: Readonly<Record<string, ModuleEssais>> = {
   "cibles": ESSAIS_CIBLES,
   "blocks": ESSAIS_BLOCKS,
   "rush": ESSAIS_RUSH,
+  "vertige": ESSAIS_VERTIGE,
 };

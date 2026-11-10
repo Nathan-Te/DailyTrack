@@ -14,6 +14,7 @@ const fr = {
   "jeu.jump.titre": "JUMP",
   "jeu.tower.nom": "Tower",
   "jeu.cibles.nom": "Cibles",
+  "jeu.vertige.nom": "Vertige",
   "jeu.rush.nom": "Rush",
   "jeu.blocks.nom": "Blocks",
   // Barres
