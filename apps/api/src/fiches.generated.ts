@@ -527,6 +527,10 @@ export const FICHES_SERVEUR = [
     ],
     "messageOu": "vertige",
     "zoneNouveautes": "vertige",
-    "identiteIncomplete": true
+    "identiteManque": [
+      "police",
+      "motif",
+      "illustration"
+    ]
   }
 ] as const;

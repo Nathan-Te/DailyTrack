@@ -31,6 +31,7 @@ import {
 } from "./adminDonnees";
 import { baseApi } from "./jour";
 import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
+import { effacerRefus, refuserAction, suivreDeclencheur } from "./adminErreur";
 import { vueJeux } from "./adminJeux";
 import { carteRefus } from "./adminRefus";
 import { vueRetour, vueRetours } from "./adminRetours";
@@ -203,6 +204,7 @@ const contexteDiffusion: Contexte = {
     if (texte) (document.getElementById("nouveautes-message") ?? document.getElementById("message-retour") ?? document.getElementById("jeux-retour"))?.replaceChildren(message("info", texte));
   },
   sessionExpiree: () => afficherConnexion("Session expirée : reconnecte-toi."),
+  refuser: (e, texte) => refuserAction(contexteDiffusion, e, texte),
   etiquette: async () => {
     if (etiquetteEnCours === undefined) etiquetteEnCours = (await client.tableau()).etat.version.etiquette;
     return etiquetteEnCours;
@@ -250,6 +252,7 @@ async function afficherPanneau(): Promise<void> {
   });
   if (!ecoute) {
     ecoute = true;
+    suivreDeclencheur(); // lot K5b : le bouton cliqué désigne la ligne où montrer le refus d'une action confirmée
     window.addEventListener("hashchange", () => {
       if (contenu.isConnected) void afficherVue(); // à l'écran de connexion, une adresse qui change ne montre rien
     });
@@ -561,6 +564,7 @@ interface Champ {
 
 /** Une action se confirme toujours : une fenêtre qui dit ce qui va se passer, demande ce qu'il faut (motif, pseudo à retaper), et rend les valeurs — ou `null` si on annule. */
 function confirmer(o: { titre: string; texte: string; champs?: Champ[]; action: string; irreversible?: boolean; verifier?: (valeurs: Record<string, string>) => string | null }): Promise<Record<string, string> | null> {
+  effacerRefus(); // lot K5b : le refus de l'action précédente reste jusqu'ici, à l'action suivante
   return new Promise((fin) => {
     const dialogue = el("dialog", { classe: "admin-dialogue", attrs: { "aria-labelledby": "dialogue-titre" } });
     const erreur = el("p", { classe: "admin-message admin-message--erreur", attrs: { role: "alert", hidden: true } });
@@ -614,7 +618,6 @@ function confirmer(o: { titre: string; texte: string; champs?: Champ[]; action: 
 async function vueFiche(ref: string): Promise<Node[]> {
   const f = await client.fiche(ref);
   const zoneMessage = el("div", { attrs: { id: "fiche-message" } });
-  const dire = (kind: "erreur" | "info", texte: string) => zoneMessage.replaceChildren(message(kind, texte));
   const recharger = async (ok: string) => {
     await afficherVue();
     document.getElementById("fiche-message")?.replaceChildren(message("info", ok));
@@ -624,8 +627,7 @@ async function vueFiche(ref: string): Promise<Node[]> {
       await travail();
       await recharger(ok);
     } catch (e) {
-      if (e instanceof ErreurAdmin && e.statut === 401) await afficherConnexion("Session expirée : reconnecte-toi.");
-      else dire("erreur", texteErreur(e));
+      await contexteDiffusion.refuser(e); // lot K5b : sur la ligne de l'action, en alerte
     }
   };
 
@@ -681,7 +683,7 @@ async function vueFiche(ref: string): Promise<Node[]> {
               await client.supprimer(f.ref, v.pseudo!);
               location.hash = "#/joueurs";
             } catch (e) {
-              dire("erreur", texteErreur(e));
+              await contexteDiffusion.refuser(e);
             }
           }
         },

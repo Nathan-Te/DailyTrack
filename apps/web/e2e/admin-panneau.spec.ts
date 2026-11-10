@@ -112,6 +112,29 @@ test("connexion › tableau de bord › joueur › renommer › journal, sous la
   await expect(page.locator("#fiche-message")).toContainText("Pseudo changé.");
   await auditAxe(page, "panneau-fiche");
 
+  // --- Jeux (lot K5b) : le refus d'une identité incomplète se montre sur la fiche du jeu, en alerte, avec le focus ------------------------------------------
+  // Le serveur est simulé : les fiches du dépôt changent le jour où Nathan remplit l'identité d'un jeu (le refus du serveur est testé par `apps/api/test/jeuxIdentite.test.ts`).
+  await page.route("**/api/admin/jeux/*/etat", (route) =>
+    route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "identite_incomplete", manque: ["police", "illustration"] }) }),
+  );
+  await page.locator('[data-menu="jeux"]').click();
+  const carteJeu = page.locator('[data-jeu-admin="track"]');
+  await carteJeu.getByRole("button", { name: "Aperçu" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Passer à Aperçu" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0); // la fenêtre de confirmation se ferme
+  const refus = carteJeu.getByRole("alert");
+  await expect(refus).toHaveCount(1); // sur la ligne du jeu, pas dans une zone lointaine
+  await expect(refus).toContainText("L'identité de ce jeu n'est pas complète : police, illustration encore « à choisir » dans sa fiche");
+  await expect(refus).toContainText("Remplis-la, puis réessaie.");
+  await expect(refus).toBeFocused();
+  await expect(refus).toHaveClass(/admin-message--erreur/);
+  await expect(page.locator("[data-refus-action]")).toHaveCount(1);
+  // Il reste jusqu'à l'action suivante : une autre fenêtre de confirmation l'efface.
+  await carteJeu.getByRole("button", { name: "Générer une clé" }).click();
+  await expect(page.locator("[data-refus-action]")).toHaveCount(0);
+  await page.getByRole("dialog").getByRole("button", { name: "Annuler" }).click();
+  await page.unroute("**/api/admin/jeux/*/etat");
+
   // --- Journal : l'action y est, avec l'avant / après ---------------------------------------------------------------------------
   await page.locator('[data-menu="journal"]').click();
   const ligne = page.locator('#journal tbody tr[data-action="renommer"]');

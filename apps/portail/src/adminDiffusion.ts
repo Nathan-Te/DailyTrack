@@ -31,6 +31,8 @@ export interface Contexte {
   recharger: (texte?: string) => Promise<void>;
   /** Un 401 : retour à l'écran de connexion. */
   sessionExpiree: () => Promise<void>;
+  /** Lot K5b : le refus d'une action confirmée (401 : la connexion ; sinon le bandeau d'erreur sur la ligne de l'action, avec le focus). `texte` : plus précis que celui du code. */
+  refuser: (e: unknown, texte?: string) => Promise<void>;
   /** L'étiquette `prod-…` du serveur (tableau de bord), `null` si inconnue. */
   etiquette: () => Promise<string | null>;
 }
@@ -52,13 +54,12 @@ function telecharger(nom: string, texte: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 5_000);
 }
 
-/** Un 401 ramène à la connexion ; le reste se dit. */
-async function surErreur(ctx: Contexte, e: unknown, dire: (texte: string) => void): Promise<void> {
-  if (e instanceof ErreurAdmin && e.statut === 401) await ctx.sessionExpiree();
-  else if (e instanceof ErreurAdmin && (e.code === "invalid_news" || e.code === "invalid_message") && Array.isArray(e.details.problemes)) {
+/** Un 401 ramène à la connexion ; le reste se dit sur la ligne de l'action (lot K5b), avec le détail des problèmes d'une nouveauté ou d'un message. */
+async function surErreur(ctx: Contexte, e: unknown): Promise<void> {
+  if (e instanceof ErreurAdmin && (e.code === "invalid_news" || e.code === "invalid_message") && Array.isArray(e.details.problemes)) {
     const lignes = (e.details.problemes as { code: string; n?: number; langue?: "fr" | "en" }[]).map((x) => (e.code === "invalid_news" ? texteProbleme(x as Parameters<typeof texteProbleme>[0]) : texteProblemeMessage(x as Parameters<typeof texteProblemeMessage>[0])));
-    dire(lignes.join(" "));
-  } else dire(texteErreur(e));
+    await ctx.refuser(e, lignes.join(" "));
+  } else await ctx.refuser(e);
 }
 
 // =================================================================================================================================================
@@ -201,7 +202,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
       apercu = false;
       await ctx.recharger(publier ? `Nouveauté « ${r.nouveaute.titre.fr} » publiée : elle est sur l'accueil et sur la page Nouveautés.` : `Brouillon « ${r.nouveaute.titre.fr || "(sans titre)"} » enregistré.`);
     } catch (e) {
-      await surErreur(ctx, e, (t) => dire("erreur", t));
+      await surErreur(ctx, e);
     }
   }
 
@@ -434,7 +435,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
                           await ctx.client.depublierNouveaute(n.id);
                           await ctx.recharger("Nouveauté dépubliée : elle est redevenue un brouillon.");
                         } catch (e) {
-                          await surErreur(ctx, e, (t) => dire("erreur", t));
+                          await surErreur(ctx, e);
                         }
                       },
                     })
@@ -451,7 +452,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
                       if (brouillon.id === n.id) brouillon = brouillonNeuf();
                       await ctx.recharger("Nouveauté supprimée.");
                     } catch (e) {
-                      await surErreur(ctx, e, (t) => dire("erreur", t));
+                      await surErreur(ctx, e);
                     }
                   },
                 }),
@@ -535,7 +536,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
         importTexte.value = "";
         await ctx.recharger(`${nouvelles.length} nouveauté${nouvelles.length > 1 ? "s" : ""} importée${nouvelles.length > 1 ? "s" : ""} en brouillon${dejaLa ? ` (${dejaLa} déjà présente${dejaLa > 1 ? "s" : ""})` : ""}${lu.ignorees ? `, ${lu.ignorees} entrée${lu.ignorees > 1 ? "s" : ""} illisible${lu.ignorees > 1 ? "s" : ""} ignorée${lu.ignorees > 1 ? "s" : ""}` : ""}. Relis-les ci-dessous, puis publie.`);
       } catch (e) {
-        await surErreur(ctx, e, (t) => dire("erreur", t));
+        await surErreur(ctx, e);
       }
     },
   });
@@ -604,7 +605,7 @@ export async function vueMessage(ctx: Contexte): Promise<Node[]> {
               await ctx.client.retirerMessage();
               await ctx.recharger("Message retiré.");
             } catch (e) {
-              await surErreur(ctx, e, (t) => dire("erreur", t));
+              await surErreur(ctx, e);
             }
           },
         }),
@@ -707,7 +708,7 @@ export async function vueMessage(ctx: Contexte): Promise<Node[]> {
       saisie.en = "";
       await ctx.recharger("Message diffusé : les joueurs le voient dans la minute qui suit.");
     } catch (e) {
-      await surErreur(ctx, e, (t) => dire("erreur", t));
+      await surErreur(ctx, e);
     }
   });
   verifier();

@@ -32,6 +32,7 @@ export const CODES_ERREUR = {
   unauthorized: { status: 401, sens: "Admin : jeton manquant ou incorrect (outils de DailyTrack), ou session du panneau absente, expirée, révoquée, ou connexion Google refusée (jamais dit pourquoi : adresse ou jeton)." },
   forbidden: { status: 403, sens: "Panneau d'administration (lot N1) : une requête qui modifie quelque chose sans l'en-tête X-Cdj-Admin: 1, ou dont l'Origin n'est pas celle du site." },
   invalid_action: { status: 400, sens: "Panneau d'administration (lot N1) : le corps d'une action est refusé (confirmation absente ou fausse, motif ou pseudo manquant, jeu ou jour illisible)." },
+  identite_incomplete: { status: 400, sens: "Panneau d'administration (lot K5b) : le jeu ne peut pas passer en `preview` ni en `on` parce que son identité (police, motif, illustration) vaut encore « à choisir » dans sa fiche ; `manque` liste les champs (`police`, `motif`, `illustration`). `off` est toujours permis." },
   unknown_result: { status: 404, sens: "Panneau d'administration (lot N1) : ce joueur n'a pas de résultat classé ce jour-là dans ce jeu." },
   invalid_news: { status: 400, sens: "Panneau d'administration (lot N2) : nouveauté refusée à l'enregistrement ou à la publication (`problemes` : titre, date, zone, français, anglais manquant, trop long) — une ligne sans anglais bloque la publication." },
   unknown_news: { status: 404, sens: "Panneau d'administration (lot N2) : cette nouveauté n'existe pas." },

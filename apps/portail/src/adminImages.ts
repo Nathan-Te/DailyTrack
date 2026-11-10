@@ -1,5 +1,5 @@
 import { bouton, el } from "@cdj/ui";
-import { ErreurAdmin, texteErreur, type ActionImage, type ImageAdmin } from "./adminDonnees";
+import { type ActionImage, type ImageAdmin } from "./adminDonnees";
 import type { Contexte } from "./adminDiffusion";
 
 // Lot C1, partie B (plateforme) — la rubrique « Images » du panneau : d'abord les images signalées ou masquées, puis les nouvelles à regarder, en galerie. Pour chacune : garder, retirer, interdire l'envoi
@@ -10,7 +10,7 @@ const p = (texte: string, classe?: string) => el("p", { classe, texte });
 const NOMS_STATUT: Record<string, string> = { visible: "Visible", masque: "Masquée (signalée)", retire: "Retirée" };
 const quand = (iso: string): string => new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
 
-function carte(ctx: Contexte, i: ImageAdmin, dire: (k: "erreur" | "info", t: string) => void): HTMLElement {
+function carte(ctx: Contexte, i: ImageAdmin): HTMLElement {
   const cadre = el("div", { classe: "admin-image__cadre", attrs: { "data-image": i.hash } });
   void ctx.client.octetsImage(i.kind, i.ref).then((src) => {
     cadre.replaceChildren(src ? el("img", { attrs: { src, alt: "", width: 96, height: 96 } }) : el("span", { classe: "admin-aide", texte: "Pas d'image" }));
@@ -26,8 +26,7 @@ function carte(ctx: Contexte, i: ImageAdmin, dire: (k: "erreur" | "info", t: str
           await ctx.client.actionImage(i.kind, i.ref, action);
           await ctx.recharger(`${libelle} : fait.`);
         } catch (e) {
-          if (e instanceof ErreurAdmin && e.statut === 401) await ctx.sessionExpiree();
-          else dire("erreur", texteErreur(e));
+          await ctx.refuser(e);
         }
       },
     });
@@ -50,13 +49,10 @@ function carte(ctx: Contexte, i: ImageAdmin, dire: (k: "erreur" | "info", t: str
 
 export async function vueImages(ctx: Contexte): Promise<Node[]> {
   const liste = await ctx.client.images();
-  const retour = el("div", { attrs: { id: "images-retour" } });
-  const dire = (kind: "erreur" | "info", texte: string) => retour.replaceChildren(el("p", { classe: ["admin-message", `admin-message--${kind}`], attrs: { role: kind === "erreur" ? "alert" : "status" }, texte }));
-  const galerie = (id: string, images: ImageAdmin[], vide: string) => (images.length === 0 ? p(vide, "admin-aide") : el("ul", { classe: "admin-images", attrs: { id } }, ...images.map((i) => carte(ctx, i, dire))));
+  const galerie = (id: string, images: ImageAdmin[], vide: string) => (images.length === 0 ? p(vide, "admin-aide") : el("ul", { classe: "admin-images", attrs: { id } }, ...images.map((i) => carte(ctx, i))));
   return [
     el("h1", { classe: "admin-titre-section", texte: "Images" }),
     p(`Les images de profil et de groupe. Une image signalée par 3 joueurs différents est masquée tout de suite ; tu décides ici (${liste.max} par liste au plus).`, "admin-aide"),
-    retour,
     el("h2", { classe: "admin-titre-section", texte: `Signalées (${liste.signalees.length})` }),
     galerie("images-signalees", liste.signalees, "Aucune image signalée."),
     el("h2", { classe: "admin-titre-section", texte: `Nouvelles (${liste.nouvelles.length})` }),

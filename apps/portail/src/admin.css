@@ -154,6 +154,18 @@
   background: var(--dj-terre);
   color: var(--dj-terre-texte);
 }
+/* Lot K5b : le refus d'une action confirmée, posé sur la ligne de l'action avec le focus (tabindex -1) : un contour de la charte le désigne, la ligne de tableau qui le porte n'a pas de bordure. */
+.admin-refus-action {
+  margin-block-start: var(--dj-espace-4);
+}
+.admin-refus-action:focus {
+  outline: var(--dj-trait) solid var(--dj-encre);
+  outline-offset: 2px;
+}
+.admin-refus-action-ligne > td {
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: 0;
+}
 .admin-message--info {
   background: var(--dj-creme-2);
 }

@@ -221,7 +221,9 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     if (corps.etat !== "off" && corps.etat !== "preview" && corps.etat !== "on") throw new HttpError(400, "invalid_action", "État attendu : off, preview ou on");
     const apres: EtatJeu = corps.etat;
     // Lot K5 : un jeu dont l'identité (police, motif, illustration) vaut encore « à choisir » ne passe ni en `preview` ni en `on` (`etatPermis`, `@cdj/core/fiche`) ; `off` est toujours permis.
-    if (apres !== "off" && (FICHES_SERVEUR.find((f) => f.id === site) as { identiteIncomplete?: true } | undefined)?.identiteIncomplete) throw new HttpError(400, "invalid_action", "L'identité du jeu n'est pas complète (police, motif ou illustration « à choisir ») : elle est à remplir dans sa fiche avant l'aperçu.");
+    // Lot K5b : un code à part, avec les champs qui manquent (`manque`) : le panneau les dit (le client n'affiche jamais un message du serveur).
+    const manque = (FICHES_SERVEUR.find((f) => f.id === site) as { identiteManque?: readonly string[] } | undefined)?.identiteManque;
+    if (apres !== "off" && manque?.length) throw new HttpError(400, "identite_incomplete", "L'identité du jeu n'est pas complète (police, motif ou illustration « à choisir ») : elle est à remplir dans sa fiche avant l'aperçu.", {}, { manque });
     const avant = await ligne(site);
     const etatAvant: EtatJeu = avant?.etat ?? "off";
     if (apres === etatAvant) return await lister(); // rien à changer : pas de ligne de journal pour rien

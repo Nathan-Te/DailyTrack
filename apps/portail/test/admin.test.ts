@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ErreurAdmin, barres, clientAdmin, heure, infobulle, retourAdmin, texteDeBarre, jourCourt, jourLong, nomAction, rang, resumeJournal, temps, texteErreur } from "../src/adminDonnees";
+import { ErreurAdmin, barres, clientAdmin, heure, infobulle, retourAdmin, texteDeBarre, jourCourt, jourLong, nomAction, rang, resumeJournal, temps, TEXTES_ERREUR, texteErreur } from "../src/adminDonnees";
 
 // Lot N1 : le panneau d'administration — les calculs purs de son affichage et son client. La page elle-même est testée de bout en bout par
 // `apps/web/e2e/admin-panneau.spec.ts` (connexion, joueur, renommer, journal).
@@ -113,6 +113,18 @@ describe("formats", () => {
     expect(texteErreur(new ErreurAdmin(409, "name_taken"))).toBe("Ce pseudo est déjà pris.");
     expect(texteErreur(new ErreurAdmin(500, "autre_chose"))).toBe("Erreur : autre_chose.");
     expect(texteErreur(new Error("x"))).toBe("Erreur inattendue.");
+  });
+
+  it("lot K5b : `identite_incomplete` se dit en français, avec les champs qui manquent quand le serveur les donne (seuls les trois noms connus sont repris)", () => {
+    const generique = "L'identité de ce jeu n'est pas complète : police, motif ou illustration encore « à choisir » dans sa fiche (`config/jeux/<id>.json`). Remplis-la, puis réessaie.";
+    expect(TEXTES_ERREUR.identite_incomplete).toBe(generique);
+    expect(texteErreur(new ErreurAdmin(400, "identite_incomplete"))).toBe(generique);
+    expect(texteErreur(new ErreurAdmin(400, "identite_incomplete", { manque: [] }))).toBe(generique);
+    expect(texteErreur(new ErreurAdmin(400, "identite_incomplete", { manque: ["illustration", "police"] }))).toBe(
+      "L'identité de ce jeu n'est pas complète : police, illustration encore « à choisir » dans sa fiche (`config/jeux/<id>.json`). Remplis-la, puis réessaie.",
+    );
+    expect(texteErreur(new ErreurAdmin(400, "identite_incomplete", { manque: ["<b>x</b>"] }))).toBe(generique);
+    expect(texteErreur(new ErreurAdmin(400, "identite_incomplete", { manque: "police" }))).toBe(generique);
   });
 });
 
