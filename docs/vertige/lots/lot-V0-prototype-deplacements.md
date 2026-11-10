@@ -16,7 +16,7 @@
 ## Mesures (Node 24, Ryzen 7 7800X3D ; Chromium avec un Radeon RX 7800 XT)
 | Quoi | Résultat |
 |---|---|
-| Déterminisme au bit près | golden : 5 parties (parcours scripté, avec souris qui tremble, 2 marches au hasard de 6 000 pas, partie vide), **empreinte de tout l'état tous les 600 pas**. Node ✓, Chromium ✓. **Firefox et WebKit : non installés ici, c'est le job `@navigateurs` de la CI.** |
+| Déterminisme au bit près | golden : 5 parties (parcours scripté, avec souris qui tremble, 2 marches au hasard de 6 000 pas, partie vide), **empreinte de tout l'état tous les 600 pas**. Node ✓, Chromium ✓, **WebKit ✓** (identiques au bit près). **Firefox ne se lance pas sur cette machine** (`spawn UNKNOWN`) : le job `@navigateurs` de la CI le lira. |
 | Rejeu de 60 / 120 s | **3,2 / 6,5 ms** (arène, 17 boîtes) ; 44 ms pour 120 s avec **200 boîtes** ; 0,34 ms pour le parcours (6,2 s). Sur Cloud Run, compter 2 à 4 fois plus (vCPU partagé) : **~15–25 ms**, et 90–180 ms avec 200 boîtes. Le coût vient des boîtes testées à chaque pas, pas de la durée. |
 | Taille de la rediffusion, 120 s | **souris synthétique** (aucune main humaine n'a joué) : 7 ko bruts (geste un quart du temps) à 22 ko (trois quarts, affichage 60 Hz), 45 ko (144 Hz) ; **pire cas 58 ko bruts, 77 000 caractères**, 32 ko en gzip. Regard à 60 Hz : environ moitié moins ; à 30 Hz : environ trois fois moins. Limite posée : 200 000 caractères. 60 s : environ moitié. `?debug&fps` donne la vraie valeur. |
 | Poids | premier chargement **49,7 ko** gzip (plafond posé : 53 ko, **provisoire, à valider**) ; **à la demande** : `corps-` 603 ko brut / **153 ko gzip** (Three.js, scène, mains, commandes), simulation de la partie 2,7 ko, panneau d'essai 1,8 ko. |
@@ -29,7 +29,7 @@
 - **Échap** : le navigateur garde la touche quand il rend la souris ; le jeu la renvoie au kit pour la pause.
 
 ## Non vérifié, ou limites
-- Firefox, WebKit, le job « Kit de bout en bout », « jeu-fictif », « Budgets » (mesuré à la main avec `mesureJeuNeuf`) : **à lire dans la CI**. Beaucoup de tests de la plateforme échouent sous Windows (chemins, fins de ligne) : détail dans la PR.
+- Firefox, le job « Kit de bout en bout », « jeu-fictif », « Budgets » (mesuré à la main avec `mesureJeuNeuf`) : **à lire dans la CI**. Beaucoup de tests de la plateforme échouent sous Windows (chemins, fins de ligne) : détail dans la PR.
 - **Jamais joué à la souris ni à la manette réelles** : le pointeur verrouillé et la manette ne sont pas testables ici. Les sensations sont à juger par Nathan.
 - **Mentions légales** : `vertige:confort` (et les quatre clés du kit) doivent y être décrites **dès que les textes « à remplacer » partiront** : lot de la plateforme, à proposer avec V1.
 

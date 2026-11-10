@@ -106,14 +106,15 @@ test.describe("les écrans du kit : mise en page", () => {
       await context.close();
     });
     test(`pause et fin de partie à ${taille.nom}`, async ({ browser }) => {
-      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=${taille.pc ? 0 : 1}`);
+      // Sur un écran tactile Vertige n'a pas de partie (« À jouer sur ordinateur ») : l'écran de fin n'y arrive jamais. La mise en page de la pause et de la fin aux petites tailles se vérifie donc avec la partie du PC.
+      const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
       await page.setViewportSize({ width: taille.width, height: taille.height });
       await lancer(page);
       await page.locator("#jeu-hud-pause").click();
       await expect(page.locator("#jeu-pause")).toBeVisible();
       await verifier(page, "la pause", taille);
       await page.locator("#jeu-reprendre").click();
-      await page.evaluate(() => window.__jeu.avancer(6000)); // le temps est écoulé : l'arrivée
+      await page.evaluate(() => window.__jeu.avancer(14500)); // les 120 s sont écoulées sans arriver : la fin, au pire temps
       await expect(page.locator("#jeu-fin")).toBeVisible();
       await verifier(page, "la fin de partie", taille);
       await context.close();
