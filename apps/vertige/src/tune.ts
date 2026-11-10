@@ -26,10 +26,10 @@ const NOMS: Record<keyof Reglages, [string, string]> = {
   dashDuree: ["Dash : durée (ms)", "Dash: duration (ms)"],
   dashRecharge: ["Dash : recharge (ms)", "Dash: cooldown (ms)"],
 };
-const CONFORT_NOMS: Record<"sensibilite" | "champ", [string, string]> = { sensibilite: ["Sensibilité (%)", "Sensitivity (%)"], champ: ["Champ de vision (°)", "Field of view (°)"] };
+const CONFORT_NOMS: Record<"sensibilite" | "champ" | "transition", [string, string]> = { sensibilite: ["Sensibilité (%)", "Sensitivity (%)"], champ: ["Champ de vision (°)", "Field of view (°)"], transition: ["Transition de la caméra à une bascule (ms)", "Camera transition when gravity turns (ms)"] };
 const TEXTES = {
-  fr: { ouvrir: "Sensations", titre: "Sensations (essai)", note: "Un réglage de la simulation recommence le parcours : la partie n'est plus classable.", roulis: "Inclinaison sur le mur", exporter: "Exporter en JSON", copie: "Copié", retablir: "Rétablir", fermer: "Fermer" }, // i18n-ok: le panneau d'essai (`?debug&tune`) a ses deux langues ici, il n'existe pas en production
-  en: { ouvrir: "Feel", titre: "Feel (test)", note: "Changing a simulation setting restarts the course: the run can no longer be ranked.", roulis: "Tilt on the wall", exporter: "Export as JSON", copie: "Copied", retablir: "Reset", fermer: "Close" }, // i18n-ok: le panneau d'essai (`?debug&tune`) a ses deux langues ici, il n'existe pas en production
+  fr: { ouvrir: "Sensations", titre: "Sensations (essai)", note: "Un réglage de la simulation recommence le parcours : la partie n'est plus classable.", roulis: "Inclinaison sur le mur", balancement: "Balancement de la marche", exporter: "Exporter en JSON", copie: "Copié", retablir: "Rétablir", fermer: "Fermer" }, // i18n-ok: le panneau d'essai (`?debug&tune`) a ses deux langues ici, il n'existe pas en production
+  en: { ouvrir: "Feel", titre: "Feel (test)", note: "Changing a simulation setting restarts the course: the run can no longer be ranked.", roulis: "Tilt on the wall", balancement: "Walking sway", exporter: "Export as JSON", copie: "Copied", retablir: "Reset", fermer: "Close" }, // i18n-ok: le panneau d'essai (`?debug&tune`) a ses deux langues ici, il n'existe pas en production
 } as const;
 
 export interface Tune {
@@ -76,7 +76,7 @@ export function monterTune(hote: HTMLElement, langue: Langue, etat: { reglages: 
       surSimulation(etat.reglages);
     });
   }
-  for (const k of ["sensibilite", "champ"] as const) {
+  for (const k of ["sensibilite", "champ", "transition"] as const) {
     curseur(k, CONFORT_NOMS[k][i], BORNES_CONFORT[k][0], BORNES_CONFORT[k][1], etat.confort[k], (v) => {
       etat.confort = { ...etat.confort, [k]: v };
       surConfort({ [k]: v });
@@ -91,7 +91,16 @@ export function monterTune(hote: HTMLElement, langue: Langue, etat: { reglages: 
   });
   const roulisLigne = el("label", "vertige-tune__ligne vertige-tune__ligne--case");
   roulisLigne.append(roulis, el("span", "", tx.roulis));
-  panneau.append(roulisLigne);
+  const balancement = el("input", "");
+  balancement.type = "checkbox";
+  balancement.checked = etat.confort.balancement;
+  balancement.addEventListener("change", () => {
+    etat.confort = { ...etat.confort, balancement: balancement.checked };
+    surConfort({ balancement: balancement.checked });
+  });
+  const balancementLigne = el("label", "vertige-tune__ligne vertige-tune__ligne--case");
+  balancementLigne.append(balancement, el("span", "", tx.balancement));
+  panneau.append(roulisLigne, balancementLigne);
 
   const json = el("textarea", "vertige-tune__json");
   json.readOnly = true;
@@ -100,7 +109,7 @@ export function monterTune(hote: HTMLElement, langue: Langue, etat: { reglages: 
   const exporter = el("button", "vertige-bouton", tx.exporter);
   exporter.type = "button";
   exporter.addEventListener("click", () => {
-    json.value = JSON.stringify({ reglages: etat.reglages, confort: { sensibilite: etat.confort.sensibilite, champ: etat.confort.champ, roulis: etat.confort.roulis } });
+    json.value = JSON.stringify({ reglages: etat.reglages, confort: { sensibilite: etat.confort.sensibilite, champ: etat.confort.champ, roulis: etat.confort.roulis, balancement: etat.confort.balancement, transition: etat.confort.transition } });
     json.hidden = false;
     json.select();
     void navigator.clipboard?.writeText(json.value).then(
@@ -112,17 +121,18 @@ export function monterTune(hote: HTMLElement, langue: Langue, etat: { reglages: 
   retablir.type = "button";
   retablir.addEventListener("click", () => {
     etat.reglages = { ...REGLAGES_DEFAUT };
-    etat.confort = { ...etat.confort, sensibilite: CONFORT_DEFAUT.sensibilite, champ: CONFORT_DEFAUT.champ, roulis: CONFORT_DEFAUT.roulis };
+    etat.confort = { ...etat.confort, sensibilite: CONFORT_DEFAUT.sensibilite, champ: CONFORT_DEFAUT.champ, roulis: CONFORT_DEFAUT.roulis, balancement: CONFORT_DEFAUT.balancement, transition: CONFORT_DEFAUT.transition };
     for (const k of CLES_REGLAGES) {
       champs.get(k)!.value = String(etat.reglages[k]);
       sorties.get(k)!.textContent = String(etat.reglages[k]);
     }
-    for (const k of ["sensibilite", "champ"] as const) {
+    for (const k of ["sensibilite", "champ", "transition"] as const) {
       champs.get(k)!.value = String(etat.confort[k]);
       sorties.get(k)!.textContent = String(etat.confort[k]);
     }
     roulis.checked = etat.confort.roulis;
-    surConfort({ sensibilite: etat.confort.sensibilite, champ: etat.confort.champ, roulis: etat.confort.roulis });
+    balancement.checked = etat.confort.balancement;
+    surConfort({ sensibilite: etat.confort.sensibilite, champ: etat.confort.champ, roulis: etat.confort.roulis, balancement: etat.confort.balancement, transition: etat.confort.transition });
     surSimulation(etat.reglages);
   });
   const fermer = el("button", "vertige-bouton", tx.fermer);

@@ -4,14 +4,14 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { M, type Boite, type Niveau } from "@cdj/vertige-sim";
-import type { StyleVertige } from "./confort";
+import { DIRS, M, type Boite, type Niveau } from "@cdj/vertige-sim";
+import { Fenetres } from "./fenetres";
 import { Habillage, type RoleMat } from "./rendu";
 
 // Le monde que l'on voit : le ciel en dégradé, les lumières, le soleil carré, les blocs du niveau (ceux de la simulation, à l'identique), puis le DÉCOR qui ne bloque jamais — bannières, braseros, gemmes, îlots
 // lointains, nuages, et le cadre de pierre qui tourne de travers (un objet de travers n'a pas de collision : la simulation ne connaît que des boîtes alignées sur les axes). Tout vient de la maquette jouable.
+// Lot V1 : les surfaces de gravité (des blocs bleu-violet cerclés de clair), les orbes (une bille et sa flèche, qui montre la direction où la gravité va tourner) et les fenêtres des portails (`fenetres.ts`).
 export interface OptionsMonde {
-  style: StyleVertige;
   bloom: boolean;
   ombres: boolean;
   champ: number;
@@ -30,7 +30,6 @@ export class Monde {
   readonly camera: THREE.PerspectiveCamera;
   readonly renderer: THREE.WebGLRenderer;
   readonly hab: Habillage;
-  readonly mains = new THREE.Group();
   private readonly composer: EffectComposer;
   private readonly bloom: UnrealBloomPass;
   private readonly ciel: THREE.Mesh;
@@ -40,10 +39,14 @@ export class Monde {
   private readonly flammes: THREE.Mesh[] = [];
   private readonly bannieres: THREE.Mesh[] = [];
   private readonly gemmes: { mesh: THREE.Mesh; base: number }[] = [];
+  private readonly orbes: { groupe: THREE.Group; bille: THREE.Mesh; base: number }[] = [];
+  readonly fenetres: Fenetres | null;
   private readonly nuages = new THREE.Group();
   private readonly cadre = new THREE.Group();
   private readonly cible = new THREE.Vector3();
+  private readonly aretes: THREE.LineSegments[] = [];
   private bloomActif: boolean;
+  private imagesDessinees = 0;
   private largeur = 1;
   private hauteur = 1;
 
@@ -63,7 +66,7 @@ export class Monde {
     this.camera = new THREE.PerspectiveCamera(opts.champ, 1, 0.05, 700);
     this.camera.rotation.order = "YXZ";
     this.scene.add(this.camera);
-    this.hab = new Habillage(opts.style);
+    this.hab = new Habillage();
 
     // Le ciel en dégradé.
     this.ciel = new THREE.Mesh(
@@ -91,7 +94,7 @@ export class Monde {
 
     this.construireNiveau();
     this.construireDecorLointain();
-    this.camera.add(this.mains);
+    this.fenetres = (niveau.portails?.length ?? 0) > 0 ? new Fenetres(this.scene, niveau) : null;
 
     // Le post-traitement de « Lumière douce » : le halo (bloom) puis la sortie (tons ACES).
     this.composer = new EffectComposer(rendu);
@@ -99,7 +102,7 @@ export class Monde {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.6, 0.85);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
-    this.appliquerStyle(opts.style);
+    this.configurer();
   }
 
   // ---------------------------------------------------------------- le niveau
@@ -128,7 +131,7 @@ export class Monde {
     s.lineTo(-0.2, -1.85);
     s.lineTo(-0.45, -2.2);
     s.lineTo(-0.45, 0);
-    const m = this.hab.habiller(new THREE.Mesh(new THREE.ShapeGeometry(s)), "rouge", false);
+    const m = this.hab.habiller(new THREE.Mesh(new THREE.ShapeGeometry(s)), "rouge");
     m.position.set(x, y, z);
     m.rotation.y = ry;
     m.scale.setScalar(k);
@@ -143,7 +146,7 @@ export class Monde {
     const coupe = this.hab.habiller(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 0.3, 6)), "bois");
     coupe.position.set(x, y + 1.0, z);
     coupe.castShadow = true;
-    const f = this.hab.habiller(new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.75, 5)), "flamme", false);
+    const f = this.hab.habiller(new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.75, 5)), "flamme");
     f.position.set(x, y + 1.5, z);
     const l = new THREE.PointLight("#FFB347", 6, 7, 2);
     l.position.set(x, y + 1.7, z);
@@ -155,7 +158,13 @@ export class Monde {
     const n = this.niveau;
     const bb = new THREE.Box3();
     for (const b of n.blocs) {
-      this.blocBoite(b.boite, b.role);
+      const m = this.blocBoite(b.boite, b.gravite ? "surface" : b.role);
+      if (b.gravite) {
+        // Une surface de gravité : ses arêtes en clair, pour la reconnaître de loin.
+        const aretes = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: "#FFFFFF" }));
+        m.add(aretes);
+        this.aretes.push(aretes);
+      }
       bb.expandByPoint(new THREE.Vector3(metres(b.boite.x0), metres(b.boite.y0), metres(b.boite.z0)));
       bb.expandByPoint(new THREE.Vector3(metres(b.boite.x1), metres(b.boite.y1), metres(b.boite.z1)));
     }
@@ -203,6 +212,23 @@ export class Monde {
       this.scene.add(m);
       this.gemmes.push({ mesh: m, base: metres(g.y) });
     }
+    // Les orbes de gravité : une bille lumineuse et, autour, une flèche qui montre la direction où la gravité va tourner (alignée sur le monde).
+    for (const o of n.orbes ?? []) {
+      const groupe = new THREE.Group();
+      const bille = this.hab.habiller(new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1)), "orbe");
+      const dir = new THREE.Vector3(...DIRS[o.dir]!);
+      const fleche = new THREE.Group();
+      const tige = this.hab.habiller(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.6, 8)), "orbe");
+      tige.position.y = 0.75;
+      const pointe = this.hab.habiller(new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.45, 10)), "orbe");
+      pointe.position.y = 1.28;
+      fleche.add(tige, pointe);
+      fleche.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      groupe.add(bille, fleche);
+      groupe.position.set(metres(o.x), metres(o.y), metres(o.z));
+      this.scene.add(groupe);
+      this.orbes.push({ groupe, bille, base: metres(o.y) });
+    }
     // L'arrivée : un cadre de pierre et sa lueur rose (le portail de la maquette, qui ne mène plus nulle part).
     if (n.arrivee) {
       const a = n.arrivee;
@@ -213,7 +239,7 @@ export class Monde {
         m.castShadow = true;
         porte.add(m);
       }
-      const lueur = this.hab.habiller(new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.3, 0.1)), "portail", false);
+      const lueur = this.hab.habiller(new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.3, 0.1)), "portail");
       porte.add(lueur);
       porte.position.set(metres(a.x0 + a.x1) / 2, metres(a.y0) + 1.75, metres(a.z0 + a.z1) / 2);
       if (a.z1 - a.z0 > a.x1 - a.x0) porte.rotation.y = Math.PI / 2;
@@ -248,7 +274,7 @@ export class Monde {
     this.banniere(-14, 22.8, -90.98, 0, 1.4);
     this.brasero(-17.5, 14, -88);
     this.brasero(-10.5, 14, -88);
-    const voile = this.hab.habiller(new THREE.Mesh(new THREE.PlaneGeometry(6, 9)), "portail", false);
+    const voile = this.hab.habiller(new THREE.Mesh(new THREE.PlaneGeometry(6, 9)), "portail");
     voile.position.set(-14, 18.5, -92.9);
     this.scene.add(voile);
   }
@@ -289,7 +315,7 @@ export class Monde {
       }
       const geo = mergeGeometries(morceaux)!;
       for (const g of morceaux) g.dispose();
-      const nuage = this.hab.habiller(new THREE.Mesh(geo), "nuage", false);
+      const nuage = this.hab.habiller(new THREE.Mesh(geo), "nuage");
       const a = r() * Math.PI * 2;
       const rayon = 20 + r() * 160;
       nuage.position.set(Math.cos(a) * rayon - 6, -26 + r() * 22, Math.sin(a) * rayon - 50);
@@ -299,22 +325,18 @@ export class Monde {
     this.scene.add(this.nuages);
   }
 
-  // ---------------------------------------------------------------- le style et la taille
-  appliquerStyle(style: StyleVertige): void {
-    this.hab.appliquer(style);
-    const doux = style === "doux";
-    this.renderer.toneMapping = doux ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-    this.renderer.toneMappingExposure = doux ? 1.15 : 1;
-    this.bloom.enabled = doux && this.bloomActif;
-    this.scene.fog = new THREE.Fog(doux ? "#DCE7F5" : "#DCE9F2", doux ? 90 : 110, doux ? 460 : 480);
-    const u = (this.ciel.material as THREE.ShaderMaterial).uniforms;
-    (u.haut!.value as THREE.Color).set(doux ? "#5E97E0" : "#7DB4E6");
-    (u.horizon!.value as THREE.Color).set(doux ? "#F4E4D6" : "#E9F1F7");
-    this.hemi.intensity = doux ? 1.0 : 1.6;
-    this.soleil.intensity = doux ? 3.2 : 1.6;
-    this.soleil.shadow.radius = doux ? 4 : 1;
-    this.soleil.shadow.bias = doux ? -0.0008 : -0.003;
-    this.soleil.shadow.normalBias = doux ? 0.06 : 0.12;
+  // ---------------------------------------------------------------- le rendu et la taille
+  /** « Lumière douce » : tons ACES, brume, lumières, ombres douces. */
+  private configurer(): void {
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
+    this.bloom.enabled = this.bloomActif;
+    this.scene.fog = new THREE.Fog("#DCE7F5", 90, 460);
+    this.hemi.intensity = 1.0;
+    this.soleil.intensity = 3.2;
+    this.soleil.shadow.radius = 4;
+    this.soleil.shadow.bias = -0.0008;
+    this.soleil.shadow.normalBias = 0.06;
   }
 
   redimensionner(w: number, h: number): void {
@@ -327,7 +349,13 @@ export class Monde {
   }
 
   /** La vie du décor : flammes, gemmes, bannières, cadre, nuages, soleil ; `prises` : les gemmes déjà prises. */
-  animer(t: number, dt: number, prises: readonly boolean[]): void {
+  animer(t: number, dt: number, prises: readonly boolean[], orbesT: readonly number[] = []): void {
+    this.orbes.forEach((o, i) => {
+      const eteinte = (orbesT[i] ?? 0) > 0;
+      o.groupe.visible = !eteinte;
+      o.groupe.position.y = o.base + Math.sin(t * 2.2 + o.base + i) * 0.12;
+      o.bille.rotation.y += dt * 1.2;
+    });
     this.gemmes.forEach((g, i) => {
       g.mesh.visible = !prises[i];
       g.mesh.rotation.y += dt * 1.6;
@@ -338,23 +366,37 @@ export class Monde {
     this.cadre.rotation.z += dt * 0.05;
     this.cadre.rotation.y += dt * 0.02;
     this.nuages.position.x = Math.sin(t * 0.05) * 3;
-    this.disque.position.copy(this.camera.position).addScaledVector(DIR_SOLEIL, 420);
-    this.disque.lookAt(this.camera.position);
+    this.placerDisque(this.camera.position);
     this.soleil.position.copy(this.cible).addScaledVector(DIR_SOLEIL, 120);
   }
 
+  /** Dessine l'image : d'abord les fenêtres des portails visibles (une texture chacune, vue par la caméra virtuelle), puis la scène, avec le halo. La caméra a déjà sa pose. */
   dessiner(): void {
-    if (this.hab.style === "doux") this.composer.render();
-    else this.renderer.render(this.scene, this.camera);
+    this.camera.updateMatrixWorld(true);
+    this.fenetres?.rendre(this.renderer, this.camera, (c) => this.placerDisque(c.position), () => undefined, this.imagesDessinees > 0);
+    this.placerDisque(this.camera.position);
+    this.composer.render();
+    this.imagesDessinees++;
+  }
+
+  /** Le disque du soleil est à 420 m dans la direction du soleil, vu de la caméra qui dessine. */
+  private placerDisque(p: THREE.Vector3): void {
+    this.disque.position.copy(p).addScaledVector(DIR_SOLEIL, 420);
+    this.disque.lookAt(p);
   }
 
   /** Le halo se coupe et se rallume (pour mesurer ce qu'il coûte). */
   reglerHalo(actif: boolean): void {
     this.bloomActif = actif;
-    this.bloom.enabled = actif && this.hab.style === "doux";
+    this.bloom.enabled = actif;
   }
 
   detruire(): void {
+    this.fenetres?.detruire();
+    for (const a of this.aretes) {
+      a.geometry.dispose();
+      (a.material as THREE.Material).dispose();
+    }
     this.hab.dispose();
     this.composer.dispose();
     this.renderer.dispose();

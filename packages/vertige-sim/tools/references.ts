@@ -1,10 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { Rng, daysFromCivil, formatDay } from "@cdj/core";
-import { NOMS_NIVEAUX, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, dailyVertige, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, verifier, type Commande } from "../src/index";
-import { ETAPES_PARCOURS, jouerEtapes } from "./robot";
+import { NOMS_NIVEAUX, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, dailyVertige, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, Partie, verifier, type Commande, type NomNiveau } from "../src/index";
+import { ETAPES_PARCOURS, jouerCibles, jouerEtapes, marcheVersDesCibles } from "./robot";
 
-// Le golden de Vertige : `npm run golden:vertige -w @cdj/vertige-sim`. Dix jours (l'empreinte de leur contenu), les niveaux (l'empreinte de leurs boîtes) et des rediffusions de référence : le parcours
-// par le joueur scripté, le même avec une souris qui tremble, deux marches au hasard semé (le bac à sable et le mur : toutes les touches, tous les contacts), une partie vide. Chacune porte ses
+// Le golden de Vertige : `npm run golden:vertige -w @cdj/vertige-sim`. Dix jours (l'empreinte de leur contenu), les niveaux (l'empreinte de leurs boîtes, orbes et portails) et des rediffusions de référence : le parcours
+// par le joueur scripté, le même avec une souris qui tremble, deux marches au hasard semé (le bac à sable et le mur : toutes les touches, tous les contacts), une partie vide, et (lot V1) la GRAVITÉ ET LES PORTAILS : le cube
+// (six orbes à la suite : les six directions de la gravité), le parcours des portails (trois paires et une orbe) joué par le joueur scripté, un va-et-vient entre deux portails, et des marches au hasard dans la salle de
+// la gravité, celle des portails et le cube. Chacune porte ses
 // empreintes d'état tous les 600 pas. Il ne se régénère jamais sans monter la version concernée (`VERTIGE_SIM_VERSION` pour les rediffusions, `VERTIGE_GENERATOR_VERSION` pour le contenu).
 const jours = Array.from({ length: 10 }, (_, i) => daysFromCivil(2026, 11, 2) + i * 3);
 const jourRef = jours[0]!;
@@ -25,6 +27,25 @@ function marcheAuHasard(graine: number, pas: number): Commande[] {
   return out;
 }
 
+/** Les commandes jusqu'au dernier pas joué : une rediffusion qui continue après l'arrivée est refusée. */
+function jusquaLaFin(nom: NomNiveau, commandes: Commande[]): Commande[] {
+  const r = rejouerCommandesJusqua(nom, commandes);
+  return commandes.slice(0, r);
+}
+function rejouerCommandesJusqua(nom: NomNiveau, commandes: readonly Commande[]): number {
+  const p = new Partie(niveau(nom));
+  for (let i = 0; i < commandes.length && !p.finie; i++) p.avancer(commandes[i]!);
+  return p.tick;
+}
+const orbesCube = niveau("cube").orbes!.map((o): [number, number, number] => [o.x / 1_000_000, o.y / 1_000_000, o.z / 1_000_000]);
+const cubeRobot = jouerCibles("cube", orbesCube, { apres: 240 });
+const portailsRobot = jouerCibles("portails", [[-6, 1.2, -6], [14, 1.2, -10], [34, 1.2, -10], [40.9, 5.5, -3], [42.5, 1, -3.5]], { apres: 10, maxPas: 3000 });
+const vaEtVient = jouerCibles("portails", Array.from({ length: 40 }, (_, i): [number, number, number] => (i % 2 === 0 ? [-6, 1.2, -6] : [14, 1.2, -20])), { maxPas: 3000 });
+/** Les points que les marches au hasard visent : sous le plafond marqué, contre les murs marqués, aux orbes ; aux portails et à l'orbe de l'arrivée. */
+const POINTS = {
+  gravite: [[-12, 0, 0], [-20.5, 1, 0], [-12, 0, -9], [8, 0.9, -4], [12, 0.9, 6], [19, 3, 0], [0, 0, 12]] as [number, number, number][],
+  portails: [[-6, 1.2, -6], [14, 1.2, -20], [14, 1.2, -10], [26, 1.2, -10], [34, 1.2, -10], [40.9, 5.5, -3], [0, 0, 10]] as [number, number, number][],
+};
 const robot = jouerEtapes("parcours", ETAPES_PARCOURS);
 const robotSouris = jouerEtapes("parcours", ETAPES_PARCOURS, { tremblement: (n) => [Math.round(22 * Math.sin(n / 7)), Math.round(14 * Math.sin(n / 11))] });
 const refs: { nom: string; scenario: string | null; commandes: Commande[] }[] = [
@@ -33,6 +54,12 @@ const refs: { nom: string; scenario: string | null; commandes: Commande[] }[] = 
   { nom: "bac-a-sable-hasard", scenario: "bac-a-sable", commandes: marcheAuHasard(7, 6000) },
   { nom: "mur-hasard", scenario: "mur", commandes: marcheAuHasard(11, 6000) },
   { nom: "vide", scenario: null, commandes: [] },
+  { nom: "cube-six-directions", scenario: "cube", commandes: jusquaLaFin("cube", cubeRobot.commandes) },
+  { nom: "portails-parcours", scenario: "portails", commandes: jusquaLaFin("portails", portailsRobot.commandes) },
+  { nom: "portails-va-et-vient", scenario: "portails", commandes: jusquaLaFin("portails", vaEtVient.commandes) },
+  { nom: "gravite-hasard", scenario: "gravite", commandes: marcheVersDesCibles("gravite", 23, POINTS.gravite, 9000) },
+  { nom: "portails-hasard", scenario: "portails", commandes: marcheVersDesCibles("portails", 11, POINTS.portails, 9000) },
+  { nom: "cube-hasard", scenario: "cube", commandes: marcheVersDesCibles("cube", 31, orbesCube, 9000) },
 ];
 const rediffusions = refs.map((r) => {
   const c = r.scenario ? { jour: 0, g: contenu.g, niveau: r.scenario as never } : contenu;
@@ -57,9 +84,9 @@ export const PARTIES_ESSAIS: readonly { readonly code: string; readonly temps: n
 );
 
 const sortie = {
-  _: "Golden de Vertige (lot V0). Régénérer : npm run golden:vertige -w @cdj/vertige-sim, seulement en montant la version concernée.",
-  sim: 1,
-  generateur: 1,
+  _: "Golden de Vertige (lots V0 et V1). Régénérer : npm run golden:vertige -w @cdj/vertige-sim, seulement en montant la version concernée.",
+  sim: VERTIGE_SIM_VERSION,
+  generateur: VERTIGE_GENERATOR_VERSION,
   jours: jours.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyVertige(j)) })),
   niveaux: NOMS_NIVEAUX.map((n) => ({ nom: n, empreinte: empreinteNiveau(niveau(n)) })),
   rediffusions,
@@ -67,3 +94,5 @@ const sortie = {
 writeFileSync(new URL("../test/fixtures/golden-vertige.json", import.meta.url), JSON.stringify(sortie, null, 2) + "\n");
 console.log("temps des parties d'essai :", essais.map((e) => e.temps).join(" "));
 console.log("golden écrit :", rediffusions.map((r) => `${r.nom}=${r.resultat.arrive ? r.resultat.ticks : "–"}`).join(" "));
+console.log("bascules / traversées :", rediffusions.map((r) => `${r.nom}=${r.resultat.bascules}/${r.resultat.traversees}`).join(" "));
+console.log("orientations du cube :", cubeRobot.orientations.join(","));

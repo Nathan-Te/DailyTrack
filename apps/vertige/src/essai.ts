@@ -1,16 +1,14 @@
 import { estNomNiveau, type NomNiveau } from "@cdj/vertige-sim";
-import type { StyleVertige } from "./confort";
 
-// Les options d'ESSAI de Vertige, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9), sauf `style` (un choix de rendu, sans effet sur la partie) :
-//   · `?scenario=bac-a-sable|mur|parcours` : une arène (murs, marches, trous de 2 à 10 m), un long mur au-dessus du vide, ou le parcours de la maquette (sans le portail) ;
-//   · `?style=doux|cartouche` : le style de rendu (« Lumière douce » ou « Cartouche ») ; les touches 1 et 2 le changent en partie ;
-//   · `?debug&tune` : le panneau des sensations (vitesses, saut, gravité, mur, dash, sensibilité, champ de vision, roulis) et l'export en JSON ; `&reglages=<JSON>` : des réglages collés (ceux que le panneau exporte) ;
+// Les options d'ESSAI de Vertige, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9) :
+//   · `?scenario=bac-a-sable|mur|parcours|gravite|portails|cube` : une arène (murs, marches, trous de 2 à 10 m), un long mur au-dessus du vide, le parcours de la maquette (sans le portail), la salle de la gravité (surfaces et orbes
+//     côte à côte), la salle des portails (trois paires et un court parcours) ou le cube (six orbes, les six directions de la gravité) ;
+//   · `?debug&tune` : le panneau des sensations (vitesses, saut, gravité, mur, dash, sensibilité, champ de vision, roulis, balancement, transition de la caméra à une bascule) et l'export en JSON ; `&reglages=<JSON>` : des réglages collés (ceux que le panneau exporte) ;
 //   · `?debug&demo` : le joueur scripté du parcours joue à ta place (captures, mesures d'images par seconde : le même parcours à chaque fois) ;
 //   · `?debug&fps` : les images par seconde, les appels de dessin et la taille de la rediffusion ; `&bloom=0` et `&ombres=0` coupent le halo et les ombres (pour mesurer ce qu'ils coûtent).
 // Une partie d'essai n'est JAMAIS classée (`classable` de la définition) ; la rediffusion d'un scénario nomme le scénario et le serveur la refuse.
 export interface Essai {
   scenario: NomNiveau | null;
-  style: StyleVertige | null;
   tune: boolean;
   fps: boolean;
   /** Le joueur scripté joue (captures et mesures). */
@@ -29,9 +27,7 @@ export interface Essai {
 
 export function lireEssai(search: string, restreint: boolean): Essai {
   const q = new URLSearchParams(search);
-  const s = q.get("style");
-  const style: StyleVertige | null = s === "doux" || s === "cartouche" ? s : null;
-  const vide: Essai = { scenario: null, style, tune: false, fps: false, demo: false, debug: false, reglages: null, confort: null, bloom: true, ombres: true, essai: false };
+  const vide: Essai = { scenario: null, tune: false, fps: false, demo: false, debug: false, reglages: null, confort: null, bloom: true, ombres: true, essai: false };
   if (restreint) return vide;
   const nom = q.get("scenario") ?? "";
   const scenario = estNomNiveau(nom) ? nom : null;
@@ -51,7 +47,6 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   const tune = debug && q.has("tune");
   return {
     scenario,
-    style,
     tune,
     fps: debug && q.has("fps"),
     demo: debug && q.has("demo"),

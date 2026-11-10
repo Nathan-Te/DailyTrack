@@ -1,19 +1,24 @@
-import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, YEUX, chargeDe, ecrireTemps, enregistrer, enregistrerScenario, niveau, reglagesDe, type Commande, type Contenu, type Reglages } from "@cdj/vertige-sim";
+import * as THREE from "three";
+import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, chargeDe, ecrireTemps, enregistrer, enregistrerScenario, niveau, reglagesDe, type Commande, type Contenu, type Reglages } from "@cdj/vertige-sim";
 import { commandesDuJeu } from "@cdj/kit/jeu/commandes";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { BUILD_RESTRICTED, gameStorage } from "@cdj/kit/stockage";
 import { Controles } from "./controles";
-import { BORNES_CONFORT, confortDe, ecrireConfort, lireConfort, type Confort, type StyleVertige } from "./confort";
+import { BORNES_CONFORT, confortDe, ecrireConfort, lireConfort, type Confort } from "./confort";
 import { lireEssai } from "./essai";
 import { FICHE } from "./fiche";
-import { creerMains } from "./mains";
 import { Monde } from "./monde";
 
-// La partie de Vertige, côté jeu : la simulation (`Partie` de `@cdj/vertige-sim`, entière, 120 pas par seconde), le monde que l'on voit (`monde.ts`), les commandes (`controles.ts`), la caméra, les mains. **De
+// La partie de Vertige, côté jeu : la simulation (`Partie` de `@cdj/vertige-sim`, entière, 120 pas par seconde), le monde que l'on voit (`monde.ts`), les commandes (`controles.ts`), la caméra. **De
 // l'affichage seulement** autour de la simulation : à chaque pas on lit les commandes, la simulation avance, et cette suite de commandes est la rediffusion. La caméra lit l'état de la simulation (position, lacet,
-// tangage) et y ajoute le mouvement de souris pas encore joué, pour que la vue suive la main sans attendre le pas suivant.
+// tangage) et y ajoute le mouvement de souris pas encore joué, pour que la vue suive la main sans attendre le pas suivant. Lot V1 : la caméra est celle du repère de gravité (`sim.m`, une rotation entière) ; quand la gravité tourne,
+// la simulation bascule d'un coup et SEULE la caméra fait la transition (`confort.transition`, 0,3 s) ; quand l'œil est dans la poche d'un portail, la caméra est placée de l'autre côté (`fenetres.ts`), sans saut.
+// Le retour de sensation passe par la caméra (pas de mains) : champ de vision au dash, roulis sur le mur, léger balancement de la marche.
 const NEUTRE: Commande = { k: 0, dl: 0, dt: 0 };
 const RAD = (2 * Math.PI) / TOUR;
+/** La matrice d'orientation entière de la simulation (rangée par rangée) → un quaternion. */
+const matriceTrois = new THREE.Matrix4();
+const quatDe = (m: readonly number[], cible: THREE.Quaternion): THREE.Quaternion => cible.setFromRotationMatrix(matriceTrois.set(m[0]!, m[1]!, m[2]!, 0, m[3]!, m[4]!, m[5]!, 0, m[6]!, m[7]!, m[8]!, 0, 0, 0, 0, 1));
 
 /** Une partie qui ne fait rien : l'écran tactile n'a pas de partie (le message dit où jouer). */
 function partieInerte(hote: HTMLElement, message: string): PartieDuJeu {
@@ -37,15 +42,14 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   const nomNiveau = essai.scenario ?? contenu.niveau;
   const niv = niveau(nomNiveau);
   const stockage = gameStorage();
-  const confort: Confort = { ...confortDe(essai.confort, lireConfort(stockage)), ...(essai.style ? { style: essai.style } : {}) };
+  const confort: Confort = confortDe(essai.confort, lireConfort(stockage));
   let reglages: Reglages = essai.reglages ? reglagesDe(essai.reglages) : { ...REGLAGES_DEFAUT };
 
   const racine = el("div", "vertige-scene");
   racine.setAttribute("role", "img");
   racine.setAttribute("aria-label", o.libelle);
   hote.append(racine);
-  const monde = new Monde(racine, niv, { style: confort.style, bloom: essai.bloom, ombres: essai.ombres, champ: confort.champ });
-  const mains = creerMains(monde.hab, monde.mains);
+  const monde = new Monde(racine, niv, { bloom: essai.bloom, ombres: essai.ombres, champ: confort.champ });
   const canevas = monde.renderer.domElement;
   const commandes = (() => {
     try {
@@ -66,6 +70,9 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
     enregistre = [];
     controles.effacer();
     roulis = 0;
+    basculesVues = 0;
+    rendu = null;
+    correction = null;
   };
 
   // --- Les surimpressions ---
@@ -116,7 +123,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   };
   document.addEventListener("pointerlockchange", surVerrou);
 
-  // --- Le confort : sensibilité, champ de vision, roulis, style ---
+  // --- Le confort : sensibilité, champ de vision, roulis, balancement ---
   const panneau = el("div", "vertige-confort");
   panneau.hidden = true;
   const sauver = (): void => ecrireConfort(stockage, confort);
@@ -139,13 +146,6 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
     l.append(nom, sortie, champ);
     return l;
   };
-  const boutonsStyle = (["doux", "cartouche"] as const).map((s) => {
-    const b = el("button", "vertige-bouton", o.t(`confort.style.${s}`));
-    b.type = "button";
-    b.dataset.style = s;
-    b.addEventListener("click", () => changerStyle(s));
-    return b;
-  });
   const roulisCase = el("input", "");
   roulisCase.type = "checkbox";
   roulisCase.checked = confort.roulis;
@@ -155,6 +155,15 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   });
   const roulisLigne = el("label", "vertige-confort__ligne vertige-confort__ligne--case");
   roulisLigne.append(roulisCase, el("span", "", o.t("confort.roulis")));
+  const balancementCase = el("input", "");
+  balancementCase.type = "checkbox";
+  balancementCase.checked = confort.balancement;
+  balancementCase.addEventListener("change", () => {
+    confort.balancement = balancementCase.checked;
+    sauver();
+  });
+  const balancementLigne = el("label", "vertige-confort__ligne vertige-confort__ligne--case");
+  balancementLigne.append(balancementCase, el("span", "", o.t("confort.balancement")));
   const fermer = el("button", "vertige-bouton", o.t("confort.fermer"));
   fermer.type = "button";
   panneau.append(
@@ -162,19 +171,10 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
     ligne("confort.sensibilite", BORNES_CONFORT.sensibilite[0], BORNES_CONFORT.sensibilite[1], 5, confort.sensibilite, (v) => ((confort.sensibilite = v), (controles.sensibilite = v)), " %"),
     ligne("confort.champ", BORNES_CONFORT.champ[0], BORNES_CONFORT.champ[1], 1, confort.champ, (v) => (confort.champ = v), "°"),
     roulisLigne,
-    el("div", "vertige-confort__styles", ""),
+    balancementLigne,
     fermer,
   );
-  panneau.querySelector(".vertige-confort__styles")!.append(el("span", "", o.t("confort.style")), ...boutonsStyle);
   racine.append(panneau);
-  const montrerStyle = (): void => boutonsStyle.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.style === confort.style)));
-  function changerStyle(s: StyleVertige): void {
-    confort.style = s;
-    monde.appliquerStyle(s);
-    montrerStyle();
-    sauver();
-  }
-  montrerStyle();
   const basculerConfort = (ouvert: boolean): void => {
     confortOuvert = ouvert;
     panneau.hidden = !ouvert;
@@ -193,9 +193,8 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       tune = m.monterTune(racine, o.langue, { reglages, confort }, (r) => redemarrer(r), (c) => {
         Object.assign(confort, c);
         controles.sensibilite = confort.sensibilite;
-        monde.appliquerStyle(confort.style);
-        montrerStyle();
         roulisCase.checked = confort.roulis;
+        balancementCase.checked = confort.balancement;
       }, rendreLaSouris);
     });
   }
@@ -217,6 +216,20 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   redimensionner();
   let fov = confort.champ;
   let roulis = 0;
+  // La caméra : balancement de la marche, et la transition à une bascule de gravité (une rotation et un décalage de l'œil qui s'éteignent).
+  let phaseMarche = 0;
+  let balancement = 0;
+  let basculesVues = 0;
+  let rendu: { position: THREE.Vector3; quaternion: THREE.Quaternion } | null = null;
+  let correction: { quaternion: THREE.Quaternion; decalage: THREE.Vector3; depuis: number } | null = null;
+  const qGravite = new THREE.Quaternion();
+  const qRegard = new THREE.Quaternion();
+  const euler = new THREE.Euler(0, 0, 0, "YXZ");
+  const oeil = new THREE.Vector3();
+  const secousse = new THREE.Vector3();
+  const identite = new THREE.Quaternion();
+  const qCorr = new THREE.Quaternion();
+  let fenetreActive = false;
   let dernier = performance.now();
   let t = 0;
 
@@ -224,7 +237,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   let demo: Commande[] | null = null;
   if (essai.demo) void import("@cdj/vertige-sim/essais").then((m) => import("@cdj/vertige-sim").then((s) => (demo = s.decoderRediffusion(m.PARTIES_ESSAIS[0]!.code).commandes)));
 
-  const porte = { sim: () => sim, commandes: () => enregistre, controles, monde, essai, jouer: (c: Commande[]): void => void (demo = c) };
+  const porte = { sim: () => sim, commandes: () => enregistre, controles, monde, essai, jouer: (c: Commande[]): void => void (demo = c), camera: () => ({ x: monde.camera.position.x, y: monde.camera.position.y, z: monde.camera.position.z, q: monde.camera.quaternion.toArray(), fenetre: fenetreActive, correction: correction !== null }) };
   if (essai.debug) (window as unknown as { __vertige: typeof porte }).__vertige = porte;
 
   return {
@@ -238,8 +251,6 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
     finie: () => sim.finie,
     action(id) {
       if (id === "relancer") redemarrer();
-      else if (id === "style1") changerStyle("doux");
-      else if (id === "style2") changerStyle("cartouche");
     },
     hud() {
       const total = sim.prises.length;
@@ -256,25 +267,55 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
         termine = true;
         rendreLaSouris();
       }
-      // La vue : la position des yeux et l'angle de la simulation, plus le regard pas encore joué.
+      // La vue : le repère de gravité de la simulation, l'angle de vue (plus le regard pas encore joué), la position des yeux ; le balancement de la marche et la transition d'une bascule s'y ajoutent.
       const [pl, pt] = controles.regardEnAttente();
       const lacet = (sim.lacet + pl) * RAD;
       const tangage = Math.max(-TANGAGE_MAX, Math.min(TANGAGE_MAX, sim.tangage + pt)) * RAD;
       const roulisVise = confort.roulis && sim.surMur ? -(sim.murNx * Math.cos(lacet) - sim.murNz * Math.sin(lacet)) * 0.16 : 0;
       roulis += (roulisVise - roulis) * Math.min(1, 8 * dt);
+      const vitesse = Math.hypot(sim.vx, sim.vz) / M;
+      const marche = confort.balancement && sim.sol && sim.dash <= 0 ? Math.min(1, vitesse / 9.5) : 0;
+      balancement += (marche - balancement) * Math.min(1, 10 * dt);
+      phaseMarche += vitesse * dt * 1.7;
+      secousse.set(Math.cos(phaseMarche) * 0.014 * balancement, Math.sin(phaseMarche * 2) * 0.024 * balancement, 0);
+      euler.set(tangage, lacet, roulis + Math.cos(phaseMarche) * 0.0045 * balancement);
+      quatDe(sim.m, qGravite);
+      qRegard.setFromEuler(euler);
+      const pose = { position: oeil.set(...(sim.yeux().map((v) => v / M) as [number, number, number])).add(secousse.applyQuaternion(qGravite)).clone(), quaternion: qGravite.clone().multiply(qRegard) };
+      // La gravité a tourné : la simulation est déjà dans le nouveau repère, la caméra rattrape l'ancien point de vue en `confort.transition` ms.
+      if (sim.bascules !== basculesVues) {
+        if (sim.bascules > basculesVues && rendu && confort.transition > 0) {
+          correction = { quaternion: rendu.quaternion.clone().multiply(pose.quaternion.clone().invert()), decalage: rendu.position.clone().sub(pose.position), depuis: maintenant };
+        }
+        basculesVues = sim.bascules;
+      }
+      if (correction) {
+        const k = Math.min(1, (maintenant - correction.depuis) / Math.max(1, confort.transition));
+        const e = k * k * (3 - 2 * k);
+        if (k >= 1) correction = null;
+        else {
+          qCorr.slerpQuaternions(correction.quaternion, identite, e);
+          pose.quaternion.premultiply(qCorr);
+          pose.position.addScaledVector(correction.decalage, 1 - e);
+        }
+      }
+      rendu = { position: pose.position.clone(), quaternion: pose.quaternion.clone() };
+      // L'œil est-il dans la poche d'un portail ? Alors la caméra est de l'autre côté (la couture est invisible).
+      const place = monde.fenetres ? monde.fenetres.poser(pose) : { pose, transforme: false };
+      fenetreActive = place.transforme;
       const cam = monde.camera;
-      cam.position.set(sim.x / M, (sim.y + YEUX) / M, sim.z / M);
-      cam.rotation.set(tangage, lacet, roulis);
+      cam.position.copy(place.pose.position);
+      cam.quaternion.copy(place.pose.quaternion);
       fov += (confort.champ + (sim.dash > 0 ? 12 : 0) - fov) * Math.min(1, 10 * dt);
       cam.fov = fov;
       cam.updateProjectionMatrix();
-      mains.animer(t, sim.sol, Math.hypot(sim.vx, sim.vz) / M, sim.dash > 0);
-      monde.animer(t, dt, sim.prises);
+      monde.animer(t, dt, sim.prises, sim.orbesT);
       monde.renderer.info.reset();
       monde.dessiner();
       // Les surimpressions.
-      etat.hidden = !(sim.dash > 0 || sim.surMur);
-      if (!etat.hidden) etat.textContent = o.t(sim.dash > 0 ? "etat.dash" : "etat.mur");
+      const basculeRecente = sim.derniereBascule >= 0 && sim.tick - sim.derniereBascule < 90;
+      etat.hidden = !(sim.dash > 0 || sim.surMur || basculeRecente);
+      if (!etat.hidden) etat.textContent = o.t(sim.dash > 0 ? "etat.dash" : sim.surMur ? "etat.mur" : "etat.gravite");
       verrou.hidden = controles.verrouille || confortOuvert || termine || essai.demo; // le joueur scripté n'a pas besoin de la souris
       const texteVerrou = o.t(dejaVerrouille ? "scene.verrou.reprise" : "scene.verrou");
       if (verrou.textContent !== texteVerrou) verrou.textContent = texteVerrou;

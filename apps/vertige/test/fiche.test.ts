@@ -53,9 +53,9 @@ describe("« Vertige » : le client suit sa fiche", () => {
     expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe("6.175 s");
     expect(DEFINITION.formatScore(VARIANTE.score({ arrive: false, ticks: 0 }), "fr", (cle) => cle)).toBe(VARIANTE.formatScore([DUREE_MAX_TICKS], "fr"));
   });
-  it("tourne à 120 pas par seconde et déclare les actions qu'il lit (touches tenues, relance, styles)", () => {
+  it("tourne à 120 pas par seconde et déclare les actions qu'il lit (touches tenues, relance)", () => {
     expect(DEFINITION.ticksParSeconde).toBe(120);
-    expect(DEFINITION.actions.map((a) => a.id)).toEqual(["avant", "arriere", "gauche", "droite", "saut", "dash", "relancer", "style1", "style2"]);
+    expect(DEFINITION.actions.map((a) => a.id)).toEqual(["avant", "arriere", "gauche", "droite", "saut", "dash", "relancer"]);
     // Les touches sont des codes de touche (la position) : ZQSD d'un AZERTY et WASD d'un QWERTY sont KeyW, KeyA, KeyS, KeyD.
     expect(DEFINITION.actions.find((a) => a.id === "avant")!.clavier).toContain("KeyW");
     expect(DEFINITION.actions.find((a) => a.id === "saut")!.manette).toBe("b0");
