@@ -14,6 +14,7 @@ const brut = (id: string): Record<string, any> => JSON.parse(readFileSync(join(R
 const AUJOURDHUI_EXEMPTES: Record<string, string> = {
   blocks: "à fournir par la conversation du jeu",
   rush: "à fournir par la conversation du jeu",
+  vertige: "à fournir par la conversation du jeu", // lot V1b : identité provisoire ; le panneau vient avec l'identité définitive (V4)
 };
 
 // Le rapport de contraste WCAG de deux couleurs `#RRGGBB` (la même formule que `packages/ui/src/contraste.ts`, qu'un paquet pur ne peut pas importer).
