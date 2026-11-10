@@ -1440,8 +1440,7 @@
           ],
           "gravite-portails.spec.ts": [
             "vertige-sim",
-            "vertige-jeu",
-            "ui"
+            "vertige-jeu"
           ],
           "poids.spec.ts": [
             "vertige-jeu",
