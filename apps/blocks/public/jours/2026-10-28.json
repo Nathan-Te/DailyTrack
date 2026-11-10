@@ -1,0 +1,18 @@
+{
+  "format": 3,
+  "jeu": "blocks",
+  "date": "2026-10-28",
+  "g": 6,
+  "sim": 3,
+  "bot": 5,
+  "seuils": {
+    "bronze": 850,
+    "silver": 1900,
+    "gold": 4600,
+    "author": 11000
+  },
+  "contenu": {
+    "graine": 821646550,
+    "empreinte": "50ddcd46"
+  }
+}
