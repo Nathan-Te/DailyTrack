@@ -3,6 +3,7 @@ export * from "./trigo";
 export * from "./sensations";
 export * from "./noms";
 export * from "./niveaux";
+export * from "./grille";
 export * from "./orientation";
 export * from "./portails";
 export * from "./calendrier";

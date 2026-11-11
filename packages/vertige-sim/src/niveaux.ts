@@ -56,6 +56,8 @@ export interface Niveau {
   portails?: readonly Paire[];
   /** Les limites du monde (lot V1) : sortir de cette boîte (pieds) ramène au dernier point de reprise, comme la chute. Sans elle, seule `chute` compte. */
   vide?: Boite;
+  /** Sans index spatial (lot V2) : la référence exhaustive des tests, qui essaie toutes les boîtes. Jamais dans un niveau du jeu. */
+  sansIndex?: boolean;
 }
 
 /** Un bloc : centre et taille en centimètres. */

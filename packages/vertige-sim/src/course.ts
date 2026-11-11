@@ -1,6 +1,7 @@
 import { CM, DEMI, DUREE_MAX_TICKS, HAUT, REGARD_MAX, TANGAGE_MAX, TOUCHES_TOUTES, TOUR, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, YEUX } from "./constantes";
 import type { Boite, Niveau } from "./niveaux";
 import { appliquer, appliquerT, demiTour, DIRS, dirDe, gravite, mul, numeroOrientation, ORIENTATIONS, oppose, quartDeTour, croix, type Dir, type Mat, type V3 } from "./orientation";
+import { Grille } from "./grille";
 import { PORTAIL_DEMI_H, PORTAIL_DEMI_L, liaisons, type Liaison } from "./portails";
 import { pas, REGLAGES_DEFAUT, type Reglages } from "./sensations";
 import { cosinus, idiv, sinus } from "./trigo";
@@ -31,6 +32,7 @@ export interface Resultat {
 }
 
 const EPS = 10; // 10 µm : une boîte qui n'en déborde pas plus ne « chevauche » pas
+const PAD = 100_000; // la marge de la requête à l'index spatial (10 cm : une poussée ramène au plus de POUSSEE en arrière, dans le balayage)
 const POUSSEE = 100; // la distance laissée entre le joueur et ce qu'il touche (100 µm)
 const SONDE = 80_000; // la sonde de mur : 8 cm
 const DEMI_RACINE_2 = 46341; // 1/√2 à l'échelle 65 536
@@ -47,15 +49,20 @@ const MI_HAUT = 900_000; // HAUT / 2 (un littéral : voir portails.ts)
 interface BoiteL extends Boite {
   g: boolean;
 }
-const LOCALES = new WeakMap<Niveau, Map<number, readonly BoiteL[]>>();
-/** Les blocs du niveau dans le repère local de l'orientation `ori` (construits une fois par niveau et par orientation : les 24 au plus). */
-function boitesLocales(niveau: Niveau, ori: number): readonly BoiteL[] {
+/** Les blocs du niveau dans un repère local, et leur index spatial (lot V2). */
+interface Locales {
+  liste: readonly BoiteL[];
+  grille: Grille;
+}
+const LOCALES = new WeakMap<Niveau, Map<number, Locales>>();
+/** Les blocs du niveau dans le repère local de l'orientation `ori` (construits une fois par niveau et par orientation : les 24 au plus), avec leur grille. */
+function boitesLocales(niveau: Niveau, ori: number): Locales {
   let parOri = LOCALES.get(niveau);
   if (!parOri) LOCALES.set(niveau, (parOri = new Map()));
   let l = parOri.get(ori);
   if (!l) {
     const m = ORIENTATIONS[ori]!;
-    l = niveau.blocs.map((b) => {
+    const liste = niveau.blocs.map((b) => {
       const lo = [b.boite.x0, b.boite.y0, b.boite.z0];
       const hi = [b.boite.x1, b.boite.y1, b.boite.z1];
       const a = [0, 0, 0];
@@ -70,6 +77,7 @@ function boitesLocales(niveau: Niveau, ori: number): readonly BoiteL[] {
       }
       return { x0: a[0]!, y0: a[1]!, z0: a[2]!, x1: z[0]!, y1: z[1]!, z1: z[2]!, g: b.gravite === true };
     });
+    l = { liste, grille: new Grille(liste, niveau.sansIndex === true) };
     parOri.set(ori, l);
   }
   return l;
@@ -101,8 +109,10 @@ export class Partie {
   /** L'orientation du repère local dans le monde (numéro 0 à 23 et matrice : `orientation.ts`) ; la gravité va vers `gravite(m)`. */
   ori = 0;
   m: Mat = ORIENTATIONS[0]!;
-  /** Les blocs du niveau dans le repère local courant. */
+  /** Les blocs du niveau dans le repère local courant, et leur index spatial. */
   private blocs: readonly BoiteL[];
+  private grille: Grille;
+
   /** Pas restants : temps de grâce au bord, saut mémorisé, dash, recharge du dash, verrou du saut de mur ; pas passés sur le mur. */
   coyote = 0;
   tampon = 0;
@@ -154,7 +164,9 @@ export class Partie {
     this.prises = niveau.gemmes.map(() => false);
     this.orbesT = (niveau.orbes ?? []).map(() => 0);
     this.liaisons = liaisonsDe(niveau);
-    this.blocs = boitesLocales(niveau, this.repOri);
+    const loc = boitesLocales(niveau, this.repOri);
+    this.blocs = loc.liste;
+    this.grille = loc.grille;
     if (this.repOri !== 0) {
       this.fixer(ORIENTATIONS[this.repOri]!);
       [this.x, this.y, this.z] = appliquerT(this.m, this.repPieds);
@@ -193,7 +205,9 @@ export class Partie {
   private fixer(m: Mat): void {
     this.m = m;
     this.ori = numeroOrientation(m);
-    this.blocs = boitesLocales(this.niveau, this.ori);
+    const loc = boitesLocales(this.niveau, this.ori);
+    this.blocs = loc.liste;
+    this.grille = loc.grille;
   }
 
   private chevauche(px: number, py: number, pz: number, s: Boite): boolean {
@@ -203,9 +217,13 @@ export class Partie {
   /** Déplace d'un axe et résout les contacts ; rend −1 (contact en allant vers le moins), 1 (vers le plus), 0 (rien). Une surface de gravité touchée est notée (la première du pas). */
   private deplacer(axe: "x" | "y" | "z", d: number): number {
     if (d === 0) return 0;
+    // L'index (lot V2) : seules les boîtes proches du balayage (de la position d'avant à celle d'après, plus 10 cm : une poussée ramène au plus à la position d'avant, à POUSSEE près) sont essayées, dans l'ordre du niveau.
+    const [ax, ay, az] = [this.x, this.y, this.z];
     this[axe] += d;
+    const candidats = this.grille.chercher(Math.min(ax, this.x) - DEMI - PAD, Math.min(ay, this.y) - PAD, Math.min(az, this.z) - DEMI - PAD, Math.max(ax, this.x) + DEMI + PAD, Math.max(ay, this.y) + HAUT + PAD, Math.max(az, this.z) + DEMI + PAD);
     let touche = 0;
-    for (const s of this.blocs) {
+    for (let c = 0; c < candidats.length; c++) {
+      const s = this.blocs[candidats[c]!]!;
       if (!this.chevauche(this.x, this.y, this.z, s)) continue;
       if (axe === "y") this.y = d > 0 ? s.y0 - HAUT - POUSSEE : s.y1 + POUSSEE;
       else if (axe === "x") this.x = d > 0 ? s.x0 - DEMI - POUSSEE : s.x1 + DEMI + POUSSEE;
@@ -218,10 +236,14 @@ export class Partie {
 
   /** La normale d'un mur contre le joueur (à 8 cm), ou null ; `g` : le mur est une surface de gravité. L'ordre des essais est fixe : +x, −x, +z, −z. */
   private murVoisin(): { nx: number; nz: number; g: boolean } | null {
+    const candidats = this.grille.chercher(this.x - DEMI - SONDE - PAD, this.y - PAD, this.z - DEMI - SONDE - PAD, this.x + DEMI + SONDE + PAD, this.y + HAUT + PAD, this.z + DEMI + SONDE + PAD);
     for (const [axe, sgn] of [["x", 1], ["x", -1], ["z", 1], ["z", -1]] as const) {
       const px = this.x + (axe === "x" ? sgn * SONDE : 0);
       const pz = this.z + (axe === "z" ? sgn * SONDE : 0);
-      for (const b of this.blocs) if (this.chevauche(px, this.y, pz, b)) return { nx: axe === "x" ? -sgn : 0, nz: axe === "z" ? -sgn : 0, g: b.g };
+      for (let c = 0; c < candidats.length; c++) {
+        const b = this.blocs[candidats[c]!]!;
+        if (this.chevauche(px, this.y, pz, b)) return { nx: axe === "x" ? -sgn : 0, nz: axe === "z" ? -sgn : 0, g: b.g };
+      }
     }
     return null;
   }
