@@ -13,7 +13,8 @@
     "figer:vertige": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
     "mesures:vertige": "esbuild tools/mesures.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures.mjs --log-level=warning && node dist/mesures.mjs",
     "golden:vertige": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
-    "table:vertige": "esbuild tools/table-sinus.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/table-sinus.mjs --log-level=warning && node dist/table-sinus.mjs"
+    "table:vertige": "esbuild tools/table-sinus.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/table-sinus.mjs --log-level=warning && node dist/table-sinus.mjs",
+    "module:vertige": "esbuild tools/module.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/module.mjs --log-level=warning && node dist/module.mjs"
   },
   "exports": {
     ".": "./src/index.ts",

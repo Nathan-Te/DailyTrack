@@ -13,6 +13,8 @@ export const DUREE_MAX_TICKS = 120 * TICKS_PAR_SECONDE;
 /** Un mètre, un centimètre (les niveaux s'écrivent en centimètres), en micromètres. */
 export const M = 1_000_000;
 export const CM = 10_000;
+/** La distance laissée entre le joueur et ce qu'il touche (100 µm) : les pieds posés sont à cette hauteur au-dessus de la surface. */
+export const POUSSEE = 100;
 /** La boîte du joueur : 0,6 × 1,8 × 0,6 m ; la position est celle des pieds, au milieu de la boîte. */
 export const DEMI = 300_000;
 export const HAUT = 1_800_000;
@@ -25,14 +27,16 @@ export const QUART = 16384;
 /** Le tangage est borné à ± 0,2287 tour (≈ ± 82°). */
 export const TANGAGE_MAX = 15000;
 
-/** Les touches d'un pas, en bits. */
+/** Les touches d'un pas, en bits (7 depuis le lot V2 : la reprise). */
 export const T_AVANT = 1;
 export const T_ARRIERE = 2;
 export const T_GAUCHE = 4;
 export const T_DROITE = 8;
 export const T_SAUT = 16;
 export const T_DASH = 32;
-export const TOUCHES_TOUTES = 63;
+/** La touche de reprise (lot V2) : un appui ramène au dernier palier, comme une chute (le chrono continue) ; la même que « point de contrôle » de Track et Jump (R). */
+export const T_REPRISE = 64;
+export const TOUCHES_TOUTES = 127;
 
 /** Au plus ce que la sensibilité peut produire en un pas (un demi-tour) : un pas plus brusque est refusé à la lecture. */
 export const REGARD_MAX = 32767;

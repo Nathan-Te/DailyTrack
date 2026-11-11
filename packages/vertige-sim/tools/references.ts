@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { Rng, daysFromCivil, formatDay } from "@cdj/core";
-import { CUBE_ORDRE, NOMS_NIVEAUX, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, dailyVertige, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, Partie, verifier, type Commande, type NomNiveau } from "../src/index";
+import { CUBE_ORDRE, NOMS_NIVEAUX, T_REPRISE, enchainement, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, dailyVertige, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, Partie, verifier, type Commande, type NomNiveau } from "../src/index";
 import { ETAPES_PARCOURS, jouerCibles, jouerEtapes, marcheVersDesCibles } from "./robot";
 
 // Le golden de Vertige : `npm run golden:vertige -w @cdj/vertige-sim`. Dix jours (l'empreinte de leur contenu), les niveaux (l'empreinte de leurs boîtes) et des rediffusions de référence : le parcours
@@ -8,6 +8,7 @@ import { ETAPES_PARCOURS, jouerCibles, jouerEtapes, marcheVersDesCibles } from "
 // (cinq faces à la suite : les six directions de la gravité), le parcours des portails (trois paires et une plaque de sol marquée) joué par le joueur scripté, un va-et-vient entre deux portails, et des marches au hasard dans la salle de
 // la gravité, celle des portails et le cube. Chacune porte ses
 // empreintes d'état tous les 600 pas. Il ne se régénère jamais sans monter la version concernée (`VERTIGE_SIM_VERSION` pour les rediffusions, `VERTIGE_GENERATOR_VERSION` pour le contenu).
+// (Lot V2 : l'enchaînement fixe de modules, son robot et une reprise au palier.)
 const jours = Array.from({ length: 10 }, (_, i) => daysFromCivil(2026, 11, 2) + i * 3);
 const jourRef = jours[0]!;
 const contenu = dailyVertige(jourRef);
@@ -61,6 +62,13 @@ const refs: { nom: string; scenario: string | null; commandes: Commande[] }[] = 
   { nom: "portails-hasard", scenario: "portails", commandes: marcheVersDesCibles("portails", 11, POINTS.portails, 9000) },
   { nom: "cube-hasard", scenario: "cube", commandes: marcheVersDesCibles("cube", 31, [...facesCube, [0, 0, 0]], 9000) },
 ];
+// Lot V2 : l'enchaînement fixe (le robot, qui rejoue sa solution entière et arrive), une marche au hasard semé dessus, et le robot avec une reprise au palier demandée à mi-chemin puis jouée jusqu'au bout du temps.
+const chaine = enchainement();
+refs.push(
+  { nom: "enchainement-robot", scenario: "enchainement", commandes: chaine.solution },
+  { nom: "enchainement-hasard", scenario: "enchainement", commandes: marcheAuHasard(41, 9000) },
+  { nom: "enchainement-reprise", scenario: "enchainement", commandes: chaine.solution.map((c, i) => (i === 1800 ? { ...c, k: c.k | T_REPRISE } : c)).slice(0, 9000) },
+);
 const rediffusions = refs.map((r) => {
   const c = r.scenario ? { jour: 0, g: contenu.g, niveau: r.scenario as never } : contenu;
   const v = verifier(c, r.commandes);
@@ -84,7 +92,7 @@ export const PARTIES_ESSAIS: readonly { readonly code: string; readonly temps: n
 );
 
 const sortie = {
-  _: "Golden de Vertige (lots V0 et V1). Régénérer : npm run golden:vertige -w @cdj/vertige-sim, seulement en montant la version concernée.",
+  _: "Golden de Vertige (lots V0, V1 et V2). Régénérer : npm run golden:vertige -w @cdj/vertige-sim, seulement en montant la version concernée.",
   sim: VERTIGE_SIM_VERSION,
   generateur: VERTIGE_GENERATOR_VERSION,
   jours: jours.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyVertige(j)) })),

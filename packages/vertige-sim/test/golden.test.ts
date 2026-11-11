@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
-import { NOMS_NIVEAUX, Partie, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, dailyVertige, decoderRediffusion, empreinteContenu, empreinteNiveau, niveau, rejouer, rejouerScenario, verifier, type NomNiveau } from "../src/index";
+import { NOMS_NIVEAUX, Partie, enchainement, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, dailyVertige, decoderRediffusion, empreinteContenu, empreinteNiveau, niveau, rejouer, rejouerScenario, verifier, type NomNiveau } from "../src/index";
 
 // Le golden : produit par `npm run golden:vertige` (jamais écrit à la main), rejoué ici par Node et dans Chromium, Firefox et WebKit par `apps/vertige/e2e/determinisme.spec.ts`.
 const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-vertige.json", import.meta.url), "utf8")) as {
@@ -50,6 +50,14 @@ describe("golden de Vertige", () => {
     }
     expect([...vues].sort()).toEqual([0, 1, 2, 3, 4, 5]);
     for (const r of golden.rediffusions.filter((x) => x.nom !== "vide")) expect(r.empreintes.length).toBeGreaterThanOrEqual(Math.floor((r.resultat as { pas: number }).pas / 600));
+  });
+  it("lot V2 : le robot de l'enchaînement arrive, sans chute, et rejoue ses paliers", () => {
+    const r = golden.rediffusions.find((x) => x.nom === "enchainement-robot")!.resultat as { arrive: boolean; ticks: number; chutes: number };
+    expect(r.arrive).toBe(true);
+    expect(r.chutes).toBe(0);
+    expect(r.ticks).toBe(enchainement().arriveeRobot);
+    const reprise = golden.rediffusions.find((x) => x.nom === "enchainement-reprise")!;
+    expect((reprise.resultat as { chutes: number }).chutes).toBeGreaterThanOrEqual(1); // la touche de reprise est une chute au palier
   });
   it("le parcours est fini par le joueur scripté, le chrono s'arrête à l'arrivée", () => {
     const r = golden.rediffusions.find((x) => x.nom === "parcours-robot")!.resultat as { arrive: boolean; ticks: number; pas: number };

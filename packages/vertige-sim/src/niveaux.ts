@@ -1,6 +1,8 @@
 import { CM, M } from "./constantes";
 import type { Dir } from "./orientation";
-import { PORTAIL_DEMI_H, PORTAIL_DEMI_L, PORTAIL_PROFONDEUR, boiteRepere, geo, type Paire, type Portail } from "./portails";
+import { bm, faceAvecPlaque, MX, MY, murDePortail, PX, PY, pm, portail, PZ, MZ } from "./construction";
+import { enchainement } from "./enchainement";
+import type { Paire } from "./portails";
 import type { NomNiveau } from "./noms";
 
 // Les niveaux : un monde de BLOCS ALIGNÉS SUR LES AXES (la simulation ne connaît rien d'autre), écrits en centimètres (centre et taille, comme la maquette), rangés en micromètres. Les décors qui ne
@@ -31,12 +33,30 @@ export interface Reprise {
   y: number;
   z: number;
   lacet: number;
+  /** L'orientation du repère du joueur à la reprise (lot V2 : un palier dit sa gravité) ; la zone ne compte alors que si la gravité du joueur est celle de ce repère. Sans elle : l'orientation du moment. */
+  ori?: number;
+}
+/**
+ * Un palier, côté simulation (lot V2) : le point où l'état du joueur est ramené à l'ÉTAT DE JONCTION CANONIQUE — au sol, au centre du palier, en course à pleine vitesse dans l'axe, le regard dans l'axe —, exact en entiers.
+ * C'est ce qui rend les solutions des modules enchaînables telles quelles. Le mécanisme (« l'aimantation du palier ») est dans `consignes.md` ; les constantes de capture sont dans `jonctions.ts`.
+ */
+export interface Jonction {
+  /** Les pieds au centre du palier, posés (µm, dans le monde) : la surface du palier plus POUSSEE. */
+  x: number;
+  y: number;
+  z: number;
+  /** L'orientation du repère du joueur au palier : sa direction (−z local) et sa gravité (−y local) s'en déduisent. */
+  ori: number;
+  /** Une partie qui capture cette jonction est finie (la sortie d'un module joué seul). */
+  fin?: boolean;
 }
 export interface Niveau {
-  nom: NomNiveau;
+  /** Le nom du niveau : un scénario, ou `module` pour un module joué seul (lot V2, jamais rejoué par le serveur). */
+  nom: NomNiveau | "module";
   blocs: readonly BlocNiveau[];
   /** Le départ : les pieds dans le MONDE (µm), le lacet, et l'orientation de départ (lot V1, 0 par défaut : la gravité vers le bas ; voir `orientation.ts`). */
-  depart: { x: number; y: number; z: number; lacet: number; ori?: number };
+  depart: { x: number; y: number; z: number; lacet: number; ori?: number; lance?: boolean };
+  // `lance` (lot V2) : la partie commence dans l'état de jonction canonique (en course, pleine vitesse), comme après un palier.
   /** La zone d'arrivée : le chrono s'arrête dès que la boîte du joueur la touche. */
   arrivee: Boite | null;
   reprises: readonly Reprise[];
@@ -47,6 +67,8 @@ export interface Niveau {
   portails?: readonly Paire[];
   /** Les limites du monde (lot V1) : sortir de cette boîte (pieds) ramène au dernier point de reprise, comme la chute. Sans elle, seule `chute` compte. */
   vide?: Boite;
+  /** Les paliers (lot V2) : à chaque passage de leur plan, dans l'état voulu, l'état est ramené à l'état canonique. */
+  jonctions?: readonly Jonction[];
   /** Sans index spatial (lot V2) : la référence exhaustive des tests, qui essaie toutes les boîtes. Jamais dans un niveau du jeu. */
   sansIndex?: boolean;
 }
@@ -121,38 +143,6 @@ function mur(): Niveau {
 
 
 // ---------------------------------------------------------------- les niveaux de la gravité et des portails (lot V1)
-/** Un bloc par ses bornes, en mètres (x0, y0, z0, x1, y1, z1). */
-const bm = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, role: Role = "pierre", gravite = false): BlocNiveau => ({
-  boite: { x0: x0 * M, y0: y0 * M, z0: z0 * M, x1: x1 * M, y1: y1 * M, z1: z1 * M },
-  role,
-  ...(gravite ? { gravite: true } : {}),
-});
-/** Un point en mètres. */
-const pm = (x: number, y: number, z: number): { x: number; y: number; z: number } => ({ x: x * M, y: y * M, z: z * M });
-
-/** Le mur d'un portail : une dalle de 1,2 m d'épaisseur derrière le plan (face avant sur le plan), percée de l'ouverture sur `PORTAIL_PROFONDEUR` — une poche vide fermée par 0,2 m de pierre. `demi` : demi-largeur du mur, `bas` et `haut` : ce qui reste sous et au-dessus du centre. */
-export function murDePortail(p: Portail, demi: number, bas: number, haut: number, role: Role = "pierre"): BlocNiveau[] {
-  const g = geo(p);
-  const T = PORTAIL_PROFONDEUR + 20 * CM;
-  const hw = PORTAIL_DEMI_L;
-  const hh = PORTAIL_DEMI_H;
-  const d = demi * M;
-  const b = bas * M;
-  const h = haut * M;
-  const morceaux: [readonly [number, number], readonly [number, number], readonly [number, number]][] = [
-    [[-d, -hw], [-b, h], [-T, 0]],
-    [[hw, d], [-b, h], [-T, 0]],
-    [[-hw, hw], [-b, -hh], [-T, 0]],
-    [[-hw, hw], [hh, h], [-T, 0]],
-    [[-hw, hw], [-hh, hh], [-T, -PORTAIL_PROFONDEUR]],
-  ];
-  return morceaux
-    .filter(([rr, uu, nn]) => rr[1] > rr[0] && uu[1] > uu[0] && nn[1] > nn[0])
-    .map(([rr, uu, nn]) => ({ boite: boiteRepere(g.centre, g.r, g.u, g.n, rr, uu, nn), role }));
-}
-const portail = (x: number, y: number, z: number, normale: Dir, haut: Dir): Portail => ({ x: x * M, y: y * M, z: z * M, normale, haut });
-const PX: Dir = 0, MX: Dir = 1, PY: Dir = 2, MY: Dir = 3, PZ: Dir = 4, MZ: Dir = 5;
-
 /** La salle de la gravité : des surfaces marquées (« rouge » à facettes violettes au rendu), qui ne se touchent jamais. À l'ouest un plafond (on saute dessous), un grand mur et un mur du nord ; à l'est un mur et un plafond ; le sol a deux plaques marquées qui ramènent la gravité vers le bas. */
 function gravite(): Niveau {
   return {
@@ -248,31 +238,12 @@ export const CUBE_ORDRE: readonly [number, number, number][] = [
   [0, 24, 0], // le plafond (+y)
 ];
 
-/** Une face d'une salle : une dalle d'un mètre derrière l'intérieur `interieur` (bornes par axe), faite d'une plaque marquée au milieu et de quatre barres non marquées sur `liseré` de large tout autour. */
-export function faceAvecPlaque(axe: 0 | 1 | 2, signe: 1 | -1, interieur: readonly (readonly [number, number])[], lisere: number): BlocNiveau[] {
-  const [u, v] = ([0, 1, 2] as const).filter((a) => a !== axe) as [0 | 1 | 2, 0 | 1 | 2];
-  const epais: [number, number] = signe > 0 ? [interieur[axe]![1], interieur[axe]![1] + 1] : [interieur[axe]![0] - 1, interieur[axe]![0]];
-  const dalle = (a: 0 | 1 | 2): [number, number] => [interieur[a]![0] - 1, interieur[a]![1] + 1];
-  const plaque = (a: 0 | 1 | 2): [number, number] => [interieur[a]![0] + lisere, interieur[a]![1] - lisere];
-  const boite = (ru: [number, number], rv: [number, number], marque: boolean): BlocNiveau => {
-    const lo = [0, 0, 0];
-    const hi = [0, 0, 0];
-    lo[axe] = epais[0];
-    hi[axe] = epais[1];
-    [lo[u], hi[u]] = ru;
-    [lo[v], hi[v]] = rv;
-    return bm(lo[0]!, lo[1]!, lo[2]!, hi[0]!, hi[1]!, hi[2]!, marque ? "rouge" : "pierre", marque);
-  };
-  const [du, dv, pu, pv] = [dalle(u), dalle(v), plaque(u), plaque(v)];
-  return [boite(pu, pv, true), boite([du[0], pu[0]], dv, false), boite([pu[1], du[1]], dv, false), boite(pu, [dv[0], pv[0]], false), boite(pu, [pv[1], dv[1]], false)];
-}
-
 const CACHE = new Map<NomNiveau, Niveau>();
 /** Le niveau de ce nom (construit une fois). */
 export function niveau(nom: NomNiveau): Niveau {
   let n = CACHE.get(nom);
   if (!n) {
-    n = nom === "parcours" ? parcours() : nom === "bac-a-sable" ? bacASable() : nom === "mur" ? mur() : nom === "gravite" ? gravite() : nom === "portails" ? portails() : cube();
+    n = nom === "parcours" ? parcours() : nom === "bac-a-sable" ? bacASable() : nom === "mur" ? mur() : nom === "gravite" ? gravite() : nom === "portails" ? portails() : nom === "cube" ? cube() : enchainement().niveau;
     CACHE.set(nom, n);
   }
   return n;

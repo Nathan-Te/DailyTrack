@@ -52,9 +52,9 @@ describe("rediffusion", () => {
     expect(code(bon)).toBeUndefined();
     expect(code(bon + "AA")).toBe("format_illisible");
     expect(code(bon.slice(0, -2))).toBe("format_illisible");
-    // La charge elle-même : une touche inconnue (bit 6), trop de pas.
+    // La charge elle-même : une touche inconnue (bit 7 ; le bit 6 est la reprise depuis le lot V2), trop de pas.
     const enveloppe = (charge: number[]): string => toBase64Url([1, 3, 1, 0, 0xc0, 0x9a, 0x0c, ...charge]);
-    expect(code(enveloppe([2, 1, 0, 64, 0]))).toBe("format_illisible");
+    expect(code(enveloppe([2, 1, 0, 128, 0]))).toBe("format_illisible");
     expect(code(enveloppe([0xff, 0xff, 0x7f, 0, 0]))).toBe("trop_longue");
     expect(() => rejouer(contenu, enregistrer(contenu, [...robot.commandes, { k: 0, dl: 0, dt: 0 }]))).toThrowError(expect.objectContaining({ code: "format_illisible" }));
   });
