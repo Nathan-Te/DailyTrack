@@ -1,5 +1,5 @@
 import { bouton, el } from "@cdj/ui";
-import { ErreurAdmin, texteErreur, type ActionGroupe, type FicheGroupeAdmin, type GroupeResume } from "./adminDonnees";
+import { type ActionGroupe, type FicheGroupeAdmin, type GroupeResume } from "./adminDonnees";
 import type { Contexte } from "./adminDiffusion";
 
 // Lot C1, partie C (plateforme) — la rubrique « Groupes » du panneau : chercher un groupe par son nom, ouvrir sa fiche (description, membres, emblème), puis renommer, retirer l'emblème, retirer un membre, changer
@@ -41,8 +41,6 @@ export async function vueGroupe(ctx: Contexte, id: string): Promise<Node[]> {
 
 async function fiche(ctx: Contexte, id: string): Promise<(Node | null)[]> {
   const g: FicheGroupeAdmin = await ctx.client.groupe(id);
-  const retour = el("div", { attrs: { id: "groupe-retour" } });
-  const dire = (kind: "erreur" | "info", texte: string) => retour.replaceChildren(el("p", { classe: ["admin-message", `admin-message--${kind}`], attrs: { role: kind === "erreur" ? "alert" : "status" }, texte }));
   const agir = (action: ActionGroupe, libelle: string, texte: string, corps: Record<string, unknown> = {}, champs?: { nom: string; libelle: string; valeur?: string; max?: number }[], verifier?: (v: Record<string, string>) => string | null) =>
     bouton({
       texte: libelle,
@@ -54,8 +52,7 @@ async function fiche(ctx: Contexte, id: string): Promise<(Node | null)[]> {
           await ctx.client.actionGroupe(g.id, action, { ...corps, ...(action === "renommer" ? { nom: v.nom } : {}), ...(action === "dissoudre" ? { nom: g.nom } : {}) });
           await ctx.recharger(`${libelle} : fait.`);
         } catch (e) {
-          if (e instanceof ErreurAdmin && e.statut === 401) await ctx.sessionExpiree();
-          else dire("erreur", texteErreur(e));
+          await ctx.refuser(e);
         }
       },
     });
@@ -73,7 +70,6 @@ async function fiche(ctx: Contexte, id: string): Promise<(Node | null)[]> {
     el("h1", { classe: "admin-titre-section", attrs: { id: "groupe-titre" }, texte: g.nom }),
     p(`${g.masque ? "Masqué des classements · " : ""}Créé le ${quand(g.creeLe)}${g.renommeLe ? ` · renommé le ${quand(g.renommeLe)}` : ""} · emblème : ${g.emblem ? g.emblem.statut : "aucun"}`, "admin-aide"),
     g.description ? p(g.description, "groupe-description") : null,
-    retour,
     el(
       "div",
       { classe: "admin-actions" },

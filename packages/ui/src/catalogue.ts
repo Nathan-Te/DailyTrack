@@ -80,6 +80,7 @@ const fr = {
   "erreur.unauthorized": "Accès refusé.",
   "erreur.forbidden": "Action refusée.",
   "erreur.invalid_action": "Cette action n'est pas valide.",
+  "erreur.identite_incomplete": "L'identité de ce jeu n'est pas complète.",
   "erreur.unknown_result": "Aucun résultat à ce jour-là.",
   "erreur.invalid_news": "Cette nouveauté n'est pas complète.",
   "erreur.unknown_news": "Cette nouveauté n'existe pas.",

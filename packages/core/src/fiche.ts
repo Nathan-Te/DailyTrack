@@ -573,8 +573,8 @@ export interface ProjectionServeur {
     zoneNouveautes: string;
     /** Lot K4e : un jeu témoin (jamais en production). */
     temoin?: true;
-    /** Lot K5 : l'identité du jeu n'est pas complète (un champ vaut « à choisir ») : l'administration refuse `preview` et `on`. Absent : complète. */
-    identiteIncomplete?: true;
+    /** Lots K5 et K5b : les champs de l'identité qui valent encore « à choisir » (`police`, `motif`, `illustration`) : l'administration refuse alors `preview` et `on` (`identite_incomplete`, avec ces champs). Absent : identité complète. */
+    identiteManque?: ("police" | "motif" | "illustration")[];
   }[];
 }
 export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeur {
@@ -598,7 +598,7 @@ export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeu
       messageOu: f.message.ou,
       zoneNouveautes: f.zoneNouveautes,
       ...(f.temoin ? { temoin: true as const } : {}),
-      ...(identiteComplete(f) ? {} : { identiteIncomplete: true as const }),
+      ...(identiteComplete(f) ? {} : { identiteManque: identiteAChoisir(f).map((c) => c.slice("identite.".length) as "police" | "motif" | "illustration") }),
     })),
   };
 }

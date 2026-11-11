@@ -68,6 +68,7 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "erreur.unauthorized": "Access denied.",
   "erreur.forbidden": "Action refused.",
   "erreur.invalid_action": "That action isn't valid.",
+  "erreur.identite_incomplete": "This game's identity isn't complete.",
   "erreur.unknown_result": "No result on that day.",
   "erreur.invalid_news": "That update isn't complete.",
   "erreur.unknown_news": "That update doesn't exist.",

@@ -1,5 +1,5 @@
 import { bouton, el } from "@cdj/ui";
-import { ErreurAdmin, NOMS_ETAT_JEU, consequenceEtat, lienApercu, texteErreur, type JeuAdmin } from "./adminDonnees";
+import { NOMS_ETAT_JEU, consequenceEtat, lienApercu, type JeuAdmin } from "./adminDonnees";
 import type { Contexte } from "./adminDiffusion";
 
 // Lot P (plateforme) — la rubrique « Jeux » du panneau : l'interrupteur à trois positions de chaque jeu (Off · Aperçu · On, avec confirmation) et sa clé d'aperçu (générer, copier le lien, révoquer).
@@ -12,12 +12,9 @@ const titreCarte = (texte: string, id: string) => el("h2", { classe: "admin-titr
 export async function vueJeux(ctx: Contexte): Promise<Node[]> {
   const { jeux } = await ctx.client.jeux();
   const retour = el("div", { attrs: { id: "jeux-retour" } });
-  const dire = (kind: "erreur" | "info", texte: string) =>
-    retour.replaceChildren(el("p", { classe: ["admin-message", `admin-message--${kind}`], attrs: { role: kind === "erreur" ? "alert" : "status" }, texte }));
-  const erreur = async (e: unknown) => {
-    if (e instanceof ErreurAdmin && e.statut === 401) await ctx.sessionExpiree();
-    else dire("erreur", texteErreur(e));
-  };
+  const dire = (texte: string) => retour.replaceChildren(el("p", { classe: ["admin-message", "admin-message--info"], attrs: { role: "status" }, texte }));
+  // Lot K5b : le refus d'une action confirmée s'affiche sur la fiche du jeu, en alerte (`ctx.refuser`), plus dans cette zone, loin de l'action.
+  const erreur = (e: unknown) => ctx.refuser(e);
 
   const carte = (j: JeuAdmin): HTMLElement => {
     const zoneCle = el("div", { classe: "admin-jeu__cle", attrs: { "data-cle-zone": j.jeu } });
@@ -61,10 +58,10 @@ export async function vueJeux(ctx: Contexte): Promise<Node[]> {
               onClick: async () => {
                 try {
                   await navigator.clipboard.writeText(lien);
-                  dire("info", "Lien copié.");
+                  dire("Lien copié.");
                 } catch {
                   champ.select();
-                  dire("info", "Copie impossible ici : le lien est sélectionné, copie-le à la main.");
+                  dire("Copie impossible ici : le lien est sélectionné, copie-le à la main.");
                 }
               },
             }),

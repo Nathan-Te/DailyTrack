@@ -43,12 +43,15 @@ describe("l'identité de chaque jeu", () => {
       expect(etatPermis(fiche, "on"), champ).toBe(false);
     }
   });
-  it("le serveur le sait : sa projection porte `identiteIncomplete` (l'administration refuse alors `preview` et `on`), et rien pour un jeu complet", () => {
+  it("le serveur le sait : sa projection porte `identiteManque` (les champs « à choisir » ; l'administration refuse alors `preview` et `on`), et rien pour un jeu complet", () => {
     const f = structuredClone(brut("rush"));
     f.identite.illustration = A_CHOISIR;
     const [complet, incomplet] = projectionServeur([lireFiche(f, "rush"), lireFiche(brut("blocks"), "blocks")]).jeux;
-    expect(incomplet).toMatchObject({ id: "rush", identiteIncomplete: true });
-    expect(complet).not.toHaveProperty("identiteIncomplete");
+    expect(incomplet).toMatchObject({ id: "rush", identiteManque: ["illustration"] });
+    expect(complet).not.toHaveProperty("identiteManque");
+    f.identite.police = A_CHOISIR;
+    f.identite.motif = A_CHOISIR;
+    expect(projectionServeur([lireFiche(f, "rush")]).jeux[0]).toMatchObject({ identiteManque: ["police", "motif", "illustration"] });
   });
   it("un champ d'identité qui manque est refusé par la fiche, et chaque valeur est contrôlée", () => {
     const cas = (modif: (f: Record<string, any>) => void): string => {

@@ -380,6 +380,7 @@ export const TEXTES_ERREUR: Record<string, string> = {
   unauthorized: "Session absente ou expirée.",
   forbidden: "Action refusée par le serveur (en-têtes de protection).",
   invalid_action: "L'action est refusée : confirmation, motif ou pseudo incorrect.",
+  identite_incomplete: "L'identité de ce jeu n'est pas complète : police, motif ou illustration encore « à choisir » dans sa fiche (`config/jeux/<id>.json`). Remplis-la, puis réessaie.",
   unknown_result: "Ce joueur n'a pas de résultat ce jour-là dans ce jeu.",
   unknown_player: "Joueur introuvable.",
   name_taken: "Ce pseudo est déjà pris.",
@@ -396,7 +397,14 @@ export const TEXTES_ERREUR: Record<string, string> = {
   feedback_full: "Ce fil est complet (100 messages).",
   invalid_message: "Le message est refusé : texte, endroit, ton ou heure de fin incorrects.",
 };
-export const texteErreur = (e: unknown): string => (e instanceof ErreurAdmin ? (TEXTES_ERREUR[e.code] ?? `Erreur : ${e.code}.`) : "Erreur inattendue.");
+const CHAMPS_IDENTITE = ["police", "motif", "illustration"] as const;
+/** Lot K5b : `identite_incomplete` dit quels champs manquent (`manque`) ; seuls les trois noms connus sont repris, dans l'ordre de la fiche. */
+function textePrecisIdentite(e: ErreurAdmin): string | null {
+  const manque = Array.isArray(e.details.manque) ? CHAMPS_IDENTITE.filter((c) => (e.details.manque as unknown[]).includes(c)) : [];
+  return manque.length ? (TEXTES_ERREUR.identite_incomplete ?? "").replace("police, motif ou illustration encore", `${manque.join(", ")} encore`) : null;
+}
+export const texteErreur = (e: unknown): string =>
+  e instanceof ErreurAdmin ? ((e.code === "identite_incomplete" ? textePrecisIdentite(e) : null) ?? TEXTES_ERREUR[e.code] ?? `Erreur : ${e.code}.`) : "Erreur inattendue.";
 
 export interface Barre {
   date: string;
