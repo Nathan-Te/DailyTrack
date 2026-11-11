@@ -309,7 +309,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       fov += (confort.champ + (sim.dash > 0 ? 12 : 0) - fov) * Math.min(1, 10 * dt);
       cam.fov = fov;
       cam.updateProjectionMatrix();
-      monde.animer(t, dt, sim.prises, sim.orbesT);
+      monde.animer(t, dt, sim.prises);
       monde.renderer.info.reset();
       monde.dessiner();
       // Les surimpressions.

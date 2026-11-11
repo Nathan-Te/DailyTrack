@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { jouerCibles } from "../tools/robot";
-import { DUREE_MAX_TICKS, M, ORIENTATIONS, Partie, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, appliquer, appliquerT, croix, demiTour, dirDe, gravite, mul, niveau, numeroOrientation, quartDeTour, trans, type Commande, type Niveau, type V3 } from "../src/index";
+import { CUBE_ORDRE, DUREE_MAX_TICKS, M, ORIENTATIONS, Partie, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, appliquer, appliquerT, croix, demiTour, dirDe, gravite, mul, niveau, numeroOrientation, quartDeTour, trans, type Commande, type Niveau, type V3 } from "../src/index";
 
-// La gravité par quarts de tour (lot V1) : les 24 orientations, les deux déclencheurs (surfaces marquées, orbes), la bascule instantanée qui conserve le centre de la boîte et la vitesse du monde, et les mouvements
+// La gravité par quarts de tour (lot V1) : les 24 orientations, le déclencheur (les surfaces marquées ; lot V2 : les orbes sont retirées), la bascule instantanée qui conserve le centre de la boîte et la vitesse du monde, et les mouvements
 // dans toutes les orientations (une salle cubique, rejouée dans chacune : l'état local est le même, le monde tourne avec).
 const rien: Commande = { k: 0, dl: 0, dt: 0 };
 const tenir = (k: number, n: number, dl = 0): Commande[] => Array.from({ length: n }, () => ({ k, dl, dt: 0 }));
@@ -32,7 +32,7 @@ describe("les 24 orientations", () => {
   });
 });
 
-describe("les surfaces de gravité (déclencheur a)", () => {
+describe("les surfaces de gravité (le seul déclencheur, avec les portails)", () => {
   // Un sol, un plafond marqué à 3 m et un mur marqué à l'ouest.
   const SALLE: Niveau = {
     nom: "gravite",
@@ -156,29 +156,47 @@ describe("la bascule", () => {
   });
 });
 
-describe("les orbes de gravité (déclencheur b)", () => {
-  it("le cube : six orbes à la suite visitent les six directions de gravité, sans chute", () => {
-    const n = niveau("cube");
-    const s = jouerCibles("cube", n.orbes!.map((o) => [o.x / M, o.y / M, o.z / M]), { apres: 120 });
-    expect(s.partie.bascules).toBe(6);
+describe("le cube : les six directions de la gravité, par des surfaces", () => {
+  it("cinq faces à la suite (est, sud, ouest, nord, plafond) : les six directions, sans chute", () => {
+    const s = jouerCibles("cube", CUBE_ORDRE.map((p) => [...p] as [number, number, number]), { apres: 240 });
+    expect(s.partie.bascules).toBe(5);
     expect(s.partie.chutes).toBe(0);
     expect(new Set(s.orientations.map((o) => gravite(ORIENTATIONS[o]!)))).toEqual(new Set([0, 1, 2, 3, 4, 5]));
-    expect(s.partie.gravite).toBe(3);
+    expect(s.partie.gravite).toBe(2);
   });
-  it("une orbe ramassée s'éteint puis se rallume ; une orbe dans le sens de la gravité n'est pas ramassée", () => {
-    const n: Niveau = { nom: "cube", blocs: [bloc(-30, -1, -30, 30, 0, 30)], depart: { x: 0, y: 1000, z: 0, lacet: 0 }, arrivee: null, reprises: [], gemmes: [], chute: -30 * M, orbes: [{ x: 0, y: 0.9 * M, z: -3 * M, dir: 3 }, { x: 0, y: 0.9 * M, z: -6 * M, dir: 5 }] };
-    const p = new Partie(n);
-    for (const c of tenir(T_AVANT, 110)) p.avancer(c);
-    expect(p.orbesT[0]).toBe(0); // dans le sens de la gravité : intacte
-    expect(p.orbesT[1]).toBeGreaterThan(0); // vers −z : ramassée
-    expect(p.gravite).toBe(5);
-  });
-  it("les scénarios « gravite » et « cube » se chargent et ne chutent pas au départ", () => {
-    for (const nom of ["gravite", "cube"] as const) {
+  it("les scénarios « gravite », « portails » et « cube » se chargent et ne chutent pas au départ", () => {
+    for (const nom of ["gravite", "portails", "cube"] as const) {
       const p = new Partie(niveau(nom));
       for (let i = 0; i < 600; i++) p.avancer(rien);
       expect(p.chutes).toBe(0);
       expect(p.sol).toBe(true);
+    }
+  });
+  it("jamais deux surfaces marquées qui se touchent, dans les niveaux d'essai", () => {
+    for (const nom of ["gravite", "portails", "cube"] as const) {
+      const marquees = niveau(nom).blocs.filter((b) => b.gravite).map((b) => b.boite);
+      for (let i = 0; i < marquees.length; i++)
+        for (let j = i + 1; j < marquees.length; j++) {
+          const a = marquees[i]!;
+          const b = marquees[j]!;
+          const touche = a.x0 <= b.x1 && a.x1 >= b.x0 && a.y0 <= b.y1 && a.y1 >= b.y0 && a.z0 <= b.z1 && a.z1 >= b.z0;
+          expect(touche, `${nom} : les surfaces marquées ${i} et ${j} se touchent`).toBe(false);
+        }
+    }
+  });
+});
+
+describe("toucher une surface marquée ne dépend pas de l'ordre des blocs", () => {
+  // Un mur fait de deux blocs coplanaires, l'un ordinaire, l'autre marqué ; le joueur les prend de front, à cheval. Que le bloc ordinaire vienne avant ou après dans le niveau, la gravité tourne vers le mur
+  // (V1 : si l'ordinaire venait avant, il repoussait la boîte et la marquée n'était plus touchée).
+  const sol = bloc(-30, -1, -30, 30, 0, 30);
+  const ordinaire = bloc(-5, 0, -10, 5, 10, -9);
+  const marque = bloc(5, 0, -10, 10, 10, -9, true);
+  it("un mur à moitié marqué : la même bascule dans les deux ordres", () => {
+    for (const blocs of [[sol, ordinaire, marque], [sol, marque, ordinaire]]) {
+      const p = new Partie({ nom: "gravite", blocs, depart: { x: 5 * M, y: 1000, z: 0, lacet: 0 }, arrivee: null, reprises: [], gemmes: [], chute: -30 * M });
+      for (const c of tenir(T_AVANT, 200)) p.avancer(c);
+      expect([p.bascules, p.gravite]).toEqual([1, 5]);
     }
   });
 });

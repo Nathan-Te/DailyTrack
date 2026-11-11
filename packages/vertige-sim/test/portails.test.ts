@@ -56,8 +56,8 @@ describe("la géométrie des portails", () => {
 });
 
 describe("la traversée : le centre de la boîte passe le plan", () => {
-  const parcours = jouerCibles("portails", [[-6, 1.2, -6], [14, 1.2, -10], [34, 1.2, -10], [40.9, 5.5, -3], [42.5, 1, -3.5]], { apres: 10, maxPas: 3000 });
-  it("le parcours mêle les trois paires et l'orbe, et arrive", () => {
+  const parcours = jouerCibles("portails", [[-6, 1.2, -6], [14, 1.2, -10], [34, 1.2, -10], [42, 0, -3.5], [43.5, 0, -3.5]], { apres: 10, maxPas: 3000 });
+  it("le parcours mêle les trois paires et la plaque de sol marquée, et arrive", () => {
     expect(parcours.partie.traversees).toBe(3);
     expect(parcours.partie.bascules).toBe(1);
     expect(parcours.partie.fin).toBeGreaterThan(0);

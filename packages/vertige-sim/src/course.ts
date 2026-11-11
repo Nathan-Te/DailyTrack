@@ -26,7 +26,7 @@ export interface Resultat {
   pas: number;
   gemmes: number;
   chutes: number;
-  /** Les bascules de gravité (surfaces, orbes) et les traversées de portail (lot V1). */
+  /** Les bascules de gravité (surfaces marquées) et les traversées de portail (lot V1). */
   bascules: number;
   traversees: number;
 }
@@ -37,12 +37,9 @@ const POUSSEE = 100; // la distance laissée entre le joueur et ce qu'il touche 
 const SONDE = 80_000; // la sonde de mur : 8 cm
 const DEMI_RACINE_2 = 46341; // 1/√2 à l'échelle 65 536
 const RAYON_GEMME2 = 1_300_000 * 1_300_000;
-const RAYON_ORBE2 = 1_000_000 * 1_000_000;
 /** Après une bascule, 0,2 s (24 pas) sans nouvelle bascule : un angle entre deux surfaces ne fait pas osciller la gravité. */
 const BASCULE_VERROU = 24;
-/** Une orbe ramassée est éteinte 2 s (240 pas), puis se rallume ; une chute la rallume tout de suite. */
-const ORBE_RECHARGE = 240;
-/** La moitié de la boîte, au-dessus des pieds : le centre qui décide des portails, des orbes et des gemmes. */
+/** La moitié de la boîte, au-dessus des pieds : le centre qui décide des portails et des gemmes. */
 const MI_HAUT = 900_000; // HAUT / 2 (un littéral : voir portails.ts)
 
 /** Une boîte du niveau exprimée dans le repère local d'une orientation. */
@@ -138,9 +135,8 @@ export class Partie {
   traversees = 0;
   derniereBascule = -1;
   derniereTraversee = -1;
-  /** Pas restants avant qu'une nouvelle bascule soit permise ; pas restants avant que chaque orbe se rallume. */
+  /** Pas restants avant qu'une nouvelle bascule soit permise. */
   basculeVerrou = 0;
-  readonly orbesT: number[];
   readonly prises: boolean[];
   /** Le contact avec une surface de gravité pendant ce pas : la direction du monde vers elle, ou −1. */
   private marque = -1;
@@ -162,7 +158,6 @@ export class Partie {
     this.y = d.y;
     this.z = d.z;
     this.prises = niveau.gemmes.map(() => false);
-    this.orbesT = (niveau.orbes ?? []).map(() => 0);
     this.liaisons = liaisonsDe(niveau);
     const loc = boitesLocales(niveau, this.repOri);
     this.blocs = loc.liste;
@@ -222,6 +217,17 @@ export class Partie {
     this[axe] += d;
     const candidats = this.grille.chercher(Math.min(ax, this.x) - DEMI - PAD, Math.min(ay, this.y) - PAD, Math.min(az, this.z) - DEMI - PAD, Math.max(ax, this.x) + DEMI + PAD, Math.max(ay, this.y) + HAUT + PAD, Math.max(az, this.z) + DEMI + PAD);
     let touche = 0;
+    // Une surface de gravité touchée est notée (la première du pas) AVANT que ce contact, ou un autre, ne repousse la boîte : toucher une surface marquée ne dépend pas de l'ordre des blocs du niveau (lot V2).
+    if (this.marque < 0) {
+      for (let c = 0; c < candidats.length; c++) {
+        const s = this.blocs[candidats[c]!]!;
+        if (s.g && this.chevauche(this.x, this.y, this.z, s)) {
+          const signe = d > 0 ? 1 : -1;
+          this.marque = dirDe(appliquer(this.m, [axe === "x" ? signe : 0, axe === "y" ? signe : 0, axe === "z" ? signe : 0]));
+          break;
+        }
+      }
+    }
     for (let c = 0; c < candidats.length; c++) {
       const s = this.blocs[candidats[c]!]!;
       if (!this.chevauche(this.x, this.y, this.z, s)) continue;
@@ -229,7 +235,6 @@ export class Partie {
       else if (axe === "x") this.x = d > 0 ? s.x0 - DEMI - POUSSEE : s.x1 + DEMI + POUSSEE;
       else this.z = d > 0 ? s.z0 - DEMI - POUSSEE : s.z1 + DEMI + POUSSEE;
       touche = d > 0 ? 1 : -1;
-      if (s.g && this.marque < 0) this.marque = dirDe(appliquer(this.m, [axe === "x" ? touche : 0, axe === "y" ? touche : 0, axe === "z" ? touche : 0]));
     }
     return touche;
   }
@@ -240,10 +245,16 @@ export class Partie {
     for (const [axe, sgn] of [["x", 1], ["x", -1], ["z", 1], ["z", -1]] as const) {
       const px = this.x + (axe === "x" ? sgn * SONDE : 0);
       const pz = this.z + (axe === "z" ? sgn * SONDE : 0);
+      let touche = false;
+      let g = false;
       for (let c = 0; c < candidats.length; c++) {
         const b = this.blocs[candidats[c]!]!;
-        if (this.chevauche(px, this.y, pz, b)) return { nx: axe === "x" ? -sgn : 0, nz: axe === "z" ? -sgn : 0, g: b.g };
+        if (this.chevauche(px, this.y, pz, b)) {
+          touche = true;
+          if (b.g) g = true; // un mur fait de plusieurs blocs : il est marqué dès qu'un des blocs touchés l'est (lot V2)
+        }
       }
+      if (touche) return { nx: axe === "x" ? -sgn : 0, nz: axe === "z" ? -sgn : 0, g };
     }
     return null;
   }
@@ -331,7 +342,6 @@ export class Partie {
     if (this.dashRecharge > 0) this.dashRecharge--;
     if (this.murVerrou > 0) this.murVerrou--;
     if (this.basculeVerrou > 0) this.basculeVerrou--;
-    for (let i = 0; i < this.orbesT.length; i++) if (this.orbesT[i]! > 0) this.orbesT[i]!--;
     this.marque = -1;
     const avant = this.centre();
     if (appuis & T_SAUT) this.tampon = n.tampon;
@@ -402,7 +412,7 @@ export class Partie {
     this.sol = vertical < 0;
     if (vertical !== 0) this.vy = 0;
     if (etaitAuSol && !this.sol) this.coyote = n.coyote;
-    // Les portails : le centre de la boîte a-t-il passé un plan ? (Sinon, les orbes, puis les surfaces de gravité.)
+    // Les portails : le centre de la boîte a-t-il passé un plan ? (Sinon, les surfaces de gravité.)
     const traverse = this.liaisons.length > 0 && this.traverser(avant);
     if (!traverse) this.declencherGravite(mur);
     // Les points de reprise, la chute.
@@ -425,7 +435,6 @@ export class Partie {
       this.vx = this.vy = this.vz = 0;
       this.sol = false;
       this.dash = this.coyote = this.tampon = this.murT = this.basculeVerrou = 0;
-      this.orbesT.fill(0);
       this.surMur = false;
       this.chutes++;
     }
@@ -451,25 +460,9 @@ export class Partie {
     }
   }
 
-  /** Les orbes puis les surfaces de gravité : la première cause d'une bascule gagne, et jamais pendant le verrou qui suit une bascule. */
+  /** Les surfaces de gravité : la première touchée gagne, et jamais pendant le verrou qui suit une bascule. */
   private declencherGravite(mur: { nx: number; nz: number; g: boolean } | null): void {
     if (this.basculeVerrou > 0) return;
-    const orbes = this.niveau.orbes;
-    if (orbes && orbes.length > 0) {
-      const cm = this.centre();
-      for (let i = 0; i < orbes.length; i++) {
-        const o = orbes[i]!;
-        if (this.orbesT[i]! > 0 || o.dir === this.gravite) continue;
-        const dx = o.x - cm[0];
-        const dy = o.y - cm[1];
-        const dz = o.z - cm[2];
-        if (dx * dx + dy * dy + dz * dz < RAYON_ORBE2) {
-          this.orbesT[i] = ORBE_RECHARGE;
-          this.tournerGravite(o.dir);
-          return;
-        }
-      }
-    }
     // Une surface de gravité : touchée en se déplaçant, ou longée en courant sur le mur (la direction va du joueur vers le mur).
     let vers = this.marque;
     if (vers < 0 && mur && mur.g && this.surMur) vers = dirDe(appliquer(this.m, [-mur.nx, 0, -mur.nz]));
@@ -493,7 +486,6 @@ export class Partie {
     const etat = [this.x, this.y, this.z, this.vx, this.vy, this.vz, this.lacet, this.tangage, this.sol ? 1 : 0, this.coyote, this.tampon, this.dash, this.dashRecharge, this.murVerrou, this.murT, this.surMur ? 1 : 0, this.murNx, this.murNz, this.depart, this.fin, this.tick, this.chutes, this.ori, this.basculeVerrou, this.bascules, this.traversees, this.derniereBascule, this.derniereTraversee];
     for (const v of etat) entier(v);
     for (const p of this.prises) entier(p ? 1 : 0);
-    for (const t of this.orbesT) entier(t);
     return h.toString(16).padStart(8, "0");
   }
 }

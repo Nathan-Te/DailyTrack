@@ -121,11 +121,11 @@ const lignes: [string, NomNiveau | "synthetique" | "synthetique600", number, num
   ["va-et-vient 120 s, portails", "portails", 14400, 6],
   ["marche au hasard 45 s, gravité", "gravite", 5400, 7],
   ["marche au hasard 120 s, gravité", "gravite", 14400, 8],
-  ["marche au hasard 120 s, cube (6 orbes)", "cube", 14400, 9],
+  ["marche au hasard 120 s, cube (6 plaques)", "cube", 14400, 9],
 ];
 for (const [nom, nv, pas, graine] of lignes) {
   const niv: Niveau = nv === "synthetique" || nv === "synthetique600" ? { ...niveau("bac-a-sable"), blocs: blocsSynthetiques(nv === "synthetique" ? 200 : 600), arrivee: null } : { ...niveau(nv), ...(nv === "portails" ? { arrivee: null } : {}) };
-  // Pour les portails, un joueur qui va et vient d'un portail de la première paire à l'autre (une traversée toutes les deux secondes environ) ; pour le cube, les six orbes en boucle ; sinon, une marche au hasard.
+  // Pour les portails, un joueur qui va et vient d'un portail de la première paire à l'autre (une traversée toutes les deux secondes environ) ; pour le cube et la gravité, une marche au hasard ; sinon, une marche au hasard.
   const cmd =
     nv === "parcours"
       ? jouerEtapes("parcours", ETAPES_PARCOURS).commandes

@@ -21,15 +21,8 @@ export interface Boite {
 export interface BlocNiveau {
   boite: Boite;
   role: Role;
-  /** Une surface de gravité (lot V1) : la toucher (pieds, tête, flanc ou course sur le mur) tourne la gravité vers elle. */
+  /** Une surface de gravité (lot V1) : la toucher (pieds, tête, flanc ou course sur le mur) tourne la gravité vers elle. C'est le seul déclencheur, avec les portails (lot V2 : les orbes sont retirées). */
   gravite?: boolean;
-}
-/** Une orbe de gravité (lot V1) : la ramasser tourne la gravité vers `dir` (0 à 5 : +x, −x, +y, −y, +z, −z), la flèche de l'orbe. */
-export interface Orbe {
-  x: number;
-  y: number;
-  z: number;
-  dir: Dir;
 }
 export interface Reprise {
   /** Où il faut être (la position des pieds, au sol) pour que ce point devienne le point de reprise. */
@@ -50,8 +43,6 @@ export interface Niveau {
   gemmes: readonly { x: number; y: number; z: number }[];
   /** Au-dessous de cette hauteur (µm), on réapparaît au dernier point de reprise. */
   chute: number;
-  /** Les orbes de gravité (lot V1), s'il y en a. */
-  orbes?: readonly Orbe[];
   /** Les paires de portails (lot V1), s'il y en a. */
   portails?: readonly Paire[];
   /** Les limites du monde (lot V1) : sortir de cette boîte (pieds) ramène au dernier point de reprise, comme la chute. Sans elle, seule `chute` compte. */
@@ -162,36 +153,39 @@ export function murDePortail(p: Portail, demi: number, bas: number, haut: number
 const portail = (x: number, y: number, z: number, normale: Dir, haut: Dir): Portail => ({ x: x * M, y: y * M, z: z * M, normale, haut });
 const PX: Dir = 0, MX: Dir = 1, PY: Dir = 2, MY: Dir = 3, PZ: Dir = 4, MZ: Dir = 5;
 
-/** La salle de la gravité : à l'ouest les SURFACES (un plafond et deux murs marqués), à l'est les ORBES (une flèche chacune), un sol entre les deux. */
+/** La salle de la gravité : des surfaces marquées (« rouge » à facettes violettes au rendu), qui ne se touchent jamais. À l'ouest un plafond (on saute dessous), un grand mur et un mur du nord ; à l'est un mur et un plafond ; le sol a deux plaques marquées qui ramènent la gravité vers le bas. */
 function gravite(): Niveau {
   return {
     nom: "gravite",
     blocs: [
-      bm(-30, -0.5, -20, 30, 0, 20),
-      // Les surfaces de gravité : le plafond (on saute dessous), le mur de l'ouest, et le mur du nord qui lui est perpendiculaire.
-      bm(-20, 3.0, -10, -6, 3.5, 8, "rouge", true),
+      // Le sol, en cinq morceaux : deux plaques marquées (le retour au sol), au pied des deux grands murs.
+      bm(-30, -0.5, -20, -20, 0, 20),
+      bm(-20, -0.5, -8, -15, 0, 8, "pierre", true),
+      bm(-20, -0.5, -20, -15, 0, -8),
+      bm(-20, -0.5, 8, -15, 0, 20),
+      bm(-15, -0.5, -20, 15, 0, 20),
+      bm(15, -0.5, -8, 19, 0, 8, "pierre", true),
+      bm(15, -0.5, -20, 19, 0, -8),
+      bm(15, -0.5, 8, 19, 0, 20),
+      bm(19, -0.5, -20, 30, 0, 20),
+      // À l'ouest : le plafond (on saute dessous), le grand mur, le mur du nord (1 à 2 m de vide entre deux surfaces marquées : elles ne se touchent pas).
+      bm(-20, 3.0, -9, -6, 3.5, 8, "rouge", true),
       bm(-22, 0, -10, -21, 14, 8, "rouge", true),
-      bm(-21, 0, -11, -6, 14, -10, "rouge", true),
-      // Les orbes : un mur et un plafond ordinaires, qu'une orbe fait atteindre.
-      bm(20, 0, -10, 21, 14, 8, "sombre"),
-      bm(6, 8, -10, 18, 8.5, 8, "sombre"),
+      bm(-19, 0, -11, -6, 14, -10, "rouge", true),
+      // À l'est : un mur et un plafond.
+      bm(20, 0, -10, 21, 14, 8, "rouge", true),
+      bm(6, 8, -10, 18, 8.5, 8, "rouge", true),
     ],
     depart: { ...pm(0, 0.001, 12), lacet: 0 },
     arrivee: null,
     reprises: [],
     gemmes: [],
     chute: -30 * M,
-    orbes: [
-      { ...pm(8, 0.9, -4), dir: PX }, // vers l'est : le mur de l'est
-      { ...pm(12, 0.9, 6), dir: PY }, // vers le haut : le plafond de l'est
-      { ...pm(12, 7.1, 0), dir: MY }, // sur ce plafond : retour au sol
-      { ...pm(19.1, 6, 0), dir: MY }, // sur le mur de l'est : retour au sol
-    ],
     vide: { x0: -60 * M, y0: -30 * M, z0: -60 * M, x1: 60 * M, y1: 80 * M, z1: 60 * M },
   };
 }
 
-/** La salle des portails : trois paires (droite, tournée d'un quart de tour, qui change la gravité) et une orbe, en un court parcours. */
+/** La salle des portails : trois paires (droite, tournée d'un quart de tour, qui change la gravité) puis une plaque de sol marquée (retour au sol), en un court parcours. */
 function portails(): Niveau {
   const a1 = portail(-6, 1.2, -6, PZ, PY);
   const b1 = portail(14, 1.2, -20, PZ, PY);
@@ -202,7 +196,12 @@ function portails(): Niveau {
   return {
     nom: "portails",
     blocs: [
-      bm(-30, -0.5, -45, 60, 0, 15),
+      // Le sol : une plaque marquée devant l'arrivée (on y revient en marchant sur le grand mur vers le bas).
+      bm(-30, -0.5, -45, 41, 0, 15),
+      bm(41, -0.5, -8, 45, 0, 0, "pierre", true),
+      bm(41, -0.5, -45, 60, 0, -8),
+      bm(41, -0.5, 0, 60, 0, 15),
+      bm(45, -0.5, -8, 60, 0, 0),
       ...murDePortail(a1, 3, 1.2, 2.4),
       ...murDePortail(b1, 3, 1.2, 2.4),
       ...murDePortail(a2, 3, 1.2, 2.4),
@@ -212,43 +211,60 @@ function portails(): Niveau {
       bm(38, 0, -20, 40, 16, 2, "sombre"), // le mur sur lequel on retombe (sa face est est à x = 40)
     ],
     depart: { ...pm(0, 0.001, 10), lacet: 0 },
-    arrivee: { x0: 41 * M, y0: 0, z0: -6 * M, x1: 44 * M, y1: 2 * M, z1: -1 * M },
+    arrivee: { x0: 42.5 * M, y0: 0, z0: -6 * M, x1: 44.5 * M, y1: 2 * M, z1: -1 * M },
     reprises: [],
     gemmes: [],
     chute: -30 * M,
-    orbes: [{ ...pm(40.9, 5.5, -3), dir: MY }], // sur le mur : retour au sol, devant l'arrivée
     portails: [{ a: a1, b: b1 }, { a: a2, b: b2 }, { a: a3, b: b3 }],
     vide: { x0: -60 * M, y0: -30 * M, z0: -80 * M, x1: 90 * M, y1: 80 * M, z1: 40 * M },
   };
 }
 
-/** Le cube (pour les tests et le golden, aussi jouable) : une salle de 24 m fermée, avec une orbe sur chaque face qui envoie vers la suivante — les six directions de gravité à la suite. */
+/**
+ * Le cube (pour les tests et le golden, aussi jouable) : une salle de 24 m fermée dont chaque face est une plaque marquée entourée d'un liseré de 40 cm qui ne l'est pas (les plaques ne se touchent jamais). On touche
+ * la plaque d'une face : la gravité tourne vers elle. Le tour des six directions se fait par des faces voisines : le sol (départ), l'est, le nord… voir `CUBE_ORDRE`.
+ */
 function cube(): Niveau {
+  const interieur: [number, number][] = [[-12, 12], [0, 24], [-12, 12]];
+  const blocs: BlocNiveau[] = [];
+  for (const axe of [0, 1, 2] as const) for (const signe of [-1, 1] as const) blocs.push(...faceAvecPlaque(axe, signe, interieur, 0.4));
   return {
     nom: "cube",
-    blocs: [
-      bm(-13, -1, -13, 13, 0, 13),
-      bm(-13, 24, -13, 13, 25, 13),
-      bm(12, 0, -13, 13, 24, 13),
-      bm(-13, 0, -13, -12, 24, 13),
-      bm(-12, 0, 12, 12, 24, 13),
-      bm(-12, 0, -13, 12, 24, -12),
-    ],
+    blocs,
     depart: { ...pm(-6, 0.001, 0), lacet: 0 },
     arrivee: null,
     reprises: [],
     gemmes: [],
     chute: -30 * M,
-    orbes: [
-      { ...pm(6, 0.9, 0), dir: PX },
-      { ...pm(11.1, 12, 0), dir: PY },
-      { ...pm(0, 23.1, 0), dir: MX },
-      { ...pm(-11.1, 12, 0), dir: PZ },
-      { ...pm(0, 12, 11.1), dir: MZ },
-      { ...pm(0, 12, -11.1), dir: MY },
-    ],
     vide: { x0: -40 * M, y0: -30 * M, z0: -40 * M, x1: 40 * M, y1: 80 * M, z1: 40 * M },
   };
+}
+/** Le centre des faces du cube, dans l'ordre qui visite les six directions de la gravité par des faces voisines : est (+x), nord… (le sol est celui du départ). Des points du monde, en mètres. */
+export const CUBE_ORDRE: readonly [number, number, number][] = [
+  [12, 12, 0], // la face est : la gravité va vers +x
+  [0, 12, 12], // la face sud (+z)
+  [-12, 12, 0], // la face ouest (−x)
+  [0, 12, -12], // la face nord (−z)
+  [0, 24, 0], // le plafond (+y)
+];
+
+/** Une face d'une salle : une dalle d'un mètre derrière l'intérieur `interieur` (bornes par axe), faite d'une plaque marquée au milieu et de quatre barres non marquées sur `liseré` de large tout autour. */
+export function faceAvecPlaque(axe: 0 | 1 | 2, signe: 1 | -1, interieur: readonly (readonly [number, number])[], lisere: number): BlocNiveau[] {
+  const [u, v] = ([0, 1, 2] as const).filter((a) => a !== axe) as [0 | 1 | 2, 0 | 1 | 2];
+  const epais: [number, number] = signe > 0 ? [interieur[axe]![1], interieur[axe]![1] + 1] : [interieur[axe]![0] - 1, interieur[axe]![0]];
+  const dalle = (a: 0 | 1 | 2): [number, number] => [interieur[a]![0] - 1, interieur[a]![1] + 1];
+  const plaque = (a: 0 | 1 | 2): [number, number] => [interieur[a]![0] + lisere, interieur[a]![1] - lisere];
+  const boite = (ru: [number, number], rv: [number, number], marque: boolean): BlocNiveau => {
+    const lo = [0, 0, 0];
+    const hi = [0, 0, 0];
+    lo[axe] = epais[0];
+    hi[axe] = epais[1];
+    [lo[u], hi[u]] = ru;
+    [lo[v], hi[v]] = rv;
+    return bm(lo[0]!, lo[1]!, lo[2]!, hi[0]!, hi[1]!, hi[2]!, marque ? "rouge" : "pierre", marque);
+  };
+  const [du, dv, pu, pv] = [dalle(u), dalle(v), plaque(u), plaque(v)];
+  return [boite(pu, pv, true), boite([du[0], pu[0]], dv, false), boite([pu[1], du[1]], dv, false), boite(pu, [dv[0], pv[0]], false), boite(pu, [pv[1], dv[1]], false)];
 }
 
 const CACHE = new Map<NomNiveau, Niveau>();

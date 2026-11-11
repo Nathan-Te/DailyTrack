@@ -35,12 +35,12 @@ describe("golden de Vertige", () => {
     if (ref.scenario) expect(rejouerScenario(ref.code).resultat).toEqual(ref.resultat);
     else expect(rejouer(dailyVertige(parseDay(ref.date)!, ref.g), ref.code)).toEqual(ref.resultat);
   });
-  it("lot V1 : le golden visite les six directions de la gravité et des traversées de portail, état complet tous les 600 pas", () => {
+  it("lots V1 et V2 : le golden visite les six directions de la gravité et des traversées de portail, état complet tous les 600 pas", () => {
     const total = (cle: "bascules" | "traversees"): number => golden.rediffusions.reduce((n, r) => n + ((r.resultat as Record<string, number>)[cle] ?? 0), 0);
     expect(total("bascules")).toBeGreaterThanOrEqual(15);
     expect(total("traversees")).toBeGreaterThanOrEqual(30);
     const cube = golden.rediffusions.find((x) => x.nom === "cube-six-directions")!;
-    expect((cube.resultat as { bascules: number }).bascules).toBe(6);
+    expect((cube.resultat as { bascules: number }).bascules).toBe(5); // lot V2 : cinq faces voisines, six directions (le sol du départ compte)
     // Les six directions : on rejoue le cube et on relève la gravité après chaque bascule.
     const p = new Partie(niveau("cube"));
     const vues = new Set<number>([p.gravite]);
