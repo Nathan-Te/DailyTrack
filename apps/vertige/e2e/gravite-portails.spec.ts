@@ -18,7 +18,8 @@ const ouvrir = async (browser: Parameters<typeof appareil>[0], scenario: NomNive
 test.describe("Vertige : la gravité et les portails", () => {
   test("le cube : cinq faces à la suite (six directions), la partie du navigateur est celle de Node, la caméra fait la transition", async ({ browser }) => {
     const c = commandes("cube-six-directions");
-    const { context, page } = await ouvrir(browser, "cube", `&reglages=${encodeURIComponent(JSON.stringify({ confort: { transition: 1000 } }))}`);
+    const { context, page } = await ouvrir(browser, "cube", `&reglages=${encodeURIComponent(JSON.stringify({ confort: { transition: 6000 } }))}`);
+    await page.setViewportSize({ width: 640, height: 360 }); // le rendu logiciel de la CI : des images plus petites (le cube de V2 a 30 boîtes) ; la transition est longue pour qu'une image lente ne l'efface pas
     await image(page);
     await image(page); // deux images dessinées d'abord : la transition de la caméra part de la vue de l'image d'avant (sur un runner lent, la première bascule pouvait précéder toute image)
     await page.evaluate((cmd) => window.__vertige.jouer(cmd), c);
@@ -34,7 +35,7 @@ test.describe("Vertige : la gravité et les portails", () => {
     await image(page);
     expect((await page.evaluate(() => window.__vertige.sim().bascules))).toBe(1);
     expect((await page.evaluate(() => window.__vertige.camera())).correction).toBe(true);
-    await page.waitForTimeout(1400);
+    await page.waitForTimeout(6500);
     expect((await page.evaluate(() => window.__vertige.camera())).correction).toBe(false);
     await page.evaluate((k) => window.__jeu.avancer(k), c.length - premiere - 1);
     const fin = await page.evaluate(() => {
