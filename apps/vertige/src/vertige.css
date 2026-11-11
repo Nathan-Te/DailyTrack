@@ -162,3 +162,62 @@
   font: 700 1rem/1.4 var(--dj-police-texte, sans-serif);
   color: var(--dj-encre);
 }
+
+/* Lot V2 : la galerie de modules (`?scenario=modules`, essai) et le temps du robot. */
+.vertige-galerie {
+  position: absolute;
+  left: max(0.6rem, env(safe-area-inset-left));
+  top: max(0.6rem, env(safe-area-inset-top));
+  bottom: max(0.6rem, env(safe-area-inset-bottom));
+  width: min(19rem, 46%);
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  box-shadow: var(--dj-ombre-cartouche);
+  font: 600 0.78rem var(--dj-police-texte, sans-serif);
+}
+.vertige-galerie h3 {
+  margin: 0 0 0.4rem;
+  font: 700 0.9rem var(--dj-police-titre, sans-serif);
+}
+.vertige-galerie__liste {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vertige-galerie__module {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.35rem 0.45rem;
+  border: 1.5px solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.vertige-galerie__module[aria-current="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.vertige-galerie__nom {
+  font-weight: 800;
+}
+.vertige-galerie__etiquettes,
+.vertige-galerie__robot {
+  font-weight: 600;
+  opacity: 0.85;
+}
+.vertige-galerie__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+.vertige-galerie__actions .vertige-bouton {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+}
+.vertige-scene > .vertige-etat--robot {
+  bottom: auto;
+  top: max(0.8rem, env(safe-area-inset-top));
+}

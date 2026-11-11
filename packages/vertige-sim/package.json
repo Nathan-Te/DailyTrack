@@ -23,6 +23,7 @@
     "./reglages": "./src/sensations.ts",
     "./variante": "./src/variante.ts",
     "./niveaux": "./src/niveaux.ts",
+    "./modules": "./src/modulesIndex.ts",
     "./rediffusion": "./src/rediffusion.ts",
     "./essais": "./src/partiesEssais.ts"
   }

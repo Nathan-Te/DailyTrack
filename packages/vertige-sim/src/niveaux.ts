@@ -1,7 +1,6 @@
 import { CM, M } from "./constantes";
 import type { Dir } from "./orientation";
 import { bm, faceAvecPlaque, MX, MY, murDePortail, PX, PY, pm, portail, PZ, MZ } from "./construction";
-import { enchainement } from "./enchainement";
 import type { Paire } from "./portails";
 import type { NomNiveau } from "./noms";
 
@@ -238,12 +237,18 @@ export const CUBE_ORDRE: readonly [number, number, number][] = [
   [0, 24, 0], // le plafond (+y)
 ];
 
+// Les niveaux construits ailleurs (lot V2 : l'enchaînement de modules s'enregistre ici quand son fichier est chargé). Ce fichier n'importe donc jamais la bibliothèque de modules : il est dans les dépendances du premier chargement
+// du jeu (budget `vertige.jsCss`), la bibliothèque n'y est pas.
+const AILLEURS = new Map<NomNiveau, () => Niveau>();
+export function enregistrerNiveau(nom: NomNiveau, construire: () => Niveau): void {
+  AILLEURS.set(nom, construire);
+}
 const CACHE = new Map<NomNiveau, Niveau>();
 /** Le niveau de ce nom (construit une fois). */
 export function niveau(nom: NomNiveau): Niveau {
   let n = CACHE.get(nom);
   if (!n) {
-    n = nom === "parcours" ? parcours() : nom === "bac-a-sable" ? bacASable() : nom === "mur" ? mur() : nom === "gravite" ? gravite() : nom === "portails" ? portails() : nom === "cube" ? cube() : enchainement().niveau;
+    n = nom === "parcours" ? parcours() : nom === "bac-a-sable" ? bacASable() : nom === "mur" ? mur() : nom === "gravite" ? gravite() : nom === "portails" ? portails() : nom === "cube" ? cube() : (AILLEURS.get(nom) ?? (() => { throw new Error(`niveau « ${nom} » non chargé : importer son fichier (enchainement.ts)`); }))();
     CACHE.set(nom, n);
   }
   return n;

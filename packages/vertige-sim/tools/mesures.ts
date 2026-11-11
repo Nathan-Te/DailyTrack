@@ -2,6 +2,7 @@ import { gzipSync } from "node:zlib";
 import { Rng } from "@cdj/core";
 import { CM, Partie, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, TICKS_PAR_SECONDE, chargeDe, dailyVertige, enregistrer, niveau, type BlocNiveau, type Commande, type Niveau, type NomNiveau } from "../src/index";
 import { ETAPES_PARCOURS, jouerCibles, jouerEtapes } from "./robot";
+import { enchainement } from "../src/modulesIndex";
 
 // Les mesures du lot V0 (`npm run mesures:vertige -w @cdj/vertige-sim`) : le coût du rejeu d'une partie de 60 et de 120 s, et la taille de la rediffusion avec la souris, brute et compressée. Elles s'écrivent en
 // Markdown sur la sortie standard. **Les profils de souris sont synthétiques** (aucune main humaine n'a joué) : ils bornent la taille, ils ne la prédisent pas — la mesure réelle se lit en jeu (`?debug&fps` affiche la
@@ -103,11 +104,15 @@ function chrono(f: () => void, fois: number): { min: number; mediane: number; ma
 }
 const ms = (v: number): string => (v < 10 ? v.toFixed(2) : v.toFixed(1));
 
-console.log("# Lots V0 et V1 — mesures (Node " + process.version + ")\n");
+console.log("# Lots V0, V1 et V2 — mesures (Node " + process.version + ")\n");
 console.log("## Le coût du rejeu d'une partie\n");
 console.log("Médiane de 25 rejeux, en ms (min – max) ; une partie qui n'arrive pas joue ses 14 400 pas au plus. Le niveau : le nombre de boîtes que la simulation teste à chaque pas.\n");
 console.log("| partie | niveau (boîtes) | pas | rejeu (ms) | par seconde de jeu (ms) | sans index (ms) |\n|---|---|---:|---|---:|---:|");
 const lignes: [string, NomNiveau | "synthetique" | "synthetique600", number, number][] = [
+  // Lot V2 : l'enchaînement (41 boîtes, 2 paires de portails) : la solution du robot (34,7 s), puis une marche au hasard de 45 s et de 120 s.
+  ["le robot de l'enchaînement (34,7 s)", "enchainement", 4161, 0],
+  ["marche au hasard 45 s, enchaînement", "enchainement", 5400, 12],
+  ["marche au hasard 120 s, enchaînement", "enchainement", 14400, 13],
   ["marche au hasard 60 s", "bac-a-sable", 7200, 1],
   ["marche au hasard 120 s", "bac-a-sable", 14400, 1],
   ["marche au hasard 120 s", "mur", 14400, 2],
@@ -124,10 +129,12 @@ const lignes: [string, NomNiveau | "synthetique" | "synthetique600", number, num
   ["marche au hasard 120 s, cube (6 plaques)", "cube", 14400, 9],
 ];
 for (const [nom, nv, pas, graine] of lignes) {
-  const niv: Niveau = nv === "synthetique" || nv === "synthetique600" ? { ...niveau("bac-a-sable"), blocs: blocsSynthetiques(nv === "synthetique" ? 200 : 600), arrivee: null } : { ...niveau(nv), ...(nv === "portails" ? { arrivee: null } : {}) };
+  const niv: Niveau = nv === "synthetique" || nv === "synthetique600" ? { ...niveau("bac-a-sable"), blocs: blocsSynthetiques(nv === "synthetique" ? 200 : 600), arrivee: null } : { ...niveau(nv), ...(nv === "portails" || (nv === "enchainement" && graine !== 0) ? { arrivee: null } : {}) };
   // Pour les portails, un joueur qui va et vient d'un portail de la première paire à l'autre (une traversée toutes les deux secondes environ) ; pour le cube et la gravité, une marche au hasard ; sinon, une marche au hasard.
   const cmd =
-    nv === "parcours"
+    nv === "enchainement" && graine === 0
+      ? enchainement().solution
+      : nv === "parcours"
       ? jouerEtapes("parcours", ETAPES_PARCOURS).commandes
       : nv === "portails"
         ? jouerCibles("portails", Array.from({ length: 400 }, (_, i): [number, number, number] => (i % 2 === 0 ? [-6, 1.2, -6] : [14, 1.2, -20])), { maxPas: pas }).commandes

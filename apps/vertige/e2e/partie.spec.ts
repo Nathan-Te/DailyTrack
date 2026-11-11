@@ -49,8 +49,14 @@ test.describe("Vertige : une partie", () => {
     await page.keyboard.up("ShiftLeft");
     await expect(page.locator(".vertige-etat")).toHaveText("Dash");
 
-    // R recommence tout de suite ; les touches 1 et 2 (les deux styles du prototype) ne font plus rien : « Lumière douce » est le seul rendu.
-    await page.keyboard.press("KeyR");
+    // R (lot V2) reprend au dernier palier — ici le départ — sans remettre le chrono à zéro, comme « point de contrôle » de Track et Jump ; Entrée (le kit) recommence tout de suite ;
+    // les touches 1 et 2 (les deux styles du prototype) ne font plus rien : « Lumière douce » est le seul rendu.
+    await page.keyboard.down("KeyR");
+    await page.evaluate(() => window.__jeu.avancer(2));
+    await page.keyboard.up("KeyR");
+    expect(await page.evaluate(() => window.__vertige.sim().reprises)).toBe(1);
+    expect((await sim(page)).tick).toBeGreaterThan(100); // le chrono continue
+    await page.keyboard.press("Enter");
     await expect.poll(async () => (await sim(page)).tick).toBe(0);
     await page.keyboard.press("Digit2");
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("vertige:confort") ?? "{}").style)).toBeUndefined();

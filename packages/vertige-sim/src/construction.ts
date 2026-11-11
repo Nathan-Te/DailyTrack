@@ -1,11 +1,13 @@
-import { CM, M } from "./constantes";
 import type { BlocNiveau, Role } from "./niveaux";
 import type { Dir } from "./orientation";
 import { PORTAIL_DEMI_H, PORTAIL_DEMI_L, PORTAIL_PROFONDEUR, boiteRepere, geo, type Portail } from "./portails";
 
 // Les briques de construction des niveaux (lot V2 : sorties de `niveaux.ts`, pour que les modules les utilisent sans cercle d'imports) : des blocs et des points en mètres, le mur d'un portail, une face à plaque marquée.
+// (Des littéraux, pas des produits de `M` ou `CM` importés : ces fonctions tournent à l'initialisation de la bibliothèque de modules, et dans le navigateur les paquets de la construction s'importent en cercle — la valeur
+// importée serait encore `undefined`, donc `NaN`. Même règle que pour les constantes des portails.)
+const MICRO = 1_000_000;
 /** Des mètres en micromètres, ENTIERS (un produit flottant comme 1,1 × 10⁶ n'en est pas un : l'état de la simulation n'a que des entiers). */
-export const um = (v: number): number => Math.round(v * M);
+export const um = (v: number): number => Math.round(v * MICRO);
 /** Un bloc par ses bornes, en mètres (x0, y0, z0, x1, y1, z1). */
 export const bm = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, role: Role = "pierre", gravite = false): BlocNiveau => ({
   boite: { x0: um(x0), y0: um(y0), z0: um(z0), x1: um(x1), y1: um(y1), z1: um(z1) },
@@ -18,12 +20,12 @@ export const pm = (x: number, y: number, z: number): { x: number; y: number; z: 
 /** Le mur d'un portail : une dalle de 1,2 m d'épaisseur derrière le plan (face avant sur le plan), percée de l'ouverture sur `PORTAIL_PROFONDEUR` — une poche vide fermée par 0,2 m de pierre. `demi` : demi-largeur du mur, `bas` et `haut` : ce qui reste sous et au-dessus du centre. */
 export function murDePortail(p: Portail, demi: number, bas: number, haut: number, role: Role = "pierre"): BlocNiveau[] {
   const g = geo(p);
-  const T = PORTAIL_PROFONDEUR + 20 * CM;
+  const T = PORTAIL_PROFONDEUR + 200_000;
   const hw = PORTAIL_DEMI_L;
   const hh = PORTAIL_DEMI_H;
-  const d = demi * M;
-  const b = bas * M;
-  const h = haut * M;
+  const d = um(demi);
+  const b = um(bas);
+  const h = um(haut);
   const morceaux: [readonly [number, number], readonly [number, number], readonly [number, number]][] = [
     [[-d, -hw], [-b, h], [-T, 0]],
     [[hw, d], [-b, h], [-T, 0]],

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MODULES, M, ORDRE_ENCHAINEMENT, Partie, T_REPRISE, T_SAUT, TICKS_PAR_SECONDE, blocsDansUnePoche, blocsQuiSeRecouvrent, decoderRediffusion, distanceMinimaleEntrePaires, enchainement, enregistrerScenario, niveau, rejouerScenario, robotDuModule, surfacesMarqueesQuiSeTouchent, DISTANCE_PAIRES_MIN } from "../src/index";
+import { M, Partie, T_REPRISE, T_SAUT, TICKS_PAR_SECONDE, decoderRediffusion, enregistrerScenario, niveau, rejouerScenario } from "../src/index";
+import { MODULES, ORDRE_ENCHAINEMENT, blocsDansUnePoche, blocsQuiSeRecouvrent, distanceMinimaleEntrePaires, enchainement, robotDuModule, surfacesMarqueesQuiSeTouchent, DISTANCE_PAIRES_MIN } from "../src/modulesIndex";
 
 // L'enchaînement fixe (lot V2) : 6 à 8 modules assemblés à la main, qui préfigurent le niveau du jour. Le test rejoue la solution ENTIÈRE, de bout en bout, sur le niveau assemblé : si une constante de sensation casse
 // une solution, il dit lequel des modules ne passe plus. Les paliers sont des points de passage : une chute ramène au dernier, la touche de reprise aussi, le chrono continue.

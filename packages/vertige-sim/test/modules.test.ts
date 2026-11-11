@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CM, M, MARGE_MILLE, MODULES, ORIENTATIONS, POUSSEE, Partie, REGLAGES_DEFAUT, T_AVANT, T_SAUT, TICKS_PAR_SECONDE, analyser, blocsDansUnePoche, commandesDuModule, ecartsHorsJauge, gravite, jauges, lireSolution, niveauDuModule, robotDuModule, surfacesMarqueesQuiSeTouchent, commandesDe, type Mecanique, type Module } from "../src/index";
+import { CM, M, ORIENTATIONS, POUSSEE, Partie, REGLAGES_DEFAUT, T_AVANT, T_SAUT, TICKS_PAR_SECONDE, gravite } from "../src/index";
+import { MARGE_MILLE, MODULES, analyser, blocsDansUnePoche, commandesDuModule, ecartsHorsJauge, jauges, lireSolution, niveauDuModule, robotDuModule, surfacesMarqueesQuiSeTouchent, commandesDe, type Mecanique, type Module } from "../src/modulesIndex";
 
 // La bibliothèque de modules (lot V2) : chaque module rejoue SA solution, de l'état canonique d'entrée à la capture de sa sortie, et le test échoue EN NOMMANT LE MODULE si une constante de sensation casse une jauge ou une
 // solution (règle de `consignes.md`). Les contraintes de niveau (surfaces marquées qui ne se touchent pas, poches vides, une paire de portails par module) et la vérité des étiquettes se vérifient ici ; l'enchaînement

@@ -44,6 +44,8 @@ export class Monde {
   private readonly cadre = new THREE.Group();
   private readonly cible = new THREE.Vector3();
   private readonly aretes: THREE.LineSegments[] = [];
+  /** Un niveau long (l'enchaînement, lot V2) : le soleil et sa boîte d'ombre suivent la caméra, sinon l'ombre ne couvre que le milieu du niveau. */
+  private suivreSoleil = false;
   private bloomActif: boolean;
   private imagesDessinees = 0;
   private largeur = 1;
@@ -170,6 +172,7 @@ export class Monde {
     // Le soleil éclaire le niveau : sa boîte d'ombre suit la taille du niveau.
     const centre = bb.getCenter(new THREE.Vector3());
     const t = bb.getSize(new THREE.Vector3());
+    this.suivreSoleil = Math.max(t.x, t.y, t.z) > 140;
     const demi = Math.min(90, Math.max(30, Math.max(t.x, t.z) / 2 + 15));
     this.cible.set(centre.x, 0, centre.z);
     this.soleil.target.position.copy(this.cible);
@@ -343,6 +346,12 @@ export class Monde {
     this.cadre.rotation.y += dt * 0.02;
     this.nuages.position.x = Math.sin(t * 0.05) * 3;
     this.placerDisque(this.camera.position);
+    this.ciel.position.copy(this.camera.position); // le ciel suit la caméra : un niveau de 400 m ne sort pas de sa sphère
+    if (this.suivreSoleil) {
+      const c = this.camera.position;
+      this.cible.set(Math.round(c.x / 6) * 6, Math.round(c.y / 6) * 6, Math.round(c.z / 6) * 6); // par pas de 6 m : l'ombre ne scintille pas
+      this.soleil.target.position.copy(this.cible);
+    }
     this.soleil.position.copy(this.cible).addScaledVector(DIR_SOLEIL, 120);
   }
 
@@ -376,6 +385,7 @@ export class Monde {
     this.hab.dispose();
     this.composer.dispose();
     this.renderer.dispose();
+    this.renderer.forceContextLoss(); // la galerie de modules change de monde : on ne garde pas les contextes WebGL
     this.renderer.domElement.remove();
   }
 }

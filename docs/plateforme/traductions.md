@@ -3291,7 +3291,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `commandes.action.droite` | Aller à droite | Move right |
 | `commandes.action.saut` | Sauter (et sauter d'un mur) | Jump (and wall jump) |
 | `commandes.action.dash` | Dash | Dash |
-| `commandes.action.relancer` | Recommencer le parcours | Restart the course |
+| `commandes.action.reprendre` | Revenir au dernier palier (le chrono continue) | Back to the last platform (the clock keeps running) |
 
 ### Comment jouer (`aide.*`, `apps/vertige/src/catalogue.*.ts`)
 

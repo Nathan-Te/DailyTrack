@@ -1,6 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { Rng, daysFromCivil, formatDay } from "@cdj/core";
-import { CUBE_ORDRE, NOMS_NIVEAUX, T_REPRISE, enchainement, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, dailyVertige, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, Partie, verifier, type Commande, type NomNiveau } from "../src/index";
+import { CUBE_ORDRE, NOMS_NIVEAUX, T_REPRISE, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, dailyVertige, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, Partie, verifier, type Commande, type NomNiveau } from "../src/index";
+import { enchainement } from "../src/modulesIndex";
 import { ETAPES_PARCOURS, jouerCibles, jouerEtapes, marcheVersDesCibles } from "./robot";
 
 // Le golden de Vertige : `npm run golden:vertige -w @cdj/vertige-sim`. Dix jours (l'empreinte de leur contenu), les niveaux (l'empreinte de leurs boîtes) et des rediffusions de référence : le parcours

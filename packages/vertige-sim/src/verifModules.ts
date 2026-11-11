@@ -151,7 +151,7 @@ export function blocsDansUnePoche(niveau: Pick<Niveau, "blocs" | "portails">): s
 }
 
 /** La distance minimale entre deux portails de paires différentes : la règle « au plus une paire de portails visible à la fois » (coût de rendu : une fenêtre redessine la scène) se garantit par la distance, une seule paire étant dans le champ à moins de 40 m. */
-export const DISTANCE_PAIRES_MIN = 40 * M;
+export const DISTANCE_PAIRES_MIN = 40_000_000;
 
 /** La distance la plus courte entre deux portails de paires différentes (µm), ou `Infinity` : une seule paire visible à la fois est garantie par une distance minimale (voir `consignes.md`). */
 export function distanceMinimaleEntrePaires(portails: readonly { a: Portail; b: Portail }[]): number {

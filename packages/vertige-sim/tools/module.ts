@@ -1,4 +1,5 @@
-import { MODULES, M, TICKS_PAR_SECONDE, analyser, commandesDuModule, ecartsHorsJauge, niveauDuModule, Partie, type Module } from "../src/index";
+import { DEMI, M, TICKS_PAR_SECONDE, Partie } from "../src/index";
+import { MODULES, ORDRE_ENCHAINEMENT, analyser, commandesDuModule, ecartsHorsJauge, jauges, niveauDuModule, robotDuModule, type Module } from "../src/modulesIndex";
 
 // L'outil d'écriture des modules (lot V2) : `npm run module:vertige -w @cdj/vertige-sim -- <id> [--trace N]` rejoue la solution d'un module depuis l'état canonique et dit où elle arrive, combien de pas elle compte en
 // trop, chaque phase en l'air mesurée contre les jauges. `--tous` : un résumé de toute la bibliothèque.
@@ -34,4 +35,28 @@ function rapport(m: Module): void {
     });
   }
 }
-for (const m of MODULES) if (tous || arg.includes(m.id)) rapport(m);
+/** La plus forte charge d'un module sur les jauges, en pour cent du PERMIS (85 % de la portée maximale) : 100 % = la limite permise. */
+function charge(m: Module): { pourcent: number; quoi: string } {
+  const j = jauges();
+  let meilleur = { pourcent: 0, quoi: "aucun écart" };
+  const note = (pourcent: number, quoi: string): void => void (pourcent > meilleur.pourcent && (meilleur = { pourcent, quoi }));
+  for (const ph of analyser(m).phases) {
+    note((100 * ph.longueurMur) / j.permis.longueurMur, `mur ${f(ph.longueurMur)} m`);
+    for (const d of ph.sautsDeMur) note((100 * (d + 2 * DEMI + 2 * 80_000)) / j.permis.ecartSautDeMur, `saut de mur ${f(d + 2 * DEMI + 2 * 80_000)} m`);
+    if (ph.ecart === null || ph.denivele === null || ph.mecaniques.includes("mur") || ph.mecaniques.includes("saut-de-mur")) continue;
+    const dash = ph.mecaniques.includes("dash");
+    const saut = ph.mecaniques.includes("saut");
+    const permis = dash ? (saut ? j.permis.ecartSautDash(ph.denivele) : j.permis.ecartDashSeul(ph.denivele)) : j.permis.ecartSaut(ph.denivele);
+    note((100 * ph.ecart) / permis, `${dash ? (saut ? "saut+dash" : "dash") : "saut"} ${f(ph.ecart)} m`);
+  }
+  return meilleur;
+}
+if (arg.includes("--table")) {
+  console.log("| module | nom | mécaniques | diff. | robot (pas) | robot (s) | plus forte charge (% du permis) |\n|---|---|---|:-:|---:|---:|---|");
+  for (const m of MODULES) {
+    const r = robotDuModule(m);
+    const c = charge(m);
+    console.log(`| \`${m.id}\` | ${m.nom} | ${m.etiquettes.mecaniques.join(", ")} | ${m.etiquettes.difficulte} | ${r.ticks} | ${(r.ticks / TICKS_PAR_SECONDE).toFixed(2)} | ${c.pourcent.toFixed(0)} % (${c.quoi}) |`);
+  }
+  console.log(`\nEnchaînement (${ORDRE_ENCHAINEMENT.length} modules) : ${ORDRE_ENCHAINEMENT.join(" → ")}`);
+} else for (const m of MODULES) if (tous || arg.includes(m.id)) rapport(m);

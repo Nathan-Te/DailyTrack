@@ -1,4 +1,5 @@
 import { CM, M, POUSSEE } from "./constantes";
+import { um } from "./construction";
 import type { Commande } from "./course";
 import { Partie } from "./course";
 import type { BlocNiveau, Boite, Jonction, Niveau, Reprise } from "./niveaux";
@@ -38,15 +39,16 @@ export interface Module {
 }
 
 /** La dalle d'un palier : 3 m de demi-largeur, 5 m derrière le centre et 6 m devant, un mètre d'épaisseur ; les obstacles d'un module commencent après. */
-export const PALIER_DEMI_LARGEUR = 3 * M;
-export const PALIER_ARRIERE = 5 * M;
-export const PALIER_AVANT = 6 * M;
+// (Des littéraux : voir `construction.ts`, ces constantes sont lues à l'initialisation de la bibliothèque.)
+export const PALIER_DEMI_LARGEUR = 3_000_000;
+export const PALIER_ARRIERE = 5_000_000;
+export const PALIER_AVANT = 6_000_000;
 /** Les limites du monde d'un module ou d'un niveau : sa boîte englobante plus 14 m de chaque côté (sortir des limites, c'est tomber : retour au dernier palier). */
-export const VIDE_MARGE = 14 * M;
+export const VIDE_MARGE = 14_000_000;
 /** Le départ d'un joueur au repos, avant le palier d'entrée (m). */
-export const DEPART_RECUL = 9 * M;
+export const DEPART_RECUL = 9_000_000;
 
-export const palier = (x: number, y: number, z: number, ori = 0): Palier => ({ x: Math.round(x * M), y: Math.round(y * M), z: Math.round(z * M), ori });
+export const palier = (x: number, y: number, z: number, ori = 0): Palier => ({ x: um(x), y: um(y), z: um(z), ori });
 export const ENTREE: Palier = { x: 0, y: 0, z: 0, ori: 0 };
 
 // ---------------------------------------------------------------- la géométrie des repères
@@ -74,7 +76,7 @@ export function reperePalier(ori: number): { dir: V3; droite: V3; haut: V3 } {
 export function dallePalier(p: Palier, derriere = 0, role: BlocNiveau["role"] = "pierre"): BlocNiveau {
   const r = reperePalier(p.ori);
   return {
-    boite: boiteRepere([p.x, p.y, p.z], r.droite, r.haut, r.dir, [-PALIER_DEMI_LARGEUR, PALIER_DEMI_LARGEUR], [-M, 0], [-PALIER_ARRIERE - derriere, PALIER_AVANT]),
+    boite: boiteRepere([p.x, p.y, p.z], r.droite, r.haut, r.dir, [-PALIER_DEMI_LARGEUR, PALIER_DEMI_LARGEUR], [-1_000_000, 0], [-PALIER_ARRIERE - derriere, PALIER_AVANT]),
     role,
   };
 }
@@ -128,7 +130,7 @@ export function videDe(blocs: readonly BlocNiveau[]): Boite {
   return { x0: b.x0 - VIDE_MARGE, y0: b.y0 - VIDE_MARGE, z0: b.z0 - VIDE_MARGE, x1: b.x1 + VIDE_MARGE, y1: b.y1 + VIDE_MARGE, z1: b.z1 + VIDE_MARGE };
 }
 
-const HORS_DE_PORTEE = -1_000_000 * M;
+const HORS_DE_PORTEE = -1_000_000_000_000;
 
 // ---------------------------------------------------------------- un module, joué seul
 /**
@@ -138,7 +140,7 @@ const HORS_DE_PORTEE = -1_000_000 * M;
 export function niveauDuModule(m: Module, opts: { lance?: boolean } = {}): Niveau {
   const entree = palierPlace(m.entree, IDENTITE, [0, 0, 0]);
   const sortie = palierPlace(m.sortie, IDENTITE, [0, 0, 0], true);
-  const blocs = [dallePalier(m.entree, 6 * M), ...m.blocs];
+  const blocs = [dallePalier(m.entree, 6_000_000), ...m.blocs];
   const pieds = piedsDuPalier(m.entree);
   return {
     nom: "module",
@@ -207,7 +209,7 @@ export function assembler(modules: readonly Module[], nom: Niveau["nom"] = "ench
   const portails: Paire[] = [];
   const placements: Placement[] = [];
   const depart = palierPlace(ENTREE, IDENTITE, [0, 0, 0]);
-  blocs.push(dallePalier(ENTREE, 7 * M));
+  blocs.push(dallePalier(ENTREE, 7_000_000));
   reprises.push(depart.reprise);
   jonctions.push(depart.jonction);
   let R: Mat = IDENTITE;
@@ -226,7 +228,7 @@ export function assembler(modules: readonly Module[], nom: Niveau["nom"] = "ench
   }
   // La zone d'arrivée : devant le dernier palier, de 4 à 6 m, de la dalle au-dessus de la tête.
   const rr = { droite: appliquer(R, [1, 0, 0]), haut: appliquer(R, [0, 1, 0]), dir: appliquer(R, [0, 0, -1]) };
-  const arrivee = boiteRepere(T, rr.droite, rr.haut, rr.dir, [-PALIER_DEMI_LARGEUR, PALIER_DEMI_LARGEUR], [0, 2.5 * M], [4 * M, 6 * M]);
+  const arrivee = boiteRepere(T, rr.droite, rr.haut, rr.dir, [-PALIER_DEMI_LARGEUR, PALIER_DEMI_LARGEUR], [0, 2_500_000], [4_000_000, 6_000_000]);
   const pieds = piedsDuPalier(ENTREE);
   const niveau: Niveau = {
     nom,

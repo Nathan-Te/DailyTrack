@@ -10,8 +10,9 @@ export const ACTIONS_VERTIGE: readonly ActionCommande[] = [
   { id: "droite", clavier: ["KeyD", "ArrowRight"], manette: "a0+" },
   { id: "saut", clavier: ["Space"], manette: "b0" },
   { id: "dash", clavier: ["ShiftLeft", "ShiftRight"], manette: "b5" },
-  { id: "relancer", clavier: ["KeyR"], manette: null },
+  // Lot V2 : la reprise au dernier palier (le chrono continue), les mêmes touches que « point de contrôle » de Track et Jump (R, et le bouton Y de la manette) ; Entrée (le kit) recommence depuis le départ.
+  { id: "reprendre", clavier: ["KeyR"], manette: "b3" },
 ];
 
-/** Les actions qui se TIENNENT (les autres sont des appuis). */
-export const ACTIONS_TENUES = ["avant", "arriere", "gauche", "droite", "saut", "dash"] as const;
+/** Les actions que la simulation lit, une touche chacune dans ses commandes (la reprise est lue à l'appui : un front montant). */
+export const ACTIONS_TENUES = ["avant", "arriere", "gauche", "droite", "saut", "dash", "reprendre"] as const;

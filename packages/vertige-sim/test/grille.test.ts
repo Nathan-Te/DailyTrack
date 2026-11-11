@@ -1,6 +1,7 @@
 import { Rng } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import { CM, Grille, NOMS_NIVEAUX, Partie, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, niveau, type Boite, type Commande, type Niveau } from "../src/index";
+import "../src/modulesIndex"; // enregistre le niveau « enchainement »
 
 // L'index spatial (lot V2) est une optimisation : il ne change AUCUNE règle. Deux preuves ici : la grille rend bien toutes les boîtes qui peuvent chevaucher la requête, dans l'ordre du niveau ; et une partie jouée avec
 // l'index a, à chaque pas, la même empreinte d'état que la même partie jouée en essayant toutes les boîtes (`sansIndex`). Le golden (`golden.test.ts`) est la troisième : il est resté identique au bit près.

@@ -41,7 +41,7 @@ export interface Jauges {
 }
 
 /** Un vol qui n'atteint jamais le niveau demandé (plus haut que le sommet du saut) : une distance impossible. */
-const INATTEIGNABLE: Vol = { distance: -1_000_000 * M, pas: 0, sommet: 0 };
+const INATTEIGNABLE: Vol = { distance: -1_000_000_000_000, pas: 0, sommet: 0 };
 const marge = (v: number): number => idiv(v * MARGE_MILLE, 1000);
 
 export function jauges(r: Readonly<Reglages> = REGLAGES_DEFAUT): Jauges {
