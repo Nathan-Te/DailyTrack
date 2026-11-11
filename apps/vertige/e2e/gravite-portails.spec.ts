@@ -19,6 +19,8 @@ test.describe("Vertige : la gravité et les portails", () => {
   test("le cube : cinq faces à la suite (six directions), la partie du navigateur est celle de Node, la caméra fait la transition", async ({ browser }) => {
     const c = commandes("cube-six-directions");
     const { context, page } = await ouvrir(browser, "cube", `&reglages=${encodeURIComponent(JSON.stringify({ confort: { transition: 1000 } }))}`);
+    await image(page);
+    await image(page); // deux images dessinées d'abord : la transition de la caméra part de la vue de l'image d'avant (sur un runner lent, la première bascule pouvait précéder toute image)
     await page.evaluate((cmd) => window.__vertige.jouer(cmd), c);
     // Jusqu'à la première bascule : la simulation a tourné d'un coup, la caméra rattrape son ancien point de vue.
     const n = new Partie(niveau("cube"));
