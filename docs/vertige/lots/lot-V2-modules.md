@@ -20,12 +20,12 @@
 
 ## Critères d'arrêt
 - **Tests** : `modules.test.ts` rejoue la solution de **chaque module** (échoue en nommant le module), `enchainement.test.ts` celle de l'**enchaînement complet** et vérifie que les paliers s'enchaînent tels quels ; `e2e/modules.spec.ts` fait la même chose **dans le navigateur** (même état qu'en Node, au bit près). **Golden de V1 inchangé** pour l'index spatial (commit 1) ; régénéré au retrait des orbes ; **golden de l'enchaînement ajouté** (robot, marche au hasard, reprise).
-- **Mesures** (détail et méthode : `V2-mesures.md`) : rejeu de l'enchaînement **10,5 ms** (34,7 s) et marche de 45 s **14,3 ms** ; **120 s avec 600 boîtes : 25,7 ms** (171,8 ms avant l'index ; 45 s : 9,0 ms contre 62,5) ; **41 boîtes** dans l'enchaînement, **appels de dessin : voir `V2-mesures.md`** ; poids du premier chargement **52 082 o** (V1 : 50 002 ; **plafond 53 Ko, marge 918 o**) ; temps du robot par module de 4,32 à 6,07 s, **34,675 s** pour l'enchaînement.
+- **Mesures** (détail et méthode : `V2-mesures.md`) : rejeu de l'enchaînement **10,5 ms** (34,7 s) et marche de 45 s **14,3 ms** ; **120 s avec 600 boîtes : 25,7 ms** (171,8 ms avant l'index ; 45 s : 9,0 ms contre 62,5) ; **41 boîtes** dans l'enchaînement, **appels de dessin : voir `V2-mesures.md`** ; poids du premier chargement **52 218 o** (V1 : 50 002 ; le plafond passe de 53 à **55 Ko, la règle (mesure + 5 %), à valider par Nathan**) ; temps du robot par module de 4,32 à 6,07 s, **34,675 s** pour l'enchaînement.
 - **CI de la PR** : à lire (voir la PR) ; les 32 specs e2e de Vertige passent en local (Chromium), les 3 navigateurs sont dans le job `@navigateurs`.
 
 ## Décisions prises (à confirmer)
 - **R reprend au palier, Entrée recommence** : l'énoncé dit « R recommence à zéro » *et* « mêmes commandes de reprise que Track et Jump » (où R reprend et Entrée recommence) ; j'ai suivi Track et Jump. R ne recommence donc plus.
-- **Le premier chargement grossit de 2 080 o** (marge 918 o) : l'enchaînement s'enregistre dans le fichier des niveaux, qui devient un morceau à part. La bibliothèque est dans un point d'entrée à part (`@cdj/vertige-sim/modules`) et tout le reste est à la demande.
+- **Le premier chargement grossit de 2 216 o** (le test des budgets exige un plafond ≥ la règle : 55 Ko posé, à valider par Nathan ou à alléger) : le morceau des niveaux (où l’enchaînement s’enregistre) et `variante-` sortent du morceau principal. La bibliothèque est dans un point d'entrée à part (`@cdj/vertige-sim/modules`) et tout le reste est à la demande.
 - **Toucher une surface marquée ne dépend plus de l'ordre des blocs** (V1 : un sol ordinaire avant la plaque dans le niveau empêchait de la toucher) ; corrigé et testé.
 - **Une gravité qui reste tournée à la sortie d'un module est permise** (`portail-gravite` sort à −x) : le module d'après est posé dans ce monde tourné ; `portail-gravite-retour` le remet. L'enchaînement passe par là.
 

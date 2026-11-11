@@ -67,7 +67,7 @@ Tous les modules sont entre **4,32 s et 6,07 s** (la règle : 4 à 8 s) ; **la p
 
 | | V1 | V2 | plafond | marge |
 |---|---:|---:|---:|---:|
-| premier chargement (`vertige.jsCss`, mesure officielle `mesureJeuNeuf`) | 50 002 o | **52 082 o** | 53 Ko | **918 o** |
+| premier chargement (`vertige.jsCss`, mesure officielle `mesureJeuNeuf`) | 50 002 o | **52 218 o** | 53 Ko → **55 Ko** (la règle) | 2 782 o |
 | `corps-` (à la demande, gzip) | 156,1 Ko | 156,6 Ko (la bibliothèque de modules est dans `corps-`, la galerie dans `galerie-`) | — | — |
 
 Le premier chargement grossit de **2 080 o** : le fichier des niveaux devient un morceau à part (1 429 o) parce que l'enchaînement s'y enregistre, plus les touches de reprise et leur nom au catalogue. La bibliothèque (14 modules et leurs solutions), les jauges, la galerie et les textes d'essai sont **à la demande**. Plafond intact ; **la marge n'est plus que de 918 o : un lot qui ajoute au premier chargement devra en retirer ailleurs**.
