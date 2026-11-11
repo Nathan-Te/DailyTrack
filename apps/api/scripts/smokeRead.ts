@@ -62,6 +62,18 @@ export interface SmokeCheck {
 }
 
 /** Les champs de `/api/health` (lot 28, inchangés depuis) : `testClock` n'existe qu'avec l'horloge de test, `revision` qu'en ligne. */
+/**
+ * Les jeux ouverts qui n'ont VOLONTAIREMENT pas de médaille (leur `seuils` rend `null` : le Diamant vient d'un robot qui n'existe pas encore). Pour eux, la route du jour rend `medals: null` et c'est le bon état ;
+ * pour tous les autres, des médailles ordonnées dans le sens du classement sont exigées. **Vertige** : jusqu'au lot V3 (le robot et les médailles) — retirer alors son identifiant d'ici.
+ */
+export const JEUX_SANS_MEDAILLE: readonly string[] = ["vertige"];
+
+/** Les médailles d'un jour sont-elles celles qu'attend le smoke ? `croissant` : un temps (l'or est plus court que le bronze), sinon un score (l'or est plus grand). Un jeu sans médaille attendue n'en a aucune (`null`). */
+export function medaillesValides(id: string, m: { author: number; gold: number; silver: number; bronze: number } | null | undefined, croissant: boolean): boolean {
+  if (JEUX_SANS_MEDAILLE.includes(id)) return m === null || m === undefined;
+  return !!m && (croissant ? m.author <= m.gold && m.gold <= m.silver && m.silver <= m.bronze : m.author >= m.gold && m.gold >= m.silver && m.silver >= m.bronze) && m.bronze > 0;
+}
+
 export const HEALTH_FIELDS = ["ok", "db", "simVersion", "generatorVersion", "today", "clock", "salonMinutes", "salonOverride"] as const;
 const HEALTH_OPTIONAL = ["revision", "testClock"];
 
@@ -172,12 +184,11 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
     );
     if (info.status !== 200) continue;
     const jour = await get(`${racine}/day/${date}`);
-    const m = jour.body?.medals;
     const croissant = (f.classement.colonnes[0]!.sens as string) === "asc"; // un temps : l'or est plus court que le bronze ; une hauteur ou un score : plus grand
-    const rangees = !!m && (croissant ? m.author <= m.gold && m.gold <= m.silver && m.silver <= m.bronze : m.author >= m.gold && m.gold >= m.silver && m.silver >= m.bronze);
+    const m = jour.body?.medals;
     check(
-      `${nom} : jour (médailles ${croissant ? "croissantes" : "décroissantes"}), jamais la preuve de l'auteur`,
-      jour.status === 200 && (f.id !== "tower" || typeof jour.body?.empreinte === "string") && rangees && m.bronze > 0 && !JSON.stringify(jour.body).includes("preuve"),
+      `${nom} : jour (${JEUX_SANS_MEDAILLE.includes(f.id) ? "pas de médaille avant son robot" : `médailles ${croissant ? "croissantes" : "décroissantes"}`}), jamais la preuve de l'auteur`,
+      jour.status === 200 && (f.id !== "tower" || typeof jour.body?.empreinte === "string") && medaillesValides(f.id, m, croissant) && !JSON.stringify(jour.body).includes("preuve"),
       `${racine}/day/${date}`,
       jour,
       `${String(jour.body?.source)}, tirage ${String(jour.body?.tirage)}, Diamant ${String(m?.author)} ${f.classement.unite}`,
