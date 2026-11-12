@@ -56,27 +56,27 @@ code{font-size:13px}
 <li><h3>1 · La grille devient un plan de coffrage</h3><dl>
 <dt>Ce qui change</dt><dd>Les 64 cases sont des alvéoles en creux (ombre en haut et à gauche, reflet en bas et à droite), dans un cadre épais d'encre avec quatre boulons aux coins. Elle se lit comme un objet du chantier, pas comme une ardoise, et reste uni : aplats seulement.</dd>
 <dt>En code</dt><dd>Quatre rectangles par case dans le dessinateur Canvas 2D ; les couleurs viennent de la palette du thème (<code>sol</code>, <code>plateforme</code>) par <code>melanger</code>.</dd>
-<dt>Coût</dt><dd>0,3 Ko gzip · — i/s (base —, tout —), processeur ralenti 4 fois.</dd>
+<dt>Coût</dt><dd>0,3 Ko gzip · 41 i/s (base 53, tout 26), processeur ralenti 4 fois.</dd>
 <dt>Golden</dt><dd>Inchangés : <code>blocks-sim</code> ne bouge pas.</dd></dl></li>
 <li><h3>2 · Pièces en relief, avec leurs yeux</h3><dl>
 <dt>Ce qui change</dt><dd>Les pièces posées et celles du plateau ont le relief et les petits yeux de Tower (la famille de Du Jour), les yeux regardent vers la grille quand on prend une pièce et clignent au repos.</dd>
 <dt>En code</dt><dd>Rien de neuf à écrire : <code>decrirePiece</code>, <code>dessinerPiece</code> et <code>dessinerYeux</code> de <code>@cdj/visuels/blocs/canvas</code>, avec <code>expressionDe</code> pour le regard.</dd>
-<dt>Coût</dt><dd>0,3 Ko gzip dans la maquette (le module commun est déjà chargé par Blocks) · — i/s.</dd>
+<dt>Coût</dt><dd>0,3 Ko gzip dans la maquette (le module commun est déjà chargé par Blocks) · 45 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés. La planche <code>/ui/ › Blocs</code> garde sa limite de 1 % de pixels différents entre dessinateurs.</dd></dl></li>
 <li><h3>3 · La pose se voit avant le lâcher</h3><dl>
 <dt>Ce qui change</dt><dd>Quand on glisse une pièce, les cases visées s'éclairent à la couleur de la pièce ; les lignes et les colonnes qui seraient effacées prennent une hachure d'encre, et leur score s'affiche en pastille. Une pose impossible est hachurée en gris (jamais en rouge : le rouge est réservé aux dangers de Jump).</dd>
 <dt>En code</dt><dd>La prévisualisation existe dans la logique (<code>peutPoser</code>, lignes complétées) ; le dessin ajoute des hachures et une pastille.</dd>
-<dt>Coût</dt><dd>0,5 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,5 Ko gzip · 54 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 <li><h3>4 · L'effacement et le combo en chantier</h3><dl>
 <dt>Ce qui change</dt><dd>Les cases d'une ligne complète clignent deux fois, puis sautent l'une après l'autre avec des éclats ; une pastille « +420 » monte ; le crochet de la grue, en haut, descend d'un cran à chaque combo (un compteur qu'on lit sans chiffre). Au thème Nuit, un projecteur balaie la ligne.</dd>
 <dt>En code</dt><dd>Un minuteur par case (décalage de 40 ms), un tableau de particules, le crochet est un trait et un rectangle ; les événements d'effacement sont déjà dans la vue.</dd>
-<dt>Coût</dt><dd>0,7 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,7 Ko gzip · 54 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés. Le délai d'animation ne retarde jamais le calcul : la partie avance, seul le dessin attend.</dd></dl></li>
 <li><h3>5 · Décor de chantier, décor de nuit</h3><dl>
 <dt>Ce qui change</dt><dd>Chantier : la grue, les engins, les cônes et l'échafaudage en deux plans qui défilent à peine (parallaxe de 4 et 10 px). Nuit : la ligne d'horizon d'une ville, des fenêtres qui s'allument, un projecteur. La grille reste devant, au centre, sans rien qui la recouvre.</dd>
 <dt>En code</dt><dd>Un module par thème, chargé à la demande comme le décor de Tower ; rectangles et polygones ; coupé avec le mouvement réduit.</dd>
-<dt>Coût</dt><dd>0,6 Ko gzip · — i/s. À la demande : rien dans le premier chargement.</dd>
+<dt>Coût</dt><dd>0,6 Ko gzip · 55 i/s. À la demande : rien dans le premier chargement.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 </ol>
 <p><b>Marqué « touche à la simulation » :</b> rien. Écarté : montrer d'avance les trois pièces suivantes (cela changerait ce que le joueur sait et suppose un choix de règle).</p></div>

@@ -58,27 +58,27 @@ code{font-size:13px}
 <li><h3>1 · Une identité par biome : des silhouettes, pas seulement des couleurs</h3><dl>
 <dt>Ce qui change</dt><dd><b>Canyon</b> : parois en strates de roche rouge et ocre, de grandes mesas qui s'étagent au loin, des arches de pierre qui enjambent la route. <b>Col alpin</b> : sapins, glissières rouges et blanches, crêtes enneigées. <b>Nuit</b> : lampadaires, fenêtres d'une ville lointaine, bordures néon. On reconnaît le biome à la silhouette, sans lire son nom.</dd>
 <dt>En code</dt><dd>Un module par biome (le jeu charge déjà le décor à la demande : lot 44, palier 1) ; des <code>InstancedMesh</code> de boîtes et de cônes, posés le long du tracé par une graine du jour. <b>Aucune</b> collision : le décor reste hors des cellules de la simulation, comme les murs bas de la Ville (lot 37).</dd>
-<dt>Coût</dt><dd>1,7 Ko gzip dans la maquette · — i/s (base —, tout —) avec le processeur ralenti 4 fois. Mesure indicative : Chromium sans carte graphique, scène plus légère que le jeu.</dd>
+<dt>Coût</dt><dd>1,7 Ko gzip dans la maquette · 39 i/s (base 54, tout 29) avec le processeur ralenti 4 fois. Mesure indicative : Chromium sans carte graphique, scène plus légère que le jeu.</dd>
 <dt>Golden</dt><dd>Inchangés : <code>packages/sim</code>, <code>SIM_VERSION</code> et le générateur ne bougent pas.</dd></dl></li>
 <li><h3>2 · Ciel, lumière, brume : la profondeur</h3><dl>
 <dt>Ce qui change</dt><dd>Le ciel est un dégradé du zénith à l'horizon avec un disque de soleil ou de lune ; la brume prend la couleur de l'horizon, donc les plans lointains s'éclaircissent (perspective aérienne) ; la lumière du soleil bas fait des ombres longues et nettes sur le décor, mais la route reste plus claire que son ombre.</dd>
 <dt>En code</dt><dd>Ce que <code>PALETTE_DEFS</code> et <code>LOOKS</code> portent déjà (zénith, disque, brume, hauteur du soleil) ; la nouveauté est la brume colorée par thème et l'ombre portée adoucie sur la route.</dd>
-<dt>Coût</dt><dd>0,5 Ko gzip · — i/s. L'ombre se coupe au palier de qualité « économie » (règle de qualité du lot 45).</dd>
+<dt>Coût</dt><dd>0,5 Ko gzip · 50 i/s. L'ombre se coupe au palier de qualité « économie » (règle de qualité du lot 45).</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 <li><h3>3 · La route se lit : rive claire, bordures, ligne</h3><dl>
 <dt>Ce qui change</dt><dd>La route est franchement plus claire ou plus sombre que son sol, ses bordures alternent deux couleurs (un vibreur), une ligne de rive claire la cerne, les tirets du milieu sont visibles de loin. Dans le Canyon actuel, route et ombre sont du même brun : on ne distingue plus le bord.</dd>
 <dt>En code</dt><dd>Des rubans de triangles le long du tracé (déjà le cas pour la route) avec des couleurs de sommet ; deux couleurs de bordure par palette (<code>fence</code>). Les revêtements spéciaux (glace, terre, herbe de course) gardent leur teinte : la bordure ne les recouvre pas.</dd>
-<dt>Coût</dt><dd>0,5 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,5 Ko gzip · 60 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés : les surfaces de la simulation (<code>S/z</code>, <code>turf</code>) ne changent pas, seule leur teinte se renforce.</dd></dl></li>
 <li><h3>4 · La voiture et la vitesse</h3><dl>
 <dt>Ce qui change</dt><dd>Une silhouette plus lisible de loin (livrée à bandes, feux arrière qui s'allument au freinage, roues qui tournent) ; à grande vitesse le champ de vision s'ouvre, des traits de vitesse défilent sur les bords, et le turbo laisse une traînée. Le rouge est réservé aux feux et à la livrée.</dd>
 <dt>En code</dt><dd>Quelques boîtes et cylindres de plus (<code>carMesh.ts</code>), un tableau de traits lié au réglage « Sensation de vitesse » (aucune / douce / normale / forte, déjà dans les Réglages), des particules du turbo (réglage « Particules »).</dd>
-<dt>Coût</dt><dd>0,5 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,5 Ko gzip · 58 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 <li><h3>5 · Variété des circuits : un tracé par rythme (demande de Nathan)</h3><dl>
 <dt>Ce qui change</dt><dd>Les trois tracés de la maquette (touche T) montrent ce que les rythmes du lot V2 donnent à voir : <b>rapide</b> (grandes courbes), <b>technique</b> (virages serrés et rues courtes), <b>vertical</b> (lacets). Chaque biome garde son rythme dominant et sa silhouette propre ; la petite carte en haut à droite montre la forme. <span class="marque sim">touche à la simulation</span></dd>
 <dt>En code</dt><dd>Côté affichage seulement : la carte d'aperçu existe déjà (galerie <code>?debug&amp;galerie=30</code>, lot V2). Tout changement de la <em>forme</em> des circuits est un changement du générateur : <code>GENERATOR_VERSION</code> +1, vecteurs de golden régénérés, dans un lot de Track.</dd>
-<dt>Coût</dt><dd>0,5 Ko gzip (la carte) · — i/s.</dd>
+<dt>Coût</dt><dd>0,5 Ko gzip (la carte) · 57 i/s.</dd>
 <dt>Golden</dt><dd>La carte et les silhouettes : inchangés. Une idée de forme de circuit : <b>change les golden</b> (générateur), à décider par Nathan.</dd></dl></li>
 </ol></div>
 

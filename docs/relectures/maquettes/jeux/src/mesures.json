@@ -1,0 +1,47 @@
+{
+ "jump": {
+  "base": 52,
+  "parallaxe": 37,
+  "relief": 50,
+  "dangers": 54,
+  "perso": 57,
+  "effets": 59,
+  "tout": 35
+ },
+ "tower": {
+  "base": 57,
+  "ciel": 56,
+  "profondeur": 59,
+  "lisibilite": 56,
+  "pieces": 57,
+  "effets": 56,
+  "tout": 57
+ },
+ "blocks": {
+  "base": 53,
+  "grille": 41,
+  "pieces": 45,
+  "pose": 54,
+  "efface": 54,
+  "decor": 55,
+  "tout": 26
+ },
+ "track": {
+  "base": 54,
+  "biomes": 39,
+  "ciel": 50,
+  "route": 60,
+  "voiture": 58,
+  "variete": 57,
+  "tout": 29
+ },
+ "rush": {
+  "base": 51,
+  "toon": 47,
+  "ambiance": 50,
+  "acteurs": 48,
+  "combat": 52,
+  "profondeur": 47,
+  "tout": 47
+ }
+}

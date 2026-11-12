@@ -19,6 +19,9 @@ Relecture, sans correction : aucun fichier de `apps/*/src` ni de `packages/*/src
 - Aucun fichier de jeu modifié ; aucune écriture en base ; aucune donnée personnelle (le joueur « Démo » des captures est fictif).
 - Une seule idée **touche à la simulation** : la forme des circuits de Track (lot T-C, optionnel, change le générateur et les golden). Tout le reste est de l'affichage.
 
+## Coût mesuré (i/s, processeur ralenti 4 fois, rendu logiciel : base → tout allumé)
+Jump 52 → 35 · Tower 57 → 57 · Blocks 54 → 26 · Track 54 → 29 · Rush 51 → 47. **À retenir** : toutes les propositions ensemble coûtent cher dans Blocks (pièces avec yeux : 45 seules), Track (biomes : 39 seuls) et Jump (parallaxe : 37 seule) ; chaque lot de jeu les remesure et met les plans fixes en cache (un canvas hors écran pour le fond) avant de les adopter.
+
 ## Non vérifié, limites
 - **Coût** : les Ko sont le poids gzip du code marqué dans chaque maquette (ordre de grandeur, ±50 %) ; les i/s sont pris dans Chromium **sans carte graphique** (rendu logiciel), processeur ralenti 4 fois, bruit d'environ ±10 % : ils comparent les propositions entre elles, ils ne prédisent pas un téléphone. Les scènes 3D sont plus légères que les jeux. À remesurer sur un vrai téléphone dans chaque lot de jeu.
 - **three.js** : le réseau de cette session refuse jsdelivr ; les pages ont été vérifiées avec le même paquet 0.186.1 servi depuis `node_modules`. Ouvertes avec internet, elles chargent jsdelivr.

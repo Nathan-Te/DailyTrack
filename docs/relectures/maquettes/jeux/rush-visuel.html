@@ -57,27 +57,27 @@ code{font-size:13px}
 <li><h3>1 · Ombrage en rampe et contour d'encre sur les acteurs</h3><dl>
 <dt>Ce qui change</dt><dd>Les personnages et les monstres prennent un ombrage à cinq paliers (cinq tons nets, comme la cible du jeu) et un contour d'encre régulier. Les décors gardent un ombrage doux : le contour ne sert qu'à détacher ce qu'on doit lire.</dd>
 <dt>En code</dt><dd>C'est ce que <code>cel.ts</code> et le post-traitement (contour par la profondeur en qualité haute, coque inversée en qualité basse) font déjà ; la proposition règle l'épaisseur pour les petits écrans (2,5 px à 1080 de haut, mais pas moins de 2 px sur un téléphone).</dd>
-<dt>Coût</dt><dd>0,2 Ko gzip dans la maquette · — i/s (base —, tout —) avec le processeur ralenti 4 fois. Mesure indicative : Chromium sans carte graphique ; scène plus légère que le jeu (le jeu s'impose moins de 200 appels de dessin).</dd>
+<dt>Coût</dt><dd>0,2 Ko gzip dans la maquette · 47 i/s (base 51, tout 47) avec le processeur ralenti 4 fois. Mesure indicative : Chromium sans carte graphique ; scène plus légère que le jeu (le jeu s'impose moins de 200 appels de dessin).</dd>
 <dt>Golden</dt><dd>Inchangés : <code>RUSH_SIM_VERSION</code> et le golden de <code>rush-sim</code> ne bougent pas.</dd></dl></li>
 <li><h3>2 · Une ambiance par thème : lumière, brume, particules</h3><dl>
 <dt>Ce qui change</dt><dd><b>Prairie</b> : ciel clair, soleil chaud, pollen qui flotte. <b>Sous-bois</b> : lumière verte et basse, brume épaisse, rais obliques qui traversent les feuillages, lucioles. Le thème se reconnaît à la couleur de l'air autant qu'au sol.</dd>
 <dt>En code</dt><dd>Tout est dans <code>PaletteMonde</code> (lumière, ciel, brume, étalonnage, particules, rais, brume basse) : la règle du lot BR-A2. Un nouveau réglage doit passer <code>test/lisibilite.test.ts</code> (dalles, terre, herbe).</dd>
-<dt>Coût</dt><dd>0,4 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,4 Ko gzip · 50 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 <li><h3>3 · Acteurs lisibles : ombre au sol, anneau, cercles d'attaque</h3><dl>
 <dt>Ce qui change</dt><dd>Le chevalier a un anneau clair sous les pieds et une ombre portée nette, qui le retrouvent sur le chemin de terre ; chaque ennemi a une ombre ronde. Avant un bond, un cercle <b>corail</b> grandit sous le monstre jusqu'à l'impact (« un cercle = ça frappe ») : cette couleur n'est utilisée pour rien d'autre dans la scène.</dd>
 <dt>En code</dt><dd>Disques et anneaux posés au sol, lus depuis la vue de la partie (position, état d'annonce) ; le cercle d'annonce existe déjà (<code>COULEURS.corail</code>), la proposition ajoute l'anneau du chevalier.</dd>
-<dt>Coût</dt><dd>0,3 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,3 Ko gzip · 48 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés. Les cercles de la maquette ne changent pas la durée d'annonce (au moins 70 ticks, règle de la simulation).</dd></dl></li>
 <li><h3>4 · Effets de combat : arc de coup, éclats, gemmes</h3><dl>
 <dt>Ce qui change</dt><dd>Un arc blanc balaie l'espace du coup, des éclats jaillissent du monstre touché (sans arrêt sur image pour les coups 1 et 2 : règle d'impact du lot BR0c), la gemme d'XP s'envole vers le chevalier en laissant un petit trait.</dd>
 <dt>En code</dt><dd>Un anneau partiel, un tableau de particules, un octaèdre ambre ; lus dans les événements de la partie ; coupés avec « Particules » et le mouvement réduit.</dd>
-<dt>Coût</dt><dd>0,6 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,6 Ko gzip · 52 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés. La secousse d'écran reste réservée au troisième coup.</dd></dl></li>
 <li><h3>5 · Profondeur : nuages sous l'île, îles lointaines, strates</h3><dl>
 <dt>Ce qui change</dt><dd>L'île a une épaisseur lisible (strates de terre, racines pendantes), une mer de nuages sous elle, et deux îles lointaines qui défilent à 20 % : on sent la hauteur.</dd>
 <dt>En code</dt><dd>Des blocs arrondis par la fabrique de pièces (<code>fabriquer(genre, contexte, variante)</code>, lot BR-A2), jamais une forme écrite à la main dans le décor ; loin de la grille de collision (<code>VIDE</code>), donc sans effet sur la simulation.</dd>
-<dt>Coût</dt><dd>0,6 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,6 Ko gzip · 47 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 </ol>
 <p><b>Marqué « touche à la simulation » :</b> rien. Écarté : agrandir le chevalier (sa taille est celle de sa collision) ; on propose l'anneau à la place.</p></div>

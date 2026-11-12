@@ -56,27 +56,27 @@ code{font-size:13px}
 <li><h3>1 · Ciel par bandes et astre</h3><dl>
 <dt>Ce qui change</dt><dd>Le ciel passe de un à trois aplats qui se resserrent vers l'horizon (pas de dégradé), avec un astre par thème : soleil du Port, lune et étoiles qui scintillent la Nuit. La couleur de chaque bande est un mélange de la couleur de ciel du thème et du sol (<code>melanger</code>, déjà dans le module commun).</dd>
 <dt>En code</dt><dd>Trois rectangles et un disque ; des étoiles semées par le hasard d'affichage (une graine par thème, déjà la règle des décors).</dd>
-<dt>Coût</dt><dd>0,4 Ko gzip · — i/s (base —, tout —), processeur ralenti 4 fois.</dd>
+<dt>Coût</dt><dd>0,4 Ko gzip · 56 i/s (base 57, tout 57), processeur ralenti 4 fois.</dd>
 <dt>Golden</dt><dd>Inchangés : <code>TOWER_SIM_VERSION</code> et le générateur ne bougent pas.</dd></dl></li>
 <li><h3>2 · Profondeur par thème</h3><dl>
 <dt>Ce qui change</dt><dd>Les quatre plans existent déjà (parallaxe 0,2 · 0,5 · 0,8 · 1) ; la proposition leur donne un contenu qui se reconnaît d'un thème à l'autre : côte et phare dont le faisceau tourne la Nuit, fenêtres allumées, bateau et lanterne, reflets sur l'eau en traits clairs qui se décalent.</dd>
 <dt>En code</dt><dd>Un module par thème, comme aujourd'hui (<code>decor&lt;Thème&gt;.ts</code>) : polygones convexes dans les coordonnées de la planche, une animation lente de plus (<code>derive</code>, <code>scintille</code>) ; coupée avec <code>prefers-reduced-motion</code>.</dd>
-<dt>Coût</dt><dd>0,7 Ko gzip · — i/s. À la demande, avec le décor du thème : rien dans le premier chargement.</dd>
+<dt>Coût</dt><dd>0,7 Ko gzip · 59 i/s. À la demande, avec le décor du thème : rien dans le premier chargement.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 <li><h3>3 · Lisibilité : règle de hauteur et ombre de contact</h3><dl>
 <dt>Ce qui change</dt><dd>Une graduation à gauche tous les 2 m (le chiffre tous les 4 m), un repère pointillé pour le prochain palier de la partie (« 8 m · figée ») et pour ton record, une ombre d'aplat sous chaque pièce posée. On voit à quelle hauteur on est sans lire le chrono.</dd>
 <dt>En code</dt><dd>Quelques traits au canvas ; les hauteurs du palier et du record sont déjà dans la vue (<code>paliers.ts</code>, tuile « Ton record »).</dd>
-<dt>Coût</dt><dd>0,4 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,4 Ko gzip · 56 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 <li><h3>4 · Pièces vivantes</h3><dl>
 <dt>Ce qui change</dt><dd>Les pièces respirent (écrasement de 2 % au repos), leurs petits yeux suivent la pièce qui tombe, la tour se balance d'autant plus que sa hauteur grandit, les yeux s'écarquillent quand elle penche (c'est la « panique » que Tower calcule déjà).</dd>
 <dt>En code</dt><dd>Un décalage horizontal par rangée proportionnel à la hauteur ; les yeux utilisent <code>expressionDe</code> et <code>disposerYeux</code> du module commun (niveau de panique calculé par le jeu).</dd>
-<dt>Coût</dt><dd>0,2 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,2 Ko gzip · 57 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés. Le balancement est un décalage de dessin, jamais la position Rapier. <span class="marque sim">à garder en tête</span> Un balancement trop fort ferait croire que la tour va tomber : il reste sous 3 px.</dd></dl></li>
 <li><h3>5 · Effets : pose, palier, médaille</h3><dl>
 <dt>Ce qui change</dt><dd>Une étoile jaune bordée d'encre et un peu de poussière à la pose (c'est le « choc » du lot T9), une plaque « BONUS » qui tombe sous la bande au passage d'un palier, des confettis quand une médaille est gagnée.</dd>
 <dt>En code</dt><dd>Un tableau de particules et un polygone d'étoile ; déclenchés par les événements de la partie (<code>evenements.ts</code>), coupés par « Particules » et par le mouvement réduit.</dd>
-<dt>Coût</dt><dd>0,7 Ko gzip · — i/s.</dd>
+<dt>Coût</dt><dd>0,7 Ko gzip · 56 i/s.</dd>
 <dt>Golden</dt><dd>Inchangés.</dd></dl></li>
 </ol>
 <p><b>Marqué « touche à la simulation » :</b> rien. Écarté : faire pencher réellement la plateforme au vent (c'est de la physique).</p></div>
