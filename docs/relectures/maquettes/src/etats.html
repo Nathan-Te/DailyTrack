@@ -1,0 +1,113 @@
+<meta name="titre" content="États vides et d'erreur">
+<meta name="intro" content="Ce qu'on voit sans profil, sans ami, sans groupe, ou quand la page n'existe pas. Aujourd'hui ces états sont une seule phrase en haut d'une page vide : c'est pourtant le premier écran d'un nouveau joueur qui touche « Amis » ou « Profil ». La proposition leur donne une même carte : un dessin, un titre, une phrase, une action.">
+<style>
+.carteVide{background:var(--papier);border:3px solid var(--encre);border-radius:4px;box-shadow:4px 4px 0 var(--encre);padding:24px 20px;text-align:center;display:grid;justify-items:center;gap:10px;max-width:520px;margin:6px auto 22px}
+.carteVide h2{font:20px 'Archivo Black'}
+.carteVide p{font-size:15px;max-width:38ch}
+.carteVide .btn{min-width:220px}
+.carteVide svg.d{width:132px;height:84px}
+.duoJ{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.j{display:flex;align-items:center;justify-content:center;min-height:52px;border:3px solid var(--encre);border-radius:3px;font-size:22px;text-decoration:none;box-shadow:3px 3px 0 var(--encre)}
+.j.t{background:var(--track);color:#fff}.j.jp{background:var(--jump-coque)}
+.err{display:flex;gap:12px;align-items:center;background:var(--papier);border:3px solid var(--terre);border-radius:4px;padding:12px 14px;margin-bottom:18px;font-size:14px}
+.q404{font:700 64px/1 'JetBrains Mono';color:var(--moutarde);text-shadow:3px 3px 0 var(--terre)}
+</style>
+
+<section data-avant="amis-neuf/1280x800" data-largeur="1280" data-titre="« Amis et groupes » sans profil — ordinateur, 1 280 px">
+{{barreAnon:2}}
+<div class="fronton"><div><h1 class="page">Amis et groupes</h1><div class="date" style="margin-top:6px">Jeudi 12 novembre · <span style="color:var(--moutarde)">Journée n° 17</span></div></div><div class="rebours"><small>Prochains niveaux dans</small><b>23:29:35</b></div></div>
+<div class="page">
+  <div class="carteVide"><svg class="d" viewBox="0 0 132 84" aria-hidden="true"><circle cx="46" cy="40" r="26" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/><circle cx="88" cy="44" r="22" fill="none" stroke="#6B5847" stroke-width="3" stroke-dasharray="6 5"/><circle cx="38" cy="36" r="3" fill="#2A1E16"/><circle cx="54" cy="36" r="3" fill="#2A1E16"/><path d="M38 48q8 6 16 0" fill="none" stroke="#2A1E16" stroke-width="3" stroke-linecap="round"/><path d="M88 36v16M80 44h16" stroke="#6B5847" stroke-width="3" stroke-linecap="round"/></svg>
+    <h2>Finis un jeu pour ouvrir ton profil<b class="rep">1</b></h2><p>Ton profil se crée à ta première arrivée. Ensuite tu pourras ajouter des amis et rejoindre un groupe.</p>
+    <div class="duoJ"><a class="j t n-track">Track</a><a class="j jp n-jump">Jump</a></div><b class="rep">2</b>
+    <a class="lien">Un ami t'a invité ? Ouvre son lien.</a><a class="lien" style="margin-top:-14px">J'ai déjà un code de transfert ›</a></div>
+</div>
+{{pied}}
+</section>
+
+<section data-avant="profil-neuf/390x844" data-largeur="390" data-titre="Profil sans profil — téléphone">
+{{barreTelAnon}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Ton profil</h1><div style="display:flex;margin-top:8px;align-items:baseline"><span class="date">Jeu. 12 nov. · n° 17</span><span class="mono" style="color:var(--moutarde);font-size:18px;margin-left:auto">23:29:12</span></div></div>
+<div class="page">
+  <div class="carteVide"><span class="av xl" style="background:var(--creme2);border-style:dashed;color:var(--douce)">?</span>
+    <h2>Pas encore de profil</h2><p>Il se crée tout seul à ta première arrivée : pas de compte, pas d'e-mail.</p>
+    <div class="duoJ"><a class="j t n-track">Track</a><a class="j jp n-jump">Jump</a></div></div>
+  <div class="panneau"><h3>J'ai déjà un profil<b class="rep">3</b></h3><p style="font-size:14px;margin-bottom:10px">Colle ton code de transfert pour le retrouver sur cet appareil.</p><div class="champ" style="display:flex;align-items:center;min-height:46px;border:2px solid var(--encre);border-radius:3px;background:var(--creme);padding:0 12px;color:var(--douce);margin-bottom:10px">CDJ2.…</div><a class="btn plein">Vérifier</a></div>
+  <div class="panneau" style="display:flex;align-items:center;gap:12px"><h3 style="margin:0;flex:1">Langue</h3><div class="seg"><span class="ici">Français</span><span>English</span></div></div>
+</div>
+{{pied}}
+{{onglets:3}}
+</section>
+
+<section data-avant="amis-vide/390x844" data-largeur="390" data-titre="« Amis et groupes » sans ami ni groupe — téléphone">
+{{barreTel}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Amis et groupes</h1><div style="display:flex;margin-top:8px;align-items:baseline"><span class="date">Jeu. 12 nov. · n° 17</span><span class="mono" style="color:var(--moutarde);font-size:18px;margin-left:auto">23:29:31</span></div></div>
+<div class="page">
+  <div class="titre-s">Mes amis</div>
+  <div class="carteVide"><svg class="d" viewBox="0 0 132 84" aria-hidden="true"><circle cx="46" cy="40" r="26" fill="#E8B23A" stroke="#2A1E16" stroke-width="3"/><circle cx="88" cy="44" r="22" fill="none" stroke="#6B5847" stroke-width="3" stroke-dasharray="6 5"/><circle cx="38" cy="36" r="3" fill="#2A1E16"/><circle cx="54" cy="36" r="3" fill="#2A1E16"/><path d="M38 48q8 6 16 0" fill="none" stroke="#2A1E16" stroke-width="3" stroke-linecap="round"/><path d="M88 36v16M80 44h16" stroke="#6B5847" stroke-width="3" stroke-linecap="round"/></svg>
+    <h2>Pas encore d'ami<b class="rep">4</b></h2><p>Invite quelqu'un : vous verrez vos temps côte à côte, ici et dans chaque classement.</p>
+    <a class="btn marque plein">Inviter par un lien</a>
+    <div style="display:flex;gap:8px;width:100%"><span style="flex:1;display:flex;align-items:center;min-height:46px;border:2px solid var(--encre);border-radius:3px;background:var(--creme);padding:0 12px;color:var(--douce)">Pseudo d'un joueur</span><a class="btn" style="min-width:0">Ajouter</a></div></div>
+  <div class="titre-s">Mon groupe</div>
+  <div class="carteVide"><span class="emb g" style="background:var(--creme2);border-style:dashed;color:var(--douce)">+</span>
+    <h2>Pas encore de groupe</h2><p>Un groupe a son classement du jour : la moyenne de ses 3 meilleurs.</p>
+    <a class="btn plein">Créer un groupe</a><span class="douce" style="font-size:13px">Pour en rejoindre un, ouvre son lien d'invitation.</span></div>
+</div>
+{{pied}}
+{{onglets:2}}
+</section>
+
+<section data-avant="classement-amis-vide/390x844" data-largeur="390" data-titre="Classement « Amis » sans ami — téléphone">
+{{barreTel}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Classements</h1><div style="display:flex;margin-top:8px;align-items:baseline"><span class="date">Jeu. 12 nov. · n° 17</span><span class="mono" style="color:var(--moutarde);font-size:18px;margin-left:auto">23:30:00</span></div></div>
+<div class="page">
+  <div class="seg" style="width:100%;margin-bottom:14px"><span style="flex:1;justify-content:center">Tous · 52</span><span class="ici" style="flex:1;justify-content:center">Amis · 0<b class="rep">5</b></span></div>
+  <div class="ligne moi"><span class="rg">1</span><span class="av m">DA</span><span class="nom">Démo Aurore <span class="pastille papier">Toi</span></span><span class="tps">1:34,253</span></div>
+  <div class="carteVide" style="margin-top:16px"><h2>Tu es seul ici</h2><p>Invite quelqu'un ou ajoute un pseudo : vous verrez vos temps côte à côte.</p><a class="btn marque plein">Inviter un ami</a></div>
+</div>
+{{pied}}
+{{onglets:1}}
+</section>
+
+<section data-avant="groupe-inconnu/390x844" data-largeur="390" data-titre="Groupe introuvable ou lien périmé — téléphone">
+{{barreTelAnon}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Groupe</h1><div class="date" style="margin-top:6px">Lien d'invitation</div></div>
+<div class="page">
+  <div class="carteVide"><span class="emb g" style="background:var(--creme2);border-style:dashed;color:var(--douce)">?</span>
+    <h2>Ce groupe n'existe pas<b class="rep">6</b></h2><p>Ou ce lien d'invitation ne marche plus : demande un nouveau lien à un membre.</p>
+    <a class="btn marque plein">Aller aux jeux du jour</a><a class="lien">Voir les groupes du jour ›</a></div>
+</div>
+{{pied}}
+{{onglets:2}}
+</section>
+
+<section data-avant="introuvable/390x844" data-largeur="390" data-titre="Page 404 — téléphone" data-note="La page reste statique et sans script (elle est servie à toute profondeur) : seul son dessin change.">
+<header class="barre"><span class="logo">DU JOUR</span></header>
+<div class="fronton"><h1 class="page" style="font-size:20px">Page introuvable</h1></div>
+<div class="page">
+  <div class="carteVide"><span class="q404">404</span><h2>Cette page n'existe pas<b class="rep">7</b></h2><p>L'adresse est peut-être mal tapée, ou la page a déménagé. Les jeux du jour t'attendent sur le portail.</p><a class="btn marque plein">Aller aux jeux du jour</a></div>
+  <div class="carteVide" lang="en" style="box-shadow:none;background:transparent;border-style:dashed"><h2 style="font-size:17px">This page doesn't exist</h2><p style="font-size:14px">The address may be mistyped, or the page has moved. Today's games are waiting for you on the portal.</p><a class="btn plein">Go to today's games</a></div>
+</div>
+</section>
+
+<section data-avant="accueil-neuf/390x844" data-largeur="390" data-titre="Serveur injoignable — bandeau (pas de capture de cet état)" data-note="L'outil ne photographie pas encore cet état : la capture de gauche est l'accueil sans profil, pour comparer la place du bandeau. À ajouter à npm run relecture (README).">
+{{barreTelAnon}}
+<div class="fronton"><h1>Jeudi 12 novembre</h1><div class="jour">Journée n° 17</div></div>
+<div class="page">
+  <div class="err"><span class="rond" style="border-color:var(--terre);color:var(--terre)">!</span><span style="flex:1"><b>Le serveur ne répond pas.</b> Tu peux jouer : tes temps partiront dès qu'il revient.</span><a class="btn plat" style="font-size:13px">Réessayer</a><b class="rep">8</b></div>
+  <div class="titre-s">Les jeux du jour</div>
+  <div class="cart"><div class="etiq track"><h3 class="n-track">Track</h3><div class="num">n° 31 · Canyon</div><p style="font-size:14px;margin-top:6px">Un circuit par jour, le même pour tous.</p></div><a class="btn marque plein" style="margin-top:10px">Jouer</a></div>
+</div>
+{{onglets:0}}
+</section>
+
+<ol class="legende">
+<li><b>Une carte au lieu d'une phrase.</b> Sans profil, « Amis et groupes » et « Profil » montrent une seule ligne de texte en haut d'une page vide. La carte dit la même chose en trois temps — un dessin, un titre de 20 px, une phrase — au centre de la page. <i>Constat V1 ; charte § 9 : hiérarchie nette.</i></li>
+<li><b>L'action est là : jouer.</b> Le texte actuel dit « finis un jeu pour l'ouvrir » sans lien vers un jeu. Deux boutons aux couleurs et dans la police de Track et de Jump (les jeux du jour, lus dans la réponse déjà chargée). <i>Constat V1.</i></li>
+<li><b>« J'ai déjà un profil » se dit.</b> Le panneau « Code de transfert » d'un joueur sans profil parle de garder un code qu'il n'a pas ; il devient « J'ai déjà un profil » avec le seul champ utile. <i>Constat V2.</i></li>
+<li><b>Sans ami : le bouton de marque revient, sans groupe : le dessin d'un emblème vide.</b> C'est ici, et seulement ici, que « Inviter par un lien » est l'action principale. « 0 ami, 0 a joué aujourd'hui » disparaît du titre. <i>Constat V3.</i></li>
+<li><b>« Amis · 0 » tient sur une ligne.</b> Dans le filtre, le compte passe à la ligne sous le mot (« Amis · » puis « 0 ») ; la phrase d'invitation devient une carte avec son bouton de marque. <i>Constat V4.</i></li>
+<li><b>Un groupe introuvable propose une sortie.</b> Aujourd'hui : une phrase, puis rien. La carte explique et renvoie vers les jeux et vers les groupes du jour. <i>Constat V5.</i></li>
+<li><b>La 404 reprend le logo, le fronton et la carte.</b> Elle n'a aujourd'hui ni barre ni couleur de la salle ; le français reste en tête, l'anglais dessous en carte secondaire. Toujours sans script. <i>Constat V6 ; cohérence.</i></li>
+<li><b>Serveur injoignable : un bandeau qui rassure.</b> À vérifier contre l'écran actuel (non photographié) : le message doit dire que l'on peut jouer et que les temps partiront ensuite (lot D2), avec « Réessayer ». <i>À confirmer après capture.</i></li>
+</ol>

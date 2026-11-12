@@ -15,6 +15,8 @@ apps/web/all-blobs/
 apps/web/merged/
 apps/portail/dist-redirection/
 site/
+# Lot QA1 : la sortie de `npm run relecture` (captures, planches, index) reste sur la machine ; les miniatures gardées sont dans docs/relectures/captures/.
+/relecture/
 .firebase-deploy/
 .firebase/
 

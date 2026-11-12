@@ -1,0 +1,67 @@
+<meta name="titre" content="Page secondaire type — Nouveautés (et Mes messages)">
+<meta name="intro" content="Les pages de lecture du lot U5 (Nouveautés, Mes messages, page d'un groupe) ont pris la barre et le fronton de la salle. Il reste à les poser : sur ordinateur leur colonne de 760 px est collée à gauche d'un écran de 1 280 px, et sur téléphone le titre touche le compte à rebours.">
+<style>
+.lecture{max-width:760px;margin:0 auto}
+.retour{display:inline-flex;align-items:center;min-height:44px;font:700 14px Archivo;text-decoration:underline;text-underline-offset:3px;margin-bottom:6px}
+.nv{background:var(--papier);border:3px solid var(--encre);border-radius:4px;box-shadow:4px 4px 0 var(--encre);padding:16px 18px;margin-bottom:22px}
+.nv time{font:700 12px 'JetBrains Mono';color:var(--douce);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.nv h2{font:19px 'Archivo Black';margin-bottom:10px}
+.nv li{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:start;padding:8px 0;border-top:1px solid var(--creme2);font-size:15px;list-style:none}
+.nv ul{margin:0;padding:0}
+.zone{font:700 11px Archivo;letter-spacing:1px;text-transform:uppercase;padding:4px 0;border:2px solid var(--encre);border-radius:3px;text-align:center}
+.zone.dj{background:var(--encre);color:var(--creme)}.zone.track{background:var(--track);color:#fff;font-family:'Barlow Condensed';font-style:italic;font-weight:800;font-size:14px}.zone.jump{background:var(--jump-coque);font-family:'Lilita One';font-size:13px;font-weight:400}
+.fil{display:flex;gap:12px;align-items:center;background:var(--papier);border:3px solid var(--encre);border-radius:4px;box-shadow:4px 4px 0 var(--encre);padding:12px 14px;margin-bottom:14px;min-height:72px}
+.fil .q{flex:1;min-width:0}.fil .q b{display:flex;gap:8px;align-items:center;font:700 13px Archivo}.fil .q p{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fil small{font:700 12px 'JetBrains Mono';color:var(--douce)}
+.fil.lu{background:var(--creme2);box-shadow:none}
+body.tel .nv li{grid-template-columns:74px 1fr}
+</style>
+
+<section data-avant="nouveautes/1280x800" data-largeur="1280" data-titre="Nouveautés — ordinateur, 1 280 px">
+{{barre:9}}
+<div class="fronton"><div><h1 class="page">Nouveautés</h1><div class="date" style="margin-top:6px">Ce qui a changé sur Du Jour<b class="rep">2</b></div></div></div>
+<div class="page"><div class="lecture">
+  <a class="retour">‹ Aujourd'hui</a><b class="rep">3</b>
+  <article class="nv"><time>Mercredi 21 octobre <span class="pastille terre">Nouveau</span><b class="rep">4</b></time><h2>Recette : Jump et la nuit</h2>
+    <ul><li><span class="zone jump">Jump</span>Le thème Nuit arrive dans Jump.</li><li><span class="zone dj">Du Jour</span>Le portail montre ta série.</li></ul></article>
+  <article class="nv"><time>Mardi 20 octobre</time><h2>Recette : le classement du jour au chrono</h2>
+    <ul><li><span class="zone dj">Du Jour</span>Le classement du jour se lit désormais au chrono.</li><li><span class="zone track">Track</span>Les médailles se gagnent sur les temps du jour.</li></ul></article>
+  <b class="rep abs" style="margin:-200px 0 0 -30px">1</b>
+</div></div>
+{{pied}}
+</section>
+
+<section data-avant="nouveautes/390x844" data-largeur="390" data-titre="Nouveautés — téléphone, 390 px">
+{{barreTel}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Nouveautés</h1><div class="date" style="margin-top:6px">Ce qui a changé sur Du Jour<b class="rep">2</b></div></div>
+<div class="page">
+  <a class="retour">‹ Aujourd'hui</a>
+  <article class="nv"><time>Mercredi 21 octobre <span class="pastille terre">Nouveau</span></time><h2>Recette : Jump et la nuit</h2>
+    <ul><li><span class="zone jump">Jump</span>Le thème Nuit arrive dans Jump.</li><li><span class="zone dj">Du Jour</span>Le portail montre ta série.</li></ul></article>
+  <article class="nv"><time>Mardi 20 octobre</time><h2>Recette : le classement du jour au chrono</h2>
+    <ul><li><span class="zone dj">Du Jour</span>Le classement du jour se lit désormais au chrono.</li><li><span class="zone track">Track</span>Les médailles se gagnent sur les temps du jour.</li></ul></article>
+</div>
+{{pied}}
+{{onglets:9}}
+</section>
+
+<section data-avant="messages-demo/390x844" data-largeur="390" data-titre="Mes messages — téléphone, 390 px" data-note="La même mise en page sert « Mes messages » : fronton court, retour, cartes.">
+{{barreTel}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Mes messages</h1><div class="date" style="margin-top:6px">Tes bugs, tes idées, et les réponses</div></div>
+<div class="page">
+  <a class="retour">‹ Profil</a>
+  <a class="fil"><span class="q"><b>Un bug · Jump <span class="pastille terre">Nouvelle réponse</span></b><p>Merci ! Oui, c'est voulu : la scie sort du mur pour t'avertir…</p><small>jeu. 12 nov. · 2 messages</small></span><b style="font:18px 'Archivo Black'">›</b><b class="rep">5</b></a>
+  <a class="fil lu"><span class="q"><b>Une idée · Du Jour <span class="pastille papier">Lu</span></b><p>Un classement de la semaine entre amis ?</p><small>mar. 10 nov. · 1 message</small></span><b style="font:18px 'Archivo Black'">›</b></a>
+  <a class="btn plein" style="margin-top:8px">{{icone:plus}} Écrire à l'éditeur</a><b class="rep">6</b>
+</div>
+{{pied}}
+{{onglets:3}}
+</section>
+
+<ol class="legende">
+<li><b>La colonne de lecture est centrée.</b> Sur 1 280 px, les cartes de 760 px sont collées au bord gauche du contenu et 560 px restent vides à droite sur un écran de 1 440 px ; le texte des puces fait 14 px. La colonne est centrée sous le fronton, le texte courant est à 15 px (taille de base de la charte), le titre d'une nouveauté à 19 px. <i>Constat S1 ; charte § 9 : hiérarchie nette.</i></li>
+<li><b>Un fronton court pour les pages de lecture.</b> Le compte à rebours « Prochains niveaux dans » ne sert à rien sur une page qu'on lit ; c'est lui que le titre vient toucher sur téléphone. Sur Nouveautés, Mes messages et la page d'un groupe, le fronton garde les ampoules et le titre, et remplace la date et le compte à rebours par une phrase qui dit ce qu'est la page. <span class="marque">évolution de charte</span> <i>Le § 9 met le compte à rebours dans tout fronton. Sans cette évolution, la correction du chevauchement de la maquette « Classements » (deux rangées) suffit. Constat C1, S2.</i></li>
+<li><b>Un retour écrit.</b> Ces pages n'ouvrent aucun onglet de la navigation (Nouveautés) ou en ouvrent un qui n'est pas elles (Mes messages sous « Profil ») : rien ne dit d'où l'on vient. Un lien « ‹ Aujourd'hui » ou « ‹ Profil » de 44 px sous le fronton — c'est aussi ce que le bouton B de la manette suivrait. <i>Constat S3 ; règle M1 : B revient.</i></li>
+<li><b>La dernière nouveauté est marquée, les zones ont la couleur de leur jeu.</b> « Nouveau » en pastille terre tant qu'elle n'est pas lue (le point de la cloche le sait déjà) ; l'étiquette « Jump » ou « Track » prend la police et la couleur du jeu, sur une colonne de largeur fixe : les textes s'alignent. <i>Charte rév. 18 : garder l'identité de chaque jeu.</i></li>
+<li><b>Un fil est une carte entière, de 72 px.</b> Type et jeu en tête, première ligne de la dernière réponse, date ; un fil lu passe en crème-2 sans ombre. Toute la carte est la cible. <i>Constat S4.</i></li>
+<li><b>« Écrire à l'éditeur » depuis la liste.</b> Le bouton ouvre le dialogue « Un bug ? Une idée ? » qui existe déjà (aujourd'hui seulement dans le pied) ; aucune fonction nouvelle. <i>Cohérence.</i></li>
+</ol>

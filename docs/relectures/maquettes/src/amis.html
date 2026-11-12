@@ -1,0 +1,88 @@
+<meta name="titre" content="Amis et groupes — qui a joué, d'un coup d'œil">
+<meta name="intro" content="« Démo » a cinq amis et un groupe de quatre. Les cartes à grande photo du lot U3 sont la bonne idée ; la proposition règle leur hiérarchie (les journées parfaites sont aujourd'hui sur le fond le plus terne), écrit les statuts du groupe en clair et allège l'ajout d'un ami.">
+<style>
+.ajout{display:flex;gap:10px;align-items:end;margin-bottom:24px;flex-wrap:wrap}
+.ajout label{flex:1 1 260px;font:700 11px Archivo;letter-spacing:1px;text-transform:uppercase;color:var(--douce)}
+.champ{display:flex;align-items:center;min-height:46px;border:2px solid var(--encre);border-radius:3px;background:var(--papier);padding:0 12px;font:400 15px Archivo;color:var(--douce);margin-top:4px;letter-spacing:0;text-transform:none}
+.amis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ami{background:var(--papier);border:3px solid var(--encre);border-radius:4px;box-shadow:4px 4px 0 var(--encre);padding:16px 12px 12px;display:grid;justify-items:center;gap:6px;text-align:center;position:relative}
+.ami b.nom{font:16px 'Archivo Black'}
+.ami .etat{font-size:13px;color:var(--douce);min-height:38px}
+.ami .f{display:flex;gap:5px}
+.ami.parfaite{background:var(--papier)}
+.ami.parfaite::before{content:"Journée parfaite";position:absolute;top:-3px;left:-3px;right:-3px;background:var(--moutarde);border:3px solid var(--encre);border-radius:4px 4px 0 0;font:11px 'Archivo Black';letter-spacing:1.5px;text-transform:uppercase;padding:4px 0}
+.ami.parfaite{padding-top:40px}
+.ami.attente{background:var(--creme2);box-shadow:none;border-style:dashed}
+.ami.attente .av{filter:grayscale(1)}
+.membre{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--creme2)}
+.membre .q{flex:1;font:700 14px Archivo;min-width:0}.membre .q small{display:block;font:400 13px Archivo;color:var(--douce)}
+.tetegr{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.tetegr b{font:18px 'Archivo Black'}
+body.tel .amis{grid-template-columns:1fr 1fr;gap:12px}
+body.tel .ami .av.g{width:76px;height:76px;font-size:22px}
+</style>
+
+<section data-avant="amis-demo/1280x800" data-largeur="1280" data-titre="Ordinateur, 1 280 px">
+{{barre:2}}
+<div class="fronton"><div><h1 class="page">Amis et groupes</h1><div class="date" style="margin-top:6px">Jeudi 12 novembre · <span style="color:var(--moutarde)">Journée n° 17</span></div></div><div class="rebours"><small>Prochains niveaux dans</small><b>23:29:45</b></div></div>
+<div class="page"><div class="cols">
+<div>
+  <div class="ajout"><label>Ajouter par pseudo<span class="champ">Pseudo d'un joueur</span></label><a class="btn" style="min-height:46px">Ajouter</a><a class="btn" style="min-height:46px">{{icone:lien}} Inviter par un lien</a><b class="rep">3</b></div>
+  <div class="titre-s">Mes amis <small>5 amis, 4 ont joué aujourd'hui</small></div>
+  <div class="amis">
+    <div class="ami parfaite"><span class="av g c1">DC</span><b class="nom">Démo Cerise</b><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span><span class="etat">1er entre amis · <span class="mono">1:09,335</span></span><a class="btn plein plat">Voir le profil</a><b class="rep abs" style="top:30px;right:-10px">1</b></div>
+    <div class="ami parfaite"><span class="av g c2">DB</span><b class="nom">Démo Bambou</b><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span><span class="etat">2e entre amis · <span class="mono">1:09,711</span></span><a class="btn plein plat">Voir le profil</a></div>
+    <div class="ami parfaite"><span class="av g c3">DA</span><b class="nom">Démo Abricot</b><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span><span class="etat">3e entre amis · <span class="mono">1:12,787</span></span><a class="btn plein plat">Voir le profil</a></div>
+    <div class="ami"><span class="av g c4">DD</span><b class="nom">Démo Dahlia</b><span class="f"><i class="fait t">T</i><i class="fait non">J</i></span><span class="etat">Track à l'instant<br>Ami à sens unique<b class="rep">2</b></span><a class="btn plein plat">Voir le profil</a></div>
+    <div class="ami attente"><span class="av g c5">DC</span><b class="nom">Démo Cactus</b><span class="f"><i class="fait non">T</i><i class="fait non">J</i></span><span class="etat">Pas encore joué<br>Ami à sens unique</span><a class="btn plein plat">Voir le profil</a></div>
+  </div>
+</div>
+<aside>
+  <div class="titre-s">Mon groupe <small>Chef : Démo</small></div>
+  <div class="panneau">
+    <div class="tetegr"><span class="emb g">LE</span><div><b>Les Noctambules</b><div class="douce" style="font-size:13px">4 membres · 2e sur 2 groupes aujourd'hui</div></div></div>
+    <div class="membre"><span class="av s">DÉ</span><span class="q">Toi <span class="pastille papier">Chef</span><small>1 jeu sur 2</small></span><i class="fait t">T</i><i class="fait non">J</i><b class="rep">4</b></div>
+    <div class="membre"><span class="av s c5">DF</span><span class="q">Démo Fjord<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div class="membre"><span class="av s c6">DG</span><span class="q">Démo Givre<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div class="membre"><span class="av s c6">DH</span><span class="q">Démo Hibou<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"><a class="btn">Copier le lien</a><a class="btn">Classement</a></div><b class="rep">5</b>
+  </div>
+</aside>
+</div></div>
+{{pied}}
+</section>
+
+<section data-avant="amis-demo/390x844" data-largeur="390" data-titre="Téléphone, 390 px">
+{{barreTel}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Amis et groupes</h1><div style="display:flex;margin-top:8px;align-items:baseline"><span class="date">Jeu. 12 nov. · n° 17</span><span class="mono" style="color:var(--moutarde);font-size:18px;margin-left:auto">23:29:38</span></div></div>
+<div class="page">
+  <div class="ajout"><label>Ajouter par pseudo<span class="champ">Pseudo d'un joueur</span></label><a class="btn" style="min-height:46px">Ajouter</a><a class="btn plein" style="min-height:46px">{{icone:lien}} Inviter par un lien<b class="rep">3</b></a></div>
+  <div class="titre-s">Mes amis <small>5 amis, 4 ont joué</small></div>
+  <div class="amis">
+    <div class="ami parfaite"><span class="av g c1">DC</span><b class="nom">Démo Cerise</b><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span><span class="etat">1er entre amis<br><span class="mono">1:09,335</span></span><a class="btn plein plat">Voir le profil</a><b class="rep abs" style="top:30px;right:-10px">1</b></div>
+    <div class="ami parfaite"><span class="av g c2">DB</span><b class="nom">Démo Bambou</b><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span><span class="etat">2e entre amis<br><span class="mono">1:09,711</span></span><a class="btn plein plat">Voir le profil</a></div>
+    <div class="ami parfaite"><span class="av g c3">DA</span><b class="nom">Démo Abricot</b><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span><span class="etat">3e entre amis<br><span class="mono">1:12,787</span></span><a class="btn plein plat">Voir le profil</a></div>
+    <div class="ami"><span class="av g c4">DD</span><b class="nom">Démo Dahlia</b><span class="f"><i class="fait t">T</i><i class="fait non">J</i></span><span class="etat">Track à l'instant<br>Ami à sens unique</span><a class="btn plein plat">Voir le profil</a></div>
+    <div class="ami attente"><span class="av g c5">DC</span><b class="nom">Démo Cactus</b><span class="f"><i class="fait non">T</i><i class="fait non">J</i></span><span class="etat">Pas encore joué<br>Ami à sens unique</span><a class="btn plein plat">Voir le profil</a></div>
+  </div>
+  <div class="titre-s" style="margin-top:28px">Mon groupe <small>Chef : Démo</small></div>
+  <div class="panneau">
+    <div class="tetegr"><span class="emb g">LE</span><div><b>Les Noctambules</b><div class="douce" style="font-size:13px">4 membres · 2e sur 2 groupes aujourd'hui</div></div></div>
+    <div class="membre"><span class="av s">DÉ</span><span class="q">Toi <span class="pastille papier">Chef</span><small>1 jeu sur 2</small></span><i class="fait t">T</i><i class="fait non">J</i><b class="rep">4</b></div>
+    <div class="membre"><span class="av s c5">DF</span><span class="q">Démo Fjord<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div class="membre"><span class="av s c6">DG</span><span class="q">Démo Givre<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div class="membre"><span class="av s c6">DH</span><span class="q">Démo Hibou<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"><a class="btn">Copier le lien</a><a class="btn">Classement</a></div>
+  </div>
+</div>
+{{pied}}
+{{onglets:2}}
+</section>
+
+<ol class="legende">
+<li><b>La journée parfaite se voit, « pas encore joué » s'efface.</b> Aujourd'hui les trois amis en journée parfaite sont sur le fond le plus terne (<code>--dj-creme-2</code>) et les deux autres sur le papier clair : la hiérarchie est à l'envers. Proposition : toutes les cartes sur papier, un bandeau moutarde « Journée parfaite » en tête de carte, et la carte de celui qui n'a pas joué en crème-2, bordure pointillée, sans ombre (l'état « désactivé » de la charte, § 5). Les pastilles T et J passent d'environ 16 à 24 px. <i>Constat M1.</i></li>
+<li><b>« ajouté par toi » devient « Ami à sens unique ».</b> La ligne actuelle décrit l'origine de l'amitié, pas ce qu'elle change pour le joueur : il te voit seulement si lui aussi t'ajoute, ou si tu l'invites par un lien. Même donnée (<code>origine</code>), texte plus clair. Aperçu anglais : « One-way friend ». <i>Constat M2 ; charte § 7, le ton.</i></li>
+<li><b>Ajouter un ami tient sur une rangée.</b> Le bouton terre « INVITER UN AMI (LIEN) » sur toute la largeur est l'élément le plus lourd de la page, au-dessus des amis eux-mêmes. Les deux façons d'ajouter se rangent côte à côte, en boutons secondaires ; le champ gagne un texte d'exemple. Le bouton de marque revient quand la liste est vide (maquette des états vides). <i>Constat M3 ; charte § 5 : un seul bouton principal par écran.</i></li>
+<li><b>Les membres du groupe se lisent comme les amis.</b> « chef, 1 sur 2 » et « parfaite » en minuscules sous la photo ne se comprennent pas sans connaître le code. Chaque membre devient une ligne : photo de 52 px, pseudo, « Chef » en pastille, statut écrit (« 1 jeu sur 2 », « Journée parfaite ») et les mêmes pastilles de jeux que les amis. <i>Constat M4 ; cohérence amis / groupe.</i></li>
+<li><b>Deux actions de même poids pour le groupe.</b> « COPIER LE LIEN » en terre et « Classement » en secondaire, alors que rien ne dit laquelle est principale : deux boutons secondaires ; « 2e sur 2 groupes » gagne « aujourd'hui » (révision 20). <i>Cohérence.</i></li>
+</ol>

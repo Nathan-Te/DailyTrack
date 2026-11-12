@@ -1,0 +1,155 @@
+<meta name="titre" content="Accueil — la salle de jeux">
+<meta name="intro" content="L'accueil de « Démo » : un jeu du jour fini, l'autre en cours, cinq amis, un groupe. La salle de jeux du lot U1 tient bien ; la proposition corrige ce que les planches montrent : un fronton serré sur téléphone, des légendes à la limite du lisible, un grand vide sous la salle d'arcade sur ordinateur, et un pied qui change d'une page à l'autre.">
+<style>
+.jeux{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:26px}
+.etiq.haute{min-height:172px;display:flex;flex-direction:column;gap:6px}
+.etiq .art{position:absolute;right:12px;top:10px;width:86px;height:70px;z-index:1}
+.etiq p.acc{font-size:14px;max-width:70%;position:relative;z-index:1}
+.cart .btn{margin-top:10px}
+.arc{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:14px}
+.arc .etiq{padding:10px}.arc .etiq h3{font-size:24px}
+.arc .ill{height:64px;display:flex;justify-content:flex-end;margin-top:-22px}.arc .ill svg{height:64px;width:auto}
+.arcade .sous{font-size:14px;max-width:60%;margin-left:auto;text-align:right;margin-top:-30px}
+.jauge{display:flex;gap:6px;margin:0 0 6px}.jauge i{flex:1;height:12px;border:2px solid var(--encre);border-radius:3px;background:var(--creme2)}.jauge i.ok{background:var(--diamant)}
+.deux{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.mini{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--creme2)}
+.mini:first-of-type{border-top:0}.mini .q{flex:1;min-width:0;font:700 14px Archivo}.mini .q small{display:block;font:400 13px Archivo;color:var(--douce)}
+.bande{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.copain{background:var(--papier);border:2px solid var(--encre);border-radius:4px;padding:12px 8px;text-align:center;display:grid;justify-items:center;gap:5px;font:700 14px Archivo}
+.copain small{font:400 13px Archivo;color:var(--douce)}.copain .f{display:flex;gap:4px}
+.cl .ligne{min-height:44px;padding:4px 10px;margin-bottom:5px}.cl .tps{font-size:14px}
+body.tel .jeux{grid-template-columns:1fr;gap:18px}
+body.tel .arc{grid-template-columns:1fr}
+body.tel .arc .cart{padding:0 8px 8px}
+body.tel .arc .etiq{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center}
+body.tel .arc .ill{margin:0;height:auto;justify-content:center}
+body.tel .arcade .sous{max-width:none;text-align:left;margin:6px 0 0}
+body.tel .haut2{display:flex;align-items:center;gap:12px;margin-top:14px}
+body.tel .lampes{gap:7px}
+body.tel .rebours b{font-size:24px}
+body.tel .bande{grid-template-columns:1fr}
+</style>
+
+<section data-avant="accueil-demo/1280x800" data-largeur="1280" data-titre="Ordinateur, 1 280 px">
+{{barre:0}}
+<div class="fronton">
+  <div><h1>Jeudi 12 novembre</h1><div class="jour">Journée n° 17</div></div>
+  <div style="margin-left:auto;padding-bottom:16px"><div class="lampes"><span class="lampe jouee"><i>L</i></span><span class="lampe parfaite"><i>M</i></span><span class="lampe parfaite"><i>M</i></span><span class="lampe parfaite auj"><i>J</i></span><span class="lampe"><i>V</i></span><span class="lampe"><i>S</i></span><span class="lampe"><i>D</i></span></div></div>
+  <div style="font-size:13px;max-width:150px">Série de 5 jours, 3 journées parfaites<b class="rep">1</b></div>
+  <div class="rebours" style="margin-left:0"><small>Prochains niveaux dans</small><b>23:30:52</b></div>
+</div>
+<div class="page"><div class="cols">
+<div>
+  <div class="titre-s">Les jeux du jour <small>{{icone:etoilePleine}}</small><small style="margin-left:0">Ta journée : 1 jeu épinglé, 1 fini<b class="rep">2</b></small></div>
+  <div class="jeux">
+    <div class="cart"><span class="etoile on">{{icone:etoilePleine}}</span>
+      <div class="etiq track haute"><h3 class="n-track">Track</h3><div class="num">n° 31 · Canyon</div><p class="acc">Un circuit par jour, le même pour tous.</p>
+        <div class="statut" style="margin-top:auto"><span class="fini">FINI</span><b class="mono">35,394 s</b><span><i class="med bronze"></i> Bronze</span><span>1er sur 31</span></div></div>
+      <a class="btn plein">Rejouer</a><b class="rep abs" style="left:-11px;top:60px">3</b></div>
+    <div class="cart jump"><span class="etoile">{{icone:etoile}}</span>
+      <div class="etiq jump haute"><h3 class="n-jump">Jump</h3><div class="num">n° 28 · Néon</div><p class="acc">Une plateforme sur deux. Devine laquelle.</p>
+        <svg class="art" viewBox="0 0 86 70" aria-hidden="true"><rect x="6" y="52" width="74" height="7" fill="#2A1E16"/><rect x="18" y="26" width="20" height="20" rx="2" fill="#F2C230" stroke="#2A1E16" stroke-width="3" transform="rotate(8 28 36)"/><circle cx="25" cy="34" r="2" fill="#2A1E16"/><circle cx="32" cy="35" r="2" fill="#2A1E16"/><path d="M62 38l3 6 6-3-2 6 6 3-6 2z" fill="#E0314B" stroke="#2A1E16" stroke-width="2"/></svg>
+        <div class="statut" style="margin-top:auto"><span class="pastille papier">En cours</span><span>12 morts</span></div></div>
+      <a class="btn marque plein">Continuer</a></div>
+  </div>
+  <div class="arcade"><h2>ARCADE</h2><p class="sous">Un classement par jeu, pour le plaisir. Ces jeux ne comptent pas dans ta journée.</p>
+    <div class="arc">
+      <div class="cart tower"><span class="etoile">{{icone:etoile}}</span><div class="etiq tower"><h3 class="n-tower">Tower</h3><div class="ill">{{illustration:tower}}</div><div class="num">n° 11 · Nuit</div><div class="statut">Pas encore joué</div><a class="btn marque plein">Jouer</a></div></div>
+      <div class="cart blocks"><span class="etoile">{{icone:etoile}}</span><div class="etiq blocks"><h3 class="n-blocks">Blocks</h3><div class="ill">{{illustration:blocks}}</div><div class="num">n° 11 · Chantier</div><div class="statut">Pas encore joué</div><a class="btn marque plein">Jouer</a></div></div>
+      <div class="cart rush"><span class="etoile">{{icone:etoile}}</span><div class="etiq rush"><h3 class="n-rush">Rush</h3><div class="ill">{{illustration:rush}}</div><div class="num">n° 11 · Prairie</div><div class="statut">Pas encore joué</div><a class="btn marque plein">Jouer</a></div></div>
+    </div><div class="etagere"></div></div>
+  <div class="titre-s" style="margin-top:30px">Tes amis aujourd'hui<b class="rep">4</b><small>4 sur 5 ont joué</small></div>
+  <div class="bande">
+    <div class="copain"><span class="av c1">DC</span>Démo Cerise<small>Journée parfaite</small><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span></div>
+    <div class="copain"><span class="av c2">DB</span>Démo Bambou<small>Journée parfaite</small><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span></div>
+    <div class="copain"><span class="av c3">DA</span>Démo Abricot<small>Journée parfaite</small><span class="f"><i class="fait t">T</i><i class="fait j">J</i></span></div>
+    <div class="copain"><span class="av c4">DD</span>Démo Dahlia<small>Track à l'instant</small><span class="f"><i class="fait t">T</i><i class="fait non">J</i></span></div>
+    <div class="copain"><span class="av c5">DC</span>Démo Cactus<small>Pas encore joué</small><span class="f"><i class="fait non">T</i><i class="fait non">J</i></span></div>
+  </div>
+  <a class="lien">Mes amis et mes groupes ›</a>
+</div>
+<aside>
+  <div class="panneau"><h3>Ta journée<b class="rep">5</b></h3>
+    <div class="jauge"><i class="ok"></i></div><p style="font-size:13px" class="douce">1 jeu sur 1 : journée parfaite</p>
+    <div class="deux"><div class="tuile"><small>Série</small><b>5 jours</b><span>3 journées parfaites</span></div><div class="tuile"><small>Classement du jour</small><b>23e</b><span>4e entre amis</span></div></div>
+    <p style="font-size:13px;margin-bottom:10px" class="douce">Finis Jump pour le cumul.</p>
+    <a class="btn marque plein">Partager ma journée</a></div>
+  <div class="panneau cl"><h3>Classement du jour</h3>
+    <div class="seg" style="width:100%;margin-bottom:10px"><span style="flex:1;justify-content:center">Tous</span><span class="ici" style="flex:1;justify-content:center">Amis</span><span style="flex:1;justify-content:center">Mon groupe</span></div>
+    <div class="ligne"><span class="rg">1er</span><span class="av p c1">DC</span><span class="nom">Démo Cerise</span><span class="tps">1:09,335</span></div>
+    <div class="ligne"><span class="rg">2e</span><span class="av p c2">DB</span><span class="nom">Démo Bambou</span><span class="tps">1:09,711</span></div>
+    <div class="ligne"><span class="rg">3e</span><span class="av p c3">DA</span><span class="nom">Démo Abricot</span><span class="tps">1:12,787</span></div>
+    <div class="ligne moi"><span class="rg">4e</span><span class="av p">DÉ</span><span class="nom">Toi</span><span class="tps" style="font:700 13px Archivo">1 jeu sur 2<b class="rep">6</b></span></div>
+    <a class="lien">Tout le classement ›</a></div>
+  <div class="panneau"><h3>Ton groupe</h3>
+    <div style="display:flex;gap:12px;align-items:center"><span class="emb">LE</span><div><b>Les Noctambules</b><div class="douce" style="font-size:13px">4 membres · 2e sur 2 groupes</div></div></div>
+    <a class="lien">Voir le groupe</a></div>
+</aside>
+</div></div>
+{{pied}}<b class="rep abs" style="margin:-70px 0 0 20px">7</b>
+</section>
+
+<section data-avant="accueil-demo/390x844" data-largeur="390" data-titre="Téléphone, 390 px" data-note="Même ordre qu'aujourd'hui (charte, § 9) : fronton, jeux du jour, arcade, ta journée, classement, amis, groupe.">
+{{barreTel}}
+<div class="fronton">
+  <h1>Jeudi 12 novembre<b class="rep">1</b></h1>
+  <div class="jour">Journée n° 17</div>
+  <div class="haut2"><div class="lampes"><span class="lampe jouee"><i>L</i></span><span class="lampe parfaite"><i>M</i></span><span class="lampe parfaite"><i>M</i></span><span class="lampe parfaite auj"><i>J</i></span><span class="lampe"><i>V</i></span><span class="lampe"><i>S</i></span><span class="lampe"><i>D</i></span></div>
+    <div class="rebours" style="margin-left:auto;text-align:right"><small>Prochains niveaux</small><b>23:30:39</b></div></div>
+  <div style="font-size:13px;margin-top:22px">Série de 5 jours, 3 journées parfaites</div>
+</div>
+<div class="page">
+  <div class="titre-s">Les jeux du jour <small>1 épinglé, 1 fini<b class="rep">2</b></small></div>
+  <div class="jeux">
+    <div class="cart"><span class="etoile on">{{icone:etoilePleine}}</span>
+      <div class="etiq track haute" style="min-height:150px"><h3 class="n-track">Track</h3><div class="num">n° 31 · Canyon</div><p class="acc">Un circuit par jour, le même pour tous.</p>
+        <div class="statut" style="margin-top:auto"><span class="fini">FINI</span><b class="mono">35,394 s</b><span><i class="med bronze"></i> Bronze</span><span>1er sur 31</span></div></div>
+      <a class="btn plein">Rejouer</a></div>
+    <div class="cart jump"><span class="etoile">{{icone:etoile}}</span>
+      <div class="etiq jump haute" style="min-height:150px"><h3 class="n-jump">Jump</h3><div class="num">n° 28 · Néon</div><p class="acc">Une plateforme sur deux. Devine laquelle.</p>
+        <svg class="art" viewBox="0 0 86 70" aria-hidden="true"><rect x="6" y="52" width="74" height="7" fill="#2A1E16"/><rect x="18" y="26" width="20" height="20" rx="2" fill="#F2C230" stroke="#2A1E16" stroke-width="3" transform="rotate(8 28 36)"/><circle cx="25" cy="34" r="2" fill="#2A1E16"/><circle cx="32" cy="35" r="2" fill="#2A1E16"/><path d="M62 38l3 6 6-3-2 6 6 3-6 2z" fill="#E0314B" stroke="#2A1E16" stroke-width="2"/></svg>
+        <div class="statut" style="margin-top:auto"><span class="pastille papier">En cours</span><span>12 morts</span></div></div>
+      <a class="btn marque plein">Continuer</a></div>
+  </div>
+  <div class="arcade" style="margin:0 -6px"><h2>ARCADE</h2><p class="sous">Un classement par jeu, pour le plaisir. Ces jeux ne comptent pas dans ta journée.</p>
+    <div class="arc">
+      <div class="cart tower"><span class="etoile">{{icone:etoile}}</span><div class="etiq tower"><div class="ill">{{illustration:tower}}</div><div><h3 class="n-tower">Tower</h3><div class="num">n° 11 · Nuit</div><div class="statut" style="min-height:30px">Pas encore joué</div><a class="btn marque plein">Jouer</a></div></div></div>
+      <div class="cart blocks"><span class="etoile">{{icone:etoile}}</span><div class="etiq blocks"><div class="ill">{{illustration:blocks}}</div><div><h3 class="n-blocks">Blocks</h3><div class="num">n° 11 · Chantier</div><div class="statut" style="min-height:30px">Pas encore joué</div><a class="btn marque plein">Jouer</a></div></div></div>
+      <div class="cart rush"><span class="etoile">{{icone:etoile}}</span><div class="etiq rush"><div class="ill">{{illustration:rush}}</div><div><h3 class="n-rush">Rush</h3><div class="num">n° 11 · Prairie</div><div class="statut" style="min-height:30px">Pas encore joué</div><a class="btn marque plein">Jouer</a></div></div></div>
+    </div><div class="etagere"></div></div>
+  <div class="panneau" style="margin-top:26px"><h3>Ta journée<b class="rep">5</b></h3>
+    <div class="jauge"><i class="ok"></i></div><p style="font-size:13px" class="douce">1 jeu sur 1 : journée parfaite</p>
+    <div class="deux"><div class="tuile"><small>Série</small><b>5 jours</b><span>3 journées parfaites</span></div><div class="tuile"><small>Classement du jour</small><b>23e</b><span>4e entre amis</span></div></div>
+    <p style="font-size:13px;margin-bottom:10px" class="douce">Finis Jump pour le cumul.</p>
+    <a class="btn marque plein">Partager ma journée</a></div>
+  <div class="panneau cl"><h3>Classement du jour</h3>
+    <div class="seg" style="width:100%;margin-bottom:10px"><span style="flex:1;justify-content:center">Tous</span><span class="ici" style="flex:1;justify-content:center">Amis</span><span style="flex:1;justify-content:center">Mon groupe</span></div>
+    <div class="ligne"><span class="rg">1er</span><span class="av p c1">DC</span><span class="nom">Démo Cerise</span><span class="tps">1:09,335</span></div>
+    <div class="ligne"><span class="rg">2e</span><span class="av p c2">DB</span><span class="nom">Démo Bambou</span><span class="tps">1:09,711</span></div>
+    <div class="ligne"><span class="rg">3e</span><span class="av p c3">DA</span><span class="nom">Démo Abricot</span><span class="tps">1:12,787</span></div>
+    <div class="ligne moi"><span class="rg">4e</span><span class="av p">DÉ</span><span class="nom">Toi</span><span class="tps" style="font:700 13px Archivo">1 jeu sur 2<b class="rep">6</b></span></div>
+    <a class="lien">Tout le classement ›</a></div>
+  <div class="panneau"><h3>Tes amis aujourd'hui<b class="rep">4</b><small>4 sur 5 ont joué</small></h3>
+    <div class="mini"><span class="av c1">DC</span><span class="q">Démo Cerise<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div class="mini"><span class="av c2">DB</span><span class="q">Démo Bambou<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div class="mini"><span class="av c3">DA</span><span class="q">Démo Abricot<small>Journée parfaite</small></span><i class="fait t">T</i><i class="fait j">J</i></div>
+    <div class="mini"><span class="av c4">DD</span><span class="q">Démo Dahlia<small>Track à l'instant</small></span><i class="fait t">T</i><i class="fait non">J</i></div>
+    <div class="mini"><span class="av c5">DC</span><span class="q">Démo Cactus<small>Pas encore joué</small></span><i class="fait non">T</i><i class="fait non">J</i></div>
+    <a class="lien">Mes amis et mes groupes ›</a></div>
+  <div class="panneau"><h3>Ton groupe</h3>
+    <div style="display:flex;gap:12px;align-items:center"><span class="emb">LE</span><div><b>Les Noctambules</b><div class="douce" style="font-size:13px">4 membres · 2e sur 2 groupes</div></div></div>
+    <a class="lien">Voir le groupe</a></div>
+</div>
+{{pied}}
+{{onglets:0}}
+</section>
+
+<ol class="legende">
+<li><b>Fronton : la date tient sur une ligne et la légende de la série se lit.</b> Sur téléphone, « Jeudi 12 novembre » se coupe en deux et pousse le compte à rebours ; sur ordinateur, « Série de 5 jours, 3 journées parfaites » est à 12 px, perdue à côté des lampes. La date passe à 22 px sur téléphone, les lampes et le compte à rebours partagent la rangée suivante, la légende est à 13 px. <i>Constat A1, A2 ; lisibilité.</i></li>
+<li><b>« 1 fini sur 1 » dit ce qu'il compte.</b> Deux cartouches sont à l'écran et le compteur dit « sur 1 » : seuls les jeux épinglés comptent (lot F1), mais rien ne l'écrit. Le compteur devient « Ta journée : 1 jeu épinglé, 1 fini », à côté de l'étoile. Aucune donnée nouvelle. <i>Constat A3 ; lisibilité.</i></li>
+<li><b>Les deux jeux du jour prennent de la hauteur.</b> Étiquettes de 172 px au lieu d'environ 110 : le nom, le numéro et le thème, l'accroche, puis le statut sur sa rangée réservée ; l'illustration de Jump est plus grande. Le statut ne colle plus à l'accroche. <i>Charte § 9 : « chacune avec l'illustration de son jeu en haut de l'étiquette », statut sur deux rangées réservées.</i></li>
+<li><b>« Tes amis aujourd'hui » passe sous la salle d'arcade, en bande de photos de 48 px.</b> Sur ordinateur, la colonne de gauche s'arrête 650 px avant celle de droite : un tiers de l'écran reste vide pendant que quatre panneaux s'empilent à droite. Les amis remplissent ce vide, et leurs pastilles de jeux passent d'environ 16 à 24 px, à la couleur du jeu (pleine = fini, pointillée = pas fini). Sur téléphone, l'ordre ne change pas ; seules les pastilles grandissent. <span class="marque">évolution de charte</span> <i>La révision 19 range les amis dans la colonne de droite ; constat A4, A5.</i></li>
+<li><b>« Ta journée » : une jauge qui a un nom, des tuiles lisibles.</b> La barre bleue sans légende devient une jauge à une case par jeu épinglé, avec sa phrase (« 1 jeu sur 1 : journée parfaite »). Les valeurs des tuiles sont à 24 px et leurs légendes à 11 px en capitales, comme la tuile de la charte (§ 5) ; aujourd'hui trois lignes de 11 à 12 px s'y serrent. <i>Constat A6.</i></li>
+<li><b>Ta ligne du classement dit « 1 jeu sur 2 ».</b> Aujourd'hui elle affiche « 1 sur 1 » à la place du temps cumulé, sans unité, pendant que la tuile dit « Finis Jump pour le cumul ». <i>Constat A7 ; cohérence entre les deux panneaux.</i></li>
+<li><b>Un seul pied, aligné sur le contenu, le même sur toutes les pages.</b> Aujourd'hui le pied de l'accueil est collé au bord gauche de la fenêtre (hors de la colonne de 1 208 px), « Un bug ? Une idée ? » est un bouton dans la colonne de droite, et les autres pages ont un autre pied, sans Discord ni Ko-fi. <i>Constat A8 ; cohérence entre pages.</i></li>
+</ol>

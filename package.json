@@ -36,6 +36,7 @@
     "nouveau-jeu": "node scripts/nouveau-jeu.mjs",
     "kit-bout-en-bout": "node scripts/kit-bout-en-bout.mjs",
     "verifier": "node scripts/verifier.mjs",
+    "relecture": "node scripts/relecture/relecture.mjs",
     "budgets": "node scripts/budgets.mjs",
     "mesure-affichage": "node scripts/mesure-affichage.mjs",
     "attendre-ci": "node scripts/attendre-ci.mjs",

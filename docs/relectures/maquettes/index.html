@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relecture de novembre 2026 — maquettes du portail</title>
+<style>
+body{margin:0;background:#D8CCB3;color:#2A1E16;font:16px/1.55 system-ui,sans-serif;padding:32px 20px 80px}
+main{max-width:960px;margin:0 auto}
+h1{font:800 28px/1.2 system-ui,sans-serif;margin:0 0 8px}
+h2{font:800 21px system-ui,sans-serif;margin:44px 0 10px;border-bottom:3px solid #2A1E16;padding-bottom:6px}
+p{margin:0 0 12px;max-width:820px}
+.cartes{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px;padding:0;margin:18px 0}
+.cartes li{list-style:none;background:#FFF6E0;border:3px solid #2A1E16;border-radius:4px;box-shadow:4px 4px 0 #2A1E16;padding:16px 16px 14px}
+.cartes h3{font:800 18px system-ui,sans-serif;margin:0 0 8px}
+.cartes h3 a{color:inherit}
+.cartes ol{margin:0;padding-left:20px;font-size:15px}
+.cartes ol li{list-style:decimal;background:none;border:0;box-shadow:none;padding:2px 0;border-radius:0}
+.m{display:inline-block;font:700 11px system-ui,sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:1px 7px;border-radius:3px;border:2px solid #2A1E16;background:#E8B23A;white-space:nowrap}
+.m.s{background:#4FC3DC}.m.g{background:#C2401F;color:#FFF4E0}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:12px 0}
+th,td{border:2px solid #2A1E16;padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#2A1E16;color:#EDE3CF}
+td:first-child{font-weight:700;white-space:nowrap}
+code{font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>Relecture de novembre 2026 — maquettes du portail</h1>
+<p>Lot QA1. Six maquettes « avant / après », une par écran du portail : à gauche la capture du site le 12 novembre 2026 (<code>npm run relecture</code>), à droite la proposition, l'écran d'ordinateur puis celui du téléphone. Chaque changement est numéroté et porte sa raison : un constat de <code>docs/relectures/2026-11-constat.md</code>, une règle de la charte, la lisibilité ou la cohérence entre pages.</p>
+<p>Rien n'est codé. Les propositions restent dans la charte « Cartouches » (révisions 18 à 20) ; les deux qui demandent de la changer sont marquées <span class="m">évolution de charte</span>. Aucune ne demande une donnée que le serveur n'a pas : la marque <span class="m s">demande une donnée serveur</span> n'apparaît donc nulle part. <span class="m g">bloquant</span> signale le seul défaut qui casse un écran aujourd'hui.</p>
+<p><b>Pour valider</b> : ouvrir une maquette, comparer, et dire pour chaque numéro « je garde », « je ne garde pas » ou « autrement ».</p>
+
+<h2>Les maquettes</h2>
+<ul class="cartes">
+<li><h3><a href="accueil.html">Accueil</a></h3><ol>
+<li>Fronton lisible : la date sur une ligne au téléphone, la légende de la série à 13 px.</li>
+<li>« Tes amis aujourd'hui » en bande de photos sous la salle d'arcade, là où l'écran d'ordinateur est vide. <span class="m">évolution de charte</span></li>
+<li>Un pied unique, aligné sur le contenu, le même sur toutes les pages.</li></ol></li>
+<li><h3><a href="classements.html">Classements</a></h3><ol>
+<li>Le titre ne recouvre plus le compte à rebours sur téléphone. <span class="m g">bloquant</span></li>
+<li>Quatre rangées de commandes deviennent deux : la date monte dans le fronton.</li>
+<li>Ta place en tête de page, avec ce qu'il te manque pour le cumul.</li></ol></li>
+<li><h3><a href="amis.html">Amis et groupes</a></h3><ol>
+<li>La journée parfaite ressort, « pas encore joué » s'efface (l'inverse d'aujourd'hui).</li>
+<li>Les membres du groupe se lisent comme les amis : statut écrit, mêmes pastilles de jeux.</li>
+<li>Ajouter un ami tient sur une rangée ; le bouton terre ne domine plus la page.</li></ol></li>
+<li><h3><a href="profil.html">Profil</a></h3><ol>
+<li>La gestion du groupe (treize boutons) se replie ; les actions sans retour sont à part.</li>
+<li>Un jeu jamais joué : une carte courte avec « Jouer », plus quatre cases à zéro.</li>
+<li>« 5 amis », « Changer de pseudo » : de vrais boutons de 44 px.</li></ol></li>
+<li><h3><a href="secondaire.html">Page secondaire type : Nouveautés</a></h3><ol>
+<li>La colonne de lecture est centrée et le texte passe à 15 px.</li>
+<li>Un fronton court, sans compte à rebours, pour les pages qu'on lit. <span class="m">évolution de charte</span></li>
+<li>Un retour écrit (« ‹ Aujourd'hui », « ‹ Profil ») sous le fronton.</li></ol></li>
+<li><h3><a href="etats.html">États vides et d'erreur</a></h3><ol>
+<li>Une carte (dessin, titre, phrase, action) à la place d'une phrase seule.</li>
+<li>Sans profil : deux boutons pour jouer, et « J'ai déjà un profil ».</li>
+<li>La 404 et le groupe introuvable prennent le logo, le fronton et une sortie.</li></ol></li>
+</ul>
+
+<h2>Proposition de lots</h2>
+<p>Pour réaliser ce que tu valideras. Groupés par zone de code, une ou deux parties par lot ; chaque lot compare son écran à sa maquette et relance <code>npm run relecture -- --seulement portail</code>. Tout est dans <code>apps/portail</code> (zone partagée : un lot à la fois), sauf la carte d'état vide, qui irait dans <code>@cdj/ui</code>.</p>
+<table>
+<thead><tr><th>Lot</th><th>Zone de code</th><th>Partie 1</th><th>Partie 2</th></tr></thead>
+<tbody>
+<tr><td>Q1 — Fronton et pied</td><td><code>salle.ts</code>, <code>salleDePage.ts</code>, <code>salle.css</code>, <code>pagesSalle.css</code>, <code>retoursLien.ts</code></td><td>Fronton du téléphone sur deux rangées (le chevauchement bloquant), légendes à 12 px au moins, un seul pied sur toutes les pages.</td><td>Pages de lecture : colonne centrée, retour écrit, et le fronton court si l'évolution de charte est retenue.</td></tr>
+<tr><td>Q2 — Accueil</td><td><code>portail.ts</code>, <code>salle.ts</code>, <code>portail.css</code></td><td>Compteur « jeux épinglés », cartouches du jour plus hautes, « Ta journée » (jauge nommée, tuiles), ta ligne du classement.</td><td>« Tes amis aujourd'hui » en bande sous l'arcade (si l'évolution de charte est retenue) ; pastilles de jeux de 24 px.</td></tr>
+<tr><td>Q3 — Classements</td><td><code>classement.ts</code>, <code>classementSalle.ts</code>, <code>classementVues.ts</code>, <code>classementSalle.css</code></td><td>Date dans le fronton, deux rangées de commandes, rangée des vues qui montre qu'elle défile, « Groupes du jour ».</td><td>Carte « ta place » en tête, temps par jeu sur téléphone.</td></tr>
+<tr><td>Q4 — Amis, groupe, profil</td><td><code>amisPage.ts</code>, <code>amisCartes.ts</code>, <code>profil.ts</code>, <code>groupeProfil.ts</code>, leurs feuilles</td><td>Cartes d'amis (hiérarchie, « Ami à sens unique »), membres du groupe en lignes, ajout sur une rangée.</td><td>Profil : gestion du groupe repliée, cartes « jamais joué », liens de 44 px, code et langue.</td></tr>
+<tr><td>Q5 — États vides</td><td><code>@cdj/ui</code> (une carte d'état vide), puis <code>amisPage.ts</code>, <code>profil.ts</code>, <code>messagesPage.ts</code>, <code>groupePage.ts</code>, <code>404.html</code></td><td>La carte et ses catalogues fr et en ; sans profil, sans ami, sans groupe, classement « Amis » vide.</td><td>Groupe introuvable, 404, bandeau « serveur injoignable » ; cet état s'ajoute à <code>npm run relecture</code>.</td></tr>
+</tbody>
+</table>
+<p><b>Avant ces lots</b> : inscrire dans la charte (révision 21, par toi) les évolutions retenues — amis sous la salle d'arcade, fronton court des pages de lecture — et la carte d'état vide. <b>Après</b> : le lot QA2 fait le même travail pour les jeux, à partir des constats « Jeux » du même fichier.</p>
+</main>
+</body>
+</html>

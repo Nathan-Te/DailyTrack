@@ -1,0 +1,111 @@
+<meta name="titre" content="Classements — le podium au premier écran">
+<meta name="intro" content="Le cumul du jour de « Démo » (Track fini, Jump en cours). Le podium et les photos du lot U2 sont bons ; la proposition range les commandes, qui prennent aujourd'hui quatre rangées avant le premier joueur sur téléphone, et corrige le titre qui recouvre le compte à rebours.">
+<style>
+.vues{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.vues .sep{font:11px 'Archivo Black';letter-spacing:1.5px;color:var(--douce);padding:0 4px 0 10px;border-left:2px dashed var(--douce);align-self:stretch;display:flex;align-items:center}
+.vue.t i{background:var(--track)}.vue.j i{background:var(--jump-coque)}.vue.w i{background:var(--tower)}.vue.b i{background:var(--blocks)}.vue.r i{background:var(--rush)}
+.cmd{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.jourNav{display:flex;align-items:center;gap:8px;margin-top:8px}
+.jourNav a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:2px solid var(--creme);border-radius:3px;font:700 13px Archivo;text-decoration:none}
+.jourNav a.off{border-style:dashed;opacity:.6}
+.info{font-size:13px;color:var(--douce);margin:4px 0 16px}
+.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:end;margin-bottom:14px}
+.podium>div{text-align:center;display:grid;justify-items:center;gap:4px;font:700 15px Archivo}
+.podium .marche{width:100%;background:var(--encre);color:var(--moutarde);font:24px 'Archivo Black';text-shadow:2px 2px 0 var(--terre);padding:10px 0;margin-top:6px}
+.podium .m1{padding:28px 0}.podium .m3{padding:4px 0}
+.ph{position:relative}.ph b{position:absolute;right:-4px;bottom:-4px;width:34px;height:34px;border-radius:50%;background:var(--moutarde);border:3px solid var(--encre);display:grid;place-items:center;font:14px 'Archivo Black'}
+.tete{display:flex;gap:12px;padding:0 12px 4px;font:700 11px Archivo;letter-spacing:1px;text-transform:uppercase;color:var(--douce)}
+.tete span:first-child{flex:1;padding-left:90px}.tete span{width:92px;text-align:right}
+.moiHaut{display:flex;align-items:center;gap:12px;background:var(--moutarde);border:3px solid var(--encre);border-radius:4px;box-shadow:4px 4px 0 var(--encre);padding:10px 14px;margin-bottom:18px}
+.moiHaut b{font:22px 'Archivo Black'}.moiHaut p{flex:1;font-size:14px}
+.sousTitre{font:12px 'Archivo Black';letter-spacing:1.5px;text-transform:uppercase;border-top:2px dashed var(--encre);padding-top:10px;margin:14px 0 8px}
+.grp{display:flex;align-items:center;gap:10px;padding:8px;border-top:1px solid var(--creme2)}
+.grp.moi{background:var(--moutarde);border:2px solid var(--encre);border-radius:3px}
+.grp .q{flex:1;font:700 14px Archivo}.grp .q small{display:block;font:400 13px Archivo;color:var(--douce)}.grp.moi .q small{color:var(--encre)}
+body.tel .vues{flex-wrap:nowrap;overflow:hidden;margin-right:-16px;position:relative}
+body.tel .plus{position:absolute;right:0;top:0;bottom:0;width:44px;display:grid;place-items:center;background:var(--creme);border-left:2px solid var(--encre);font:18px 'Archivo Black'}
+body.tel .podium .marche{font-size:20px}
+body.tel .ligne .par{display:none}
+body.tel .ligne .nom{flex-wrap:wrap}
+body.tel .ligne .det{flex:1 1 100%;font:700 11px 'JetBrains Mono';color:var(--douce)}
+body.tel .jourNav a{padding:0 9px}
+</style>
+
+<section data-avant="classement-cumul/1280x800" data-largeur="1280" data-titre="Ordinateur, 1 280 px">
+{{barre:1}}
+<div class="fronton">
+  <div><h1 class="page">Classements</h1>
+    <div class="jourNav"><a>‹ Veille</a><span class="date">Jeudi 12 novembre · Journée n° 17</span><a class="off">Lendemain ›</a><b class="rep">2</b></div></div>
+  <div class="rebours"><small>Prochains niveaux dans</small><b>23:30:32</b></div>
+</div>
+<div class="page"><div class="cols">
+<div>
+  <div class="vues"><span class="vue ici"><i></i>Cumulé</span><span class="vue t"><i></i>Track</span><span class="vue j"><i></i>Jump</span><span class="sep">ARCADE</span><span class="vue w"><i></i>Tower</span><span class="vue b"><i></i>Blocks</span><span class="vue r"><i></i>Rush</span></div>
+  <div class="cmd"><div class="seg"><span class="ici">Tous · 52</span><span>Amis · 5</span><span>Mon groupe · 4</span></div><b class="rep">2</b><span class="info" style="margin:0">Au chrono. À égalité : le premier arrivé à ce temps.</span></div>
+  <div class="moiHaut"><span class="av m">DÉ</span><b>23e</b><p><b style="font:700 15px Archivo">Tu as fini 1 jeu sur 2.</b> Finis Jump pour entrer au cumul.</p><a class="btn">Jouer à Jump</a><b class="rep">3</b></div>
+  <div class="podium">
+    <div><span class="ph"><span class="av l">DP</span><b>2</b></span>Démo Pétale<span class="mono">1:09,471</span><div class="marche">2</div></div>
+    <div><span class="ph"><span class="av xg c1">DC</span><b>1</b></span><span>Démo Cerise <span class="emb p bleu">LR</span></span><span class="mono">1:09,335</span><div class="marche m1">1</div></div>
+    <div><span class="ph"><span class="av l c6">DS</span><b>3</b></span>Démo Sirocco<span class="mono">1:09,520</span><div class="marche m3">3</div></div>
+  </div>
+  <div class="tete"><span>Joueur</span><span>Track</span><span>Jump</span><span>Cumulé</span></div>
+  <div class="ligne"><span class="rg">4</span><span class="av c6">DC</span><span class="nom">Démo Cyclone</span><span class="par">36,884 s <i class="med bronze"></i></span><span class="par">32,642 s <i class="med or"></i></span><span class="tps" style="width:92px">1:09,526</span></div>
+  <div class="ligne"><span class="rg">5</span><span class="av c2">DB</span><span class="nom">Démo Bambou <span class="emb p bleu">LR</span></span><span class="par">37,003 s <i class="med bronze"></i></span><span class="par">32,708 s <i class="med or"></i></span><span class="tps" style="width:92px">1:09,711</span></div>
+  <div class="ligne"><span class="rg">6</span><span class="av c6">DH</span><span class="nom">Démo Hibou <span class="emb p">LE</span></span><span class="par">37,307 s</span><span class="par">32,692 s <i class="med or"></i></span><span class="tps" style="width:92px">1:09,999</span></div>
+  <div class="ligne"><span class="rg">7</span><span class="av">DJ</span><span class="nom">Démo Jade <span class="emb p">LD</span></span><span class="par">37,307 s</span><span class="par">32,692 s <i class="med or"></i></span><span class="tps" style="width:92px">1:09,999</span></div>
+  <div class="ligne"><span class="rg">8</span><span class="av c5">DG</span><span class="nom">Démo Galet</span><span class="par">37,438 s</span><span class="par">32,633 s <i class="med or"></i></span><span class="tps" style="width:92px">1:10,071</span></div>
+  <p class="info" style="text-align:center;margin:10px 0">… 14 joueurs …</p>
+  <div class="sousTitre">Un jeu sur deux</div>
+  <div class="ligne moi"><span class="rg">23</span><span class="av">DÉ</span><span class="nom">Démo <span class="emb p">LE</span> <span class="pastille papier">Toi</span></span><span class="par">35,394 s <i class="med bronze"></i></span><span class="par">—</span><span class="tps" style="width:92px">—</span></div>
+  <div class="ligne"><span class="rg">24</span><span class="av c6">DL</span><span class="nom">Démo Lichen</span><span class="par">—</span><span class="par">30,817 s <i class="med diamant"></i></span><span class="tps" style="width:92px">—</span></div>
+</div>
+<aside>
+  <div class="panneau"><h3>Groupes du jour<b class="rep">4</b></h3>
+    <div class="grp"><span class="rg mono">1</span><span class="emb bleu">LR</span><span class="q">Les Rapides<small>4 classés</small></span><span class="mono">1:09,751</span></div>
+    <div class="grp moi"><span class="rg mono">2</span><span class="emb">LE</span><span class="q">Les Noctambules<small>Ton groupe</small></span><span class="mono">1:12,263</span></div>
+    <p class="info" style="margin:10px 0 0">Au chrono : la moyenne des 3 meilleurs de chaque groupe (3 classés au moins).</p>
+    <a class="lien">Tous les groupes ›</a></div>
+</aside>
+</div></div>
+{{pied}}
+</section>
+
+<section data-avant="classement-cumul/390x844" data-largeur="390" data-titre="Téléphone, 390 px" data-note="Aujourd'hui le podium commence à 514 px du haut ; ici vers 400 px, avec ta place au-dessus.">
+{{barreTel}}
+<div class="fronton">
+  <h1 class="page">Classements<b class="rep">1</b></h1>
+  <div class="jourNav"><a>‹</a><span class="date" style="flex:1">Jeu. 12 nov. · n° 17</span><a class="off">›</a><span class="mono" style="color:var(--moutarde);font-size:18px">23:30:22</span></div>
+</div>
+<div class="page">
+  <div class="vues"><span class="vue ici"><i></i>Cumulé</span><span class="vue t"><i></i>Track</span><span class="vue j"><i></i>Jump</span><span class="vue w"><i></i>Tower</span><span class="vue b"><i></i>Blocks</span><span class="plus">›<b class="rep abs" style="top:-4px;right:30px">5</b></span></div>
+  <div class="cmd"><div class="seg" style="width:100%"><span class="ici" style="flex:1;justify-content:center">Tous · 52</span><span style="flex:1;justify-content:center">Amis · 5</span><span style="flex:1;justify-content:center">Groupe · 4</span></div></div>
+  <div class="moiHaut" style="flex-wrap:wrap"><span class="av m">DÉ</span><b>23e</b><p>1 jeu sur 2. Finis Jump pour entrer au cumul.<b class="rep">3</b></p></div>
+  <div class="podium">
+    <div><span class="ph"><span class="av" style="width:68px;height:68px;font-size:20px">DP</span><b>2</b></span><span style="font-size:13px">Démo Pétale</span><span class="mono" style="font-size:13px">1:09,471</span><div class="marche">2</div></div>
+    <div><span class="ph"><span class="av c1" style="width:84px;height:84px;font-size:24px">DC</span><b>1</b></span><span style="font-size:13px">Démo Cerise</span><span class="mono" style="font-size:13px">1:09,335</span><div class="marche m1">1</div></div>
+    <div><span class="ph"><span class="av c6" style="width:68px;height:68px;font-size:20px">DS</span><b>3</b></span><span style="font-size:13px">Démo Sirocco</span><span class="mono" style="font-size:13px">1:09,520</span><div class="marche m3">3</div></div>
+  </div>
+  <div class="ligne"><span class="rg">4</span><span class="av m c6">DC</span><span class="nom">Démo Cyclone<span class="det">T 36,884 · J 32,642<b class="rep">6</b></span></span><span class="tps">1:09,526</span></div>
+  <div class="ligne"><span class="rg">5</span><span class="av m c2">DB</span><span class="nom">Démo Bambou <span class="emb p bleu">LR</span><span class="det">T 37,003 · J 32,708</span></span><span class="tps">1:09,711</span></div>
+  <div class="ligne"><span class="rg">6</span><span class="av m c6">DH</span><span class="nom">Démo Hibou <span class="emb p">LE</span><span class="det">T 37,307 · J 32,692</span></span><span class="tps">1:09,999</span></div>
+  <div class="ligne"><span class="rg">7</span><span class="av m">DJ</span><span class="nom">Démo Jade <span class="emb p">LD</span><span class="det">T 37,307 · J 32,692</span></span><span class="tps">1:09,999</span></div>
+  <p class="info" style="text-align:center;margin:10px 0">… 15 joueurs …</p>
+  <div class="sousTitre">Un jeu sur deux</div>
+  <div class="ligne moi"><span class="rg">23</span><span class="av m">DÉ</span><span class="nom">Démo <span class="pastille papier">Toi</span><span class="det" style="color:var(--encre)">T 35,394 · J —</span></span><span class="tps">—</span></div>
+  <div class="panneau" style="margin-top:22px"><h3>Groupes du jour<b class="rep">4</b></h3>
+    <div class="grp"><span class="rg mono">1</span><span class="emb bleu">LR</span><span class="q">Les Rapides<small>4 classés</small></span><span class="mono">1:09,751</span></div>
+    <div class="grp moi"><span class="rg mono">2</span><span class="emb">LE</span><span class="q">Les Noctambules<small>Ton groupe</small></span><span class="mono">1:12,263</span></div>
+    <a class="lien">Tous les groupes ›</a></div>
+</div>
+{{pied}}
+{{onglets:1}}
+</section>
+
+<ol class="legende">
+<li><b>Le titre ne recouvre plus le compte à rebours.</b> Sur téléphone, « CLASSEMENTS » recouvre « PROCHAINS NIVEAUX DANS » (franchement à 360 px, sur les dernières lettres à 390 px ; « NOUVEAUTÉS » s'en approche). Sur téléphone le fronton passe sur deux rangées : le titre seul, puis la date et le compte à rebours sans sa légende. <span class="marque grave">bloquant</span> <i>Constat C1.</i></li>
+<li><b>Quatre rangées de commandes deviennent deux.</b> La date et « ‹ Veille / Lendemain › » montent dans le fronton, qui affiche déjà la date ; « Joueurs / Groupes » disparaît comme interrupteur : le panneau « Groupes du jour » est déjà là, avec son lien « Tous les groupes ». Il reste les vues (les jeux) et le filtre (Tous, Amis, Mon groupe). <i>Constat C2 ; sur téléphone le podium remonte d'une centaine de pixels, carte « ta place » comprise.</i></li>
+<li><b>Ta place en tête, avec ce qu'il te manque.</b> « Démo » est 23e, sous le pli, dans une section « Un jeu sur deux » : il faut défiler pour le savoir. Une carte moutarde le dit en haut (« Tu as fini 1 jeu sur 2. Finis Jump pour entrer au cumul. ») avec le lien vers le jeu ; ta ligne reste aussi à sa vraie place (charte § 9). Les données sont déjà dans la page (rang, jeux finis). <i>Constat C3.</i></li>
+<li><b>« Groupes » devient « Groupes du jour ».</b> Le titre du panneau dit ce que la charte demande d'écrire (révision 20 : le rang d'un groupe est celui du jour). Le nom d'un groupe n'est plus souligné comme un lien de 21 px de haut : toute la ligne est la cible. <i>Constat C5 (cibles de moins de 44 px sur tablette).</i></li>
+<li><b>La rangée des vues montre qu'elle défile.</b> Sur téléphone, « ARCAD » est coupé au bord sans indice. Le séparateur « Arcade » disparaît à cette largeur (les pastilles de couleur suffisent) et un bouton « › » de 44 px au bord dit qu'il y a d'autres jeux. <i>Constat C4.</i></li>
+<li><b>Les temps par jeu restent visibles sur téléphone.</b> Aujourd'hui la ligne d'un téléphone ne garde que le cumul. Une seconde ligne en mono (« T 36,884 · J 32,642 ») les rend, sans élargir la ligne. <i>Lisibilité ; même donnée que sur ordinateur.</i></li>
+</ol>
