@@ -31,7 +31,8 @@ export function sujetsDuPortail(donnees) {
     p("groupe-membre", "Page d'un groupe — vue par un membre", "demo", `/groupe/${groupe}`),
     p("groupe-visiteur", "Page d'un groupe — vue sans profil", "neuf", `/groupe/${groupe}`),
     p("groupe-inconnu", "Page d'un groupe — groupe inconnu", "neuf", "/groupe/Introuvable", { attendues: [/\/api\/groupes\//] }),
-    p("partage", "Images de partage (outil de dessin)", "neuf", "/partage/images.html", { langues: ["fr"] }),
+    // `/partage/` : les images d'aperçu d'un lien partagé, produites à l'assemblage du site (le navigateur affiche l'image seule).
+    ...["portail", "track", "jump"].map((n) => p(`partage-${n}`, `Image de partage — ${n}`, "neuf", `/partage/${n}.png`, { langues: ["fr"], image: true })),
     p("mentions", "Mentions légales", "neuf", { fr: "/mentions-legales/", en: "/legal/" }),
     p("introuvable", "Page 404", "neuf", "/cette-page-n-existe-pas", { attendues: [/cette-page-n-existe-pas/] }),
     p("admin-accueil", "Administration — accueil du panneau", "admin", "/admin/", { langues: ["fr"] }),

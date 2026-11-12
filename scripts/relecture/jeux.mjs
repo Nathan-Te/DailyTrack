@@ -291,6 +291,6 @@ const ECRANS = [
 /** Un sujet par jeu et par écran. */
 export function sujetsDesJeux() {
   return Object.entries(JEUX).flatMap(([id, [nom, ecrans]]) =>
-    ECRANS.map(([ecran, titre, etat]) => ({ id: `${id}-${ecran}`, zone: id, titre: `${nom} — ${titre}`, etat, ouvrir: ecrans[ecran], stockage: STOCKAGE_DES_JEUX, sansFocus: ecran === "partie" })),
+    ECRANS.map(([ecran, titre, etat]) => ({ id: `${id}-${ecran}`, zone: id, titre: `${nom} — ${titre}`, etat, ouvrir: ecrans[ecran], stockage: STOCKAGE_DES_JEUX, sansFocus: ecran === "partie", attendues: ecran === "arrivee" ? [/\/api\/(\w+\/)?me$/] : [] })), // un joueur neuf n'a pas de profil avant sa première arrivée : ce 404 est attendu
   );
 }

@@ -11,6 +11,8 @@ export const CONTROLES = [
   { id: "cibles", nom: "Cibles < 44 px" },
   { id: "debordement", nom: "Défilement horizontal" },
   { id: "coupe", nom: "Texte coupé" },
+  { id: "chevauchement", nom: "Textes qui se chevauchent" },
+  { id: "petit", nom: "Texte sous 12 px" },
   { id: "textes", nom: "Textes interdits" },
   { id: "focus", nom: "Focus invisible" },
   { id: "images", nom: "Images sans alt" },
@@ -53,16 +55,16 @@ export function controlesDuDom(page, { tactile, zone }) {
         for (let p = e; p; p = p.parentElement) if (p.hasAttribute("hidden") || p.getAttribute("aria-hidden") === "true" || p.inert) return false;
         return true;
       };
-      const out = { cibles: [], debordement: [], coupe: [], textes: [], images: [] };
+      const out = { cibles: [], debordement: [], coupe: [], chevauchement: [], petit: [], textes: [], images: [] };
 
       if (tactile) {
         for (const e of racine.querySelectorAll('a[href], button, input:not([type="hidden"]), select, textarea, summary, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="link"], [tabindex]:not([tabindex="-1"])')) {
           if (!visible(e) || e.disabled) continue;
-          let r = e.getBoundingClientRect();
-          // Une case ou un bouton radio compte avec son étiquette (la cible touchée est l'étiquette).
+          const r = e.getBoundingClientRect();
+          // Un champ compte aussi par son étiquette (toucher l'étiquette suffit) : il passe si l'un des deux fait 44 px.
           const etiquette = e.matches("input") ? e.closest("label") ?? (e.id ? document.querySelector(`label[for="${CSS.escape(e.id)}"]`) : null) : null;
-          if (etiquette) r = etiquette.getBoundingClientRect();
-          if (r.width >= 43.5 && r.height >= 43.5) continue;
+          const e2 = etiquette?.getBoundingClientRect();
+          if ((r.width >= 43.5 && r.height >= 43.5) || (e2 && e2.width >= 43.5 && e2.height >= 43.5)) continue;
           if (e.matches("a") && getComputedStyle(e).display.startsWith("inline") && e.parentElement && /^(P|LI|SPAN|TD|DD|SMALL|EM|STRONG)$/.test(e.parentElement.tagName) && (e.parentElement.textContent ?? "").trim().length > (e.textContent ?? "").trim().length + 8) continue;
           out.cibles.push({ quoi: `${Math.round(r.width)} × ${Math.round(r.height)} px`, ou: dire(e) });
         }
@@ -93,6 +95,33 @@ export function controlesDuDom(page, { tactile, zone }) {
         if (r.left < -1 && r.right > 0 && s.position !== "fixed") out.coupe.push({ quoi: "sort de l'écran à gauche", ou: dire(e) });
       }
 
+      // Deux textes l'un sur l'autre : les boîtes des textes (pas celles de leurs blocs) qui se recouvrent sur 30 % au moins de la largeur et de la hauteur du plus petit, hors parent et enfant.
+      // (La boîte d'un texte compte son interligne : deux lignes serrées se touchent sans se recouvrir, d'où le seuil. Un texte réservé aux lecteurs d'écran ne compte pas.)
+      const fixe = (e) => {
+        for (let p = e; p && p !== document.body; p = p.parentElement) if (/fixed|sticky/.test(getComputedStyle(p).position)) return true;
+        return false;
+      };
+      const boites = [];
+      for (const e of racine.querySelectorAll("*")) {
+        if (boites.length > 500 || !visible(e) || e.clientWidth <= 2 || e.clientHeight <= 2 || getComputedStyle(e).clipPath !== "none" || getComputedStyle(e).clip !== "auto") continue;
+        const noeuds = [...e.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
+        if (!noeuds.length) continue;
+        const plage = document.createRange();
+        plage.setStart(noeuds[0], 0);
+        plage.setEnd(noeuds.at(-1), noeuds.at(-1).textContent.length);
+        const r = plage.getBoundingClientRect();
+        if (r.width > 2 && r.height > 2) boites.push({ e, r, fixe: fixe(e) });
+      }
+      for (let i = 0; i < boites.length; i++) {
+        for (let k = i + 1; k < boites.length; k++) {
+          const [a, b] = [boites[i], boites[k]];
+          if (a.e.contains(b.e) || b.e.contains(a.e) || a.fixe !== b.fixe) continue; // un texte qui défile sous une barre fixe n'est pas un chevauchement
+          const l = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+          const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+          if (l >= 0.3 * Math.min(a.r.width, b.r.width) && h >= 0.3 * Math.min(a.r.height, b.r.height) && l > 4 && h > 4) out.chevauchement.push({ quoi: `${dire(a.e)} recouvre ${dire(b.e)}`.slice(0, 170), ou: "" });
+        }
+      }
+
       const emoji = /\p{Extended_Pictographic}/u;
       const permis = /[©®™↑↓←→↗↘‹›«»✓✕×★☆•·…▲▼◀▶♪]/u; // signes de la charte (flèches, coche, étoile) : pas des emoji
       const cle = /(^|\s)[a-z][a-zA-Z0-9]*(\.[a-zA-Z][a-zA-Z0-9]*){1,4}(?=$|\s)/;
@@ -107,8 +136,14 @@ export function controlesDuDom(page, { tactile, zone }) {
           const k = `${quoi}|${t}`;
           if (!vus.has(k)) vus.add(k), out.textes.push({ quoi, ou: `${dire(parent)}` });
         };
+        // Charte § 4 : pas de texte d'interface sous 12 px, sauf une légende en capitales de 10 ou 11 px en graisse 700 au moins.
+        const style = getComputedStyle(parent);
+        const corps = parseFloat(style.fontSize);
+        const legende = corps >= 10 && (Number(style.fontWeight) >= 700 || /Black|Mono One|Bungee|Lilita/.test(style.fontFamily.split(",")[0])) && (style.textTransform === "uppercase" || t === t.toUpperCase());
+        if (corps < 11.95 && !legende && t.length > 1 && parent.clientWidth > 2 && parent.clientHeight > 2 && !vus.has(`petit|${dire(parent)}`)) vus.add(`petit|${dire(parent)}`), out.petit.push({ quoi: `${Math.round(corps * 10) / 10} px`, ou: dire(parent) });
         if (/\(s\)|\(e\)|\(es\)/.test(t)) noter("« (s) »");
-        if ([...t].some((c) => emoji.test(c) && !permis.test(c) && !/[0-9#*]/.test(c))) noter("emoji");
+        // La ligne à partager porte des émojis exprès (charte, § 6, révision 4) : elle n'est pas « l'interface ».
+        if (!parent.closest('[class*="partage"], [class*="share"]') && [...t].some((c) => emoji.test(c) && !permis.test(c) && !/[0-9#*]/.test(c))) noter("emoji");
         if (/\bundefined\b|\bNaN\b|\[object |\bnull\b/.test(t)) noter("undefined / NaN / null");
         const m = cle.exec(t);
         if (m && !adresse.test(m[0].trim()) && !/^\d/.test(m[0].trim()) && !/^(v|n)\.\d/.test(m[0].trim()) && !parent.closest("a[href^='mailto:'], time")) noter(`clé non traduite ? « ${m[0].trim()} »`);

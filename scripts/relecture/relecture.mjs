@@ -5,14 +5,16 @@
 //   npm run relecture -- --seulement portail            une zone (`portail`, `track`, `jump`, `tower`, `blocks`, `rush`) ou une expression régulière sur l'identifiant d'un sujet (`^accueil`)
 //   npm run relecture -- --langues fr --tailles 1440x900,390x844
 //   npm run relecture -- --sans-preparation             réutilise le site et la base du passage précédent (après une première fois)
-//   npm run relecture -- --sortie <dossier> --paralleles 4 --port 4290 --densite 2
+//   npm run relecture -- --sortie <dossier> --paralleles 4 --port 4290 --densite 2      (ports : 2 par passage en parallèle, à partir de --port)
 //
 // Il assemble le site comme la recette (`node scripts/site.mjs site`, vitrine et lien de démonstration compris ; les jeux doivent être construits : il lance `npm run build` s'il en manque un), lance le vrai
 // serveur sur une base SQLite locale remplie par le vrai `recette:seed` (joueur « Démo », classements, amis, groupes, retours, nouveautés), passe en `on` les jeux en aperçu de la liste `JEUX_PHOTOGRAPHIES`,
 // puis photographie chaque sujet (une page ou un écran de jeu, dans un état) à chaque taille et dans chaque langue. Sortie (dossier `relecture/`, hors du dépôt : `.gitignore`) :
 //   index.html            les planches (toutes les tailles côte à côte) et le tableau des contrôles, page par page
 //   planches/<langue>/    une planche par sujet ; captures/<langue>/<sujet>/<taille>.jpg : chaque capture seule
-//   controles.json, controles.md   le tableau des contrôles (contraste AA, cibles de moins de 44 px, défilement horizontal, texte coupé, textes interdits, focus, images sans alt, console)
+//   controles.json, controles.md   le tableau des contrôles (`controles.mjs` : contraste AA, cibles de moins de 44 px, défilement horizontal, texte coupé, textes qui se chevauchent, texte sous 12 px,
+//                         textes interdits, focus, images sans alt, console)
+// Ensuite, pour un constat écrit : `node scripts/relecture/miniatures.mjs` (miniatures et tableau du constat) et `node scripts/relecture/maquettes.mjs` (maquettes « avant / après »).
 // Rien n'est écrit dans une base distante ; aucun contrôle ne fait échouer la commande (ce sont des signaux à lire) — elle n'échoue que si une page ne s'ouvre pas du tout.
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -24,7 +26,7 @@ import { CONTROLES, contraste, controlesDuDom, ecouterConsole, focusVisible } fr
 import { JEUX_PHOTOGRAPHIES, sujetsDesJeux } from "./jeux.mjs";
 import { sujetsDuPortail } from "./pages.mjs";
 import { ecrireIndex, ecrirePlanche } from "./planches.mjs";
-import { etatDuJeu, joueursDesEtats, ouvrirDepuisToujours, jourDeParis, lancerApi, lancerSite, semer, sessionAdmin } from "./serveurs.mjs";
+import { etatDuJeu, joueursDesEtats, ouvrirDepuisToujours, viderLeLimiteur, jourDeParis, lancerApi, lancerSite, semer, sessionAdmin } from "./serveurs.mjs";
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -163,8 +165,13 @@ async function photographier(navigateur, sujet, langue, o, donnees) {
   const chemin = typeof sujet.chemin === "object" ? sujet.chemin[langue] : sujet.chemin;
   // Un écran de jeu s'atteint une fois par genre d'appareil (ordinateur, tactile), puis la fenêtre change de taille : la partie ne se rejoue pas sept fois. Une page du portail est rechargée à chaque taille.
   const genres = sujet.ouvrir ? [o.tailles.filter((t) => !t.tactile), o.tailles.filter((t) => t.tactile)].filter((g) => g.length) : o.tailles.map((t) => [t]);
-  for (const genre of genres) {
+  // Un écran de jeu qui ne s'ouvre pas (machine chargée, rendu logiciel) est retenté une fois avant d'être noté manquant.
+  const essais = genres.flatMap((g) => [{ genre: g, dernier: !sujet.ouvrir }, ...(sujet.ouvrir ? [{ genre: g, dernier: true }] : [])]);
+  const reussis = new Set();
+  for (const { genre, dernier } of essais) {
+    if (reussis.has(genre)) continue;
     const contexte = await contexteDe(navigateur, { taille: genre[0], langue, joueur: joueurDe(), cookie: sujet.etat === "admin" ? donnees.cookie : null, origine: donnees.origine, densite: o.densite, stockage: sujet.stockage });
+    viderLeLimiteur(donnees.base);
     const page = await contexte.newPage();
     const erreurs = ecouterConsole(page, sujet.attendues ?? []);
     try {
@@ -182,9 +189,11 @@ async function photographier(navigateur, sujet, langue, o, donnees) {
           await repos(page, 600);
           if (sujet.apresTaille) await sujet.apresTaille(page, taille);
         }
-        const dom = await controlesDuDom(page, { tactile: taille.tactile, zone: sujet.zoneEcran });
-        for (const [k, liste] of Object.entries(dom)) noter(k, liste, taille);
-        if (taille.id === "1440x900" || taille.id === "390x844" || o.tailles.length < 3) noter("contraste", await contraste(page, sujet.zoneEcran), taille);
+        if (!sujet.image) {
+          const dom = await controlesDuDom(page, { tactile: taille.tactile, zone: sujet.zoneEcran });
+          for (const [k, liste] of Object.entries(dom)) noter(k, liste, taille);
+          if (taille.id === "1440x900" || taille.id === "390x844" || o.tailles.length < 3) noter("contraste", await contraste(page, sujet.zoneEcran), taille);
+        }
         // Une page du portail est photographiée en entier : la fenêtre prend la hauteur de la page (une barre fixe reste ainsi au bas de la page, pas au milieu) ; la planche marque le bas du premier écran.
         // (Le portail n'a aucune règle CSS sur la hauteur ou l'orientation de la fenêtre.) Un écran de jeu est photographié tel quel.
         if (!sujet.ouvrir) {
@@ -196,11 +205,16 @@ async function photographier(navigateur, sujet, langue, o, donnees) {
         captures.push({ taille: taille.id, fichier });
       }
       // Le focus se contrôle en dernier (il déplace le focus : aucune capture ne le montre).
-      if (!genre[0].tactile && !sujet.sansFocus) noter("focus", await focusVisible(page, sujet.zoneEcran), genre.at(-1));
+      if (!genre[0].tactile && !sujet.sansFocus && !sujet.image) noter("focus", await focusVisible(page, sujet.zoneEcran), genre.at(-1));
+      reussis.add(genre);
     } catch (e) {
-      manques.push(`${genre.map((t) => t.id).join(", ")} : ${String(e.message ?? e).split("\n")[0].slice(0, 200)}`);
+      for (const t of genre) {
+        const i = captures.findIndex((c) => c.taille === t.id);
+        if (i >= 0) captures.splice(i, 1);
+      }
+      if (dernier) manques.push(`${genre.map((t) => t.id).join(", ")} : ${String(e.message ?? e).split("\n")[0].slice(0, 200)}`);
     } finally {
-      noter("console", erreurs, genre[0]);
+      if (reussis.has(genre) || dernier) noter("console", erreurs, genre[0]);
       await contexte.close();
     }
   }
@@ -213,24 +227,39 @@ async function main() {
   mkdirSync(o.sortie, { recursive: true });
   const { site, base, refus } = await preparer(o, origine);
   for (const r of refus) dire(`relecture : jeu non passé « on » — ${r}`);
-  const api = await lancerApi(RACINE, o.port + 1, base, origine);
-  const serveur = await lancerSite(site, o.port, o.port + 1);
+  // Un « poste » par passage en parallèle : son site et son serveur de la plateforme (la même base locale). Le serveur d'un poste est relancé avant chaque sujet : ses compteurs de débit en mémoire
+  // (60 lectures par adresse, 30 par joueur, par 10 minutes) repartent de zéro — sans cela la relecture, qui ouvre des centaines de pages pour le même joueur « Démo », photographierait des refus 429.
+  const origines = Array.from({ length: o.paralleles }, (_, i) => `http://localhost:${o.port + 2 * i}`);
+  const postes = [];
+  for (const [i, adresse] of origines.entries()) {
+    const poste = { origine: adresse, portApi: o.port + 2 * i + 1, api: null, site: null };
+    poste.api = await lancerApi(RACINE, poste.portApi, base, origines.join(","));
+    poste.site = await lancerSite(site, o.port + 2 * i, poste.portApi);
+    poste.relancer = async () => {
+      poste.api.kill();
+      await new Promise((r) => (poste.api.exitCode === null ? poste.api.once("exit", r) : r()));
+      poste.api = await lancerApi(RACINE, poste.portApi, base, origines.join(","));
+    };
+    postes.push(poste);
+  }
   const navigateur = await chromium.launch({ args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox"], executablePath: process.env.CHROMIUM_PATH || undefined });
   const debut = Date.now();
   try {
     const joueurs = joueursDesEtats(base);
-    const donnees = { origine, joueurs, cookie: await sessionAdmin(origine).catch(() => null) };
+    const cookie = await sessionAdmin(origine).catch(() => null);
     const filtre = o.seulement ? new RegExp(o.seulement) : null;
     const tous = [...sujetsDuPortail({ groupe: joueurs.groupe }), ...sujetsDesJeux()];
     const sujets = tous.filter((s) => !filtre || filtre.test(s.zone) || filtre.test(s.id));
     const taches = sujets.flatMap((sujet) => o.langues.filter((l) => !sujet.langues || sujet.langues.includes(l)).map((langue) => ({ sujet, langue })));
-    dire(`relecture : ${sujets.length} sujets, ${taches.length} passages, ${o.tailles.length} tailles — ${origine}`);
+    dire(`relecture : ${sujets.length} sujets, ${taches.length} passages, ${o.tailles.length} tailles — ${origines.join(", ")}`);
     const resultats = [];
     let fait = 0;
     const file = [...taches];
     await Promise.all(
-      Array.from({ length: Math.min(o.paralleles, file.length) }, async () => {
+      postes.map(async (poste) => {
+        const donnees = { origine: poste.origine, base, joueurs, cookie };
         for (let t = file.shift(); t; t = file.shift()) {
+          await poste.relancer();
           if ((t.sujet.etat === "parfaite" && !joueurs.parfaite) || (t.sujet.etat === "admin" && !donnees.cookie)) {
             resultats.push({ ...t, captures: [], constats: Object.fromEntries(CONTROLES.map((c) => [c.id, []])), manques: [t.sujet.etat === "admin" ? "pas de session de démonstration du panneau" : "aucun joueur de démonstration n'a fini tous les jeux du jour"] });
             continue;
@@ -243,6 +272,13 @@ async function main() {
         }
       }),
     );
+    // Rattrapage : sur une machine chargée (rendu logiciel), un écran de jeu peut ne pas s'ouvrir pendant que d'autres se dessinent ; ce qui manque est refait une fois, seul.
+    for (const r of resultats.filter((x) => x.manques.length && x.sujet.ouvrir)) {
+      await postes[0].relancer();
+      const seul = await photographier(navigateur, r.sujet, r.langue, o, { origine: postes[0].origine, base, joueurs, cookie });
+      if (seul.manques.length >= r.manques.length) continue;
+      Object.assign(r, seul, { planche: seul.captures.length ? await ecrirePlanche(navigateur, { sortie: o.sortie, sujet: r.sujet, langue: r.langue, captures: seul.captures, tailles: o.tailles, pli: false }) : null });
+    }
     const ordre = new Map(taches.map((t, i) => [`${t.sujet.id}|${t.langue}`, i]));
     resultats.sort((a, b) => ordre.get(`${a.sujet.id}|${a.langue}`) - ordre.get(`${b.sujet.id}|${b.langue}`));
     const nouvelles = resultats.map((r) => ({ id: r.sujet.id, zone: r.sujet.zone, titre: r.sujet.titre, etat: r.sujet.etat, langue: r.langue, planche: r.planche ? relative(o.sortie, r.planche) : null, captures: r.captures.map((c) => ({ taille: c.taille, fichier: relative(o.sortie, c.fichier) })), constats: r.constats, manques: r.manques }));
@@ -264,8 +300,10 @@ async function main() {
     for (const m of manquants) dire(`  manque : ${m.id} (${m.langue}) — ${m.manques.join(" ; ")}`);
   } finally {
     await navigateur.close();
-    await new Promise((r) => serveur.close(r));
-    api.kill();
+    for (const poste of postes) {
+      await new Promise((r) => poste.site.close(r));
+      poste.api.kill();
+    }
   }
 }
 

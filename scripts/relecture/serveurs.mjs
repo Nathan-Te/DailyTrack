@@ -95,6 +95,23 @@ export function ouvrirDepuisToujours(base) {
   }
 }
 
+/**
+ * Le limiteur de débit des **écritures** (table `rate` : par adresse et par joueur, par fenêtre de 10 minutes) : la relecture envoie des parties et ouvre des centaines de pages depuis une seule machine.
+ * Sa table est vidée avant chaque écran, sur la base **locale** seulement. (Les lectures sont comptées en mémoire par le serveur : `relecture.mjs` relance le serveur de chaque poste avant chaque sujet.)
+ */
+export function viderLeLimiteur(base) {
+  try {
+    const db = new DatabaseSync(base);
+    try {
+      db.exec("PRAGMA busy_timeout = 3000; DELETE FROM rate");
+    } finally {
+      db.close();
+    }
+  } catch {
+    /* base occupée : le sujet suivant réessaiera */
+  }
+}
+
 /** Le vrai `recette:seed` sur la base locale (jamais une base distante : `TURSO_DATABASE_URL` vide). */
 export function semer(racineDepot, base, jour) {
   execFileSync("npm", ["run", "--silent", "recette:seed", "--", "--today", jour], { cwd: racineDepot, env: { ...process.env, ENVIRONMENT: "recette", DB_PATH: base, TURSO_DATABASE_URL: "", TURSO_AUTH_TOKEN: "" }, stdio: ["ignore", "ignore", "inherit"] });

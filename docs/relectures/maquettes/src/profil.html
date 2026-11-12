@@ -1,0 +1,116 @@
+<meta name="titre" content="Profil — l'identité d'abord, la gestion repliée">
+<meta name="intro" content="Le profil de « Démo », chef d'un groupe. La photo de 128 px et les cartes par jeu du lot U3 fonctionnent ; la proposition replie la gestion du groupe (treize boutons de même poids aujourd'hui), montre les illustrations entières et remplace les quatre cases à zéro d'un jeu jamais joué.">
+<style>
+.ident{display:flex;gap:20px;align-items:center;margin-bottom:8px}
+.ident h2{font:30px 'Archivo Black'}
+.photo{position:relative}.photo i{position:absolute;right:0;bottom:0;width:44px;height:44px;border-radius:50%;background:var(--moutarde);border:3px solid var(--encre);display:grid;place-items:center}.photo svg{width:20px;height:20px}
+.liens{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.liens .btn{box-shadow:none;font-size:13px;padding:6px 12px}
+.trois{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.meds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:var(--papier);border:3px solid var(--encre);border-radius:4px;padding:8px;box-shadow:4px 4px 0 var(--encre);margin-bottom:26px}
+.case{border:3px solid var(--encre);border-radius:3px;padding:6px 10px}.case small{display:block;font:700 11px Archivo;letter-spacing:1px;text-transform:uppercase}.case b{font:700 18px 'JetBrains Mono'}
+.case.d{background:var(--diamant)}.case.o{background:var(--or)}.case.a{background:var(--argent)}.case.b{background:var(--bronze)}
+.sj{font:11px 'Archivo Black';letter-spacing:1.5px;text-transform:uppercase;color:var(--douce);margin:0 0 8px}
+.parjeu{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.cj{border:3px solid var(--encre);border-radius:4px;box-shadow:4px 4px 0 var(--encre);padding:14px;position:relative;overflow:hidden;background:var(--papier)}
+.cj.track{background:var(--track);color:#F4EDE0}.cj.track::after{content:"";position:absolute;top:0;bottom:0;right:0;width:20%;background:repeating-linear-gradient(115deg,var(--track-livree) 0 11px,transparent 11px 20px)}
+.cj.track>*{max-width:78%;position:relative;z-index:1}.cj.track .case{color:var(--encre)}
+.cj h3{font-size:28px;line-height:1;display:flex;align-items:baseline;gap:10px}.cj h3 small{font:700 12px 'JetBrains Mono';letter-spacing:0;text-transform:none}
+.cj p{font-size:13px;margin:6px 0 10px}
+.cj .m4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.cj .m4 .case{padding:4px 6px}.cj .m4 small{font-size:10px}
+.cj.neuf{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;padding:12px 14px}
+.cj.neuf svg{width:72px;height:72px}.cj.neuf h3{font-size:22px}.cj.neuf p{margin:4px 0 0}
+.cj.tower{background:var(--tower)}.cj.blocks{background:var(--blocks)}.cj.rush{background:var(--rush)}
+.code{font:700 12px 'JetBrains Mono';border:2px solid var(--encre);border-radius:3px;background:var(--creme);padding:10px;word-break:break-all;margin:8px 0}
+details{border-top:2px solid var(--creme2);margin-top:12px;padding-top:4px}
+summary{min-height:44px;display:flex;align-items:center;gap:8px;font:700 14px Archivo;cursor:pointer;list-style:none}
+summary::after{content:"›";margin-left:auto;font:18px 'Archivo Black'}
+.sens{border:2px dashed var(--terre);border-radius:4px;padding:10px;margin-top:10px}.sens small{font:700 11px Archivo;letter-spacing:1px;text-transform:uppercase;color:var(--terre);display:block;margin-bottom:8px}
+body.tel .ident{flex-direction:column;text-align:center;gap:10px}
+body.tel .liens{justify-content:center}
+body.tel .trois{grid-template-columns:1fr 1fr}
+body.tel .parjeu{grid-template-columns:1fr}
+body.tel .cj .m4{grid-template-columns:repeat(4,1fr)}
+</style>
+
+<section data-avant="profil-demo/1280x800" data-largeur="1280" data-titre="Ordinateur, 1 280 px">
+{{barre:3}}
+<div class="fronton"><div><h1 class="page">Ton profil</h1><div class="date" style="margin-top:6px">Jeudi 12 novembre · <span style="color:var(--moutarde)">Journée n° 17</span></div></div><div class="rebours"><small>Prochains niveaux dans</small><b>23:29:26</b></div></div>
+<div class="page"><div class="cols">
+<div>
+  <div class="ident"><span class="photo"><span class="av xl">DÉ</span><i>{{icone:crayon}}</i></span><div><h2>Démo</h2><div style="display:flex;gap:8px;align-items:center;margin-top:4px"><span class="emb p" style="width:28px;height:28px;font-size:10px">LE</span><b>Les Noctambules</b></div>
+    <div class="liens"><a class="btn">5 amis</a><a class="btn">Changer de pseudo</a><b class="rep">3</b></div></div></div>
+  <div class="titre-s" style="margin-top:22px">Tous les jeux</div>
+  <div class="trois"><div class="tuile encre"><small>Série</small><b>5 jours</b></div><div class="tuile"><small>Meilleure série</small><b>5 jours</b></div><div class="tuile"><small>Journées parfaites</small><b>3</b><span>dont aujourd'hui</span></div></div>
+  <div class="meds"><div class="case d"><small>Diamant</small><b>1</b></div><div class="case o"><small>Or</small><b>3</b></div><div class="case a"><small>Argent</small><b>2</b></div><div class="case b"><small>Bronze</small><b>4</b></div></div>
+  <div class="titre-s">Par jeu <small>5 jeux, 2 joués</small></div>
+  <p class="sj">Jeux du jour</p>
+  <div class="parjeu">
+    <div class="cj track"><h3 class="n-track">Track <small>8 jours finis</small></h3><p>Meilleure place : 1er sur 33, mercredi 11 novembre.</p><div class="m4"><div class="case d"><small>Diam.</small><b>0</b></div><div class="case o"><small>Or</small><b>3</b></div><div class="case a"><small>Arg.</small><b>1</b></div><div class="case b"><small>Bron.</small><b>4</b></div></div></div>
+    <div class="cj"><h3 class="n-jump">Jump <small>2 jours finis</small></h3><p>Meilleure place : 1er sur 1, mardi 10 novembre.</p><div class="m4"><div class="case d"><small>Diam.</small><b>1</b></div><div class="case o"><small>Or</small><b>0</b></div><div class="case a"><small>Arg.</small><b>1</b></div><div class="case b"><small>Bron.</small><b>0</b></div></div></div>
+  </div>
+  <p class="sj">Arcade<b class="rep">2</b></p>
+  <div class="parjeu">
+    <div class="cj neuf tower">{{illustration:tower}}<div><h3 class="n-tower">Tower</h3><p>Pas encore joué</p></div><a class="btn">Jouer</a></div>
+    <div class="cj neuf blocks">{{illustration:blocks}}<div><h3 class="n-blocks">Blocks</h3><p>Pas encore joué</p></div><a class="btn">Jouer</a></div>
+    <div class="cj neuf rush">{{illustration:rush}}<div><h3 class="n-rush">Rush</h3><p>Pas encore joué</p></div><a class="btn">Jouer</a></div>
+  </div>
+</div>
+<aside>
+  <div class="panneau"><h3>Mes messages <span class="pastille terre">1 à lire</span></h3><p style="font-size:13px;margin-bottom:10px" class="douce">Les réponses de l'éditeur à tes bugs et à tes idées.</p><a class="btn marque plein">Lire mes messages</a></div>
+  <div class="panneau"><h3>Mon groupe<b class="rep">1</b></h3>
+    <div style="display:flex;gap:12px;align-items:center"><span class="emb">LE</span><div><b>Les Noctambules</b><div class="douce" style="font-size:13px">4 membres sur 30 · tu comptes depuis le 11 novembre</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"><a class="btn">Copier le lien</a><a class="btn">Voir le groupe</a></div>
+    <details open><summary>Gérer le groupe (chef)</summary>
+      <div class="membre" style="display:flex;gap:8px;align-items:center;padding:6px 0"><span class="av p c5">DF</span><span style="flex:1;font:700 14px Archivo">Démo Fjord</span><a class="btn plat" style="font-size:12px;padding:4px 8px">Passer chef</a><a class="btn plat" style="font-size:12px;padding:4px 8px">Retirer</a></div>
+      <div class="membre" style="display:flex;gap:8px;align-items:center;padding:6px 0"><span class="av p c6">DG</span><span style="flex:1;font:700 14px Archivo">Démo Givre</span><a class="btn plat" style="font-size:12px;padding:4px 8px">Passer chef</a><a class="btn plat" style="font-size:12px;padding:4px 8px">Retirer</a></div>
+      <p style="font-size:13px;margin:8px 0" class="douce">Nom, description, emblème, nouveau lien : <a class="lien" style="min-height:0">Modifier le groupe ›</a></p>
+      <div class="sens"><small>Sans retour</small><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><a class="btn plat">Quitter</a><a class="btn plat">Dissoudre</a></div></div>
+    </details></div>
+  <div class="panneau"><h3>Code de transfert</h3><p style="font-size:13px" class="douce">Garde-le comme un mot de passe : il ouvre ton profil sur un autre appareil, dans tous les jeux.</p><div class="code">CDJ2.de30de30de30de30de30de30de30de30.fc1e42f4</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><a class="btn">Copier mon code</a><a class="btn">Charger un code</a></div><b class="rep">4</b></div>
+  <div class="panneau" style="display:flex;align-items:center;gap:12px"><h3 style="margin:0;flex:1">Langue</h3><div class="seg"><span class="ici">Français</span><span>English</span></div><b class="rep">5</b></div>
+</aside>
+</div></div>
+{{pied}}
+</section>
+
+<section data-avant="profil-demo/390x844" data-largeur="390" data-titre="Téléphone, 390 px">
+{{barreTel}}
+<div class="fronton"><h1 class="page" style="font-size:20px">Ton profil</h1><div style="display:flex;margin-top:8px;align-items:baseline"><span class="date">Jeu. 12 nov. · n° 17</span><span class="mono" style="color:var(--moutarde);font-size:18px;margin-left:auto">23:29:20</span></div></div>
+<div class="page">
+  <div class="ident"><span class="photo"><span class="av xl">DÉ</span><i>{{icone:crayon}}</i></span><div><h2>Démo</h2><div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:4px"><span class="emb p" style="width:28px;height:28px;font-size:10px">LE</span><b>Les Noctambules</b></div>
+    <div class="liens"><a class="btn">5 amis</a><a class="btn">Changer de pseudo</a><b class="rep">3</b></div></div></div>
+  <div class="titre-s" style="margin-top:22px">Tous les jeux</div>
+  <div class="trois"><div class="tuile encre"><small>Série</small><b>5 jours</b></div><div class="tuile"><small>Meilleure série</small><b>5 jours</b></div><div class="tuile" style="grid-column:1/-1"><small>Journées parfaites</small><b>3</b><span>dont aujourd'hui</span></div></div>
+  <div class="meds"><div class="case d"><small>Diam.</small><b>1</b></div><div class="case o"><small>Or</small><b>3</b></div><div class="case a"><small>Arg.</small><b>2</b></div><div class="case b"><small>Bron.</small><b>4</b></div></div>
+  <div class="titre-s">Par jeu <small>5 jeux, 2 joués</small></div>
+  <p class="sj">Jeux du jour</p>
+  <div class="parjeu">
+    <div class="cj track"><h3 class="n-track">Track <small>8 jours finis</small></h3><p>Meilleure place : 1er sur 33, mer. 11 nov.</p><div class="m4"><div class="case d"><small>Diam.</small><b>0</b></div><div class="case o"><small>Or</small><b>3</b></div><div class="case a"><small>Arg.</small><b>1</b></div><div class="case b"><small>Bron.</small><b>4</b></div></div></div>
+    <div class="cj"><h3 class="n-jump">Jump <small>2 jours finis</small></h3><p>Meilleure place : 1er sur 1, mar. 10 nov.</p><div class="m4"><div class="case d"><small>Diam.</small><b>1</b></div><div class="case o"><small>Or</small><b>0</b></div><div class="case a"><small>Arg.</small><b>1</b></div><div class="case b"><small>Bron.</small><b>0</b></div></div></div>
+  </div>
+  <p class="sj">Arcade<b class="rep">2</b></p>
+  <div class="parjeu" style="gap:10px">
+    <div class="cj neuf tower">{{illustration:tower}}<div><h3 class="n-tower">Tower</h3><p>Pas encore joué</p></div><a class="btn">Jouer</a></div>
+    <div class="cj neuf blocks">{{illustration:blocks}}<div><h3 class="n-blocks">Blocks</h3><p>Pas encore joué</p></div><a class="btn">Jouer</a></div>
+    <div class="cj neuf rush">{{illustration:rush}}<div><h3 class="n-rush">Rush</h3><p>Pas encore joué</p></div><a class="btn">Jouer</a></div>
+  </div>
+  <div class="panneau"><h3>Mes messages <span class="pastille terre">1 à lire</span></h3><a class="btn marque plein">Lire mes messages</a></div>
+  <div class="panneau"><h3>Mon groupe<b class="rep">1</b></h3>
+    <div style="display:flex;gap:12px;align-items:center"><span class="emb">LE</span><div><b>Les Noctambules</b><div class="douce" style="font-size:13px">4 membres sur 30 · tu comptes depuis le 11 novembre</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"><a class="btn">Copier le lien</a><a class="btn">Voir le groupe</a></div>
+    <details><summary>Gérer le groupe (chef)</summary></details></div>
+  <div class="panneau"><h3>Code de transfert</h3><div class="code">CDJ2.de30de30de30de30de30de30de30de30.fc1e42f4</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><a class="btn">Copier mon code</a><a class="btn">Charger un code</a></div></div>
+  <div class="panneau" style="display:flex;align-items:center;gap:12px"><h3 style="margin:0;flex:1">Langue</h3><div class="seg"><span class="ici">Français</span><span>English</span></div></div>
+</div>
+{{pied}}
+{{onglets:3}}
+</section>
+
+<ol class="legende">
+<li><b>La gestion du groupe se replie.</b> Pour un chef, le panneau « Mon groupe » déroule aujourd'hui treize boutons identiques sur 1 250 px de haut (passer chef, retirer, renommer, description, emblème, dissoudre, quitter…) : la colonne de droite est deux fois plus longue que le profil lui-même, et « Dissoudre le groupe » a le même poids que « Copier le lien ». Proposition : le groupe en trois lignes (emblème, « Copier le lien », « Voir le groupe »), puis « Gérer le groupe (chef) » replié — ouvert sur l'écran d'ordinateur de la maquette pour le montrer, fermé sur celui du téléphone — avec les deux actions sans retour dans un encadré pointillé terre. La date « 2026-11-11 » s'écrit « 11 novembre ». <i>Constat P1, P2.</i></li>
+<li><b>Un jeu jamais joué ne montre plus quatre zéros.</b> Tower, Blocks et Rush affichent « 0 jour fini », « Pas encore classé » et quatre cases pleines à 0 ; leurs illustrations sont agrandies puis rognées (un œil de Blocks sort du cadre). Une carte courte, à la couleur et dans la police du jeu, avec l'illustration entière et « Jouer ». Dès la première partie, la carte complète revient (cases pleines, charte rév. 18). <i>Constat P3, P4 ; aucune donnée nouvelle.</i></li>
+<li><b>« 5 amis » et « Changer de pseudo » sont des boutons de 44 px.</b> Sur téléphone la rangée se coupe après un point orphelin (« 5 amis · ») et les deux liens font moins de 44 px de haut (contrôle des cibles). <i>Constat P5 ; charte § 10.</i></li>
+<li><b>Le code de transfert : deux boutons, le chargement replié.</b> « Charger un code » ouvre le champ au lieu de le laisser toujours là : le panneau perd un tiers de sa hauteur et l'action rare ne se confond plus avec la copie. <i>Lisibilité.</i></li>
+<li><b>La langue en une ligne.</b> Le panneau « Langue » réserve une barre vide de 300 px pour deux lettres ; le sélecteur écrit « Français / English » en entier, à droite du titre. La phrase sur les images (« Pas d'image qui blesse… ») quitte le haut du profil pour le dialogue de la photo, là où elle sert. <i>Constat P6.</i></li>
+</ol>

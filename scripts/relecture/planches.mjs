@@ -42,7 +42,7 @@ export async function ecrirePlanche(navigateur, { sortie, sujet, langue, capture
 /** Le tableau des contrôles en Markdown (une ligne par sujet et par langue). */
 export function tableauMarkdown({ lignes, controles }) {
   const tete = `| page | langue | ${controles.map((c) => c.nom).join(" | ")} |\n|---|---|${controles.map(() => "---:").join("|")}|`;
-  const corps = lignes.map((l) => `| ${l.id} | ${l.langue} | ${l.manques.length && !l.captures.length ? controles.map(() => "—").join(" | ") : controles.map((c) => l.constats[c.id].length || "·").join(" | ")} |`);
+  const corps = lignes.map((l) => `| ${l.id} | ${l.langue} | ${l.manques.length && !l.captures.length ? controles.map(() => "—").join(" | ") : controles.map((c) => (l.constats[c.id] ?? []).length || "·").join(" | ")} |`);
   return `${tete}\n${corps.join("\n")}\n`;
 }
 
@@ -50,15 +50,15 @@ export function tableauMarkdown({ lignes, controles }) {
 export function ecrireIndex(sortie, { lignes, tailles, controles, jour, refus }) {
   writeFileSync(join(sortie, "controles.md"), `# Relecture du ${jour} — contrôles automatiques\n\nUn nombre = des constats à regarder (détail dans \`index.html\` et \`controles.json\`) ; « · » = rien ; « — » = page non photographiée.\n\n${tableauMarkdown({ lignes, controles })}`);
   const zones = [...new Set(lignes.map((l) => l.zone))];
-  const total = (l) => controles.reduce((n, c) => n + l.constats[c.id].length, 0);
+  const total = (l) => controles.reduce((n, c) => n + (l.constats[c.id] ?? []).length, 0);
   const cellule = (l, c) => {
-    const n = l.constats[c.id].length;
+    const n = (l.constats[c.id] ?? []).length;
     return `<td class="${n ? "oui" : "non"}">${n || "·"}</td>`;
   };
   const detail = (l) =>
     controles
-      .filter((c) => l.constats[c.id].length)
-      .map((c) => `<h4>${esc(c.nom)}</h4><ul>${l.constats[c.id].map((k) => `<li><b>${esc(k.quoi)}</b>${k.ou ? ` — <code>${esc(k.ou)}</code>` : ""} <i>${esc(k.tailles.join(", "))}</i></li>`).join("")}</ul>`)
+      .filter((c) => (l.constats[c.id] ?? []).length)
+      .map((c) => `<h4>${esc(c.nom)}</h4><ul>${(l.constats[c.id] ?? []).map((k) => `<li><b>${esc(k.quoi)}</b>${k.ou ? ` — <code>${esc(k.ou)}</code>` : ""} <i>${esc(k.tailles.join(", "))}</i></li>`).join("")}</ul>`)
       .join("");
   const sections = zones
     .map((zone) => {
