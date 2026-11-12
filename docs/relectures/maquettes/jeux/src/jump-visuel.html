@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jump — maquette visuelle (lot QA2)</title>
+<style>{{polices}}
+{{inclure:visuel.css}}</style>
+</head>
+<body>
+<div class="intro"><p><a href="index.html">‹ Toutes les maquettes des jeux</a></p><h1>Jump — le visuel proposé</h1>
+<p>À gauche, une capture réelle d'une partie (thème Néon, téléphone en paysage, 844 × 390). À droite, la même scène redessinée en canvas à l'échelle réelle, <b>en code seulement</b> (aucune image) : un parcours de démonstration tourne seul (le personnage saute, rencontre une scie, repart du point de passage, arrive). Deux thèmes : <b>Néon</b> et <b>Forêt</b>. Chaque proposition s'allume ou s'éteint ; <code>#base</code> les éteint toutes. Le rouge reste réservé aux dangers, le jaune au personnage.</p>
+<p><b>Ce que cette maquette ne fait pas :</b> la course est un mouvement de démonstration, pas la simulation ; aucune collision ni aucune règle de <code>jump-sim</code> n'est reprise ou modifiée. Le visuel ne lit que ce que la vue d'une partie expose déjà.</p></div>
+<div id="barre"></div>
+<div class="corps"><div class="duo">
+<figure><figcaption>Avant — la capture du 12 novembre 2026</figcaption><div class="ecran"><img alt="Capture d'une partie de Jump, thème Néon" src="{{capture:jump-partie/844x390@844}}"></div><p class="aide">Violet sur violet : le sol, le fond et les murs ont presque la même valeur ; le personnage (26 px) et le sol se détachent mal.</p></figure>
+<figure class="apres"><figcaption>Après — la proposition (canvas 844 × 390)</figcaption><div class="ecran"><canvas id="c" width="844" height="390"></canvas></div><p class="aide">Espace ou toucher : sauter. Le reste tourne seul. Sur téléphone, les commandes sont dans les marges (maquette d'interface).</p></figure>
+</div></div>
+
+<div class="suite"><h2>Les propositions, avec leur coût</h2>
+<ol class="fiches">
+<li><h3>1 · Parallaxe par thème</h3><dl>
+<dt>Ce qui change</dt><dd>Trois plans qui défilent à 20, 40 et 70 % de la vitesse du sol, au lieu d'un fond quasi uni. Chaque thème a sa silhouette : Néon = horizon quadrillé, soleil, tours aux fenêtres allumées ; Forêt = collines, sapins, troncs de premier plan, lucioles.</dd>
+<dt>En code</dt><dd>Des polygones et des rectangles dessinés au canvas, motif répété par modulo de la caméra ; une table de couleurs par thème (déjà dans <code>themes.ts</code> : palette, décor, fond en parallaxe).</dd>
+<dt>Coût</dt><dd>{{ko:parallaxe}} Ko gzip dans la maquette · {{mesure:jump:parallaxe}} i/s (base {{mesure:jump:base}}, tout {{mesure:jump:tout}}) avec le processeur ralenti 4 fois. Mesure indicative : Chromium sans carte graphique.</dd>
+<dt>Golden</dt><dd>Inchangés : affichage seulement.</dd></dl></li>
+<li><h3>2 · Relief des tuiles et séparation du fond</h3><dl>
+<dt>Ce qui change</dt><dd>Un liseré clair sur le dessus de chaque tuile (néon cyan ou herbe), une bande d'ombre dessous, un trait plus sombre au contact du fond : le sol se lit en une demi-seconde, même violet sur violet.</dd>
+<dt>En code</dt><dd>Trois rectangles de plus par tuile (ou par bande de tuiles) dans le dessinateur des tuiles ; les couleurs se tirent de la palette du thème par <code>mix()</code> (déjà dans <code>contrast.ts</code>).</dd>
+<dt>Coût</dt><dd>{{ko:relief}} Ko gzip · {{mesure:jump:relief}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+<li><h3>3 · Dangers lisibles</h3><dl>
+<dt>Ce qui change</dt><dd>Pics et scie cernés d'un trait sombre, pointes avec un éclat blanc, la scie tourne et projette une ombre dentelée. Le rouge n'apparaît nulle part ailleurs : aucun décor rouge ou orangé dans les deux thèmes.</dd>
+<dt>En code</dt><dd>Polygones avec contour (la constante <code>HAZARD_OUTLINE</code> existe déjà), un petit point blanc par pointe, une rotation pour la scie.</dd>
+<dt>Coût</dt><dd>{{ko:dangers}} Ko gzip · {{mesure:jump:dangers}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés ; les hitbox de la simulation ne bougent pas, seul le dessin est cerné.</dd></dl></li>
+<li><h3>4 · Un personnage qui vit</h3><dl>
+<dt>Ce qui change</dt><dd>Écrasement et étirement au saut et à la réception, des yeux qui suivent la direction, un clignement, une petite traînée de trois ombres. Le jaune reste celui du personnage dans tous les thèmes.</dd>
+<dt>En code</dt><dd>Un facteur d'échelle calculé à partir de la vitesse verticale (lue dans la vue), deux yeux en rectangles, un tampon de trois positions passées.</dd>
+<dt>Coût</dt><dd>{{ko:perso}} Ko gzip · {{mesure:jump:perso}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés : la boîte de collision reste le carré de la simulation ; seul le dessin se déforme, de ±15 %, dans la boîte.</dd></dl></li>
+<li><h3>5 · Effets : poussière, mort, point de passage, arrivée</h3><dl>
+<dt>Ce qui change</dt><dd>Un nuage de poussière à la réception, une explosion de carrés jaunes à la mort, le drapeau du point de passage qui claque, des confettis à l'arrivée. Le réglage « Particules » du joueur les coupe ; <code>prefers-reduced-motion</code> les supprime.</dd>
+<dt>En code</dt><dd>Un tableau de particules (position, vitesse, durée) mis à jour par image ; déclenchées par les événements que la vue lit déjà (réception, mort, point de passage, arrivée).</dd>
+<dt>Coût</dt><dd>{{ko:effets}} Ko gzip · {{mesure:jump:effets}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés. Le hasard des particules est celui de l'affichage, jamais celui de la partie.</dd></dl></li>
+</ol>
+<p><b>Marqué « touche à la simulation » :</b> rien dans cette maquette. Une idée écartée parce qu'elle y touchait : élargir la hitbox du personnage pour que son dessin déformé soit « honnête ».</p></div>
+
+<script>{{inclure:visuel.js}}</script>
+<script>
+const V = initVisuel({ features: [{ k: "parallaxe", label: "Parallaxe" }, { k: "relief", label: "Relief" }, { k: "dangers", label: "Dangers" }, { k: "perso", label: "Personnage" }, { k: "effets", label: "Effets" }], themes: [{ k: "neon", label: "Néon" }, { k: "foret", label: "Forêt" }] });
+const cv = document.getElementById("c"), cx = cv.getContext("2d");
+const W = 844, H = 390, SOL = 262, T = 32, LONG = 80 * T;
+const TH = {
+  neon: { ciel: "#1d0f3d", ciel2: "#2a1658", loin: "#2d1a5c", fen: "#7be9ff", tuile: "#3b2278", haut: "#5a37b0", ligne: "#35f2ff", friable: "#14b8a6", ombre: "#1a0c3a" },
+  foret: { ciel: "#cfe9b8", ciel2: "#e3f1c8", loin: "#8fbf7a", fen: "#f4ffb0", tuile: "#6b4a2f", haut: "#6bbf59", ligne: "#8fe07a", friable: "#c8b27a", ombre: "#3d2a19" },
+};
+const ROUGE = "#FF3B3B", CONTOUR = "#1a0408", JAUNE = "#FFD23F";
+const pics = [[14, 1], [15, 1], [36, 1], [37, 1], [38, 1]], plafond = [[40, 6], [46, 6]], scie = { x: 56 * T, y: SOL - 26 };
+const gouffre = [24, 30];
+const p = { x: 40, y: SOL - 26, vy: 0, sol: true, sq: 1, trace: [], dir: 1 };
+const parts = []; let flash = 0, jalon = 0, fin = 0, mort = 0, saute = false, t = 0;
+function dur(a) { return a; }
+
+/*@f:parallaxe*/
+function parallaxe(c, th, cam, t) {
+  c.fillStyle = th.ciel2; c.fillRect(0, 0, W, SOL - 40);
+  if (V.theme === "neon") {
+    c.fillStyle = "#ff4fd8"; c.beginPath(); c.arc(620 - cam * .05, SOL - 60, 70, Math.PI, 0); c.fill();
+    c.fillStyle = th.ciel2; for (let i = 0; i < 5; i++) c.fillRect(520 - cam * .05, SOL - 60 - i * 12, 200, 2 + i);
+    for (let k = 0; k < 14; k++) { const x = ((k * 120 - cam * .2) % (W + 240) + W + 240) % (W + 240) - 120, h = 90 + (k * 37) % 80; c.fillStyle = th.loin; c.fillRect(x, SOL - h, 70, h); c.fillStyle = th.fen; for (let r = 0; r < h / 18; r++) for (let q = 0; q < 3; q++) if ((r * 3 + q + k) % 3) c.fillRect(x + 10 + q * 20, SOL - h + 8 + r * 18, 8, 6); }
+    c.strokeStyle = "rgba(53,242,255,.28)"; c.lineWidth = 1; for (let i = 0; i < 12; i++) { const y = SOL + 6 + i * i * 1.4; c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+    for (let k = -6; k < 12; k++) { const x = (k * 90 - cam * .4 % 90); c.beginPath(); c.moveTo(W / 2 + (x - W / 2) * .15, SOL); c.lineTo(x * 1.9 - W * .45, H); c.stroke(); }
+  } else {
+    c.fillStyle = th.loin; for (let k = 0; k < 8; k++) { const x = ((k * 190 - cam * .2) % (W + 380) + W + 380) % (W + 380) - 190; c.beginPath(); c.ellipse(x + 110, SOL, 150, 70 + (k % 3) * 18, 0, Math.PI, 0); c.fill(); }
+    for (let k = 0; k < 16; k++) { const x = ((k * 110 - cam * .4) % (W + 220) + W + 220) % (W + 220) - 110, h = 80 + (k * 31) % 50; c.fillStyle = "#5c9a5a"; c.beginPath(); c.moveTo(x, SOL); c.lineTo(x + 28, SOL - h); c.lineTo(x + 56, SOL); c.fill(); c.beginPath(); c.moveTo(x + 6, SOL - h * .45); c.lineTo(x + 28, SOL - h * 1.15); c.lineTo(x + 50, SOL - h * .45); c.fill(); }
+    for (let k = 0; k < 7; k++) { const x = ((k * 260 - cam * .7) % (W + 260) + W + 260) % (W + 260) - 60; c.fillStyle = "#3b6b3c"; c.fillRect(x, 0, 26, SOL); c.fillStyle = "#2f5a31"; c.fillRect(x + 18, 0, 8, SOL); }
+    c.fillStyle = th.fen; for (let k = 0; k < 14; k++) { const x = (k * 97 + Math.sin(t + k) * 14 - cam * .3 % W + W) % W, y = 60 + (k * 53) % 150 + Math.cos(t * 1.3 + k) * 8; c.globalAlpha = .55 + .4 * Math.sin(t * 3 + k); c.fillRect(x, y, 3, 3); } c.globalAlpha = 1;
+  }
+}
+/*@/f*/
+
+function sol(c, th, cam) {
+  const a = Math.max(0, Math.floor(cam / T)), b = a + W / T + 2;
+  for (let i = a; i <= b; i++) {
+    const x = i * T - cam; if (i < 0 || i >= 80) continue;
+    const trou = i >= gouffre[0] && i < gouffre[1];
+    if (trou) { if (V.on("relief")) { c.fillStyle = th.ombre; c.fillRect(x, SOL + 12, T, H); } continue; }
+    c.fillStyle = th.tuile; c.fillRect(x, SOL, T, H - SOL);
+    reliefTuile(c, th, x, i);
+  }
+  for (let i = gouffre[0]; i < gouffre[1]; i++) {
+    const x = i * T - cam; c.fillStyle = th.friable; c.fillRect(x + 1, SOL, T - 2, T - 6);
+    if (V.on("relief")) { c.fillStyle = "rgba(255,255,255,.4)"; c.fillRect(x + 1, SOL, T - 2, 3); c.fillStyle = "rgba(0,0,0,.25)"; c.fillRect(x + 1, SOL + T - 9, T - 2, 3); }
+    c.fillStyle = V.theme === "neon" ? "#0b6b62" : "#8a7442"; c.fillRect(x + 8, SOL + 11, T - 16, 4);
+  }
+}
+/*@f:relief*/
+function reliefTuile(c, th, x, i) {
+  if (!V.on("relief")) return;
+  c.fillStyle = th.haut; c.fillRect(x, SOL, T, 6);
+  c.fillStyle = th.ligne; c.fillRect(x, SOL, T, 2);
+  if (V.theme === "foret") { c.fillStyle = th.ligne; for (let k = 0; k < 4; k++) { c.fillRect(x + 3 + k * 8, SOL - 3 - ((i + k) % 3), 2, 4 + ((i + k) % 3)); } }
+  c.fillStyle = th.ombre; c.fillRect(x, SOL + 6, T, 4); c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(x, SOL + 10, T, 4);
+  c.fillStyle = "rgba(255,255,255,.05)"; c.fillRect(x + T - 2, SOL + 6, 2, H);
+}
+/*@/f*/
+
+/*@f:dangers*/
+function pic(c, x, y, w, h) {
+  c.fillStyle = ROUGE; c.strokeStyle = CONTOUR; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x, y); c.lineTo(x + w / 2, y - h); c.lineTo(x + w, y); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = "#fff"; c.fillRect(x + w / 2 - 1, y - h + 4, 2.5, 2.5);
+}
+function dentScie(c, x, y, r, a) {
+  c.save(); c.translate(x, y); c.rotate(a); c.fillStyle = ROUGE; c.strokeStyle = CONTOUR; c.lineWidth = 2.5; c.beginPath();
+  for (let k = 0; k < 16; k++) { const an = k * Math.PI / 8; c.lineTo(Math.cos(an) * r, Math.sin(an) * r); c.lineTo(Math.cos(an + Math.PI / 16) * (r * .68), Math.sin(an + Math.PI / 16) * (r * .68)); }
+  c.closePath(); c.fill(); c.stroke(); c.fillStyle = CONTOUR; c.beginPath(); c.arc(0, 0, 5, 0, 7); c.fill(); c.fillStyle = "#fff"; c.fillRect(r * .55, -1, 4, 2); c.restore();
+  c.fillStyle = "rgba(0,0,0,.25)"; c.beginPath(); c.ellipse(x, SOL + 2, r * .9, 4, 0, 0, 7); c.fill();
+}
+/*@/f*/
+function picPlat(c, x, y, w, h) { c.fillStyle = ROUGE; c.beginPath(); c.moveTo(x, y); c.lineTo(x + w / 2, y - h); c.lineTo(x + w, y); c.fill(); }
+function dangers(c, cam, t) {
+  const f = V.on("dangers") ? pic : picPlat;
+  for (const [i, n] of pics) for (let k = 0; k < n; k++) f(c, i * T - cam + k * 0, SOL, T, 22);
+  for (let i = gouffre[0]; i < gouffre[1]; i++) f(c, i * T - cam, H, T, 40);
+  for (const [i, n] of plafond) for (let k = 0; k < n; k++) { c.save(); c.translate((i + k) * T - cam + T, 110); c.scale(1, -1); f(c, 0 - T, 0, T, 22); c.restore(); }
+  c.fillStyle = V.theme === "neon" ? "#2a1658" : "#6b4a2f"; c.fillRect(plafond[0][0] * T - cam, 0, 12 * T, 112);
+  if (V.on("dangers")) dentScie(c, scie.x - cam, scie.y, 24, t * 8); else { c.fillStyle = ROUGE; c.beginPath(); c.arc(scie.x - cam, scie.y, 24, 0, 7); c.fill(); }
+}
+
+/*@f:effets*/
+function poussiere(x, y, n, col, vit, g) { if (!V.on("effets")) return; for (let k = 0; k < n; k++) parts.push({ x, y, vx: (Math.random() - .5) * vit, vy: -Math.random() * vit * .8, vie: .5 + Math.random() * .5, t: 0, col, s: 3 + Math.random() * 4, g }); }
+function majParts(dt, c, cam) {
+  for (let i = parts.length - 1; i >= 0; i--) { const q = parts[i]; q.t += dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.t > q.vie) { parts.splice(i, 1); continue; } c.globalAlpha = 1 - q.t / q.vie; c.fillStyle = q.col; c.fillRect(q.x - cam, q.y, q.s, q.s); } c.globalAlpha = 1;
+}
+function drapeau(c, x, y, t, pris) { c.fillStyle = "#cfc6e0"; c.fillRect(x, y - 54, 3, 54); c.fillStyle = pris ? "#fff" : JAUNE; const o = Math.sin(t * 9) * 3; c.beginPath(); c.moveTo(x + 3, y - 54); c.quadraticCurveTo(x + 18, y - 52 + o, x + 30, y - 46 + o); c.quadraticCurveTo(x + 18, y - 42 - o, x + 3, y - 36); c.fill(); }
+/*@/f*/
+function drapeauPlat(c, x, y, pris) { c.fillStyle = "#cfc6e0"; c.fillRect(x, y - 54, 3, 54); c.fillStyle = pris ? "#fff" : JAUNE; c.fillRect(x + 3, y - 54, 26, 16); }
+
+/*@f:perso*/
+function perso(c, x, y, sq, dir, t) {
+  const w = 26 * (1 / sq), h = 26 * sq, px = x - cam0 + 13 - w / 2, py = y + 26 - h;
+  c.fillStyle = JAUNE; c.fillRect(px, py, w, h); c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(px, py + h - 4, w, 4);
+  const cl = (t % 3.2) < .12; c.fillStyle = "#fff"; c.fillRect(px + w * .22 + dir * 2, py + h * .28, 6, cl ? 2 : 7); c.fillRect(px + w * .62 + dir * 2, py + h * .28, 6, cl ? 2 : 7);
+  c.fillStyle = "#2A1E16"; if (!cl) { c.fillRect(px + w * .22 + 3 + dir * 3, py + h * .28 + 2, 3, 4); c.fillRect(px + w * .62 + 3 + dir * 3, py + h * .28 + 2, 3, 4); }
+}
+function traces(c, cam) { p.trace.forEach((q, i) => { c.globalAlpha = .12 + i * .06; c.fillStyle = JAUNE; c.fillRect(q.x - cam, q.y, 26, 26); }); c.globalAlpha = 1; }
+/*@/f*/
+function persoPlat(c, x, y) { c.fillStyle = JAUNE; c.fillRect(x - cam0, y, 26, 26); c.fillStyle = "#2A1E16"; c.fillRect(x - cam0 + 6, y + 8, 4, 6); c.fillRect(x - cam0 + 16, y + 8, 4, 6); }
+
+let cam0 = 0;
+function saut() { if (p.sol && mort <= 0) { p.vy = -470; p.sol = false; p.sq = 1.18; poussiere(p.x + 13, SOL, 5, "#d8d0f0", 120, 300); } }
+addEventListener("keydown", (e) => { if (e.code === "Space") { e.preventDefault(); saut(); } });
+cv.addEventListener("pointerdown", saut);
+
+function maj(dt) {
+  t += dt;
+  if (mort > 0) { mort -= dt; if (mort <= 0) { p.x = 44 * T; p.y = SOL - 26; p.vy = 0; flash = .3; } return; }
+  if (fin > 0) { fin -= dt; if (fin <= 0) { p.x = 40; jalon = 0; p.y = SOL - 26; } return; }
+  p.x += 175 * dt; p.dir = 1;
+  const devant = [...pics.map((q) => q[0] * T), 36 * T].filter((x) => x > p.x && x - p.x < 95 && x - p.x > 45);
+  if (devant.length && p.sol && !(p.x > 52 * T && p.x < 58 * T)) saut();
+  p.vy += 1500 * dt; p.y += p.vy * dt; p.sq += (1 - p.sq) * Math.min(1, dt * 9);
+  if (p.y >= SOL - 26) { if (!p.sol) { p.sq = .82; poussiere(p.x + 13, SOL, 7, "#d8d0f0", 150, 300); } p.y = SOL - 26; p.vy = 0; p.sol = true; }
+  p.trace.push({ x: p.x, y: p.y }); if (p.trace.length > 4) p.trace.shift();
+  if (!jalon && p.x > 48 * T) { jalon = 1; poussiere(48 * T + 14, SOL - 40, 12, "#fff", 140, 200); }
+  if (Math.abs(p.x + 13 - scie.x) < 30 && p.y > SOL - 60 && p.x < 60 * T) { mort = 1.1; poussiere(p.x + 13, p.y + 13, 22, JAUNE, 420, 700); }
+  if (p.x > 72 * T) { fin = 2.2; for (let k = 0; k < 50; k++) parts.push({ x: p.x + 13, y: SOL - 40, vx: (Math.random() - .5) * 380, vy: -Math.random() * 420, vie: 1.4, t: 0, col: ["#FFD23F", "#4FC3DC", "#F07FB0", "#5DBB63", "#fff"][k % 5], s: 5, g: 700 }); }
+}
+function dessiner() {
+  const th = TH[V.theme]; cam0 = Math.max(0, p.x - 240);
+  if (V.on("parallaxe")) { cx.fillStyle = th.ciel; cx.fillRect(0, 0, W, H); parallaxe(cx, th, cam0, t); } else { cx.fillStyle = th.ciel; cx.fillRect(0, 0, W, H); }
+  sol(cx, th, cam0); dangers(cx, cam0, t);
+  (V.on("effets") ? drapeau : (c, x, y, _t, pris) => drapeauPlat(c, x, y, pris))(cx, 48 * T - cam0, SOL, t, jalon);
+  (V.on("effets") ? drapeau : (c, x, y, _t, pris) => drapeauPlat(c, x, y, pris))(cx, 74 * T - cam0, SOL, t, 0);
+  if (mort <= 0) { if (V.on("perso")) { traces(cx, cam0); perso(cx, p.x, p.y, p.sq, p.dir, t); } else persoPlat(cx, p.x, p.y); }
+  if (V.on("effets")) majParts(1 / 60, cx, cam0); else parts.length = 0;
+  if (flash > 0) { cx.fillStyle = `rgba(255,255,255,${flash})`; cx.fillRect(0, 0, W, H); flash -= .02; }
+}
+V.loop((tt, dt) => { maj(dt); dessiner(); });
+</script>
+</body>
+</html>

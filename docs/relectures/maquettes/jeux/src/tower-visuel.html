@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tower — maquette visuelle (lot QA2)</title>
+<style>{{polices}}
+{{inclure:visuel.css}}</style>
+</head>
+<body>
+<div class="intro"><p><a href="index.html">‹ Toutes les maquettes des jeux</a></p><h1>Tower — le visuel proposé</h1>
+<p>À gauche, une capture réelle d'une partie (thème Port, téléphone en paysage, 844 × 390). À droite, la même scène redessinée en canvas à l'échelle réelle (40 px par mètre), <b>en aplats et en code seulement</b> (la charte et les consignes de Tower : aucun dégradé, aucune image). Deux thèmes : <b>Port</b> (celui de la capture) et <b>Nuit</b> (le thème du jour du 12 novembre). Une pièce tombe toute seule toutes les deux secondes (clic : la lâcher tout de suite) ; la tour se reconstruit quand elle dépasse la hauteur de l'écran.</p>
+<p><b>Ce que cette maquette ne fait pas :</b> les pièces s'empilent par une règle de grille de démonstration, pas par Rapier. Les couleurs de pièces et de ciel sont celles de <code>@cdj/visuels/blocs</code> (palettes Port et Nuit), sans changement ; tout ce qui est proposé reste de l'affichage, lu dans la vue de la partie.</p></div>
+<div id="barre"></div>
+<div class="corps"><div class="duo">
+<figure><figcaption>Avant — la capture du 12 novembre 2026</figcaption><div class="ecran"><img alt="Capture d'une partie de Tower, thème Port" src="{{capture:tower-partie/844x390@844}}"></div><p class="aide">Une scène claire et lisible ; la tour (40 px par mètre) est au centre, la ligne de hauteur n'existe pas, les pièces posées n'ont ni ombre de contact ni lecture de ce qui bouge.</p></figure>
+<figure class="apres"><figcaption>Après — la proposition (canvas 844 × 390)</figcaption><div class="ecran"><canvas id="c" width="844" height="390"></canvas></div><p class="aide">Clic ou Espace : lâcher une pièce.</p></figure>
+</div></div>
+
+<div class="suite"><h2>Les propositions, avec leur coût</h2>
+<ol class="fiches">
+<li><h3>1 · Ciel par bandes et astre</h3><dl>
+<dt>Ce qui change</dt><dd>Le ciel passe de un à trois aplats qui se resserrent vers l'horizon (pas de dégradé), avec un astre par thème : soleil du Port, lune et étoiles qui scintillent la Nuit. La couleur de chaque bande est un mélange de la couleur de ciel du thème et du sol (<code>melanger</code>, déjà dans le module commun).</dd>
+<dt>En code</dt><dd>Trois rectangles et un disque ; des étoiles semées par le hasard d'affichage (une graine par thème, déjà la règle des décors).</dd>
+<dt>Coût</dt><dd>{{ko:ciel}} Ko gzip · {{mesure:tower:ciel}} i/s (base {{mesure:tower:base}}, tout {{mesure:tower:tout}}), processeur ralenti 4 fois.</dd>
+<dt>Golden</dt><dd>Inchangés : <code>TOWER_SIM_VERSION</code> et le générateur ne bougent pas.</dd></dl></li>
+<li><h3>2 · Profondeur par thème</h3><dl>
+<dt>Ce qui change</dt><dd>Les quatre plans existent déjà (parallaxe 0,2 · 0,5 · 0,8 · 1) ; la proposition leur donne un contenu qui se reconnaît d'un thème à l'autre : côte et phare dont le faisceau tourne la Nuit, fenêtres allumées, bateau et lanterne, reflets sur l'eau en traits clairs qui se décalent.</dd>
+<dt>En code</dt><dd>Un module par thème, comme aujourd'hui (<code>decor&lt;Thème&gt;.ts</code>) : polygones convexes dans les coordonnées de la planche, une animation lente de plus (<code>derive</code>, <code>scintille</code>) ; coupée avec <code>prefers-reduced-motion</code>.</dd>
+<dt>Coût</dt><dd>{{ko:profondeur}} Ko gzip · {{mesure:tower:profondeur}} i/s. À la demande, avec le décor du thème : rien dans le premier chargement.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+<li><h3>3 · Lisibilité : règle de hauteur et ombre de contact</h3><dl>
+<dt>Ce qui change</dt><dd>Une graduation à gauche tous les 2 m (le chiffre tous les 4 m), un repère pointillé pour le prochain palier de la partie (« 8 m · figée ») et pour ton record, une ombre d'aplat sous chaque pièce posée. On voit à quelle hauteur on est sans lire le chrono.</dd>
+<dt>En code</dt><dd>Quelques traits au canvas ; les hauteurs du palier et du record sont déjà dans la vue (<code>paliers.ts</code>, tuile « Ton record »).</dd>
+<dt>Coût</dt><dd>{{ko:lisibilite}} Ko gzip · {{mesure:tower:lisibilite}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+<li><h3>4 · Pièces vivantes</h3><dl>
+<dt>Ce qui change</dt><dd>Les pièces respirent (écrasement de 2 % au repos), leurs petits yeux suivent la pièce qui tombe, la tour se balance d'autant plus que sa hauteur grandit, les yeux s'écarquillent quand elle penche (c'est la « panique » que Tower calcule déjà).</dd>
+<dt>En code</dt><dd>Un décalage horizontal par rangée proportionnel à la hauteur ; les yeux utilisent <code>expressionDe</code> et <code>disposerYeux</code> du module commun (niveau de panique calculé par le jeu).</dd>
+<dt>Coût</dt><dd>{{ko:pieces}} Ko gzip · {{mesure:tower:pieces}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés. Le balancement est un décalage de dessin, jamais la position Rapier. <span class="marque sim">à garder en tête</span> Un balancement trop fort ferait croire que la tour va tomber : il reste sous 3 px.</dd></dl></li>
+<li><h3>5 · Effets : pose, palier, médaille</h3><dl>
+<dt>Ce qui change</dt><dd>Une étoile jaune bordée d'encre et un peu de poussière à la pose (c'est le « choc » du lot T9), une plaque « BONUS » qui tombe sous la bande au passage d'un palier, des confettis quand une médaille est gagnée.</dd>
+<dt>En code</dt><dd>Un tableau de particules et un polygone d'étoile ; déclenchés par les événements de la partie (<code>evenements.ts</code>), coupés par « Particules » et par le mouvement réduit.</dd>
+<dt>Coût</dt><dd>{{ko:effets}} Ko gzip · {{mesure:tower:effets}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+</ol>
+<p><b>Marqué « touche à la simulation » :</b> rien. Écarté : faire pencher réellement la plateforme au vent (c'est de la physique).</p></div>
+
+<script>{{inclure:visuel.js}}</script>
+<script>
+const V = initVisuel({ features: [{ k: "ciel", label: "Ciel et astre" }, { k: "profondeur", label: "Profondeur" }, { k: "lisibilite", label: "Règle de hauteur" }, { k: "pieces", label: "Pièces vivantes" }, { k: "effets", label: "Effets" }], themes: [{ k: "port", label: "Port" }, { k: "nuit", label: "Nuit" }] });
+const cv = document.getElementById("c"), c = cv.getContext("2d");
+const W = 844, H = 390, S = 40, MER = 318, PX = 262, COLS = 8, ENC = "#2A1E16";
+const PAL = {
+  port: { ciel: "#9FD3E6", b2: "#B6E0EE", b3: "#CDEBF3", sol: "#2F6F8F", vague: "#4A8BAA", plat: "#6B5847", reflet: "#8C7660", pilier: "#5A4A3C", astre: "#FFE9A8", loin: "#7FB3C9", pieces: { I: "#F28C38", O: "#FFD23F", T: "#9B6BD6", L: "#F07FB0", J: "#3F7FD9", S: "#5DBB63", Z: "#E5534B" } },
+  nuit: { ciel: "#1B2A4A", b2: "#22345a", b3: "#2B3F6B", sol: "#101A30", vague: "#2B3F6B", plat: "#4A5A7A", reflet: "#6A7C9E", pilier: "#34425E", astre: "#F4F0D0", loin: "#16223E", pieces: { I: "#F28C38", O: "#FFD23F", T: "#B58CF0", L: "#F59AC4", J: "#5C9BF0", S: "#7AD07F", Z: "#F0706A" } },
+};
+const FORMES = { I: [[0, 0], [1, 0], [2, 0], [3, 0]], O: [[0, 0], [1, 0], [0, 1], [1, 1]], T: [[0, 0], [1, 0], [2, 0], [1, 1]], L: [[0, 0], [1, 0], [2, 0], [2, 1]], J: [[0, 0], [1, 0], [2, 0], [0, 1]], S: [[0, 0], [1, 0], [1, 1], [2, 1]], Z: [[1, 0], [2, 0], [0, 1], [1, 1]] };
+let haut = new Array(COLS).fill(0), posees = [], chute = null, camY = 0, attente = 1, t = 0, parts = [], plaque = 0, secousse = 0, medaille = 0;
+const rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const etoiles = Array.from({ length: 40 }, () => [rnd() * W, rnd() * 190, rnd() * 6]);
+const aplat = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+
+/*@f:ciel*/
+function ciel(P, cy) {
+  aplat(0, 0, W, H, P.ciel); aplat(0, 150 + cy * .1, W, 90, P.b2); aplat(0, 235 + cy * .1, W, 100, P.b3);
+  c.fillStyle = P.astre; c.beginPath(); c.arc(640 - cy * .05, 90 + cy * .1, V.theme === "nuit" ? 22 : 30, 0, 7); c.fill();
+  if (V.theme === "nuit") { c.fillStyle = P.ciel; c.beginPath(); c.arc(650 - cy * .05, 84 + cy * .1, 19, 0, 7); c.fill(); for (const [x, y, ph] of etoiles) { c.fillStyle = (Math.sin(t * 2 + ph) > -.2) ? "#fff" : P.b3; c.fillRect(x, y + cy * .1, 2.4, 2.4); } }
+  else { c.fillStyle = "#fff"; for (let k = 0; k < 4; k++) { const x = ((k * 260 + t * 8 - cy * .1) % 1100) - 120; c.fillRect(x, 60 + k * 34 + cy * .15, 80, 12); c.fillRect(x + 16, 50 + k * 34 + cy * .15, 48, 10); } }
+}
+/*@/f*/
+function cielPlat(P) { aplat(0, 0, W, H, P.ciel); }
+
+/*@f:profondeur*/
+function profondeur(P, cy) {
+  const dy = (k) => (1 - k) * cy;
+  aplat(0, 262 + dy(.2) * .3, W, 60, P.loin);
+  for (let k = 0; k < 9; k++) aplat(k * 110 - 20, 250 + dy(.2) * .3 + (k % 3) * 8, 70, 20, P.loin);
+  const nuit = V.theme === "nuit";
+  const px = 112, py = MER - 100 + dy(.5);
+  aplat(px, py, 22, 90, nuit ? "#3a4a70" : "#fff"); if (!nuit) { aplat(px, py + 22, 22, 14, "#D7263D"); aplat(px, py + 52, 22, 14, "#D7263D"); } aplat(px - 4, py - 14, 30, 14, nuit ? "#F4F0D0" : "#E8B23A"); aplat(px + 2, py - 24, 18, 10, "#D7263D");
+  if (nuit) { const a = Math.sin(t * 1.2) * .5 + .5; c.fillStyle = "#3d4f7c"; c.beginPath(); c.moveTo(px + 11, py - 8); c.lineTo(px + 11 + 260 * a, py - 40); c.lineTo(px + 11 + 260 * a, py + 30); c.closePath(); c.fill(); aplat(px + 8, py + 34, 6, 6, "#F4F0D0"); aplat(px + 8, py + 60, 6, 6, "#F4F0D0"); }
+  for (const [x, w] of [[660, 36], [706, 30]]) { aplat(x, MER - 38 + dy(.5), w, 30, nuit ? "#2c3b5e" : "#F0E6D0"); aplat(x - 3, MER - 50 + dy(.5), w + 6, 12, nuit ? "#1f2b47" : "#C2401F"); if (nuit) aplat(x + 8, MER - 28 + dy(.5), 8, 8, "#FFD23F"); }
+  const bx = 760 - (t * 6 % 120), by = MER - 6 + dy(.8); aplat(bx, by, 70, 12, nuit ? "#8a4b6b" : "#E5534B"); aplat(bx + 34, by - 46, 3, 46, ENC); c.fillStyle = nuit ? "#c9d4ee" : "#fff"; c.beginPath(); c.moveTo(bx + 38, by - 44); c.lineTo(bx + 62, by - 4); c.lineTo(bx + 38, by - 4); c.fill(); if (nuit) aplat(bx + 4, by - 8, 5, 5, "#FFD23F");
+  for (let k = 0; k < 10; k++) aplat(((k * 97 + t * 14) % 900) - 40, MER + 8 + (k % 4) * 14, 36, 3, nuit ? "#E9E6B0" : "#CFEFF8");
+}
+/*@/f*/
+
+function mer(P, cy) {
+  aplat(0, MER + cy, W, H, P.sol);
+  for (let k = 0; k < 14; k++) aplat(((k * 71 + t * 20) % 900) - 40, MER + cy + 6 + (k % 3) * 18, 28, 3, P.vague);
+}
+
+function cellule(x, y, col, oeil, f) {
+  aplat(x, y, S, S, ENC); aplat(x + 3, y + 3, S - 6, S - 6, col); aplat(x + 3, y + 3, S - 6, 4, "rgba(255,255,255,.35)");
+  c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(x + 3, y + S - 9, S - 6, 6);
+  if (oeil) {
+    const pan = f ? f.pan : 0, r = 6 + pan * 2.2, dx = f ? f.dx : 0, dy = f ? f.dy : 0;
+    for (const ox of [-8, 8]) { c.fillStyle = ENC; c.beginPath(); c.arc(x + S / 2 + ox, y + S / 2, r + 1.5, 0, 7); c.fill(); c.fillStyle = "#fff"; c.beginPath(); c.arc(x + S / 2 + ox, y + S / 2, r, 0, 7); c.fill(); c.fillStyle = ENC; c.beginPath(); c.arc(x + S / 2 + ox + dx * 2.5 + (pan ? Math.sin(t * 40) * pan : 0), y + S / 2 + dy * 2.5, 2.6, 0, 7); c.fill(); }
+  }
+}
+function dessinPiece(P, f, ox, oy, forme, col, vivante, id) {
+  const cs = FORMES[forme]; const cible = cs[Math.floor(cs.length / 2)];
+  cs.forEach(([dx, dy]) => cellule(ox + dx * S, oy - dy * S, col, dx === cible[0] && dy === cible[1], vivante ? f : null));
+}
+
+/*@f:pieces*/
+function etatPanique() { const hm = Math.max(...haut); return Math.min(1, Math.max(0, (hm - 3) / 4)); }
+function balance(rang) { return V.on("pieces") ? Math.sin(t * 2.4) * etatPanique() * rang * 0.55 : 0; }
+function respire() { return V.on("pieces") ? 1 + Math.sin(t * 2.6) * .012 : 1; }
+/*@/f*/
+
+/*@f:lisibilite*/
+function regle(P, cy) {
+  c.fillStyle = V.theme === "nuit" ? "#c9d4ee" : "#2A1E16";
+  for (let m = 0; m <= 14; m += 2) { const y = MER - 18 - m * S + cy; if (y < 24 || y > H) continue; aplat(190, y, m % 4 === 0 ? 22 : 12, 2, c.fillStyle); if (m % 4 === 0) { c.font = "700 12px 'JetBrains Mono'"; c.fillText(m + " m", 150, y + 4); } }
+  const ypal = MER - 18 - 8 * S + cy; if (ypal > 24) { c.setLineDash([8, 6]); c.strokeStyle = "#5DBB63"; c.lineWidth = 3; c.beginPath(); c.moveTo(196, ypal); c.lineTo(650, ypal); c.stroke(); c.setLineDash([]); aplat(652, ypal - 11, 82, 22, "#5DBB63"); c.fillStyle = ENC; c.font = "700 12px 'JetBrains Mono'"; c.fillText("8 m · figée", 658, ypal + 4); }
+}
+function ombre(x, y, w) { aplat(x, y, w, 6, "rgba(0,0,0,.22)"); }
+/*@/f*/
+
+/*@f:effets*/
+function etoile(x, y, r) { c.fillStyle = "#FFD23F"; c.strokeStyle = ENC; c.lineWidth = 3; c.beginPath(); for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5 - Math.PI / 2, rr = k % 2 ? r * .45 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fill(); c.stroke(); }
+function explose(x, y, n, cols, v, g) { for (let k = 0; k < n; k++) parts.push({ x, y, vx: (Math.random() - .5) * v, vy: -Math.random() * v, t: 0, vie: .5 + Math.random() * .7, col: cols[k % cols.length], s: 4 + Math.random() * 4, g }); }
+function majParts(dt) { for (let i = parts.length - 1; i >= 0; i--) { const q = parts[i]; q.t += dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.t > q.vie) { parts.splice(i, 1); continue; } c.globalAlpha = 1 - q.t / q.vie; aplat(q.x, q.y, q.s, q.s, q.col); } c.globalAlpha = 1; }
+function tampon() { if (plaque <= 0) return; const y = 44 + Math.min(1, (1.5 - plaque) * 5) * 0 - Math.max(0, plaque - 1.3) * 120; c.save(); c.translate(W / 2, 48 + y * 0 - Math.max(0, (plaque - 1.3) * 200)); c.rotate(-.05); aplat(-70, -16, 140, 30, "#5DBB63"); c.strokeStyle = ENC; c.lineWidth = 3; c.strokeRect(-70, -16, 140, 30); c.fillStyle = ENC; c.font = "700 16px 'Archivo Black'"; c.textAlign = "center"; c.fillText("BONUS · FIGÉE !", 0, 6); c.restore(); c.textAlign = "left"; }
+/*@/f*/
+
+function lacher() {
+  if (chute) return;
+  const noms = Object.keys(FORMES), nom = noms[Math.floor(Math.random() * noms.length)], cs = FORMES[nom], l = Math.max(...cs.map((q) => q[0])) + 1;
+  const col0 = Math.floor(Math.random() * (COLS - l + 1));
+  let b = 0; cs.forEach(([dx, dy]) => (b = Math.max(b, haut[col0 + dx] - dy)));
+  chute = { nom, col0, b, y: -220, vy: 0 };
+}
+addEventListener("keydown", (e) => e.code === "Space" && (e.preventDefault(), lacher())); cv.addEventListener("pointerdown", lacher);
+
+function maj(dt) {
+  t += dt; attente -= dt; if (attente <= 0 && !chute) { lacher(); attente = 2.2; }
+  const hm = Math.max(...haut); camY += (Math.max(0, (hm - 5) * S) - camY) * Math.min(1, dt * 3);
+  if (chute) {
+    chute.vy += 900 * dt; chute.y += chute.vy * dt; const cs = FORMES[chute.nom];
+    const cible = MER - 18 - (chute.b + 1) * S + 0; // ordonnée de la rangée basse, sans la caméra
+    if (chute.y >= cible + camY) {
+      const px = PX + chute.col0 * S; cs.forEach(([dx, dy]) => (haut[chute.col0 + dx] = Math.max(haut[chute.col0 + dx], chute.b + dy + 1)));
+      posees.push({ nom: chute.nom, col0: chute.col0, b: chute.b }); secousse = V.on("effets") ? .12 : 0;
+      if (V.on("effets")) { etoile; explose(px + S, cible + camY - 0, 8, ["#fff", "#E3D9C2"], 160, 400); star = { x: px + S, y: cible + S * .5, t: .35 }; if (Math.max(...haut) >= 8 && !medaille) { medaille = 1; plaque = 1.5; explose(W / 2, 80, 40, ["#FFD23F", "#4FC3DC", "#F07FB0", "#5DBB63"], 420, 600); } }
+      chute = null;
+      if (Math.max(...haut) > 10) { haut.fill(0); posees = []; medaille = 0; }
+    }
+  }
+  if (plaque > 0) plaque -= dt; if (secousse > 0) secousse -= dt;
+}
+let star = null;
+function dessiner() {
+  const P = PAL[V.theme], cy = camY, sx = secousse > 0 ? (Math.random() - .5) * 4 : 0;
+  c.save(); c.translate(sx, 0);
+  if (V.on("ciel")) ciel(P, cy); else cielPlat(P);
+  if (V.on("profondeur")) profondeur(P, cy);
+  mer(P, cy);
+  if (V.on("lisibilite")) regle(P, cy);
+  aplat(PX - 8, MER - 18 + cy, COLS * S + 16, 16, P.plat); aplat(PX - 8, MER - 18 + cy, COLS * S + 16, 4, P.reflet); aplat(PX + 130, MER - 2 + cy, 60, 60, P.pilier);
+  const f = { pan: etatPanique ? 0 : 0, dx: 0, dy: 0 };
+  if (V.on("pieces")) { f.pan = etatPanique(); }
+  for (const q of posees) { const cs = FORMES[q.nom]; const ox = PX + q.col0 * S, oyBase = MER - 18 - (q.b + 1) * S + cy; const sw = V.on("pieces") ? balance(q.b) : 0; if (V.on("lisibilite") && q.b === 0) ombre(ox, MER - 20 + cy, (Math.max(...cs.map((z) => z[0])) + 1) * S); f.dx = chute ? Math.sign(PX + chute.col0 * S - ox) : 0; f.dy = chute ? -1 : 0; const sc = V.on("pieces") ? 1 / respire() : 1; c.save(); c.translate(ox + sw, oyBase + S); c.scale(sc === 1 ? 1 : 1 / sc, sc); c.translate(-ox - sw, -oyBase - S); dessinPiece(P, f, ox + sw, oyBase, q.nom, P.pieces[q.nom], V.on("pieces")); c.restore(); }
+  if (chute) { const ox = PX + chute.col0 * S; if (V.on("lisibilite")) { c.strokeStyle = V.theme === "nuit" ? "#8fa0c8" : "#2A1E16"; c.lineWidth = 2; c.setLineDash([4, 6]); const l = Math.max(...FORMES[chute.nom].map((z) => z[0])) + 1; c.strokeRect(ox, 0, l * S, MER - 18 + cy - (chute.b + 1) * S + S); c.setLineDash([]); } f.dx = 0; f.dy = 1; dessinPiece(P, f, ox, chute.y + camY * 0, chute.nom, P.pieces[chute.nom], V.on("pieces")); }
+  if (V.on("effets")) { majParts(1 / 60); if (star && star.t > 0) { etoile(star.x, star.y + cy, 22 * (star.t / .35 + .4)); star.t -= 1 / 60; } tampon(); } else { parts.length = 0; }
+  c.restore();
+}
+V.loop((tt, dt) => { maj(dt); dessiner(); });
+</script>
+</body>
+</html>
