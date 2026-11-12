@@ -34,10 +34,10 @@ Relecture, sans correction : aucun fichier de `apps/*/src` ni de `packages/*/src
 ## Échec hors de la zone du lot (à trancher par Nathan)
 - Workflow de la recette, job `deploy / deploy` (run 43134819648) : l'essai `smoke` de la révision de recette échoue sur « Vertige : jour (médailles croissantes) » — `/api/vertige/day/2026-11-12` répond `"medals": null`. Ce lot ne modifie ni `apps/api` ni Vertige : non corrigé ici. La CI de tests de la PR (workflow `test`) est verte.
 
-## Décisions laissées à Nathan
-- Les deux **évolutions de charte** proposées : « Tes amis aujourd'hui » sous la salle d'arcade sur ordinateur ; un fronton court, sans compte à rebours, sur les pages de lecture.
-- Ce qui est gardé dans chaque maquette, et l'ordre des lots Q1 à Q5 (index des maquettes).
-- Le dossier `relecture/` reste hors du dépôt (120 Mo) : à garder ainsi, ou à publier en artefact.
+## Décisions de Nathan (12/11/2026)
+- **Toutes les propositions des six maquettes sont retenues**, y compris les deux **évolutions de charte** : « Tes amis aujourd'hui » sous la salle d'arcade sur ordinateur ; un fronton court, sans compte à rebours, sur les pages de lecture. Elles restent à inscrire dans la charte par Nathan (révision 21) avant les lots Q1 et Q2.
+- Suite : les lots Q1 à Q5 de l'index des maquettes, un lot par session ; puis QA2 pour les jeux.
+- Le dossier `relecture/` reste hors du dépôt (120 Mo).
 
 ## Pour les joueurs
 rien
