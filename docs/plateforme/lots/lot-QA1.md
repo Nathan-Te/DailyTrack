@@ -31,6 +31,9 @@ Relecture, sans correction : aucun fichier de `apps/*/src` ni de `packages/*/src
 - Les jeux passés `on` sont ouverts « depuis toujours » par une écriture directe dans la base SQLite locale (un jeu passé `on` ne compte que le lendemain).
 - Un serveur par passage en parallèle, relancé avant chaque sujet : sans cela le limiteur de débit (30 lectures par joueur) renvoyait des 429 à « Démo ».
 
+## Échec hors de la zone du lot (à trancher par Nathan)
+- Workflow de la recette, job `deploy / deploy` (run 43134819648) : l'essai `smoke` de la révision de recette échoue sur « Vertige : jour (médailles croissantes) » — `/api/vertige/day/2026-11-12` répond `"medals": null`. Ce lot ne modifie ni `apps/api` ni Vertige : non corrigé ici. La CI de tests de la PR (workflow `test`) est verte.
+
 ## Décisions laissées à Nathan
 - Les deux **évolutions de charte** proposées : « Tes amis aujourd'hui » sous la salle d'arcade sur ordinateur ; un fronton court, sans compte à rebours, sur les pages de lecture.
 - Ce qui est gardé dans chaque maquette, et l'ordre des lots Q1 à Q5 (index des maquettes).
