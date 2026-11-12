@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, chargeDe, ecrireTemps, enregistrer, enregistrerScenario, niveau, reglagesDe, type Commande, type Contenu, type Reglages } from "@cdj/vertige-sim";
+import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, chargeDe, ecrireTemps, enregistrer, enregistrerScenario, niveau, reglagesDe, type Commande, type Contenu, type Niveau, type Reglages } from "@cdj/vertige-sim";
+import { MODULES, enchainement, enregistrerEnchainement, niveauDuModule, robotDuModule, type Module } from "@cdj/vertige-sim/modules";
 import { commandesDuJeu } from "@cdj/kit/jeu/commandes";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { BUILD_RESTRICTED, gameStorage } from "@cdj/kit/stockage";
@@ -7,6 +8,7 @@ import { Controles } from "./controles";
 import { BORNES_CONFORT, confortDe, ecrireConfort, lireConfort, type Confort } from "./confort";
 import { lireEssai } from "./essai";
 import { FICHE } from "./fiche";
+import { texteEssai } from "./essaiTextes";
 import { Monde } from "./monde";
 
 // La partie de Vertige, côté jeu : la simulation (`Partie` de `@cdj/vertige-sim`, entière, 120 pas par seconde), le monde que l'on voit (`monde.ts`), les commandes (`controles.ts`), la caméra. **De
@@ -38,9 +40,13 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, classe: string, texte
 
 export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
   if (o.tactile) return partieInerte(hote, o.t("scene.tactile"));
+  enregistrerEnchainement(); // `niveau("enchainement")` (le scénario d'essai)
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   const nomNiveau = essai.scenario ?? contenu.niveau;
-  const niv = niveau(nomNiveau);
+  // Lot V2 : la galerie part du premier module (à l'arrêt) ; l'enchaînement et chaque module ont un temps de robot à comparer.
+  let niv: Niveau = essai.galerie ? niveauDuModule(MODULES[0]!) : niveau(nomNiveau);
+  let ticksRobot = essai.galerie ? robotDuModule(MODULES[0]!).ticks : essai.scenario === "enchainement" ? enchainement().arriveeRobot : 0;
+  let moduleCourant: Module | null = essai.galerie ? MODULES[0]! : null;
   const stockage = gameStorage();
   const confort: Confort = confortDe(essai.confort, lireConfort(stockage));
   let reglages: Reglages = essai.reglages ? reglagesDe(essai.reglages) : { ...REGLAGES_DEFAUT };
@@ -49,8 +55,14 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   racine.setAttribute("role", "img");
   racine.setAttribute("aria-label", o.libelle);
   hote.append(racine);
-  const monde = new Monde(racine, niv, { bloom: essai.bloom, ombres: essai.ombres, champ: confort.champ });
-  const canevas = monde.renderer.domElement;
+  const creerMonde = (n: Niveau): Monde => {
+    const m = new Monde(racine, n, { bloom: essai.bloom, ombres: essai.ombres, champ: confort.champ });
+    racine.prepend(m.renderer.domElement); // sous les surimpressions
+    m.renderer.info.autoReset = false; // les compteurs sont ceux de toute l'image (le halo fait plusieurs passes), remis à zéro à chaque image
+    return m;
+  };
+  let monde = creerMonde(niv);
+  const canevas = (): HTMLCanvasElement => monde.renderer.domElement;
   const commandes = (() => {
     try {
       return commandesDuJeu(FICHE, null as never, null as never); // l'instance du kit (une par jeu) : les touches choisies dans Réglages › Commandes
@@ -58,16 +70,19 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       return null;
     }
   })();
-  const controles = new Controles(commandes, canevas);
+  const controles = new Controles(commandes, canevas());
   controles.sensibilite = confort.sensibilite;
 
   // --- La simulation et sa rediffusion ---
   let sim = new Partie(niv, reglages);
   let enregistre: Commande[] = [];
+  /** Les pas passés depuis l'arrivée de l'enchaînement : on garde la comparaison avec le robot à l'écran quelques secondes avant l'écran de fin du kit. */
+  let apresFin = 0;
   const redemarrer = (r: Reglages = reglages): void => {
     reglages = r;
     sim = new Partie(niv, reglages);
     enregistre = [];
+    apresFin = 0;
     controles.effacer();
     roulis = 0;
     basculesVues = 0;
@@ -90,23 +105,24 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   let dejaVerrouille = false;
   const demanderVerrou = (): void => {
     try {
-      const r = canevas.requestPointerLock() as unknown as Promise<void> | undefined;
+      const r = canevas().requestPointerLock() as unknown as Promise<void> | undefined;
       void r?.catch?.(() => undefined);
     } catch {
       /* le navigateur refuse : un second clic */
     }
   };
   verrou.addEventListener("click", demanderVerrou);
-  canevas.addEventListener("click", () => {
+  const surClic = (): void => {
     if (!controles.verrouille && !confortOuvert && !termine) demanderVerrou();
-  });
+  };
+  canevas().addEventListener("click", surClic);
   const rendreLaSouris = (): void => {
     sortieVoulue = true;
     if (document.pointerLockElement) document.exitPointerLock();
   };
   // Échap rend la souris au navigateur SANS envoyer la touche : le jeu se met alors en pause, comme avec le kit.
   const surVerrou = (): void => {
-    if (document.pointerLockElement === canevas) {
+    if (document.pointerLockElement === canevas()) {
       sortieVoulue = false;
       dejaVerrouille = true;
       return;
@@ -202,7 +218,6 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   if (mesure) racine.append(mesure);
   let images = 0;
   let depuisMesure = performance.now();
-  monde.renderer.info.autoReset = false; // les compteurs sont ceux de toute l'image (le halo fait plusieurs passes), remis à zéro à chaque image
   let tailleGz = 0;
   let derniereTaille = 0;
 
@@ -237,24 +252,47 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   let demo: Commande[] | null = null;
   if (essai.demo) void import("@cdj/vertige-sim/essais").then((m) => import("@cdj/vertige-sim").then((s) => (demo = s.decoderRediffusion(m.PARTIES_ESSAIS[0]!.code).commandes)));
 
-  const porte = { sim: () => sim, commandes: () => enregistre, controles, monde, essai, jouer: (c: Commande[]): void => void (demo = c), camera: () => ({ x: monde.camera.position.x, y: monde.camera.position.y, z: monde.camera.position.z, q: monde.camera.quaternion.toArray(), fenetre: fenetreActive, correction: correction !== null }) };
+  // La galerie de modules (lot V2, `?scenario=modules`) : changer de module reconstruit le monde (et son canevas) et recommence la partie ; « voir » : la solution du robot joue, depuis l'état canonique d'entrée.
+  let galerie: { marquer(id: string): void; detruire(): void } | null = null;
+  const charger = (m: Module, voir: boolean): void => {
+    monde.detruire();
+    niv = niveauDuModule(m, { lance: voir });
+    moduleCourant = m;
+    const robot = robotDuModule(m);
+    ticksRobot = robot.ticks;
+    monde = creerMonde(niv);
+    controles.canevas = canevas();
+    canevas().addEventListener("click", surClic);
+    redimensionner();
+    demo = voir ? robot.commandes : null;
+    redemarrer();
+    galerie?.marquer(m.id);
+  };
+  if (essai.galerie) void import("./galerie").then((g) => void (!termine && (galerie = g.monterGalerie(racine, o, { charger }, moduleCourant!.id))));
+
+  const porte = { sim: () => sim, commandes: () => enregistre, controles, get monde() { return monde; }, essai, module: () => moduleCourant?.id ?? null, charger: (id: string, voir: boolean): void => void charger(MODULES.find((x) => x.id === id)!, voir), jouer: (c: Commande[]): void => void (demo = c), camera: () => ({ x: monde.camera.position.x, y: monde.camera.position.y, z: monde.camera.position.z, q: monde.camera.quaternion.toArray(), fenetre: fenetreActive, correction: correction !== null }) };
   if (essai.debug) (window as unknown as { __vertige: typeof porte }).__vertige = porte;
 
   return {
     avancer() {
-      if (sim.finie) return;
+      if (sim.finie) {
+        apresFin++;
+        return;
+      }
       const c = demo ? demo[sim.tick] ?? NEUTRE : confortOuvert ? NEUTRE : controles.lire();
       if (confortOuvert || demo) controles.effacer();
       sim.avancer(c);
       enregistre.push(c);
     },
-    finie: () => sim.finie,
-    action(id) {
-      if (id === "relancer") redemarrer();
+    // La galerie ne finit jamais (c'est elle qui annonce l'arrivée) ; l'enchaînement laisse 5 s à la comparaison avec le robot avant l'écran de fin.
+    finie: () => !essai.galerie && sim.finie && (essai.scenario !== "enchainement" || apresFin > 5 * 120),
+    action() {
+      /* la reprise au palier est une touche de la simulation (T_REPRISE) ; Entrée, « recommencer », est le kit */
     },
     hud() {
       const total = sim.prises.length;
-      return { principal: ecrireTemps(sim.chrono, o.langue), secondaire: total > 0 ? o.t("hud.gemmes", { n: sim.prises.filter(Boolean).length, total }) : "" };
+      const robot = ticksRobot > 0 ? texteEssai(o.langue, "robot.temps", { t: ecrireTemps(ticksRobot, o.langue) }) : "";
+      return { principal: ecrireTemps(sim.chrono, o.langue), secondaire: total > 0 ? o.t("hud.gemmes", { n: sim.prises.filter(Boolean).length, total }) : robot };
     },
     resultat: () => ({ score: VARIANTE.score(sim.resultat()), rediffusion: essai.scenario ? enregistrerScenario(essai.scenario, enregistre) : enregistrer(contenu, enregistre) }),
     fantome: () => undefined,
@@ -309,13 +347,20 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       fov += (confort.champ + (sim.dash > 0 ? 12 : 0) - fov) * Math.min(1, 10 * dt);
       cam.fov = fov;
       cam.updateProjectionMatrix();
-      monde.animer(t, dt, sim.prises, sim.orbesT);
+      monde.animer(t, dt, sim.prises);
       monde.renderer.info.reset();
       monde.dessiner();
       // Les surimpressions.
       const basculeRecente = sim.derniereBascule >= 0 && sim.tick - sim.derniereBascule < 90;
-      etat.hidden = !(sim.dash > 0 || sim.surMur || basculeRecente);
-      if (!etat.hidden) etat.textContent = o.t(sim.dash > 0 ? "etat.dash" : sim.surMur ? "etat.mur" : "etat.gravite");
+      // À l'arrivée d'un module ou de l'enchaînement : le temps du joueur contre celui du robot.
+      const arrive = sim.fin >= 0 && ticksRobot > 0;
+      etat.classList.toggle("vertige-etat--robot", arrive);
+      etat.hidden = !(arrive || sim.dash > 0 || sim.surMur || basculeRecente);
+      if (arrive) {
+        const toi = sim.fin - sim.depart;
+        const ecart = toi - ticksRobot;
+        etat.textContent = essai.galerie ? texteEssai(o.langue, "galerie.arrive", { t: ecrireTemps(toi, o.langue), robot: ecrireTemps(ticksRobot, o.langue) }) : texteEssai(o.langue, "robot.arrivee", { toi: ecrireTemps(toi, o.langue), robot: ecrireTemps(ticksRobot, o.langue), ecart: `${ecart >= 0 ? "+" : "−"}${ecrireTemps(Math.abs(ecart), o.langue)}` });
+      } else if (!etat.hidden) etat.textContent = o.t(sim.dash > 0 ? "etat.dash" : sim.surMur ? "etat.mur" : "etat.gravite");
       verrou.hidden = controles.verrouille || confortOuvert || termine || essai.demo; // le joueur scripté n'a pas besoin de la souris
       const texteVerrou = o.t(dejaVerrouille ? "scene.verrou.reprise" : "scene.verrou");
       if (verrou.textContent !== texteVerrou) verrou.textContent = texteVerrou;
@@ -340,6 +385,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       observateur.disconnect();
       controles.detruire();
       tune?.detruire();
+      galerie?.detruire();
       rendreLaSouris();
       monde.detruire();
       racine.remove();

@@ -32,5 +32,5 @@ export const CATALOGUE_FR = {
   "commandes.action.droite": "Aller à droite",
   "commandes.action.saut": "Sauter (et sauter d'un mur)",
   "commandes.action.dash": "Dash",
-  "commandes.action.relancer": "Recommencer le parcours",
+  "commandes.action.reprendre": "Revenir au dernier palier (le chrono continue)",
 } as const;

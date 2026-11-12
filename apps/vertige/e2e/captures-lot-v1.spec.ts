@@ -36,7 +36,7 @@ test("captures : la salle de la gravité, le plafond, un portail, et les images 
   mkdirSync(chemin(IMAGES), { recursive: true });
   const browser = await chromium.launch({ args: logiciel });
 
-  // La salle de la gravité au départ (surfaces à gauche, orbes à droite), puis la marche au plafond : on va sous le plafond marqué, on saute, on marche la tête en bas.
+  // La salle de la gravité au départ (des surfaces à l'ouest et à l'est), puis la marche au plafond : on va sous le plafond marqué, on saute, on marche la tête en bas.
   let page = await ouvrir(browser, "/?debug&manuel&tactile=0&scenario=gravite", 1280, 720);
   await page.evaluate(() => window.__jeu.avancer(3));
   await montrer(page, "lot-V1-gravite-salle.png");

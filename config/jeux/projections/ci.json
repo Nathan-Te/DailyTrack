@@ -1449,6 +1449,10 @@
           "ecrans-kit.spec.ts": [
             "vertige-jeu",
             "ui"
+          ],
+          "modules.spec.ts": [
+            "vertige-sim",
+            "vertige-jeu"
           ]
         },
         "parts": {
@@ -1487,7 +1491,10 @@
         "classement-",
         "reglages-",
         "retours-",
-        "version-"
+        "version-",
+        "bibliotheque-",
+        "galerie-",
+        "essaiTextes-"
       ],
       "outilsAdmin": false
     }

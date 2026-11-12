@@ -16,9 +16,12 @@ const ouvrir = async (browser: Parameters<typeof appareil>[0], scenario: NomNive
 };
 
 test.describe("Vertige : la gravité et les portails", () => {
-  test("le cube : six orbes à la suite, la partie du navigateur est celle de Node, la caméra fait la transition", async ({ browser }) => {
+  test("le cube : cinq faces à la suite (six directions), la partie du navigateur est celle de Node, la caméra fait la transition", async ({ browser }) => {
     const c = commandes("cube-six-directions");
-    const { context, page } = await ouvrir(browser, "cube", `&reglages=${encodeURIComponent(JSON.stringify({ confort: { transition: 1000 } }))}`);
+    const { context, page } = await ouvrir(browser, "cube", `&reglages=${encodeURIComponent(JSON.stringify({ confort: { transition: 6000 } }))}`);
+    await page.setViewportSize({ width: 640, height: 360 }); // le rendu logiciel de la CI : des images plus petites (le cube de V2 a 30 boîtes) ; la transition est longue pour qu'une image lente ne l'efface pas
+    await image(page);
+    await image(page); // deux images dessinées d'abord : la transition de la caméra part de la vue de l'image d'avant (sur un runner lent, la première bascule pouvait précéder toute image)
     await page.evaluate((cmd) => window.__vertige.jouer(cmd), c);
     // Jusqu'à la première bascule : la simulation a tourné d'un coup, la caméra rattrape son ancien point de vue.
     const n = new Partie(niveau("cube"));
@@ -32,7 +35,7 @@ test.describe("Vertige : la gravité et les portails", () => {
     await image(page);
     expect((await page.evaluate(() => window.__vertige.sim().bascules))).toBe(1);
     expect((await page.evaluate(() => window.__vertige.camera())).correction).toBe(true);
-    await page.waitForTimeout(1400);
+    await page.waitForTimeout(6500);
     expect((await page.evaluate(() => window.__vertige.camera())).correction).toBe(false);
     await page.evaluate((k) => window.__jeu.avancer(k), c.length - premiere - 1);
     const fin = await page.evaluate(() => {
@@ -41,7 +44,7 @@ test.describe("Vertige : la gravité et les portails", () => {
     });
     const attendu = new Partie(niveau("cube"));
     for (const x of c) attendu.avancer(x);
-    expect(fin).toEqual({ bascules: 6, gravite: 3, chutes: 0, tick: attendu.tick });
+    expect(fin).toEqual({ bascules: 5, gravite: 2, chutes: 0, tick: attendu.tick });
     expect(attendu.empreinte()).toBe(await page.evaluate(() => window.__vertige.sim().empreinte()));
     await context.close();
   });
@@ -86,7 +89,7 @@ test.describe("Vertige : la gravité et les portails", () => {
     const pire = Math.max(...ecarts);
     console.log("écarts entre images (niveaux de gris, sur 255) :", ecarts.map((e) => e.toFixed(2)).join(" "));
     expect(pire, "aucune image ne diffère de la précédente plus que d'un pas de course (la couture est invisible)").toBeLessThan(Math.max(4 * mediane, mediane + 3));
-    // Le parcours entier : les trois paires et l'orbe, l'arrivée.
+    // Le parcours entier : les trois paires et la plaque de sol, l'arrivée.
     await page.evaluate((k) => window.__jeu.avancer(k), c.length);
     await image(page);
     const fin = await page.evaluate(() => {

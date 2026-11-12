@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
 import { NOMS_NIVEAUX, Partie, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, dailyVertige, decoderRediffusion, empreinteContenu, empreinteNiveau, niveau, rejouer, rejouerScenario, verifier, type NomNiveau } from "../src/index";
+import { enchainement } from "../src/modulesIndex";
 
 // Le golden : produit par `npm run golden:vertige` (jamais écrit à la main), rejoué ici par Node et dans Chromium, Firefox et WebKit par `apps/vertige/e2e/determinisme.spec.ts`.
 const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-vertige.json", import.meta.url), "utf8")) as {
@@ -35,12 +36,12 @@ describe("golden de Vertige", () => {
     if (ref.scenario) expect(rejouerScenario(ref.code).resultat).toEqual(ref.resultat);
     else expect(rejouer(dailyVertige(parseDay(ref.date)!, ref.g), ref.code)).toEqual(ref.resultat);
   });
-  it("lot V1 : le golden visite les six directions de la gravité et des traversées de portail, état complet tous les 600 pas", () => {
+  it("lots V1 et V2 : le golden visite les six directions de la gravité et des traversées de portail, état complet tous les 600 pas", () => {
     const total = (cle: "bascules" | "traversees"): number => golden.rediffusions.reduce((n, r) => n + ((r.resultat as Record<string, number>)[cle] ?? 0), 0);
     expect(total("bascules")).toBeGreaterThanOrEqual(15);
     expect(total("traversees")).toBeGreaterThanOrEqual(30);
     const cube = golden.rediffusions.find((x) => x.nom === "cube-six-directions")!;
-    expect((cube.resultat as { bascules: number }).bascules).toBe(6);
+    expect((cube.resultat as { bascules: number }).bascules).toBe(5); // lot V2 : cinq faces voisines, six directions (le sol du départ compte)
     // Les six directions : on rejoue le cube et on relève la gravité après chaque bascule.
     const p = new Partie(niveau("cube"));
     const vues = new Set<number>([p.gravite]);
@@ -50,6 +51,14 @@ describe("golden de Vertige", () => {
     }
     expect([...vues].sort()).toEqual([0, 1, 2, 3, 4, 5]);
     for (const r of golden.rediffusions.filter((x) => x.nom !== "vide")) expect(r.empreintes.length).toBeGreaterThanOrEqual(Math.floor((r.resultat as { pas: number }).pas / 600));
+  });
+  it("lot V2 : le robot de l'enchaînement arrive, sans chute, et rejoue ses paliers", () => {
+    const r = golden.rediffusions.find((x) => x.nom === "enchainement-robot")!.resultat as { arrive: boolean; ticks: number; chutes: number };
+    expect(r.arrive).toBe(true);
+    expect(r.chutes).toBe(0);
+    expect(r.ticks).toBe(enchainement().arriveeRobot);
+    const reprise = golden.rediffusions.find((x) => x.nom === "enchainement-reprise")!;
+    expect((reprise.resultat as { chutes: number }).chutes).toBeGreaterThanOrEqual(1); // la touche de reprise est une chute au palier
   });
   it("le parcours est fini par le joueur scripté, le chrono s'arrête à l'arrivée", () => {
     const r = golden.rediffusions.find((x) => x.nom === "parcours-robot")!.resultat as { arrive: boolean; ticks: number; pas: number };

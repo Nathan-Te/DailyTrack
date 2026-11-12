@@ -35,5 +35,5 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "commandes.action.droite": "Move right",
   "commandes.action.saut": "Jump (and wall jump)",
   "commandes.action.dash": "Dash",
-  "commandes.action.relancer": "Restart the course",
+  "commandes.action.reprendre": "Back to the last platform (the clock keeps running)",
 };

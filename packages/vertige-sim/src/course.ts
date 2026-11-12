@@ -1,6 +1,8 @@
-import { CM, DEMI, DUREE_MAX_TICKS, HAUT, REGARD_MAX, TANGAGE_MAX, TOUCHES_TOUTES, TOUR, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, YEUX } from "./constantes";
+import { CM, DEMI, DUREE_MAX_TICKS, HAUT, POUSSEE, REGARD_MAX, TANGAGE_MAX, TOUCHES_TOUTES, TOUR, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_REPRISE, T_SAUT, YEUX } from "./constantes";
 import type { Boite, Niveau } from "./niveaux";
 import { appliquer, appliquerT, demiTour, DIRS, dirDe, gravite, mul, numeroOrientation, ORIENTATIONS, oppose, quartDeTour, croix, type Dir, type Mat, type V3 } from "./orientation";
+import { Grille } from "./grille";
+import { CAPTURE_LATERAL, CAPTURE_REGARD, CAPTURE_VERTICAL, CAPTURE_VITESSE_LATERALE, CAPTURE_VITESSE_MAX_MILLE, CAPTURE_VITESSE_MILLE } from "./jonctions";
 import { PORTAIL_DEMI_H, PORTAIL_DEMI_L, liaisons, type Liaison } from "./portails";
 import { pas, REGLAGES_DEFAUT, type Reglages } from "./sensations";
 import { cosinus, idiv, sinus } from "./trigo";
@@ -25,37 +27,39 @@ export interface Resultat {
   pas: number;
   gemmes: number;
   chutes: number;
-  /** Les bascules de gravité (surfaces, orbes) et les traversées de portail (lot V1). */
+  /** Les bascules de gravité (surfaces marquées) et les traversées de portail (lot V1). */
   bascules: number;
   traversees: number;
 }
 
 const EPS = 10; // 10 µm : une boîte qui n'en déborde pas plus ne « chevauche » pas
-const POUSSEE = 100; // la distance laissée entre le joueur et ce qu'il touche (100 µm)
+const PAD = 100_000; // la marge de la requête à l'index spatial (10 cm : une poussée ramène au plus de POUSSEE en arrière, dans le balayage)
 const SONDE = 80_000; // la sonde de mur : 8 cm
 const DEMI_RACINE_2 = 46341; // 1/√2 à l'échelle 65 536
 const RAYON_GEMME2 = 1_300_000 * 1_300_000;
-const RAYON_ORBE2 = 1_000_000 * 1_000_000;
 /** Après une bascule, 0,2 s (24 pas) sans nouvelle bascule : un angle entre deux surfaces ne fait pas osciller la gravité. */
 const BASCULE_VERROU = 24;
-/** Une orbe ramassée est éteinte 2 s (240 pas), puis se rallume ; une chute la rallume tout de suite. */
-const ORBE_RECHARGE = 240;
-/** La moitié de la boîte, au-dessus des pieds : le centre qui décide des portails, des orbes et des gemmes. */
+/** La moitié de la boîte, au-dessus des pieds : le centre qui décide des portails et des gemmes. */
 const MI_HAUT = 900_000; // HAUT / 2 (un littéral : voir portails.ts)
 
 /** Une boîte du niveau exprimée dans le repère local d'une orientation. */
 interface BoiteL extends Boite {
   g: boolean;
 }
-const LOCALES = new WeakMap<Niveau, Map<number, readonly BoiteL[]>>();
-/** Les blocs du niveau dans le repère local de l'orientation `ori` (construits une fois par niveau et par orientation : les 24 au plus). */
-function boitesLocales(niveau: Niveau, ori: number): readonly BoiteL[] {
+/** Les blocs du niveau dans un repère local, et leur index spatial (lot V2). */
+interface Locales {
+  liste: readonly BoiteL[];
+  grille: Grille;
+}
+const LOCALES = new WeakMap<Niveau, Map<number, Locales>>();
+/** Les blocs du niveau dans le repère local de l'orientation `ori` (construits une fois par niveau et par orientation : les 24 au plus), avec leur grille. */
+function boitesLocales(niveau: Niveau, ori: number): Locales {
   let parOri = LOCALES.get(niveau);
   if (!parOri) LOCALES.set(niveau, (parOri = new Map()));
   let l = parOri.get(ori);
   if (!l) {
     const m = ORIENTATIONS[ori]!;
-    l = niveau.blocs.map((b) => {
+    const liste = niveau.blocs.map((b) => {
       const lo = [b.boite.x0, b.boite.y0, b.boite.z0];
       const hi = [b.boite.x1, b.boite.y1, b.boite.z1];
       const a = [0, 0, 0];
@@ -70,6 +74,7 @@ function boitesLocales(niveau: Niveau, ori: number): readonly BoiteL[] {
       }
       return { x0: a[0]!, y0: a[1]!, z0: a[2]!, x1: z[0]!, y1: z[1]!, z1: z[2]!, g: b.gravite === true };
     });
+    l = { liste, grille: new Grille(liste, niveau.sansIndex === true) };
     parOri.set(ori, l);
   }
   return l;
@@ -101,8 +106,10 @@ export class Partie {
   /** L'orientation du repère local dans le monde (numéro 0 à 23 et matrice : `orientation.ts`) ; la gravité va vers `gravite(m)`. */
   ori = 0;
   m: Mat = ORIENTATIONS[0]!;
-  /** Les blocs du niveau dans le repère local courant. */
+  /** Les blocs du niveau dans le repère local courant, et leur index spatial. */
   private blocs: readonly BoiteL[];
+  private grille: Grille;
+
   /** Pas restants : temps de grâce au bord, saut mémorisé, dash, recharge du dash, verrou du saut de mur ; pas passés sur le mur. */
   coyote = 0;
   tampon = 0;
@@ -128,10 +135,14 @@ export class Partie {
   traversees = 0;
   derniereBascule = -1;
   derniereTraversee = -1;
-  /** Pas restants avant qu'une nouvelle bascule soit permise ; pas restants avant que chaque orbe se rallume. */
+  /** Pas restants avant qu'une nouvelle bascule soit permise. */
   basculeVerrou = 0;
-  readonly orbesT: number[];
   readonly prises: boolean[];
+  /** Le nombre de paliers capturés (l'état ramené à l'état canonique) et le pas de la dernière capture (−1 : aucune ; lot V2). */
+  captures = 0;
+  derniereCapture = -1;
+  /** Les retours au dernier palier demandés par la touche de reprise (en plus des chutes ; lot V2). */
+  reprises = 0;
   /** Le contact avec une surface de gravité pendant ce pas : la direction du monde vers elle, ou −1. */
   private marque = -1;
   // Le point de reprise : les pieds dans le MONDE, l'orientation et le lacet.
@@ -152,14 +163,47 @@ export class Partie {
     this.y = d.y;
     this.z = d.z;
     this.prises = niveau.gemmes.map(() => false);
-    this.orbesT = (niveau.orbes ?? []).map(() => 0);
     this.liaisons = liaisonsDe(niveau);
-    this.blocs = boitesLocales(niveau, this.repOri);
+    const loc = boitesLocales(niveau, this.repOri);
+    this.blocs = loc.liste;
+    this.grille = loc.grille;
     if (this.repOri !== 0) {
       this.fixer(ORIENTATIONS[this.repOri]!);
       [this.x, this.y, this.z] = appliquerT(this.m, this.repPieds);
     }
     this.n = { coyote: pas(reglages.coyote), tampon: pas(reglages.tampon), murDuree: pas(reglages.murDuree), murVerrou: pas(reglages.murVerrou), dash: pas(reglages.dashDuree), recharge: pas(reglages.dashRecharge) };
+    if (d.lance) this.canoniser(ORIENTATIONS[this.repOri]!, [d.x, d.y, d.z]);
+  }
+
+  /**
+   * L'ÉTAT DE JONCTION CANONIQUE (lot V2) : le repère du joueur est `m` (sa direction est −z local, sa gravité −y local), les pieds sont en `pieds` (monde, µm), au sol, en course à pleine vitesse dans l'axe (vz = −vitesse
+   * de course, vx = vy = 0), le regard dans l'axe (lacet 0), et plus rien en cours (temps de grâce, saut mémorisé, dash et sa recharge, verrous, course sur le mur). Le tangage et l'historique (chrono, chutes, compteurs)
+   * ne font pas partie de l'état canonique. Exact en entiers : deux parties qui arrivent à un palier, par n'importe quel chemin, en repartent identiques.
+   */
+  private canoniser(m: Mat, pieds: V3): void {
+    this.fixer(m);
+    [this.x, this.y, this.z] = appliquerT(m, pieds);
+    this.vx = 0;
+    this.vy = 0;
+    this.vz = -this.reglages.vitesse * CM;
+    this.lacet = 0;
+    this.sol = true;
+    this.coyote = this.tampon = this.dash = this.dashRecharge = this.murVerrou = this.murT = this.basculeVerrou = 0;
+    this.surMur = false;
+    this.murNx = this.murNz = 0;
+    this.touchesAvant = T_AVANT;
+  }
+
+  /** Un bloc du niveau (son rang dans `niveau.blocs`) dans le repère local courant du joueur : pour mesurer les écarts d'un module (lot V2). */
+  boiteLocale(i: number): Boite {
+    return this.blocs[i]!;
+  }
+
+  /** Le bloc du niveau (son rang dans `niveau.blocs`) sur lequel les pieds reposent, ou −1 : pour mesurer les écarts d'un module (lot V2). */
+  sousLesPieds(): number {
+    const cand = this.grille.chercher(this.x - DEMI, this.y - 2 * PAD, this.z - DEMI, this.x + DEMI, this.y + HAUT, this.z + DEMI);
+    for (const i of cand) if (this.chevauche(this.x, this.y - 300, this.z, this.blocs[i]!)) return i;
+    return -1;
   }
 
   get finie(): boolean {
@@ -193,7 +237,9 @@ export class Partie {
   private fixer(m: Mat): void {
     this.m = m;
     this.ori = numeroOrientation(m);
-    this.blocs = boitesLocales(this.niveau, this.ori);
+    const loc = boitesLocales(this.niveau, this.ori);
+    this.blocs = loc.liste;
+    this.grille = loc.grille;
   }
 
   private chevauche(px: number, py: number, pz: number, s: Boite): boolean {
@@ -203,25 +249,49 @@ export class Partie {
   /** Déplace d'un axe et résout les contacts ; rend −1 (contact en allant vers le moins), 1 (vers le plus), 0 (rien). Une surface de gravité touchée est notée (la première du pas). */
   private deplacer(axe: "x" | "y" | "z", d: number): number {
     if (d === 0) return 0;
+    // L'index (lot V2) : seules les boîtes proches du balayage (de la position d'avant à celle d'après, plus 10 cm : une poussée ramène au plus à la position d'avant, à POUSSEE près) sont essayées, dans l'ordre du niveau.
+    const [ax, ay, az] = [this.x, this.y, this.z];
     this[axe] += d;
+    const candidats = this.grille.chercher(Math.min(ax, this.x) - DEMI - PAD, Math.min(ay, this.y) - PAD, Math.min(az, this.z) - DEMI - PAD, Math.max(ax, this.x) + DEMI + PAD, Math.max(ay, this.y) + HAUT + PAD, Math.max(az, this.z) + DEMI + PAD);
     let touche = 0;
-    for (const s of this.blocs) {
+    // Une surface de gravité touchée est notée (la première du pas) AVANT que ce contact, ou un autre, ne repousse la boîte : toucher une surface marquée ne dépend pas de l'ordre des blocs du niveau (lot V2).
+    if (this.marque < 0) {
+      for (let c = 0; c < candidats.length; c++) {
+        const s = this.blocs[candidats[c]!]!;
+        if (s.g && this.chevauche(this.x, this.y, this.z, s)) {
+          const signe = d > 0 ? 1 : -1;
+          this.marque = dirDe(appliquer(this.m, [axe === "x" ? signe : 0, axe === "y" ? signe : 0, axe === "z" ? signe : 0]));
+          break;
+        }
+      }
+    }
+    for (let c = 0; c < candidats.length; c++) {
+      const s = this.blocs[candidats[c]!]!;
       if (!this.chevauche(this.x, this.y, this.z, s)) continue;
       if (axe === "y") this.y = d > 0 ? s.y0 - HAUT - POUSSEE : s.y1 + POUSSEE;
       else if (axe === "x") this.x = d > 0 ? s.x0 - DEMI - POUSSEE : s.x1 + DEMI + POUSSEE;
       else this.z = d > 0 ? s.z0 - DEMI - POUSSEE : s.z1 + DEMI + POUSSEE;
       touche = d > 0 ? 1 : -1;
-      if (s.g && this.marque < 0) this.marque = dirDe(appliquer(this.m, [axe === "x" ? touche : 0, axe === "y" ? touche : 0, axe === "z" ? touche : 0]));
     }
     return touche;
   }
 
   /** La normale d'un mur contre le joueur (à 8 cm), ou null ; `g` : le mur est une surface de gravité. L'ordre des essais est fixe : +x, −x, +z, −z. */
   private murVoisin(): { nx: number; nz: number; g: boolean } | null {
+    const candidats = this.grille.chercher(this.x - DEMI - SONDE - PAD, this.y - PAD, this.z - DEMI - SONDE - PAD, this.x + DEMI + SONDE + PAD, this.y + HAUT + PAD, this.z + DEMI + SONDE + PAD);
     for (const [axe, sgn] of [["x", 1], ["x", -1], ["z", 1], ["z", -1]] as const) {
       const px = this.x + (axe === "x" ? sgn * SONDE : 0);
       const pz = this.z + (axe === "z" ? sgn * SONDE : 0);
-      for (const b of this.blocs) if (this.chevauche(px, this.y, pz, b)) return { nx: axe === "x" ? -sgn : 0, nz: axe === "z" ? -sgn : 0, g: b.g };
+      let touche = false;
+      let g = false;
+      for (let c = 0; c < candidats.length; c++) {
+        const b = this.blocs[candidats[c]!]!;
+        if (this.chevauche(px, this.y, pz, b)) {
+          touche = true;
+          if (b.g) g = true; // un mur fait de plusieurs blocs : il est marqué dès qu'un des blocs touchés l'est (lot V2)
+        }
+      }
+      if (touche) return { nx: axe === "x" ? -sgn : 0, nz: axe === "z" ? -sgn : 0, g };
     }
     return null;
   }
@@ -309,9 +379,9 @@ export class Partie {
     if (this.dashRecharge > 0) this.dashRecharge--;
     if (this.murVerrou > 0) this.murVerrou--;
     if (this.basculeVerrou > 0) this.basculeVerrou--;
-    for (let i = 0; i < this.orbesT.length; i++) if (this.orbesT[i]! > 0) this.orbesT[i]!--;
     this.marque = -1;
     const avant = this.centre();
+    const piedsAvant = this.niveau.jonctions ? this.pieds() : null;
     if (appuis & T_SAUT) this.tampon = n.tampon;
     // La direction souhaitée, à l'échelle 65 536 (norme 65 536, ou 0).
     const av = (k & T_AVANT ? 1 : 0) - (k & T_ARRIERE ? 1 : 0);
@@ -380,30 +450,34 @@ export class Partie {
     this.sol = vertical < 0;
     if (vertical !== 0) this.vy = 0;
     if (etaitAuSol && !this.sol) this.coyote = n.coyote;
-    // Les portails : le centre de la boîte a-t-il passé un plan ? (Sinon, les orbes, puis les surfaces de gravité.)
+    // Les portails : le centre de la boîte a-t-il passé un plan ? (Sinon, les surfaces de gravité.)
     const traverse = this.liaisons.length > 0 && this.traverser(avant);
     if (!traverse) this.declencherGravite(mur);
+    // Les paliers (lot V2) : le plan d'un palier est-il passé, dans l'état voulu ? L'état est alors ramené à l'état canonique.
+    const finJonction = piedsAvant !== null && this.capturer(piedsAvant);
     // Les points de reprise, la chute.
     if (this.sol) {
       const f = this.pieds();
       for (const p of this.niveau.reprises) {
         if (dans(f[0], p.zone.x0, p.zone.x1) && dans(f[1], p.zone.y0, p.zone.y1) && dans(f[2], p.zone.z0, p.zone.z1)) {
+          if (p.ori !== undefined && this.gravite !== gravite(ORIENTATIONS[p.ori]!)) continue;
           this.repPieds = [p.x, p.y, p.z];
-          this.repOri = this.ori;
+          this.repOri = p.ori ?? this.ori;
           this.repLacet = p.lacet;
         }
       }
     }
     const pieds = this.pieds();
     const v = this.niveau.vide;
-    if (pieds[1] < this.niveau.chute || (v && !(dans(pieds[0], v.x0, v.x1) && dans(pieds[1], v.y0, v.y1) && dans(pieds[2], v.z0, v.z1)))) {
+    const reprise = (appuis & T_REPRISE) !== 0;
+    if (reprise || pieds[1] < this.niveau.chute || (v && !(dans(pieds[0], v.x0, v.x1) && dans(pieds[1], v.y0, v.y1) && dans(pieds[2], v.z0, v.z1)))) {
+      if (reprise) this.reprises++;
       this.fixer(ORIENTATIONS[this.repOri]!);
       [this.x, this.y, this.z] = appliquerT(this.m, this.repPieds);
       this.lacet = this.repLacet;
       this.vx = this.vy = this.vz = 0;
       this.sol = false;
       this.dash = this.coyote = this.tampon = this.murT = this.basculeVerrou = 0;
-      this.orbesT.fill(0);
       this.surMur = false;
       this.chutes++;
     }
@@ -417,6 +491,7 @@ export class Partie {
       if (dx * dx + dy * dy + dz * dz < RAYON_GEMME2) this.prises[i] = true;
     });
     this.tick++;
+    if (finJonction && this.depart >= 0 && this.fin < 0) this.fin = this.tick;
     const a = this.niveau.arrivee;
     if (a && this.depart >= 0) {
       const f = this.pieds();
@@ -429,25 +504,35 @@ export class Partie {
     }
   }
 
-  /** Les orbes puis les surfaces de gravité : la première cause d'une bascule gagne, et jamais pendant le verrou qui suit une bascule. */
+  /** Un palier capturé ? (`avant` : les pieds au début du pas.) Rend vrai si la capture finit la partie (la sortie d'un module joué seul). */
+  private capturer(avant: V3): boolean {
+    const apres = this.pieds();
+    for (const j of this.niveau.jonctions!) {
+      const mj = ORIENTATIONS[j.ori]!;
+      const dir = appliquer(mj, [0, 0, -1]);
+      const droite = appliquer(mj, [1, 0, 0]);
+      const haut = appliquer(mj, [0, 1, 0]);
+      const rel = (p: V3, v: V3): number => (p[0] - j.x) * v[0] + (p[1] - j.y) * v[1] + (p[2] - j.z) * v[2];
+      if (!(rel(avant, dir) < 0 && rel(apres, dir) >= 0)) continue;
+      if (Math.abs(rel(apres, droite)) > CAPTURE_LATERAL || Math.abs(rel(apres, haut)) > CAPTURE_VERTICAL) continue;
+      if (!this.sol || this.gravite !== gravite(mj)) continue;
+      const regard = appliquer(this.m, [-sinus(this.lacet), 0, -cosinus(this.lacet)]);
+      if (regard[0] * dir[0] + regard[1] * dir[1] + regard[2] * dir[2] < CAPTURE_REGARD) continue;
+      const v = this.vitesseMonde();
+      const course = this.reglages.vitesse * CM;
+      const le_long = v[0] * dir[0] + v[1] * dir[1] + v[2] * dir[2];
+      if (le_long < idiv(course * CAPTURE_VITESSE_MILLE, 1000) || le_long > idiv(course * CAPTURE_VITESSE_MAX_MILLE, 1000) || Math.abs(v[0] * droite[0] + v[1] * droite[1] + v[2] * droite[2]) > CAPTURE_VITESSE_LATERALE) continue;
+      this.canoniser(mj, [j.x, j.y, j.z]);
+      this.captures++;
+      this.derniereCapture = this.tick;
+      return j.fin === true;
+    }
+    return false;
+  }
+
+  /** Les surfaces de gravité : la première touchée gagne, et jamais pendant le verrou qui suit une bascule. */
   private declencherGravite(mur: { nx: number; nz: number; g: boolean } | null): void {
     if (this.basculeVerrou > 0) return;
-    const orbes = this.niveau.orbes;
-    if (orbes && orbes.length > 0) {
-      const cm = this.centre();
-      for (let i = 0; i < orbes.length; i++) {
-        const o = orbes[i]!;
-        if (this.orbesT[i]! > 0 || o.dir === this.gravite) continue;
-        const dx = o.x - cm[0];
-        const dy = o.y - cm[1];
-        const dz = o.z - cm[2];
-        if (dx * dx + dy * dy + dz * dz < RAYON_ORBE2) {
-          this.orbesT[i] = ORBE_RECHARGE;
-          this.tournerGravite(o.dir);
-          return;
-        }
-      }
-    }
     // Une surface de gravité : touchée en se déplaçant, ou longée en courant sur le mur (la direction va du joueur vers le mur).
     let vers = this.marque;
     if (vers < 0 && mur && mur.g && this.surMur) vers = dirDe(appliquer(this.m, [-mur.nx, 0, -mur.nz]));
@@ -471,7 +556,7 @@ export class Partie {
     const etat = [this.x, this.y, this.z, this.vx, this.vy, this.vz, this.lacet, this.tangage, this.sol ? 1 : 0, this.coyote, this.tampon, this.dash, this.dashRecharge, this.murVerrou, this.murT, this.surMur ? 1 : 0, this.murNx, this.murNz, this.depart, this.fin, this.tick, this.chutes, this.ori, this.basculeVerrou, this.bascules, this.traversees, this.derniereBascule, this.derniereTraversee];
     for (const v of etat) entier(v);
     for (const p of this.prises) entier(p ? 1 : 0);
-    for (const t of this.orbesT) entier(t);
+    if (this.niveau.jonctions) entier(this.captures); // seulement avec des paliers : les empreintes des niveaux sans palier ne changent pas
     return h.toString(16).padStart(8, "0");
   }
 }

@@ -4,13 +4,13 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { DIRS, M, type Boite, type Niveau } from "@cdj/vertige-sim";
+import { M, type Boite, type Niveau } from "@cdj/vertige-sim";
 import { Fenetres } from "./fenetres";
 import { Habillage, type RoleMat } from "./rendu";
 
 // Le monde que l'on voit : le ciel en dégradé, les lumières, le soleil carré, les blocs du niveau (ceux de la simulation, à l'identique), puis le DÉCOR qui ne bloque jamais — bannières, braseros, gemmes, îlots
 // lointains, nuages, et le cadre de pierre qui tourne de travers (un objet de travers n'a pas de collision : la simulation ne connaît que des boîtes alignées sur les axes). Tout vient de la maquette jouable.
-// Lot V1 : les surfaces de gravité (des blocs bleu-violet cerclés de clair), les orbes (une bille et sa flèche, qui montre la direction où la gravité va tourner) et les fenêtres des portails (`fenetres.ts`).
+// Lot V1 : les surfaces de gravité (des blocs bleu-violet cerclés de clair ; lot V2 : le seul déclencheur, les orbes sont retirées) et les fenêtres des portails (`fenetres.ts`).
 export interface OptionsMonde {
   bloom: boolean;
   ombres: boolean;
@@ -39,12 +39,13 @@ export class Monde {
   private readonly flammes: THREE.Mesh[] = [];
   private readonly bannieres: THREE.Mesh[] = [];
   private readonly gemmes: { mesh: THREE.Mesh; base: number }[] = [];
-  private readonly orbes: { groupe: THREE.Group; bille: THREE.Mesh; base: number }[] = [];
   readonly fenetres: Fenetres | null;
   private readonly nuages = new THREE.Group();
   private readonly cadre = new THREE.Group();
   private readonly cible = new THREE.Vector3();
   private readonly aretes: THREE.LineSegments[] = [];
+  /** Un niveau long (l'enchaînement, lot V2) : le soleil et sa boîte d'ombre suivent la caméra, sinon l'ombre ne couvre que le milieu du niveau. */
+  private suivreSoleil = false;
   private bloomActif: boolean;
   private imagesDessinees = 0;
   private largeur = 1;
@@ -171,6 +172,7 @@ export class Monde {
     // Le soleil éclaire le niveau : sa boîte d'ombre suit la taille du niveau.
     const centre = bb.getCenter(new THREE.Vector3());
     const t = bb.getSize(new THREE.Vector3());
+    this.suivreSoleil = Math.max(t.x, t.y, t.z) > 140;
     const demi = Math.min(90, Math.max(30, Math.max(t.x, t.z) / 2 + 15));
     this.cible.set(centre.x, 0, centre.z);
     this.soleil.target.position.copy(this.cible);
@@ -211,23 +213,6 @@ export class Monde {
       m.castShadow = true;
       this.scene.add(m);
       this.gemmes.push({ mesh: m, base: metres(g.y) });
-    }
-    // Les orbes de gravité : une bille lumineuse et, autour, une flèche qui montre la direction où la gravité va tourner (alignée sur le monde).
-    for (const o of n.orbes ?? []) {
-      const groupe = new THREE.Group();
-      const bille = this.hab.habiller(new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1)), "orbe");
-      const dir = new THREE.Vector3(...DIRS[o.dir]!);
-      const fleche = new THREE.Group();
-      const tige = this.hab.habiller(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.6, 8)), "orbe");
-      tige.position.y = 0.75;
-      const pointe = this.hab.habiller(new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.45, 10)), "orbe");
-      pointe.position.y = 1.28;
-      fleche.add(tige, pointe);
-      fleche.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-      groupe.add(bille, fleche);
-      groupe.position.set(metres(o.x), metres(o.y), metres(o.z));
-      this.scene.add(groupe);
-      this.orbes.push({ groupe, bille, base: metres(o.y) });
     }
     // L'arrivée : un cadre de pierre et sa lueur rose (le portail de la maquette, qui ne mène plus nulle part).
     if (n.arrivee) {
@@ -349,13 +334,7 @@ export class Monde {
   }
 
   /** La vie du décor : flammes, gemmes, bannières, cadre, nuages, soleil ; `prises` : les gemmes déjà prises. */
-  animer(t: number, dt: number, prises: readonly boolean[], orbesT: readonly number[] = []): void {
-    this.orbes.forEach((o, i) => {
-      const eteinte = (orbesT[i] ?? 0) > 0;
-      o.groupe.visible = !eteinte;
-      o.groupe.position.y = o.base + Math.sin(t * 2.2 + o.base + i) * 0.12;
-      o.bille.rotation.y += dt * 1.2;
-    });
+  animer(t: number, dt: number, prises: readonly boolean[]): void {
     this.gemmes.forEach((g, i) => {
       g.mesh.visible = !prises[i];
       g.mesh.rotation.y += dt * 1.6;
@@ -367,6 +346,12 @@ export class Monde {
     this.cadre.rotation.y += dt * 0.02;
     this.nuages.position.x = Math.sin(t * 0.05) * 3;
     this.placerDisque(this.camera.position);
+    this.ciel.position.copy(this.camera.position); // le ciel suit la caméra : un niveau de 400 m ne sort pas de sa sphère
+    if (this.suivreSoleil) {
+      const c = this.camera.position;
+      this.cible.set(Math.round(c.x / 6) * 6, Math.round(c.y / 6) * 6, Math.round(c.z / 6) * 6); // par pas de 6 m : l'ombre ne scintille pas
+      this.soleil.target.position.copy(this.cible);
+    }
     this.soleil.position.copy(this.cible).addScaledVector(DIR_SOLEIL, 120);
   }
 
@@ -400,6 +385,7 @@ export class Monde {
     this.hab.dispose();
     this.composer.dispose();
     this.renderer.dispose();
+    this.renderer.forceContextLoss(); // la galerie de modules change de monde : on ne garde pas les contextes WebGL
     this.renderer.domElement.remove();
   }
 }

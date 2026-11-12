@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, type DailyLevel } from "@cdj/jump-sim";
-import { HEALTH_FIELDS, isLocalBase, readOnlyFetch, readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, type FetchFn } from "../scripts/smokeRead";
+import { FICHES_SERVEUR } from "../src/fiches.generated";
+import { HEALTH_FIELDS, JEUX_SANS_MEDAILLE, isLocalBase, medaillesValides, readOnlyFetch, readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, type FetchFn } from "../scripts/smokeRead";
 import { AUTRES_JEUX, makeApi, parisDayStart, playerId, TEST_DB, verifierErreur, type TestApi } from "./helpers";
 
 // Lot P4 (plateforme) : `smoke --lecture-seule`, la vérification de la production après chaque déploiement. Elle **n'écrit jamais rien**
@@ -221,5 +222,23 @@ describe(`smoke --lecture-seule --par-hosting : le cache respecte Vary: X-Player
     await expect(f(`${BASE}/api/jump/day/${DATE}/bundle`, { headers: { "X-Player-Id": playerId(1) } })).rejects.toThrow(/identifiant/);
     await expect(f(`${BASE}/api/portail/jour`, { method: "POST", headers: { "X-Player-Id": playerId(1) } })).rejects.toThrow(/refusé/);
     expect(sent).toEqual([`${BASE}/api/portail/jour ${playerId(1)}`]);
+  });
+});
+
+describe("smoke : les médailles d'un jeu ouvert", () => {
+  const ordonnees = { author: 10, gold: 20, silver: 30, bronze: 40 };
+  it("un jeu sans médaille volontaire (Vertige avant son robot) rend `medals: null` ; une médaille là où il n'y en a pas est un échec", () => {
+    expect(JEUX_SANS_MEDAILLE).toEqual(["vertige"]);
+    for (const id of JEUX_SANS_MEDAILLE) expect(FICHES_SERVEUR.some((f) => f.id === id), `« ${id} » est une fiche`).toBe(true);
+    expect(medaillesValides("vertige", null, true)).toBe(true);
+    expect(medaillesValides("vertige", undefined, true)).toBe(true);
+    expect(medaillesValides("vertige", ordonnees, true)).toBe(false);
+  });
+  it("tout autre jeu garde l'exigence : des médailles ordonnées dans le sens du classement, un bronze positif ; `null` est un échec", () => {
+    expect(medaillesValides("tower", null, false)).toBe(false);
+    expect(medaillesValides("rush", ordonnees, true)).toBe(true); // un temps : l'or est plus court
+    expect(medaillesValides("rush", ordonnees, false)).toBe(false);
+    expect(medaillesValides("blocks", { author: 40, gold: 30, silver: 20, bronze: 10 }, false)).toBe(true);
+    expect(medaillesValides("blocks", { author: 10, gold: 10, silver: 10, bronze: 0 }, true)).toBe(false);
   });
 });
