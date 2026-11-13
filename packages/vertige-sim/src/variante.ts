@@ -1,9 +1,11 @@
 import { DUREE_MAX_TICKS, TICKS_PAR_SECONDE } from "./constantes";
 import type { Resultat } from "./course";
+import type { Contenu } from "./generateur";
+import { medailleDeScore, seuilsDeTemps, type Medaille, type Seuils } from "./medailles";
 import { idiv } from "./trigo";
 
 // **LA VARIANTE — le seul endroit où « Vertige » sait comment il se classe** : au temps, le plus court d'abord (une colonne, `temps`, en pas de 1/120 s). Le reste du code (rendu, définition, serveur, essais, e2e)
-// ne lit que `VARIANTE`. `test/variante.test.ts` la vérifie contre `config/jeux/vertige.json`. Les médailles (le Diamant du robot) viennent après le prototype : `bareme` n'est lu par personne avant le lot V3.
+// ne lit que `VARIANTE`. `test/variante.test.ts` la vérifie contre `config/jeux/vertige.json`. Lot V3 : les médailles viennent du robot (`medailles.ts`), leur barème est `fiche.bareme` ([or, argent, bronze] en pour cent du temps du robot).
 
 /** Le temps de classement d'un résultat (en pas) : le temps de l'arrivée, ou le pire temps. */
 export const tempsDe = (r: Pick<Resultat, "arrive" | "ticks">): number => (r.arrive ? r.ticks : DUREE_MAX_TICKS);
@@ -25,9 +27,15 @@ export const VARIANTE = {
   fiche: { colonnes: [{ nom: "temps", sens: "asc" as const }], unite: "ticks" as const, format: "temps" as const, bareme: [130, 160, 200] as readonly number[] },
   /** Le score : les colonnes de classement, dans l'ordre de la fiche. */
   score: (r: Pick<Resultat, "arrive" | "ticks">): number[] => [tempsDe(r)],
+  /** Les seuils d'un temps du robot : le Diamant, puis les pourcentages de la fiche. */
+  seuils: (ticksRobot: number): Seuils => seuilsDeTemps(ticksRobot, VARIANTE.fiche.bareme),
+  medaille: (score: readonly number[], s: Seuils): Medaille | null => medailleDeScore(score, s),
   formatScore: (score: readonly number[], langue: "fr" | "en"): string => ecrireTemps(score[0] ?? DUREE_MAX_TICKS, langue),
   scorePartage: (score: readonly number[], langue: "fr" | "en"): string => ecrireTemps(score[0] ?? DUREE_MAX_TICKS, langue),
 };
+
+/** Les seuils d'un jour tel qu'on le sert : ceux écrits dans son fichier s'il est figé (`seuilsFiges`), sinon ceux du barème de la fiche pour le temps de son robot. */
+export const seuilsDuJour = (contenu: Pick<Contenu, "seuilsFiges" | "ticksRobot">): Seuils => contenu.seuilsFiges ?? VARIANTE.seuils(contenu.ticksRobot ?? 0);
 
 /** Le score d'un résultat rejoué, par nom de colonne de la fiche : ce que le serveur classe. */
 export function scoreParColonnes(r: Pick<Resultat, "arrive" | "ticks">): Record<string, number> {

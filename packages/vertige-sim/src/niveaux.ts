@@ -3,6 +3,7 @@ import type { Dir } from "./orientation";
 import { bm, faceAvecPlaque, MX, MY, murDePortail, PX, PY, pm, portail, PZ, MZ } from "./construction";
 import type { Paire } from "./portails";
 import type { NomNiveau } from "./noms";
+import type { Contenu } from "./generateur";
 
 // Les niveaux : un monde de BLOCS ALIGNÉS SUR LES AXES (la simulation ne connaît rien d'autre), écrits en centimètres (centre et taille, comme la maquette), rangés en micromètres. Les décors qui ne
 // bloquent pas (nuages, îlots lointains, bannières, braseros, le cadre qui tourne) sont l'affaire du rendu : un objet de travers n'a jamais de collision. Trois niveaux : le parcours de la maquette
@@ -50,8 +51,8 @@ export interface Jonction {
   fin?: boolean;
 }
 export interface Niveau {
-  /** Le nom du niveau : un scénario, ou `module` pour un module joué seul (lot V2, jamais rejoué par le serveur). */
-  nom: NomNiveau | "module";
+  /** Le nom du niveau : un scénario, `module` pour un module joué seul (lot V2, jamais rejoué par le serveur), ou `jour` pour le niveau du jour assemblé de modules (lot V3). */
+  nom: NomNiveau | "module" | "jour";
   blocs: readonly BlocNiveau[];
   /** Le départ : les pieds dans le MONDE (µm), le lacet, et l'orientation de départ (lot V1, 0 par défaut : la gravité vers le bas ; voir `orientation.ts`). */
   depart: { x: number; y: number; z: number; lacet: number; ori?: number; lance?: boolean };
@@ -252,4 +253,19 @@ export function niveau(nom: NomNiveau): Niveau {
     CACHE.set(nom, n);
   }
   return n;
+}
+
+// Le niveau du jour (lot V3) : assemblé de modules (`niveauDuJour.ts`, `@cdj/vertige-sim/modules`), donc construit par une fabrique que ce fichier ne connaît pas — il est dans le premier chargement du jeu, la bibliothèque n'y est pas.
+// Charger le générateur (`dailyVertige` s'en charge lui-même) enregistre la fabrique ; la rediffusion d'un jour (`rejouer`) et la vérification (`verifier`) passent par `niveauDuContenu`.
+let FABRIQUE_DU_JOUR: ((modules: readonly string[]) => Niveau) | null = null;
+export function enregistrerFabriqueDuJour(fabrique: (modules: readonly string[]) => Niveau): void {
+  FABRIQUE_DU_JOUR = fabrique;
+}
+/** Le niveau d'un contenu : celui du jour assemblé de ses modules, ou le niveau nommé (le parcours de la version 1 du générateur, un scénario d'essai). */
+export function niveauDuContenu(c: Pick<Contenu, "niveau" | "modules">): Niveau {
+  if (c.modules) {
+    if (!FABRIQUE_DU_JOUR) throw new Error("niveau du jour non chargé : importer `@cdj/vertige-sim/modules` (le générateur)");
+    return FABRIQUE_DU_JOUR(c.modules);
+  }
+  return niveau(c.niveau as NomNiveau);
 }

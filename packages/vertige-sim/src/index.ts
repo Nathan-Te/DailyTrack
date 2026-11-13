@@ -12,7 +12,7 @@ export * from "./generateur";
 export * from "./course";
 export * from "./rediffusion";
 export * from "./themes";
-export * from "./jours";
 export * from "./variante";
+export * from "./medailles";
 export * from "./verification";
 export * from "./jonctions";

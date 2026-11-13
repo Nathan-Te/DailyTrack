@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, chargeDe, ecrireTemps, enregistrer, enregistrerScenario, niveau, reglagesDe, type Commande, type Contenu, type Niveau, type Reglages } from "@cdj/vertige-sim";
-import { MODULES, enchainement, enregistrerEnchainement, niveauDuModule, robotDuModule, type Module } from "@cdj/vertige-sim/modules";
+import { M, Partie, REGLAGES_DEFAUT, TANGAGE_MAX, TOUR, VARIANTE, chargeDe, ecrireTemps, decoderRediffusion, enregistrer, enregistrerScenario, niveau, niveauDuContenu, reglagesDe, type Commande, type Contenu, type Niveau, type Reglages } from "@cdj/vertige-sim";
+import { MODULES, enchainement, enregistrerEnchainement, enregistrerNiveauDuJour, niveauDuModule, robotDuJour, robotDuModule, type Module } from "@cdj/vertige-sim/modules";
 import { commandesDuJeu } from "@cdj/kit/jeu/commandes";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { BUILD_RESTRICTED, gameStorage } from "@cdj/kit/stockage";
@@ -38,14 +38,31 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, classe: string, texte
   return e;
 }
 
+/** La rediffusion du Diamant d'un jour (le fantôme « Diamant ») : le robot, c'est-à-dire les solutions des modules du jour jouées bout à bout, écrites comme n'importe quelle partie de ce jour. */
+export function rediffusionDiamantVertige(contenu: Contenu): string {
+  enregistrerNiveauDuJour();
+  return contenu.modules ? enregistrer(contenu, robotDuJour(contenu)) : "";
+}
+
+/** La silhouette du fantôme (lot V3) : une capsule de la taille du joueur (0,6 × 1,8 m), translucide, qui s'efface quand on s'en approche pour ne jamais cacher la vue. */
+function creerSilhouette(): THREE.Mesh {
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.24, 4, 12), new THREE.MeshBasicMaterial({ color: 0x3fb8ff, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+  m.visible = false;
+  m.renderOrder = 10;
+  m.frustumCulled = false;
+  return m;
+}
+/** L'opacité de la silhouette selon sa distance à l'œil (m) : invisible à moins d'un mètre, pleine (0,5) à plus de 3,5 m (un bleu franc : la silhouette se lit sur la pierre claire et sur la brume sans cacher la route). */
+export const opaciteFantome = (distance: number): number => 0.5 * Math.max(0, Math.min(1, (distance - 1) / 2.5));
+
 export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
   if (o.tactile) return partieInerte(hote, o.t("scene.tactile"));
   enregistrerEnchainement(); // `niveau("enchainement")` (le scénario d'essai)
+  enregistrerNiveauDuJour(); // `niveauDuContenu(contenu)` : le niveau du jour assemblé de modules
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
-  const nomNiveau = essai.scenario ?? contenu.niveau;
-  // Lot V2 : la galerie part du premier module (à l'arrêt) ; l'enchaînement et chaque module ont un temps de robot à comparer.
-  let niv: Niveau = essai.galerie ? niveauDuModule(MODULES[0]!) : niveau(nomNiveau);
-  let ticksRobot = essai.galerie ? robotDuModule(MODULES[0]!).ticks : essai.scenario === "enchainement" ? enchainement().arriveeRobot : 0;
+  // Lot V2 : la galerie part du premier module (à l'arrêt) ; l'enchaînement et chaque module ont un temps de robot à comparer. Lot V3 : la galerie des jours part du niveau du jour.
+  let niv: Niveau = essai.galerie ? niveauDuModule(MODULES[0]!) : essai.scenario ? niveau(essai.scenario) : niveauDuContenu(contenu);
+  let ticksRobot = essai.galerie ? robotDuModule(MODULES[0]!).ticks : essai.scenario === "enchainement" ? enchainement().arriveeRobot : essai.jours ? contenu.ticksRobot ?? 0 : 0;
   let moduleCourant: Module | null = essai.galerie ? MODULES[0]! : null;
   const stockage = gameStorage();
   const confort: Confort = confortDe(essai.confort, lireConfort(stockage));
@@ -59,8 +76,11 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
     const m = new Monde(racine, n, { bloom: essai.bloom, ombres: essai.ombres, champ: confort.champ });
     racine.prepend(m.renderer.domElement); // sous les surimpressions
     m.renderer.info.autoReset = false; // les compteurs sont ceux de toute l'image (le halo fait plusieurs passes), remis à zéro à chaque image
+    silhouette = creerSilhouette();
+    m.scene.add(silhouette);
     return m;
   };
+  let silhouette = creerSilhouette();
   let monde = creerMonde(niv);
   const canevas = (): HTMLCanvasElement => monde.renderer.domElement;
   const commandes = (() => {
@@ -76,6 +96,28 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
   // --- La simulation et sa rediffusion ---
   let sim = new Partie(niv, reglages);
   let enregistre: Commande[] = [];
+  // Le fantôme (lot V3) : une seconde partie, jouée avec les commandes d'une rediffusion de CE jour (le robot, ou le meilleur temps du joueur), qui part au premier mouvement du joueur — son propre premier mouvement
+  // tombe au même pas — et repart à zéro quand la partie recommence. Une rediffusion illisible, d'un autre jour ou d'une ancienne version : pas de fantôme, jamais une erreur.
+  let fantomeSim: Partie | null = null;
+  let fantomeCommandes: readonly Commande[] = [];
+  let fantomeTexte: string | null = o.fantome;
+  const preparerFantome = (): void => {
+    fantomeSim = null;
+    if (!fantomeTexte || essai.scenario || essai.galerie) return;
+    try {
+      const d = decoderRediffusion(fantomeTexte);
+      if (!("jour" in d.contenu) || d.contenu.jour !== contenu.jour || d.g !== contenu.g) return;
+      fantomeCommandes = d.commandes;
+      fantomeSim = new Partie(niv, reglages);
+    } catch {
+      fantomeSim = null;
+    }
+  };
+  const avancerFantome = (): void => {
+    if (!fantomeSim || fantomeSim.finie) return;
+    fantomeSim.avancer(fantomeCommandes[fantomeSim.tick] ?? NEUTRE);
+  };
+  preparerFantome();
   /** Les pas passés depuis l'arrivée de l'enchaînement : on garde la comparaison avec le robot à l'écran quelques secondes avant l'écran de fin du kit. */
   let apresFin = 0;
   const redemarrer = (r: Reglages = reglages): void => {
@@ -83,6 +125,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
     sim = new Partie(niv, reglages);
     enregistre = [];
     apresFin = 0;
+    preparerFantome();
     controles.effacer();
     roulis = 0;
     basculesVues = 0;
@@ -250,7 +293,8 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
 
   // Le joueur scripté (`?debug&demo`) : ses commandes remplacent celles du joueur, pour des captures et des mesures qui se répètent.
   let demo: Commande[] | null = null;
-  if (essai.demo) void import("@cdj/vertige-sim/essais").then((m) => import("@cdj/vertige-sim").then((s) => (demo = s.decoderRediffusion(m.PARTIES_ESSAIS[0]!.code).commandes)));
+  if (essai.demo && !essai.scenario && contenu.modules) demo = robotDuJour(contenu); // le niveau du jour : le robot joue
+  else if (essai.demo) void import("@cdj/vertige-sim/essais").then((m) => import("@cdj/vertige-sim").then((s) => (demo = s.decoderRediffusion(m.PARTIES_ESSAIS[0]!.code).commandes)));
 
   // La galerie de modules (lot V2, `?scenario=modules`) : changer de module reconstruit le monde (et son canevas) et recommence la partie ; « voir » : la solution du robot joue, depuis l'état canonique d'entrée.
   let galerie: { marquer(id: string): void; detruire(): void } | null = null;
@@ -268,9 +312,24 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
     redemarrer();
     galerie?.marquer(m.id);
   };
+  // La galerie des jours (lot V3, `?scenario=jours`) : le niveau d'un jour se charge de la même façon ; « voir » : le robot du jour joue.
+  let galerieJours: { marquer(jour: number): void; detruire(): void } | null = null;
+  const chargerJour = (c: Contenu, voir: boolean): void => {
+    monde.detruire();
+    niv = niveauDuContenu(c);
+    ticksRobot = c.ticksRobot ?? 0;
+    monde = creerMonde(niv);
+    controles.canevas = canevas();
+    canevas().addEventListener("click", surClic);
+    redimensionner();
+    demo = voir ? robotDuJour(c) : null;
+    redemarrer();
+    galerieJours?.marquer(c.jour);
+  };
+  if (essai.jours) void import("./galerieJours").then((g) => void (!termine && (galerieJours = g.monterGalerieJours(racine, o, { charger: chargerJour }, contenu.jour))));
   if (essai.galerie) void import("./galerie").then((g) => void (!termine && (galerie = g.monterGalerie(racine, o, { charger }, moduleCourant!.id))));
 
-  const porte = { sim: () => sim, commandes: () => enregistre, controles, get monde() { return monde; }, essai, module: () => moduleCourant?.id ?? null, charger: (id: string, voir: boolean): void => void charger(MODULES.find((x) => x.id === id)!, voir), jouer: (c: Commande[]): void => void (demo = c), camera: () => ({ x: monde.camera.position.x, y: monde.camera.position.y, z: monde.camera.position.z, q: monde.camera.quaternion.toArray(), fenetre: fenetreActive, correction: correction !== null }) };
+  const porte = { sim: () => sim, commandes: () => enregistre, controles, get monde() { return monde; }, essai, module: () => moduleCourant?.id ?? null, charger: (id: string, voir: boolean): void => void charger(MODULES.find((x) => x.id === id)!, voir), jouer: (c: Commande[]): void => void (demo = c), chargerJour: (c: Contenu, voir: boolean): void => chargerJour(c, voir), fantome: () => (fantomeSim ? { tick: fantomeSim.tick, depart: fantomeSim.depart, fin: fantomeSim.fin, visible: silhouette.visible, opacite: (silhouette.material as THREE.MeshBasicMaterial).opacity } : null), camera: () => ({ x: monde.camera.position.x, y: monde.camera.position.y, z: monde.camera.position.z, q: monde.camera.quaternion.toArray(), fenetre: fenetreActive, correction: correction !== null }) };
   if (essai.debug) (window as unknown as { __vertige: typeof porte }).__vertige = porte;
 
   return {
@@ -281,11 +340,17 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       }
       const c = demo ? demo[sim.tick] ?? NEUTRE : confortOuvert ? NEUTRE : controles.lire();
       if (confortOuvert || demo) controles.effacer();
+      const avant = sim.depart;
       sim.avancer(c);
       enregistre.push(c);
+      // Le fantôme joue dès que le chrono du joueur part : il attend d'avoir fait son propre premier mouvement (les pas d'attente de sa rediffusion ne comptent pas), qui tombe alors au même pas.
+      if (fantomeSim && sim.depart >= 0) {
+        if (avant < 0) while (!fantomeSim.finie && fantomeSim.depart < 0) avancerFantome();
+        else avancerFantome();
+      }
     },
     // La galerie ne finit jamais (c'est elle qui annonce l'arrivée) ; l'enchaînement laisse 5 s à la comparaison avec le robot avant l'écran de fin.
-    finie: () => !essai.galerie && sim.finie && (essai.scenario !== "enchainement" || apresFin > 5 * 120),
+    finie: () => !essai.galerie && !essai.jours && sim.finie && (essai.scenario !== "enchainement" || apresFin > 5 * 120),
     action() {
       /* la reprise au palier est une touche de la simulation (T_REPRISE) ; Entrée, « recommencer », est le kit */
     },
@@ -295,7 +360,15 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       return { principal: ecrireTemps(sim.chrono, o.langue), secondaire: total > 0 ? o.t("hud.gemmes", { n: sim.prises.filter(Boolean).length, total }) : robot };
     },
     resultat: () => ({ score: VARIANTE.score(sim.resultat()), rediffusion: essai.scenario ? enregistrerScenario(essai.scenario, enregistre) : enregistrer(contenu, enregistre) }),
-    fantome: () => undefined,
+    fantome(rediffusion) {
+      fantomeTexte = rediffusion;
+      preparerFantome();
+      // Le fantôme change en cours de partie : il passe d'abord ses pas d'attente (jusqu'à son premier mouvement), puis rattrape le pas où en est le joueur.
+      if (fantomeSim && sim.depart >= 0) {
+        while (!fantomeSim.finie && fantomeSim.depart < 0) avancerFantome();
+        for (let i = 1; i <= sim.tick - sim.depart && !fantomeSim.finie; i++) avancerFantome();
+      }
+    },
     dessiner() {
       const maintenant = performance.now();
       const dt = Math.min(0.1, (maintenant - dernier) / 1000);
@@ -347,6 +420,16 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       fov += (confort.champ + (sim.dash > 0 ? 12 : 0) - fov) * Math.min(1, 10 * dt);
       cam.fov = fov;
       cam.updateProjectionMatrix();
+      // La silhouette du fantôme : à sa place, dans son repère de gravité, d'autant plus pâle qu'on s'en approche.
+      if (fantomeSim && fantomeSim.depart >= 0) {
+        const [fx, fy, fz] = fantomeSim.centre();
+        const [ex, ey, ez] = sim.yeux();
+        silhouette.position.set(fx / M, fy / M, fz / M);
+        silhouette.quaternion.copy(quatDe(fantomeSim.m, new THREE.Quaternion()));
+        const op = opaciteFantome(Math.hypot(fx - ex, fy - ey, fz - ez) / M);
+        (silhouette.material as THREE.MeshBasicMaterial).opacity = op;
+        silhouette.visible = op > 0.01;
+      } else silhouette.visible = false;
       monde.animer(t, dt, sim.prises);
       monde.renderer.info.reset();
       monde.dessiner();
@@ -386,6 +469,7 @@ export function nouvellePartieVertige(contenu: Contenu, hote: HTMLElement, o: Op
       controles.detruire();
       tune?.detruire();
       galerie?.detruire();
+      galerieJours?.detruire();
       rendreLaSouris();
       monde.detruire();
       racine.remove();

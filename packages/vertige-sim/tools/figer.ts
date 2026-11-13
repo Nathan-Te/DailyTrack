@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { formatDay, parseDay } from "@cdj/core";
-import { figerJour, lireJourFige } from "../src/index";
+import { figerJour, lireJourFige } from "../src/modulesIndex";
 
 // `npm run figer:vertige -w @cdj/vertige-sim -- --du AAAA-MM-JJ --au AAAA-MM-JJ [--dossier=<chemin>]` : écrit `apps/vertige/public/jours/AAAA-MM-JJ.json`. **Un fichier déjà écrit n'est jamais réécrit** (un jour
 // figé ne change plus) ; un fichier qui ne se relit plus est signalé et l'outil s'arrête en erreur. Ne lance aucun workflow, ne lit aucune base. « Mettre en production » (chaîne de la fiche) ne l'appelle

@@ -1,5 +1,6 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, DUREE_MAX_TICKS, dailyVertige, decoderRediffusion, empreinteContenu, enregistrer, figerJour, scoreParColonnes, themeDuJour } from "@cdj/vertige-sim";
+import { VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, DUREE_MAX_TICKS, VARIANTE, decoderRediffusion, empreinteContenu, enregistrer, scoreParColonnes, seuilsDuJour, themeDuJour } from "@cdj/vertige-sim";
+import { dailyVertige, figerJour, robotDuJour } from "@cdj/vertige-sim/modules";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_VERTIGE } from "../scripts/vertige-essais";
 import { contenuDeVertige } from "../src/vertige";
@@ -26,14 +27,16 @@ async function monter(options: { copies?: boolean; frozen?: Record<string, unkno
 const envoyer = (t: TestApi, n: number, variante: number) => t.call("POST", "/api/vertige/submit", { replay: ESSAIS_VERTIGE.partie(JOUR, VERSIONS, variante).rediffusion, name: `Joueur${n}` }, { headers: entete(n) });
 
 describe("Vertige sur le serveur", () => {
-  it("sert le contenu du jour de la simulation (serveur = jeu), sans médaille ni preuve", async () => {
+  it("sert le contenu du jour de la simulation (serveur = jeu), avec les médailles du robot et sans preuve", async () => {
     const t = await monter();
     const info = await t.call("GET", "/api/vertige/info");
     expect(info.body).toMatchObject({ game: "vertige", simVersion: VERTIGE_SIM_VERSION, generatorVersion: VERTIGE_GENERATOR_VERSION, today: DATE });
     const jour = await t.call("GET", `/api/vertige/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
-    expect(jour.body.medals ?? null).toBeNull();
+    const c = dailyVertige(JOUR);
+    expect(jour.body.medals).toEqual(VARIANTE.seuils(c.ticksRobot!)); // le Diamant est le temps du robot ; or, argent, bronze : le barème de la fiche
+    expect(jour.body.medals.author).toBe(c.ticksRobot);
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/vertige/day/2026-11-11")).status).toBe(404);
   });
@@ -45,8 +48,10 @@ describe("Vertige sur le serveur", () => {
       const r = await envoyer(t, p.n, p.v);
       expect(r.status, JSON.stringify(r.body)).toBe(200);
       expect(r.body.score).toEqual(p.attendu);
-      expect(r.body.medal).toBeNull();
+      expect(r.body.medal).toBe(VARIANTE.medaille([p.attendu.temps!], VARIANTE.seuils(dailyVertige(JOUR).ticksRobot!)));
     }
+    // La variante 0 est le robot précédé d'un pas d'attente : il se pose avant de courir et gagne un pas sur le robot (qui part en l'air d'un demi-pas) — le Diamant n'est pas hors d'atteinte.
+    expect(Math.abs(parties[0]!.attendu.temps! - dailyVertige(JOUR).ticksRobot!)).toBeLessThanOrEqual(2);
     const board = await t.call("GET", `/api/vertige/day/${DATE}/board`, undefined, { headers: entete(3) });
     expect(board.body.participants).toBe(3);
     const lignes = board.body.top as ({ name: string } & Record<string, number>)[];
@@ -77,17 +82,32 @@ describe("Vertige sur le serveur", () => {
     expect(r.status).toBe(200);
     expect(r.body.score).toEqual({ temps: DUREE_MAX_TICKS });
     expect(r.body.score).toEqual(scoreParColonnes({ arrive: false, ticks: 0 }));
-    expect(r.body.medal).toBeNull();
+    expect(r.body.medal).toBeNull(); // le pire temps n'a jamais de médaille
   });
 
   it("lit le jour figé de l'image s'il se vérifie, l'ignore sinon", async () => {
     const fige = figerJour(JOUR);
-    expect(contenuDeVertige(JOUR, { [DATE]: fige })).toEqual(dailyVertige(JOUR));
-    const abime = { ...fige, contenu: { niveau: "mur" } };
+    expect(contenuDeVertige(JOUR, { [DATE]: fige })).toEqual({ ...dailyVertige(JOUR), seuilsFiges: fige.seuils });
+    // Un jour figé garde les seuils qu'on a servis, même si le barème de la fiche change ensuite.
+    const autres = { author: fige.seuils.author, gold: fige.seuils.author + 10, silver: fige.seuils.author + 20, bronze: fige.seuils.author + 30 };
+    expect(seuilsDuJour(contenuDeVertige(JOUR, { [DATE]: figerJour(JOUR, VERTIGE_GENERATOR_VERSION, autres) }))).toEqual(autres);
+    const abime = { ...fige, contenu: { modules: ["saut-1"], ticksRobot: 1 } };
     expect(empreinteContenu(contenuDeVertige(JOUR, { [DATE]: abime }))).toBe(empreinteContenu(dailyVertige(JOUR)));
     const t = await monter({ frozen: { [DATE]: fige } });
     const info = await t.call("GET", "/api/vertige/info");
     expect(info.body.frozenDays).toEqual([DATE]);
+  });
+
+  it("l'auteur est le robot : sa rediffusion à l'identique est une copie, le robot avec un pas d'attente de plus est un Diamant", async () => {
+    const t = await monter({ copies: false });
+    const c = dailyVertige(JOUR);
+    const robot = robotDuJour(c);
+    const copie = await t.call("POST", "/api/vertige/submit", { replay: enregistrer(c, robot), name: "Copieur" }, { headers: entete(1) });
+    expect(copie.body.error).toBe("replay_copy");
+    const r = await envoyer(t, 2, 0);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(Math.abs(r.body.score.temps - c.ticksRobot!)).toBeLessThanOrEqual(2);
+    expect(r.body.medal).toBe("author");
   });
 
   it("le profil du joueur et le jeu fermé (`off`) répondent comme les autres jeux", async () => {
@@ -141,5 +161,31 @@ describe("Vertige sur le serveur", () => {
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.body).toMatchObject({ filtre: "groupe", classes: 2 });
     expect((r.body.top as { name: string }[]).map((l) => l.name).sort()).toEqual(["Joueur1", "Joueur2"]);
+  });
+});
+
+// Lot V3 — l'empreinte de ce que le jeu sert pour un jour couvre aussi les SEUILS des médailles : un jour protégé dont les seuils changent (un autre barème) n'a plus la même empreinte, la mise en production s'arrête.
+describe("l'empreinte du jour (garde-fou de la mise en production)", () => {
+  it("change quand les seuils changent, qu'ils soient figés dans un fichier ou calculés ; un fichier figé et le jour généré se distinguent", async () => {
+    const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { empreinteJour } = await import("../scripts/vertige-empreintes");
+    const dossier = mkdtempSync(join(tmpdir(), "cdj-vertige-"));
+    try {
+      const sans = empreinteJour(JOUR, dossier);
+      expect(sans.ok).toBe(true);
+      const fige = figerJour(JOUR);
+      writeFileSync(join(dossier, `${DATE}.json`), JSON.stringify(fige));
+      const avec = empreinteJour(JOUR, dossier);
+      expect(avec.id).toBe(sans.id);
+      expect(avec.h).not.toBe(sans.h);
+      writeFileSync(join(dossier, `${DATE}.json`), JSON.stringify(figerJour(JOUR, VERTIGE_GENERATOR_VERSION, { ...fige.seuils, bronze: fige.seuils.bronze + 1 })));
+      expect(empreinteJour(JOUR, dossier).h, "d'autres seuils figés : une autre empreinte").not.toBe(avec.h);
+      writeFileSync(join(dossier, `${DATE}.json`), "pas du json");
+      expect(empreinteJour(JOUR, dossier).h, "un fichier illisible n'est pas servi : le jour est généré").toBe(sans.h);
+    } finally {
+      rmSync(dossier, { recursive: true, force: true });
+    }
   });
 });

@@ -1,14 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
-import { NOMS_NIVEAUX, Partie, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, dailyVertige, decoderRediffusion, empreinteContenu, empreinteNiveau, niveau, rejouer, rejouerScenario, verifier, type NomNiveau } from "../src/index";
-import { enchainement } from "../src/modulesIndex";
+import { NOMS_NIVEAUX, Partie, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, decoderRediffusion, empreinteContenu, empreinteNiveau, niveau, rejouer, rejouerScenario, verifier, type NomNiveau } from "../src/index";
+import { assemblerCles, dailyVertige, enchainement } from "../src/modulesIndex";
 
 // Le golden : produit par `npm run golden:vertige` (jamais écrit à la main), rejoué ici par Node et dans Chromium, Firefox et WebKit par `apps/vertige/e2e/determinisme.spec.ts`.
 const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-vertige.json", import.meta.url), "utf8")) as {
   sim: number;
   generateur: number;
-  jours: { date: string; empreinte: string }[];
+  jours: { date: string; empreinte: string; modules: string[]; ticksRobot: number; niveau: string }[];
   niveaux: { nom: NomNiveau; empreinte: string }[];
   rediffusions: { nom: string; scenario: string | null; date: string; g: number; code: string; resultat: unknown; empreintes: string[] }[];
 };
@@ -20,8 +20,12 @@ describe("golden de Vertige", () => {
   it("couvre tous les niveaux", () => {
     expect(golden.niveaux.map((n) => n.nom)).toEqual([...NOMS_NIVEAUX]);
   });
-  it.each(golden.jours.map((j) => [j.date, j.empreinte]))("le contenu du %s a l'empreinte %s", (date, empreinte) => {
-    expect(empreinteContenu(dailyVertige(parseDay(date!)!))).toBe(empreinte);
+  it.each(golden.jours.map((j) => [j.date, j] as const))("le contenu du %s : l'empreinte, les modules, le temps du robot et le niveau assemblé sont ceux du golden", (_date, j) => {
+    const c = dailyVertige(parseDay(j.date)!);
+    expect(empreinteContenu(c)).toBe(j.empreinte);
+    expect(c.modules).toEqual(j.modules);
+    expect(c.ticksRobot).toBe(j.ticksRobot);
+    expect(empreinteNiveau(assemblerCles(c.modules!).niveau)).toBe(j.niveau);
   });
   it.each(golden.niveaux.map((n) => [n.nom, n.empreinte]))("le niveau « %s » a l'empreinte %s", (nom, empreinte) => {
     expect(empreinteNiveau(niveau(nom as NomNiveau))).toBe(empreinte);
@@ -29,7 +33,7 @@ describe("golden de Vertige", () => {
   it.each(golden.rediffusions.map((r) => [r.nom, r]))("la rediffusion « %s » se rejoue au bit près (résultat et empreintes de l'état)", (_nom, r) => {
     const ref = r as (typeof golden.rediffusions)[number];
     const lue = decoderRediffusion(ref.code);
-    const c = ref.scenario ? { niveau: ref.scenario as NomNiveau } : { niveau: dailyVertige(parseDay(ref.date)!, ref.g).niveau };
+    const c = ref.scenario ? { niveau: ref.scenario as NomNiveau } : dailyVertige(parseDay(ref.date)!, ref.g);
     const v = verifier(c, lue.commandes);
     expect(v.resultat).toEqual(ref.resultat);
     expect(v.empreintes).toEqual(ref.empreintes);
@@ -59,6 +63,19 @@ describe("golden de Vertige", () => {
     expect(r.ticks).toBe(enchainement().arriveeRobot);
     const reprise = golden.rediffusions.find((x) => x.nom === "enchainement-reprise")!;
     expect((reprise.resultat as { chutes: number }).chutes).toBeGreaterThanOrEqual(1); // la touche de reprise est une chute au palier
+  });
+  it("lot V3 : le robot de chaque jour de référence arrive, sans chute, au temps du contenu ; la reprise au palier est une chute", () => {
+    const robots = golden.rediffusions.filter((x) => x.nom.startsWith("jour-robot-"));
+    expect(robots.length).toBe(4);
+    for (const r of robots) {
+      const res = r.resultat as { arrive: boolean; ticks: number; chutes: number };
+      expect(res.arrive, r.nom).toBe(true);
+      expect(res.chutes, r.nom).toBe(0);
+      expect(res.ticks, r.nom).toBe(dailyVertige(parseDay(r.date)!, r.g).ticksRobot);
+    }
+    const reprise = golden.rediffusions.find((x) => x.nom.startsWith("jour-reprise-"))!;
+    expect((reprise.resultat as { chutes: number }).chutes).toBeGreaterThanOrEqual(1);
+    expect(golden.rediffusions.some((x) => x.nom.startsWith("jour-hasard-"))).toBe(true);
   });
   it("le parcours est fini par le joueur scripté, le chrono s'arrête à l'arrivée", () => {
     const r = golden.rediffusions.find((x) => x.nom === "parcours-robot")!.resultat as { arrive: boolean; ticks: number; pas: number };
