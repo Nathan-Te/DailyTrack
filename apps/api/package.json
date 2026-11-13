@@ -38,6 +38,7 @@
     "@cdj/sim": "*",
     "@cdj/tower-sim": "*",
     "@cdj/cibles-sim": "*",
+    "@cdj/gravity-sim": "*",
     "@cdj/vertige-sim": "*",
     "@cdj/rush-sim": "*",
     "@cdj/blocks-sim": "*",

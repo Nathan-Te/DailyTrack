@@ -6,6 +6,7 @@
 .classement-vue--blocks{--vue-teinte:#B8D8F4}
 .classement-vue--rush{--vue-teinte:#D9C4F0}
 .classement-vue--vertige{--vue-teinte:#F7C59F}
+.classement-vue--gravity{--vue-teinte:#FFB892}
 .jeu-etiquette--tower{--jeu-fond:#9ED9BE;--jeu-coque:#2F7D62;--jeu-police:"Rubik Mono One", "Archivo", sans-serif;}
 .jeu-etiquette--blocks{--jeu-motif:repeating-linear-gradient(0deg,#b8d8f4 0 22px,#aecbe4 22px 23px)}
 .jeu-etiquette--rush{--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0}
@@ -40,6 +41,14 @@
 }
 .nouveautes-zone.nouveautes-zone--vertige {
   background: #F7C59F;
+  color: var(--dj-encre);
+}
+.admin-zone.admin-zone--gravity {
+  background: #FFB892;
+  color: var(--dj-encre);
+}
+.nouveautes-zone.nouveautes-zone--gravity {
+  background: #FFB892;
   color: var(--dj-encre);
 }
 /* L'étiquette générique sur l'étagère : le numéro et le thème sous le nom, l'accroche sur deux lignes réservées ; en cartouche compacte, le nom et le numéro côte à côte. */

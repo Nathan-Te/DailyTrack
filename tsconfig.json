@@ -20,6 +20,9 @@
       "path": "packages/cibles-sim"
     },
     {
+      "path": "packages/gravity-sim"
+    },
+    {
       "path": "packages/vertige-sim"
     },
     {
@@ -57,6 +60,9 @@
     },
     {
       "path": "apps/cibles"
+    },
+    {
+      "path": "apps/gravity"
     },
     {
       "path": "apps/vertige"

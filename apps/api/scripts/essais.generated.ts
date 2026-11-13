@@ -5,6 +5,7 @@ import { ESSAIS_CIBLES } from "./cibles-essais";
 import { ESSAIS_BLOCKS } from "./blocks-essais";
 import { ESSAIS_RUSH } from "./rush-essais";
 import { ESSAIS_VERTIGE } from "./vertige-essais";
+import { ESSAIS_GRAVITY } from "./gravity-essais";
 
 // Le code (`id` de la fiche) → son module d'essais.
 export const ESSAIS_DES_JEUX_NEUFS: Readonly<Record<string, ModuleEssais>> = {
@@ -12,4 +13,5 @@ export const ESSAIS_DES_JEUX_NEUFS: Readonly<Record<string, ModuleEssais>> = {
   "blocks": ESSAIS_BLOCKS,
   "rush": ESSAIS_RUSH,
   "vertige": ESSAIS_VERTIGE,
+  "gravity": ESSAIS_GRAVITY,
 };

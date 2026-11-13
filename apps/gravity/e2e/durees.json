@@ -1,0 +1,16 @@
+{
+  "_": "Durées des specs de « Gravity » (secondes, mesurées en local) : la CI compose ses parts avec elles. `essentiel` : la durée des tests sans `@regression` (aucun test de Gravity n'est « Régression »).",
+  "secondes": {
+    "determinisme.spec.ts": 3,
+    "partie.spec.ts": 20,
+    "classement.spec.ts": 30,
+    "poids.spec.ts": 2,
+    "ecrans-kit.spec.ts": 12
+  },
+  "essentiel": {
+    "determinisme.spec.ts": 3,
+    "partie.spec.ts": 20,
+    "classement.spec.ts": 30,
+    "poids.spec.ts": 2
+  }
+}

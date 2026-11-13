@@ -1499,6 +1499,114 @@
         "essaiTextes-"
       ],
       "outilsAdmin": false
+    },
+    {
+      "id": "gravity",
+      "zones": {
+        "jeu": [
+          "apps/gravity/**",
+          "packages/gravity-sim/**",
+          "apps/api/src/gravity*.ts",
+          "apps/api/test/gravity*.test.ts",
+          "apps/api/scripts/gravity-*.ts",
+          "docs/gravity/**"
+        ],
+        "serveur": [
+          "apps/api/src/gravity*.ts",
+          "apps/api/test/gravity*.test.ts",
+          "apps/api/scripts/gravity-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/gravity/e2e",
+        "suite": "gravity",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "gravity-sim": {
+            "globs": [
+              "packages/gravity-sim/**"
+            ]
+          },
+          "gravity-jeu": {
+            "globs": [
+              "apps/gravity/index.html",
+              "apps/gravity/vite.config.ts",
+              "apps/gravity/verify.html",
+              "apps/gravity/src/*"
+            ]
+          },
+          "api-gravity": {
+            "globs": [
+              "apps/api/src/gravity*.ts",
+              "apps/api/scripts/gravity-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "gravity-sim",
+            "gravity-jeu",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "gravity-sim",
+            "gravity-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "gravity-sim",
+            "gravity-jeu",
+            "api-gravity",
+            "api-jeux"
+          ],
+          "poids.spec.ts": [
+            "gravity-jeu",
+            "ui"
+          ],
+          "ecrans-kit.spec.ts": [
+            "gravity-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        },
+        "regression": [
+          "ecrans-kit.spec.ts"
+        ]
+      },
+      "app": "gravity",
+      "jours": {
+        "dossier": "apps/gravity/public/jours",
+        "registre": null,
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/gravity-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/gravity-sim",
+            "script": "figer:gravity",
+            "forme": "jours-proteges"
+          }
+        }
+      },
+      "sim": "gravity-sim",
+      "budget": [
+        "gravity.jsCss"
+      ],
+      "budgetALaDemande": [
+        "partie-",
+        "classement-",
+        "reglages-",
+        "retours-",
+        "version-"
+      ],
+      "outilsAdmin": false
     }
   ]
 }

@@ -50,6 +50,13 @@
       "cumul": false,
       "categorie": "arcade",
       "illustration": true
+    },
+    {
+      "id": "gravity",
+      "accroche": "portail.gravity.accroche",
+      "cumul": false,
+      "categorie": "arcade",
+      "format": "entier"
     }
   ]
 }

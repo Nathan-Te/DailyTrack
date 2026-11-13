@@ -527,6 +527,76 @@
       ],
       "messageOu": "vertige",
       "zoneNouveautes": "vertige"
+    },
+    {
+      "id": "gravity",
+      "code": "gravity",
+      "etatDepart": "off",
+      "premierJour": "2026-11-02",
+      "categorie": "arcade",
+      "classement": {
+        "colonnes": [
+          {
+            "nom": "touches",
+            "sens": "desc"
+          },
+          {
+            "nom": "dernier",
+            "sens": "asc"
+          },
+          {
+            "nom": "submitted_at",
+            "sens": "asc"
+          },
+          {
+            "nom": "player_id",
+            "sens": "asc"
+          }
+        ],
+        "cumul": false,
+        "unite": "points",
+        "format": "entier"
+      },
+      "medailles": {
+        "methode": "pourcentage-diamant",
+        "bareme": [
+          50,
+          30,
+          15
+        ],
+        "plafondDiamant": 20
+      },
+      "versions": {
+        "sim": "packages/gravity-sim/src/constantes.ts:GRAVITY_SIM_VERSION",
+        "generateur": "packages/gravity-sim/src/constantes.ts:GRAVITY_GENERATOR_VERSION"
+      },
+      "jours": {
+        "mode": "fichier-par-jour",
+        "dossier": "apps/gravity/public/jours",
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/gravity-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/gravity-sim",
+            "script": "figer:gravity",
+            "forme": "jours-proteges"
+          }
+        }
+      },
+      "rejeu": {
+        "unitesServeur": 1,
+        "maxTicks": 900
+      },
+      "tables": [],
+      "tableCommune": "resultats_jeu",
+      "prefixe": "gravity:",
+      "reglagesGardes": [],
+      "messageOu": "gravity",
+      "zoneNouveautes": "gravity",
+      "identiteManque": [
+        "motif",
+        "illustration"
+      ]
     }
   ]
 }
