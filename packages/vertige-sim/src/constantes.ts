@@ -3,8 +3,11 @@
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée. 2 : la gravité par quarts de tour, les orbes et les portails (lot V1). 3 : les orbes sont retirées, la gravité ne tourne qu'au contact d'une surface marquée ou par un portail (lot V2). */
 export const VERTIGE_SIM_VERSION = 3;
-/** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyVertige` produit. */
-export const VERTIGE_GENERATOR_VERSION = 1;
+/** La version du générateur du contenu du jour. Elle monte à tout changement de ce que `dailyVertige` produit. 2 : le niveau du jour assemblé de modules, miroirs et longueurs ajustées (lot V3) ; la version 1 (le parcours de la maquette) reste appelable. */
+export const VERTIGE_GENERATOR_VERSION = 2;
+
+/** La version du robot et du barème des médailles (lot V3), écrite dans le fichier d'un jour figé : elle monte quand ce qui produit les seuils change (la solution d'un module, le pilote des variantes, la façon de lire le barème). */
+export const VERTIGE_BOT_VERSION = 1;
 
 export const TICKS_PAR_SECONDE = 120;
 /** 120 secondes : au-delà, la partie s'arrête et vaut le pire temps. */

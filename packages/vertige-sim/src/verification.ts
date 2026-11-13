@@ -1,5 +1,5 @@
 import type { Contenu } from "./generateur";
-import { niveau, type Niveau } from "./niveaux";
+import { niveauDuContenu, type Niveau } from "./niveaux";
 import { Partie, type Commande, type Resultat } from "./course";
 
 // La vérification au bit près : on rejoue des commandes et on note l'empreinte de TOUT l'état tous les `tous` pas (et à la fin). Deux machines (Node, Chromium, Firefox, WebKit) qui divergent d'un seul bit se
@@ -9,8 +9,8 @@ export interface Verification {
   empreintes: string[];
 }
 
-export function verifier(contenu: Pick<Contenu, "niveau">, commandes: readonly Commande[], tous = 600): Verification {
-  const p = new Partie(niveau(contenu.niveau));
+export function verifier(contenu: Pick<Contenu, "niveau" | "modules">, commandes: readonly Commande[], tous = 600): Verification {
+  const p = new Partie(niveauDuContenu(contenu));
   const empreintes: string[] = [];
   for (let i = 0; i < commandes.length && !p.finie; i++) {
     p.avancer(commandes[i]!);

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { toBase64Url } from "@cdj/core";
-import { ErreurRediffusion, MAX_CARACTERES, T_AVANT, T_DASH, T_SAUT, chargeDe, dailyVertige, decoderRediffusion, enregistrer, enregistrerScenario, lireCharge, rejouer, rejouerScenario, type Commande } from "../src/index";
+import { ErreurRediffusion, MAX_CARACTERES, T_AVANT, T_DASH, T_SAUT, chargeDe, VERTIGE_GENERATOR_VERSION, decoderRediffusion, enregistrer, enregistrerScenario, lireCharge, rejouer, rejouerScenario, type Commande, type Contenu } from "../src/index";
 import { ETAPES_PARCOURS, jouerEtapes } from "../tools/robot";
 
-const contenu = dailyVertige(20_000);
+// Le parcours de la maquette : un contenu nommé (la version 1 du générateur le servait chaque jour ; le niveau du jour assemblé est testé dans `generateur.test.ts`).
+const contenu: Contenu = { jour: 20_000, g: VERTIGE_GENERATOR_VERSION, niveau: "parcours" };
 const robot = jouerEtapes("parcours", ETAPES_PARCOURS);
 
 describe("rediffusion", () => {
@@ -26,7 +27,7 @@ describe("rediffusion", () => {
   });
   it("une partie qui n'est pas celle de ce jour est refusée (contenu_different)", () => {
     const code = enregistrer(contenu, robot.commandes);
-    expect(() => rejouer(dailyVertige(20_001), code)).toThrowError(expect.objectContaining({ code: "contenu_different" }));
+    expect(() => rejouer({ ...contenu, jour: 20_001 }, code)).toThrowError(expect.objectContaining({ code: "contenu_different" }));
   });
   it("une rediffusion de scénario se rejoue en scénario, mais n'est jamais celle d'un jour", () => {
     const code = enregistrerScenario("mur", [{ k: T_AVANT, dl: 0, dt: 0 }]);
@@ -53,7 +54,7 @@ describe("rediffusion", () => {
     expect(code(bon + "AA")).toBe("format_illisible");
     expect(code(bon.slice(0, -2))).toBe("format_illisible");
     // La charge elle-même : une touche inconnue (bit 7 ; le bit 6 est la reprise depuis le lot V2), trop de pas.
-    const enveloppe = (charge: number[]): string => toBase64Url([1, 3, 1, 0, 0xc0, 0x9a, 0x0c, ...charge]);
+    const enveloppe = (charge: number[]): string => toBase64Url([1, 3, VERTIGE_GENERATOR_VERSION, 0, 0xc0, 0x9a, 0x0c, ...charge]);
     expect(code(enveloppe([2, 1, 0, 128, 0]))).toBe("format_illisible");
     expect(code(enveloppe([0xff, 0xff, 0x7f, 0, 0]))).toBe("trop_longue");
     expect(() => rejouer(contenu, enregistrer(contenu, [...robot.commandes, { k: 0, dl: 0, dt: 0 }]))).toThrowError(expect.objectContaining({ code: "format_illisible" }));

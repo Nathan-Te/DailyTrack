@@ -500,7 +500,8 @@ export const FICHES_SERVEUR = [
     },
     "versions": {
       "sim": "packages/vertige-sim/src/constantes.ts:VERTIGE_SIM_VERSION",
-      "generateur": "packages/vertige-sim/src/constantes.ts:VERTIGE_GENERATOR_VERSION"
+      "generateur": "packages/vertige-sim/src/constantes.ts:VERTIGE_GENERATOR_VERSION",
+      "medailles": "packages/vertige-sim/src/constantes.ts:VERTIGE_BOT_VERSION"
     },
     "jours": {
       "mode": "fichier-par-jour",

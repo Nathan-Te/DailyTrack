@@ -1,9 +1,10 @@
-import { DEMI, M } from "./constantes";
+import { CM, DEMI, M, TICKS_PAR_SECONDE } from "./constantes";
 import { Partie } from "./course";
 import { jauges, type Jauges } from "./jauges";
-import { niveauDuModule, commandesDuModule, type Mecanique, type Module } from "./modules";
+import { niveauDuModule, commandesDuModule, robotDuModule, type Mecanique, type Module } from "./modules";
 import type { BlocNiveau, Boite, Niveau } from "./niveaux";
 import { poche, type Portail } from "./portails";
+import { gravite, ORIENTATIONS } from "./orientation";
 import { REGLAGES_DEFAUT, type Reglages } from "./sensations";
 
 // Les vérifications des modules (lot V2) : le robot rejoue la solution, on mesure chaque PHASE EN L'AIR (du pied qui quitte le sol au pied qui se repose) et on la compare aux jauges ; on vérifie aussi les contraintes de
@@ -168,4 +169,40 @@ export function blocsQuiSeRecouvrent(a: readonly BlocNiveau[], b: readonly BlocN
   const out: [number, number][] = [];
   a.forEach((x, i) => b.forEach((y, j) => recouvre(x.boite, y.boite) && out.push([i, j])));
   return out;
+}
+
+// ---------------------------------------------------------------- tout ce qu'un module de la bibliothèque doit respecter
+/**
+ * Les contrôles de la bibliothèque (lot V2, `modules.test.ts`) réunis en UNE fonction, pour que les variantes du lot V3 (miroir, longueurs ajustées) passent exactement les mêmes : la solution arrive à la capture de sa sortie, sans chute,
+ * écrite au pas près, en 4 à 8 s, dans l'état de jonction canonique exact, ses écarts sont dans les 85 % des jauges, ses étiquettes disent vrai, ses surfaces marquées ne se touchent pas, ses poches sont vides, une paire de portails au plus.
+ * Rend les règles non respectées, vide si le module est valide.
+ */
+export function controlesDuModule(m: Module, reglages: Readonly<Reglages> = REGLAGES_DEFAUT): string[] {
+  const refus: string[] = [];
+  const robot = robotDuModule(m);
+  if (!robot.arrive) return [`${m.id} : la solution n'arrive pas`];
+  const p = robot.partie;
+  if (p.chutes > 0) refus.push("le robot tombe");
+  if (p.captures !== 1) refus.push(`${p.captures} paliers capturés au lieu d'un`);
+  if (commandesDuModule(m).length !== robot.ticks) refus.push(`des pas en trop (${commandesDuModule(m).length} écrits, ${robot.ticks} utiles)`);
+  const secondes = robot.ticks / TICKS_PAR_SECONDE;
+  if (secondes < 4 || secondes > 8) refus.push(`${secondes.toFixed(2)} s (de 4 à 8 s)`);
+  const sortie = niveauDuModule(m).jonctions![1]!;
+  const attendu = [sortie.x, sortie.y, sortie.z];
+  if (p.pieds().some((v, i) => v !== attendu[i])) refus.push("les pieds ne sont pas au centre du palier de sortie");
+  if ([p.ori, p.lacet, p.sol, p.coyote, p.tampon, p.dash, p.dashRecharge, p.murVerrou, p.murT, p.surMur, p.basculeVerrou, p.vx, p.vy].join() !== [sortie.ori, 0, true, 0, 0, 0, 0, 0, 0, false, 0, 0, 0].join() || p.vz !== -reglages.vitesse * CM) refus.push("l'état de la sortie n'est pas canonique");
+  if (p.gravite !== gravite(ORIENTATIONS[sortie.ori]!)) refus.push("la gravité de la sortie n'est pas celle du palier");
+  refus.push(...ecartsHorsJauge(analyser(m, reglages), jauges(reglages)));
+  const vues = new Set<Mecanique>(analyser(m, reglages).phases.flatMap((ph) => ph.mecaniques));
+  if (p.bascules > 0 || p.gravite !== 3) vues.add("gravite");
+  if (p.traversees > 0) vues.add("portail");
+  const dites = new Set<Mecanique>(m.etiquettes.mecaniques);
+  dites.delete("course");
+  for (const v of vues) if (!dites.has(v)) refus.push(`la solution joue « ${v} » sans l'annoncer`);
+  for (const d of dites) if (!vues.has(d)) refus.push(`« ${d} » est annoncée mais la solution ne la joue pas`);
+  const niveau = niveauDuModule(m);
+  if (surfacesMarqueesQuiSeTouchent(niveau.blocs).length > 0) refus.push("des surfaces marquées se touchent");
+  if (blocsDansUnePoche(niveau).length > 0) refus.push("un bloc dans la poche d'un portail");
+  if ((m.portails ?? []).length > 1) refus.push("plus d'une paire de portails");
+  return refus.map((r) => `${m.id} : ${r}`);
 }
