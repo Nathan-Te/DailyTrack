@@ -1494,6 +1494,8 @@
         "version-",
         "bibliotheque-",
         "galerie-",
+        "galerieJours-",
+        "modulesIndex-",
         "essaiTextes-"
       ],
       "outilsAdmin": false

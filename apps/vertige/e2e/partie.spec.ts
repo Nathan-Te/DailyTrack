@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { VARIANTE } from "@cdj/vertige-sim";
-import { appareil, jouerLeJour, lancer } from "./appareil";
+import { appareil, JOUR, jouerLeJour, lancer } from "./appareil";
+import { dailyVertige } from "@cdj/vertige-sim/modules";
+import { parseDay } from "@cdj/core";
 
 // « Vertige » — le parcours de joueur du jeu, sans serveur : l'accueil, une partie jouée touche par touche (le clavier est lu par `event.code`), le HUD, la pause (le temps s'arrête), la relance sur R, le chrono qui part au premier mouvement et s'arrête à l'arrivée, l'écran tactile. Le classement avec le vrai serveur est dans `classement.spec.ts`. Les règles des mouvements sont dans
 // `packages/vertige-sim/test` : ici, seulement ce que le joueur voit et ce que le navigateur lit (touches, souris).
@@ -128,4 +130,36 @@ test.describe("Vertige : une partie", () => {
       await context.close();
     });
   }
+
+  test("lot V3 — le fantôme Diamant : le robot du jour joue à côté du joueur, calé sur le départ de son chrono, et arrive au temps du Diamant", async ({ browser }) => {
+    const c = dailyVertige(parseDay(JOUR)!);
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
+    await lancer(page);
+    await page.waitForFunction(() => !!window.__vertige);
+    await jouerLeJour(page, 0); // une partie finie : le Diamant se débloque
+    await expect(page.locator("#jeu-fin")).toBeVisible();
+    await page.locator("#jeu-rejouer").click();
+    await expect(page.locator("#jeu-fin")).toBeHidden();
+    expect(await page.evaluate(() => window.__vertige.fantome())).toBeNull(); // « Aucun » au départ
+    for (const attendu of ["meilleure", "diamant"]) {
+      await page.locator("#jeu-hud-fantome").click();
+      await expect(page.locator("#jeu-hud-fantome")).toHaveAttribute("data-etat", attendu);
+    }
+    expect(await page.evaluate(() => window.__vertige.fantome()?.depart)).toBe(-1); // il attend le premier mouvement du joueur
+    // Rien ne bouge tant que le joueur ne bouge pas : il attend 30 pas, puis court ; le fantôme part avec lui, pas avant.
+    await page.evaluate(() => {
+      window.__vertige.jouer([...Array.from({ length: 30 }, () => ({ k: 0, dl: 0, dt: 0 })), ...Array.from({ length: 2000 }, () => ({ k: 1, dl: 0, dt: 0 }))]);
+      window.__jeu.avancer(30);
+    });
+    expect(await page.evaluate(() => window.__vertige.fantome()?.depart)).toBe(-1);
+    await page.evaluate(() => window.__jeu.avancer(1));
+    const depart = await page.evaluate(() => ({ joueur: window.__vertige.sim().depart, fantome: window.__vertige.fantome() }));
+    expect(depart.joueur).toBe(30);
+    expect(depart.fantome!.depart).toBeGreaterThanOrEqual(0);
+    expect(depart.fantome!.tick).toBeLessThanOrEqual(3);
+    await page.evaluate((n) => window.__jeu.avancer(n + 10), c.ticksRobot!);
+    const fin = await page.evaluate(() => window.__vertige.fantome());
+    expect(fin!.fin - fin!.depart, "le fantôme arrive au temps du robot").toBe(c.ticksRobot);
+    await context.close();
+  });
 });

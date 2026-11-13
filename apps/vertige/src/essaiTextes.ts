@@ -6,6 +6,9 @@ const TEXTES = {
   fr: {
     "robot.temps": "Robot : {t}",
     "robot.arrivee": "Vous : {toi} · Robot : {robot} ({ecart})",
+    "jours.titre": "Les 14 prochains jours",
+    "jours.voir": "Voir la démonstration",
+    "jours.modules": "{n} modules",
     "galerie.titre": "Modules de niveau",
     "galerie.voir": "Voir la solution",
     "galerie.jouer": "Jouer",
@@ -23,6 +26,9 @@ const TEXTES = {
   en: {
     "robot.temps": "Robot: {t}",
     "robot.arrivee": "You: {toi} · Robot: {robot} ({ecart})",
+    "jours.titre": "The next 14 days",
+    "jours.voir": "Watch the demo",
+    "jours.modules": "{n} modules",
     "galerie.titre": "Level modules",
     "galerie.voir": "Watch the solution",
     "galerie.jouer": "Play",

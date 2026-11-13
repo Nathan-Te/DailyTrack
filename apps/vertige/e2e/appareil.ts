@@ -1,6 +1,7 @@
-import { dailyVertige, decoderRediffusion, jouer, niveau, type Commande, type Resultat } from "@cdj/vertige-sim";
-import { PARTIES_ESSAIS } from "@cdj/vertige-sim/essais";
+import { VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, decoderRediffusion, jouer, niveauDuContenu, type Commande, type Resultat } from "@cdj/vertige-sim";
+import { dailyVertige } from "@cdj/vertige-sim/modules";
 import { parseDay } from "@cdj/core";
+import { ESSAIS_VERTIGE } from "../../api/scripts/vertige-essais";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
 // Un appareil neuf : l'horloge du serveur d'essai (le 06/11/2026 à midi UTC, comme `VERTIGE_AUJOURDHUI`), l'aide « Comment jouer » déjà vue (elle a son propre test), les droits du presse-papiers.
@@ -13,6 +14,8 @@ export interface PorteVertige {
   commandes(): Commande[];
   module(): string | null;
   charger(id: string, voir: boolean): void;
+  chargerJour(c: unknown, voir: boolean): void;
+  fantome(): { tick: number; depart: number; fin: number; visible: boolean; opacite: number } | null;
   monde: { fenetres: { dessinees: number } | null; renderer: { info: { render: { calls: number; triangles: number } } } };
   jouer(c: Commande[]): void;
   camera(): { x: number; y: number; z: number; q: number[]; fenetre: boolean; correction: boolean };
@@ -66,14 +69,15 @@ export async function lancer(page: Page): Promise<void> {
 }
 
 /**
- * Joue la partie du jour : les commandes de la partie d'essai `variante` (le joueur scripté du parcours, `PARTIES_ESSAIS`) sont données à la simulation à la place des touches, pas à pas (la rediffusion du jeu est donc
+ * Joue la partie du jour : les commandes de la partie d'essai `variante` (le robot du jour, retardé de plus en plus : `ESSAIS_VERTIGE`) sont données à la simulation à la place des touches, pas à pas (la rediffusion du jeu est donc
  * ces commandes). Rend ce que la simulation (Node, la même) attend d'elles. La partie reste classable : aucune option d'essai dans l'adresse.
  */
 export async function jouerLeJour(page: Page, variante = 0): Promise<Resultat> {
-  const commandes = decoderRediffusion(PARTIES_ESSAIS[variante]!.code).commandes;
+  const jour = parseDay(JOUR)!;
+  const commandes = decoderRediffusion(ESSAIS_VERTIGE.partie(jour, { simVersion: VERTIGE_SIM_VERSION, generatorVersion: VERTIGE_GENERATOR_VERSION }, variante).rediffusion).commandes;
   await page.evaluate((c) => {
     window.__vertige.jouer(c);
     window.__jeu.avancer(c.length + 5);
   }, commandes);
-  return jouer(niveau(dailyVertige(parseDay(JOUR)!).niveau), commandes).resultat();
+  return jouer(niveauDuContenu(dailyVertige(jour)), commandes).resultat();
 }

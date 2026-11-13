@@ -1,13 +1,13 @@
 import { gzipSync } from "node:zlib";
 import { Rng } from "@cdj/core";
-import { CM, Partie, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, TICKS_PAR_SECONDE, chargeDe, dailyVertige, enregistrer, niveau, type BlocNiveau, type Commande, type Niveau, type NomNiveau } from "../src/index";
+import { CM, Partie, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, TICKS_PAR_SECONDE, chargeDe, enregistrer, niveau, VERTIGE_GENERATOR_VERSION, type BlocNiveau, type Contenu, type Commande, type Niveau, type NomNiveau } from "../src/index";
 import { ETAPES_PARCOURS, jouerCibles, jouerEtapes } from "./robot";
 import { enchainement } from "../src/modulesIndex";
 
 // Les mesures du lot V0 (`npm run mesures:vertige -w @cdj/vertige-sim`) : le coût du rejeu d'une partie de 60 et de 120 s, et la taille de la rediffusion avec la souris, brute et compressée. Elles s'écrivent en
 // Markdown sur la sortie standard. **Les profils de souris sont synthétiques** (aucune main humaine n'a joué) : ils bornent la taille, ils ne la prédisent pas — la mesure réelle se lit en jeu (`?debug&fps` affiche la
 // taille de la rediffusion en cours) et se remplace ici par celle de Nathan.
-const contenu = dailyVertige(20_000);
+const contenu: Contenu = { jour: 20_000, g: VERTIGE_GENERATOR_VERSION, niveau: "parcours" }; // le parcours de la maquette (les mesures du lot V0)
 
 // ---------------------------------------------------------------- les commandes
 function marche(graine: number, pas: number): Commande[] {

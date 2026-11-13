@@ -1,20 +1,20 @@
 {
   "_": "Durées des specs de « Vertige » (secondes, mesurées en local) : la CI compose ses parts avec elles. `essentiel` : la durée des tests sans `@regression` (aucun test de Vertige n'est « Régression »).",
   "secondes": {
-    "determinisme.spec.ts": 3,
-    "partie.spec.ts": 25,
+    "determinisme.spec.ts": 5,
+    "partie.spec.ts": 35,
     "classement.spec.ts": 30,
     "gravite-portails.spec.ts": 40,
     "poids.spec.ts": 2,
     "ecrans-kit.spec.ts": 12,
-    "modules.spec.ts": 30
+    "modules.spec.ts": 35
   },
   "essentiel": {
-    "determinisme.spec.ts": 3,
-    "partie.spec.ts": 25,
+    "determinisme.spec.ts": 5,
+    "partie.spec.ts": 35,
     "classement.spec.ts": 30,
     "gravite-portails.spec.ts": 40,
     "poids.spec.ts": 2,
-    "modules.spec.ts": 30
+    "modules.spec.ts": 35
   }
 }

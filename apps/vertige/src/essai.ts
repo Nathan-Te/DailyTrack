@@ -3,6 +3,7 @@ import { estNomNiveau, type NomNiveau } from "@cdj/vertige-sim";
 // Les options d'ESSAI de Vertige, lues dans l'adresse. **Jamais sur la production** (`restreint`, règle R9) :
 //   · `?scenario=modules` (lot V2) : la galerie des modules de niveau (nom, étiquettes, temps du robot ; « Voir la solution » : la caméra rejoue la solution ; « Jouer ») ; `?scenario=enchainement` : l'enchaînement fixe de
 //     modules, à jouer (chuter exprès : on reprend au palier ; R reprend au dernier palier), le temps du robot est affiché ;
+//   · `?scenario=jours&debug` (lot V3) : la galerie des 14 prochains jours (les modules du niveau, le temps du robot, « Voir la démonstration » : le robot joue le niveau ; « Jouer ») ;
 //   · `?scenario=bac-a-sable|mur|parcours|gravite|portails|cube` : une arène (murs, marches, trous de 2 à 10 m), un long mur au-dessus du vide, le parcours de la maquette (sans le portail), la salle de la gravité (des surfaces
 //     marquées, à l'ouest et à l'est), la salle des portails (trois paires et un court parcours) ou le cube (six plaques marquées, les six directions de la gravité) ;
 //   · `?debug&tune` : le panneau des sensations (vitesses, saut, gravité, mur, dash, sensibilité, champ de vision, roulis, balancement, transition de la caméra à une bascule) et l'export en JSON ; `&reglages=<JSON>` : des réglages collés (ceux que le panneau exporte) ;
@@ -13,6 +14,8 @@ export interface Essai {
   scenario: NomNiveau | null;
   /** `?scenario=modules` (lot V2) : la galerie des modules de niveau — chacun se regarde (la caméra rejoue la solution) ou se joue. */
   galerie: boolean;
+  /** `?scenario=jours` (lot V3) : la galerie des 14 prochains jours — leurs modules, le temps du robot, « Voir la démonstration » (le robot joue le niveau) et « Jouer ». */
+  jours: boolean;
   tune: boolean;
   fps: boolean;
   /** Le joueur scripté joue (captures et mesures). */
@@ -31,11 +34,12 @@ export interface Essai {
 
 export function lireEssai(search: string, restreint: boolean): Essai {
   const q = new URLSearchParams(search);
-  const vide: Essai = { scenario: null, galerie: false, tune: false, fps: false, demo: false, debug: false, reglages: null, confort: null, bloom: true, ombres: true, essai: false };
+  const vide: Essai = { scenario: null, galerie: false, jours: false, tune: false, fps: false, demo: false, debug: false, reglages: null, confort: null, bloom: true, ombres: true, essai: false };
   if (restreint) return vide;
   const nom = q.get("scenario") ?? "";
   const scenario = estNomNiveau(nom) ? nom : null;
   const galerie = nom === "modules";
+  const jours = nom === "jours";
   const debug = q.has("debug");
   let reglages: unknown = null;
   let confort: unknown = null;
@@ -53,6 +57,7 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   return {
     scenario,
     galerie,
+    jours,
     tune,
     fps: debug && q.has("fps"),
     demo: debug && q.has("demo"),
@@ -61,6 +66,6 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     confort,
     bloom: q.get("bloom") !== "0",
     ombres: q.get("ombres") !== "0",
-    essai: scenario !== null || galerie || tune || (debug && q.has("demo")) || reglages !== null,
+    essai: scenario !== null || galerie || jours || tune || (debug && q.has("demo")) || reglages !== null,
   };
 }

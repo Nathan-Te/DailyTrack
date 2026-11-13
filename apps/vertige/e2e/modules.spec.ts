@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { Partie, T_REPRISE, T_SAUT, ecrireTemps } from "@cdj/vertige-sim";
-import { MODULES, enchainement, robotDuModule } from "@cdj/vertige-sim/modules";
-import { appareil, lancer } from "./appareil";
+import { MODULES, dailyVertige, enchainement, robotDuJour, robotDuModule } from "@cdj/vertige-sim/modules";
+import { parseDay, formatDay } from "@cdj/core";
+import { appareil, JOUR, lancer } from "./appareil";
 
 // Lot V2 — les modules de niveau et l'enchaînement, vus du navigateur : la galerie (`?scenario=modules`) liste chaque module avec le temps de son robot, « Voir la solution » rejoue la solution (la même partie que Node, au bit
 // près), « Jouer » part au repos ; l'enchaînement (`?scenario=enchainement`) se joue de bout en bout, une chute ramène au dernier palier, la reprise (R) aussi, et le temps du robot est affiché à l'arrivée. Les règles sont dans
@@ -89,6 +90,29 @@ test.describe("Vertige : les modules de niveau", () => {
     const dessin = await page.evaluate(() => ({ appels: window.__vertige.monde.renderer.info.render.calls, fenetres: window.__vertige.monde.fenetres?.dessinees ?? 0 }));
     expect(dessin.fenetres).toBeLessThanOrEqual(2);
     expect(dessin.appels).toBeLessThan(600);
+    await context.close();
+  });
+
+  test("lot V3 — la galerie des 14 prochains jours liste les modules et le temps du robot ; « Voir la démonstration » rejoue le robot du jour (même partie que Node)", async ({ browser }) => {
+    const { context, page } = await ouvrir(browser, "jours");
+    await expect(page.locator(".vertige-galerie--jours .vertige-galerie__module")).toHaveCount(14, { timeout: 30_000 });
+    const premier = parseDay(JOUR)!;
+    for (const i of [0, 7, 13]) {
+      const c = dailyVertige(premier + i);
+      const ligne = page.locator(`.vertige-galerie__module[data-jour="${formatDay(premier + i)}"]`);
+      await expect(ligne).toContainText(`Robot : ${ecrireTemps(c.ticksRobot!, "fr")}`);
+      await expect(ligne.locator("[data-modules]")).toHaveAttribute("data-modules", c.modules!.join(","));
+    }
+    for (const i of [0, 5]) {
+      const c = dailyVertige(premier + i);
+      await page.locator(`.vertige-galerie__module[data-jour="${formatDay(premier + i)}"] [data-action="voir"]`).click();
+      await page.waitForFunction((d) => document.querySelector(`.vertige-galerie__module[data-jour="${d}"]`)?.getAttribute("aria-current") === "true", formatDay(premier + i));
+      await page.evaluate((n) => window.__jeu.avancer(n + 5), c.ticksRobot! + 5);
+      const etat = await page.evaluate(() => ({ fin: window.__vertige.sim().fin, depart: window.__vertige.sim().depart, chutes: window.__vertige.sim().chutes, captures: window.__vertige.sim().captures }));
+      expect(etat.fin - etat.depart, `le robot du jour ${i} arrive au temps de Node`).toBe(c.ticksRobot);
+      expect([etat.chutes, etat.captures]).toEqual([0, c.modules!.length + 1]);
+      expect(robotDuJour(c).length).toBeGreaterThan(3000);
+    }
     await context.close();
   });
 });

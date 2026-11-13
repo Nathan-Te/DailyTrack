@@ -1,9 +1,9 @@
 import { CodecError, pushVarint, readVarint } from "@cdj/core";
 import { decoderEnveloppe, encoderEnveloppe, ErreurEnveloppe, type ContenuEnveloppe } from "@cdj/core/enveloppe";
 import { DUREE_MAX_TICKS, MAX_CARACTERES, REGARD_MAX, TOUCHES_TOUTES, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION } from "./constantes";
-import { dailyVertige, type Contenu } from "./generateur";
+import type { Contenu } from "./generateur";
 import { estNomNiveau } from "./noms";
-import { niveau } from "./niveaux";
+import { niveauDuContenu } from "./niveaux";
 import { jouer, type Commande, type Resultat } from "./course";
 
 // La rediffusion d'une partie de Vertige : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, les COMMANDES de chaque pas (touches, lacet et tangage), à 120 pas par seconde.
@@ -138,7 +138,7 @@ export function decoderRediffusion(texte: unknown): Rediffusion {
 
 /** Rejoue des commandes sur le niveau du contenu : le même code que le jeu. Une rediffusion qui continue après l'arrivée est refusée (une seule écriture canonique par partie). */
 export function rejouerCommandes(contenu: Contenu, commandes: readonly Commande[]): Resultat {
-  const p = jouer(niveau(contenu.niveau), commandes);
+  const p = jouer(niveauDuContenu(contenu), commandes);
   if (p.tick < commandes.length) throw new ErreurRediffusion("format_illisible", "des pas après la fin de la partie");
   return p.resultat();
 }
@@ -166,4 +166,3 @@ export function enregistrerScenario(nom: string, commandes: readonly Commande[])
   return encoderRediffusion({ sim: VERTIGE_SIM_VERSION, g: VERTIGE_GENERATOR_VERSION, contenu: { scenario: nom }, commandes: [...commandes] });
 }
 
-export { dailyVertige };

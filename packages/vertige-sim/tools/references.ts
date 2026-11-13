@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { Rng, daysFromCivil, formatDay } from "@cdj/core";
-import { CUBE_ORDRE, NOMS_NIVEAUX, T_REPRISE, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, dailyVertige, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, Partie, verifier, type Commande, type NomNiveau } from "../src/index";
-import { enchainement } from "../src/modulesIndex";
+import { CUBE_ORDRE, NOMS_NIVEAUX, T_REPRISE, VERTIGE_GENERATOR_VERSION, VERTIGE_SIM_VERSION, T_ARRIERE, T_AVANT, T_DASH, T_DROITE, T_GAUCHE, T_SAUT, empreinteContenu, empreinteNiveau, enregistrer, enregistrerScenario, niveau, niveauDuContenu, Partie, verifier, type Commande, type Contenu, type NomNiveau } from "../src/index";
+import { assemblerCles, dailyVertige, enchainement, robotDuJour } from "../src/modulesIndex";
 import { ETAPES_PARCOURS, jouerCibles, jouerEtapes, marcheVersDesCibles } from "./robot";
 
 // Le golden de Vertige : `npm run golden:vertige -w @cdj/vertige-sim`. Dix jours (l'empreinte de leur contenu), les niveaux (l'empreinte de leurs boîtes) et des rediffusions de référence : le parcours
@@ -12,7 +12,8 @@ import { ETAPES_PARCOURS, jouerCibles, jouerEtapes, marcheVersDesCibles } from "
 // (Lot V2 : l'enchaînement fixe de modules, son robot et une reprise au palier.)
 const jours = Array.from({ length: 10 }, (_, i) => daysFromCivil(2026, 11, 2) + i * 3);
 const jourRef = jours[0]!;
-const contenu = dailyVertige(jourRef);
+// Le parcours de la maquette (le contenu de la version 1 du générateur) : les références du lot V0 le rejouent par leur scénario « parcours ».
+const contenu: Contenu = { jour: jourRef, g: VERTIGE_GENERATOR_VERSION, niveau: "parcours" };
 
 /** Une marche au hasard semé : les touches changent de temps en temps, le regard bouge, on saute et on dashe. */
 function marcheAuHasard(graine: number, pas: number): Commande[] {
@@ -51,11 +52,11 @@ const POINTS = {
 const robot = jouerEtapes("parcours", ETAPES_PARCOURS);
 const robotSouris = jouerEtapes("parcours", ETAPES_PARCOURS, { tremblement: (n) => [Math.round(22 * Math.sin(n / 7)), Math.round(14 * Math.sin(n / 11))] });
 const refs: { nom: string; scenario: string | null; commandes: Commande[] }[] = [
-  { nom: "parcours-robot", scenario: null, commandes: robot.commandes },
-  { nom: "parcours-souris", scenario: null, commandes: robotSouris.commandes },
+  { nom: "parcours-robot", scenario: "parcours", commandes: robot.commandes },
+  { nom: "parcours-souris", scenario: "parcours", commandes: robotSouris.commandes },
   { nom: "bac-a-sable-hasard", scenario: "bac-a-sable", commandes: marcheAuHasard(7, 6000) },
   { nom: "mur-hasard", scenario: "mur", commandes: marcheAuHasard(11, 6000) },
-  { nom: "vide", scenario: null, commandes: [] },
+  { nom: "vide", scenario: "parcours", commandes: [] },
   { nom: "cube-six-directions", scenario: "cube", commandes: jusquaLaFin("cube", cubeRobot.commandes) },
   { nom: "portails-parcours", scenario: "portails", commandes: jusquaLaFin("portails", portailsRobot.commandes) },
   { nom: "portails-va-et-vient", scenario: "portails", commandes: jusquaLaFin("portails", vaEtVient.commandes) },
@@ -70,11 +71,30 @@ refs.push(
   { nom: "enchainement-hasard", scenario: "enchainement", commandes: marcheAuHasard(41, 9000) },
   { nom: "enchainement-reprise", scenario: "enchainement", commandes: chaine.solution.map((c, i) => (i === 1800 ? { ...c, k: c.k | T_REPRISE } : c)).slice(0, 9000) },
 );
-const rediffusions = refs.map((r) => {
-  const c = r.scenario ? { jour: 0, g: contenu.g, niveau: r.scenario as never } : contenu;
-  const v = verifier(c, r.commandes);
-  return { nom: r.nom, scenario: r.scenario, date: formatDay(jourRef), g: contenu.g, code: r.scenario ? enregistrerScenario(r.scenario, r.commandes) : enregistrer(contenu, r.commandes), resultat: v.resultat, empreintes: v.empreintes };
+// Lot V3 : le niveau du jour assemblé de modules. Le robot de quatre jours (sa solution entière, rejouée par le navigateur au bit près), une reprise au palier demandée à mi-chemin sur l'un d'eux, et une marche au hasard semé.
+const joursDuRobot = [jours[0]!, jours[3]!, jours[6]!, jours[9]!];
+const rediffusions: { nom: string; scenario: string | null; date: string; g: number; code: string; resultat: ReturnType<typeof verifier>["resultat"]; empreintes: string[] }[] = refs.map((r) => {
+  const v = verifier({ niveau: r.scenario as NomNiveau }, r.commandes);
+  return { nom: r.nom, scenario: r.scenario, date: formatDay(jourRef), g: contenu.g, code: enregistrerScenario(r.scenario!, r.commandes), resultat: v.resultat, empreintes: v.empreintes };
 });
+for (const j of joursDuRobot) {
+  const c = dailyVertige(j);
+  const robotCommandes = robotDuJour(c);
+  const ajouter = (nom: string, commandes: Commande[]): void => {
+    const v = verifier(c, commandes);
+    rediffusions.push({ nom, scenario: null, date: formatDay(j), g: c.g, code: enregistrer(c, commandes), resultat: v.resultat, empreintes: v.empreintes });
+  };
+  ajouter(`jour-robot-${formatDay(j)}`, robotCommandes);
+  if (j === joursDuRobot[1]) {
+    ajouter(`jour-reprise-${formatDay(j)}`, jusquaLaFinDuJour(c, robotCommandes.map((x, i) => (i === 1800 ? { ...x, k: x.k | T_REPRISE } : x)).slice(0, 9000)));
+    ajouter(`jour-hasard-${formatDay(j)}`, jusquaLaFinDuJour(c, marcheAuHasard(53, 9000)));
+  }
+}
+function jusquaLaFinDuJour(c: Contenu, commandes: Commande[]): Commande[] {
+  const p = new Partie(niveauDuContenu(c));
+  for (let i = 0; i < commandes.length && !p.finie; i++) p.avancer(commandes[i]!);
+  return commandes.slice(0, p.tick);
+}
 
 // Les parties d'essai du serveur (`apps/api/scripts/vertige-essais.ts`) : douze façons de finir le parcours (le même joueur scripté, un regard de plus en plus tremblant), qui n'ont pas toutes le même temps.
 const essais: { code: string; temps: number }[] = [];
@@ -93,10 +113,13 @@ export const PARTIES_ESSAIS: readonly { readonly code: string; readonly temps: n
 );
 
 const sortie = {
-  _: "Golden de Vertige (lots V0, V1 et V2). Régénérer : npm run golden:vertige -w @cdj/vertige-sim, seulement en montant la version concernée.",
+  _: "Golden de Vertige (lots V0 à V3). Régénérer : npm run golden:vertige -w @cdj/vertige-sim, seulement en montant la version concernée.",
   sim: VERTIGE_SIM_VERSION,
   generateur: VERTIGE_GENERATOR_VERSION,
-  jours: jours.map((j) => ({ date: formatDay(j), empreinte: empreinteContenu(dailyVertige(j)) })),
+  jours: jours.map((j) => {
+    const c = dailyVertige(j);
+    return { date: formatDay(j), empreinte: empreinteContenu(c), modules: c.modules, ticksRobot: c.ticksRobot, niveau: empreinteNiveau(assemblerCles(c.modules!).niveau) };
+  }),
   niveaux: NOMS_NIVEAUX.map((n) => ({ nom: n, empreinte: empreinteNiveau(niveau(n)) })),
   rediffusions,
 };

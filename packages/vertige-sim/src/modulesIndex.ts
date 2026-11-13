@@ -6,3 +6,9 @@ export * from "./modules";
 export * from "./bibliotheque";
 export * from "./enchainement";
 export * from "./verifModules";
+// Lot V3 : les variantes (miroir, longueurs ajustées), le générateur du niveau du jour et les jours figés.
+export * from "./miroir";
+export * from "./pilote";
+export * from "./variantes";
+export * from "./niveauDuJour";
+export * from "./jours";
