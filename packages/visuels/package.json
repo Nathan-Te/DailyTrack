@@ -17,6 +17,7 @@
     "./blocs": "./src/blocs/index.ts",
     "./blocs/themes": "./src/blocs/themes.ts",
     "./blocs/canvas": "./src/blocs/canvas.ts",
-    "./blocs/three": "./src/blocs/three.ts"
+    "./blocs/three": "./src/blocs/three.ts",
+    "./plateformes": "./src/plateformes/index.ts"
   }
 }

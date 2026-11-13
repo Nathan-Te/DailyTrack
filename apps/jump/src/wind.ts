@@ -29,22 +29,10 @@ import type { EventSource, GameEvent } from "./events";
 // allumées pendant la rafale et s'éteignent progressivement avant la fin, sans jamais clignoter : une information de jeu, jamais coupée.
 
 // ——— Couleurs ———
-// Les mêmes dans tous les thèmes (comme les tapis et les blocs). **Jamais le rouge des dangers (teinte 0°) ni le jaune du personnage (44°)** :
-// teinte à au moins 30° de chacun, ou presque blanc (le pollen) ; contrastes ≥ 3:1 avec le ciel et chaque plan de chaque thème (test
-// `vent.test.ts`). Verts et menthe : la forêt.
-export const WIND_STYLE = {
-  /** Feuilles (deux verts) et pollen (blanc verdi, peu saturé). */
-  leaf: 0x9ad48a,
-  leafDark: 0x6fd7a0,
-  pollen: 0xe6f5ea,
-  /** Flèches du mouvement réduit et contour de la zone. */
-  arrow: 0x8de0c0,
-  edge: 0xa6f0d4,
-} as const;
-/** Opacité du contour (très discret) ; des flèches éteintes (la zone ne souffle pas) et allumées. */
-export const WIND_EDGE_OPACITY = 0.16;
-export const WIND_ARROW_IDLE = 0.22;
-export const WIND_ARROW_ON = 0.8;
+// Lot DA2 : dans `@cdj/visuels/plateformes`. Les mêmes dans tous les thèmes ; **jamais le rouge des dangers ni le jaune du personnage**, contrastes ≥ 3:1
+// avec le ciel et chaque plan de chaque thème (test `vent.test.ts`).
+import { WIND_ARROW_IDLE, WIND_ARROW_ON, WIND_EDGE_OPACITY, WIND_STYLE } from "@cdj/visuels/plateformes";
+export { WIND_ARROW_IDLE, WIND_ARROW_ON, WIND_EDGE_OPACITY, WIND_STYLE };
 
 // ——— État d'une zone ———
 
