@@ -1,6 +1,6 @@
 # Lot V3 — « Vertige » : le niveau du jour, le robot et les médailles
 
-**État : prêt à tester en local ; rien n'est commité ni poussé** (décision laissée à Nathan : voir « Pour Nathan » ; la CI de la PR n'a donc pas tourné). Jeu toujours `off` (`etatDepart` non touché). Section « Pour les joueurs » de la PR : **`rien`** (le jeu n'est pas en production). Hors périmètre, non touché : thèmes et décor (V4), son (V5), téléphone (V6), nouveaux modules ou mécaniques, valeurs de sensation, `seed.md`, zones partagées (le kit et le portail n'ont pas eu à changer).
+**État : PR brouillon ouverte (n° 329, étiquette `jeu:vertige`).** Jeu toujours `off` (`etatDepart` non touché). Section « Pour les joueurs » de la PR : **`rien`** (le jeu n'est pas en production). Hors périmètre, non touché : thèmes et décor (V4), son (V5), téléphone (V6), nouveaux modules ou mécaniques, valeurs de sensation, `seed.md`, zones partagées (le kit et le portail n'ont pas eu à changer).
 
 ## Livré
 **Partie 1 — le générateur** (`packages/vertige-sim`, entiers, PRNG semé ; règles entières dans `docs/vertige/generateur-du-jour.md`)
@@ -36,7 +36,8 @@ Captures et GIF : `images/lot-V3-galerie-jours.png`, `lot-V3-fantome-diamant.png
 - `?debug&demo` joue maintenant **le robot du jour** (le joueur scripté du parcours reste pour `?scenario=parcours`).
 
 ## Pour Nathan
-- **Rien n'est commité ni poussé.** Pour la PR : étiquette **`jeu:vertige`** (le nom de branche `claude/peaceful-pasteur-9a4rj8` n'a pas « vertige » : sans l'étiquette, le job `zones` classe la PR comme plateforme) ; fusionner `main` une fois juste avant l'arrêt, CI verte, section « Pour les joueurs » : `rien`.
+- **Sortie de zone, accordée par Nathan** : `apps/api/scripts/smokeRead.ts` et `apps/api/test/smokeLecture.test.ts` (zone partagée) changent : `JEUX_SANS_MEDAILLE` est vide, Vertige rend ses médailles (le smoke de la recette échouait sinon). Le job `zones` le signale : attendu.
+- Étiquette **`jeu:vertige`** posée ; fusionner `main` une fois juste avant l'arrêt, CI verte, section « Pour les joueurs » : `rien`.
 - **Passer Vertige en `preview`** sur la recette pour le scénario 2 : un clic dans `/admin/` (l'identité provisoire de V1b le permet).
 - **Calibrer le barème** (`config/jeux/vertige.json`, `medailles.bareme`) avec tes temps ; les jours déjà figés garderont leurs seuils.
 - **Échecs locaux hors zone, sous Windows** (non analysés, pas des régressions de ce lot : fins de ligne CRLF, chemins `C:\C:\`, `:` comme séparateur) : `packages/core` (`purete`, `sonMelange`, `fiches` « dossiers de plus »), `packages/kit` (`premierChargement`), `apps/web` (`ciZones` ×2). À relire dans la CI.
