@@ -46,9 +46,5 @@ export function hueDistance(a: number, b: number): number {
   return d > 180 ? 360 - d : d;
 }
 
-/** Mélange linéaire de deux couleurs 0xRRGGBB (`t` = 0 : `a`, 1 : `b`). */
-export function mix(a: number, b: number, t: number): number {
-  const k = Math.max(0, Math.min(1, t));
-  const ch = (s: number) => Math.round(((a >> s) & 255) * (1 - k) + ((b >> s) & 255) * k);
-  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
-}
+/** Mélange linéaire de deux couleurs 0xRRGGBB (`t` = 0 : `a`, 1 : `b`) : celui du module des plateformes (lot DA2). */
+export { mix } from "@cdj/visuels/plateformes";

@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gravity : maquette jouable</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Archivo+Black&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root{--creme:#EDE3CF;--creme2:#E3D6BC;--papier:#FFF6E0;--encre:#2A1E16;--terre:#C2401F;--moutarde:#E8B23A;--gris:#6B5847;
+  --g-etiquette:#FFB892;--g-coque:#C9622E;--g-jaune:#FFD23F;--diamant:#4FC3DC;--or:#D9A21B;--argent:#A7A9AC;--bronze:#C07A42}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#05070c;font-family:Archivo,sans-serif;color:var(--encre);-webkit-tap-highlight-color:transparent;user-select:none}
+canvas{display:block;width:100vw;height:100vh;touch-action:none}
+.cache{display:none !important}
+/* HUD */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:3}
+.hud-score{position:absolute;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);text-align:center;color:#FFF6E0}
+.hud-score b{display:block;font:44px/1 'Lilita One';letter-spacing:1px;text-shadow:3px 3px 0 #000}
+.hud-score span{font:700 13px 'JetBrains Mono';background:rgba(0,0,0,.55);padding:2px 8px;border-radius:3px}
+.hud-pause{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));width:44px;height:44px;border:3px solid var(--encre);border-radius:6px;background:var(--papier);display:grid;place-items:center;pointer-events:auto;font:16px 'Archivo Black'}
+.hud-objectif{position:absolute;top:max(12px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));background:var(--papier);border:3px solid var(--encre);border-radius:6px;padding:5px 10px;font:700 13px Archivo;transform:rotate(2deg);display:flex;gap:7px;align-items:center}
+.hud-objectif i{width:14px;height:14px;border-radius:50%;border:2px solid var(--encre);display:inline-block}
+.hud-mult{position:absolute;top:max(84px,calc(env(safe-area-inset-top) + 74px));left:50%;transform:translateX(-50%) rotate(-3deg);background:var(--g-jaune);border:3px solid var(--encre);border-radius:6px;padding:2px 10px 4px;font:22px 'Lilita One';box-shadow:3px 3px 0 var(--encre);text-align:center;min-width:64px}
+.hud-mult i{display:block;height:5px;background:rgba(42,30,22,.25);margin-top:2px}
+.hud-mult i b{display:block;height:100%;background:var(--encre)}
+.hud-bonus{position:absolute;top:max(64px,calc(env(safe-area-inset-top) + 56px));left:max(10px,env(safe-area-inset-left));display:flex;gap:6px}
+.hud-bonus span{background:var(--papier);border:3px solid var(--encre);border-radius:6px;padding:3px 8px;font:700 13px Archivo}
+.hud-theme{position:absolute;top:30%;left:50%;transform:translateX(-50%) rotate(-2deg);background:var(--papier);border:3px solid var(--encre);border-radius:6px;box-shadow:4px 4px 0 var(--encre);padding:8px 16px;font:26px 'Lilita One';opacity:0;transition:opacity .3s}
+.hud-theme small{display:block;font:600 13px Archivo;color:var(--gris)}
+.hud-aide{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#FFF6E0;padding:8px 14px;border-radius:20px;font:700 14px Archivo;transition:opacity .4s}
+/* écrans (étiquette Gravity, dans la famille de Jump) */
+.voile{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding:16px;background:repeating-linear-gradient(135deg,rgba(20,14,10,.86) 0 16px,rgba(34,24,18,.86) 16px 32px);overflow:auto}
+.coque{background:var(--g-coque);border:3px solid var(--encre);border-radius:14px 14px 4px 4px;box-shadow:6px 6px 0 var(--encre);padding:0 10px 10px;width:min(980px,100%)}
+.peigne{height:12px;margin:0 50px 6px;background:repeating-linear-gradient(90deg,var(--encre) 0 3px,transparent 3px 8px);opacity:.75}
+.etiquette{background:var(--g-etiquette);border:3px solid var(--encre);padding:18px 20px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px}
+.titre{font:58px/1 'Lilita One';letter-spacing:1px;color:var(--encre);text-shadow:3px 3px 0 var(--papier)}
+.sous{font:500 14px 'JetBrains Mono';margin-top:6px}
+.replique{font-size:16px;line-height:1.4;margin:12px 0}
+.tuiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tuile{border:3px solid var(--encre);padding:10px 12px;background:var(--papier);transform:rotate(-1deg)}
+.tuile.noire{background:var(--encre);color:var(--papier);transform:rotate(1.5deg)}
+.petit{font:700 11px Archivo;letter-spacing:1px;text-transform:uppercase}
+.gros{font:24px 'Lilita One';margin:3px 0}
+.btn{height:46px;border:3px solid var(--encre);border-radius:4px;background:var(--papier);font:700 15px Archivo;cursor:pointer;box-shadow:2px 2px 0 var(--encre);padding:0 14px;color:var(--encre)}
+.btn.p{height:62px;width:100%;margin-top:12px;background:var(--encre);color:var(--g-jaune);font:30px 'Lilita One';letter-spacing:3px;box-shadow:0 5px 0 var(--terre)}
+.btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.panneau{border:3px solid var(--encre);background:var(--papier);padding:10px 12px}
+.panneau+.panneau{margin-top:10px}
+.themes{display:flex;gap:6px;margin:8px 0 6px}
+.themes div{flex:1;border:2.5px solid var(--encre);border-radius:4px;padding:6px 4px 5px;text-align:center;font:700 11px Archivo;color:#FFF6E0}
+.themes div b{display:block;font:15px 'Lilita One';letter-spacing:.5px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:6px 3px;border-bottom:1px solid var(--creme2)}
+td.r{text-align:right;font:700 14px 'JetBrains Mono'}
+tr.toi td{background:var(--encre);color:var(--g-jaune)}
+.pied{display:flex;justify-content:space-between;font:600 13px Archivo;margin-top:10px}
+.fin .etiquette{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.score-fin{font:76px/1 'Lilita One';text-shadow:4px 4px 0 var(--papier)}
+.detail{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.detail div{border:2.5px solid var(--encre);background:var(--papier);padding:7px 8px}
+.detail b{display:block;font:20px 'Lilita One'}
+.detail span{font-size:12px}
+.sticker{display:inline-block;background:var(--g-jaune);border:3px solid var(--encre);padding:4px 10px;font:18px 'Lilita One';transform:rotate(-4deg);box-shadow:3px 3px 0 var(--encre)}
+.aide{width:min(620px,100%)}
+.aide .etiquette{display:block}
+.pas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.pas div{background:var(--papier);border:2.5px solid var(--encre);padding:8px;font-size:13px;line-height:1.35}
+.pas svg{width:100%;height:auto;display:block;margin-bottom:6px;background:#0d1a1c;border:2px solid var(--encre)}
+.blocs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.blocs div{display:flex;gap:8px;align-items:center;font-size:12.5px;line-height:1.25;background:var(--papier);border:2px solid var(--encre);padding:6px}
+.blocs i{width:28px;height:28px;flex:none;border:2px solid var(--encre);border-radius:3px;display:block}
+@media (max-width:760px){
+  .etiquette,.fin .etiquette{grid-template-columns:minmax(0,1fr);padding:14px}
+  .titre{font-size:44px}
+  .score-fin{font-size:58px}
+  .pas,.blocs{grid-template-columns:1fr 1fr}
+  .hud-score b{font-size:34px}
+}
+@media (max-height:460px) and (min-width:700px){
+  .voile{place-items:start center}
+  .etiquette{padding:12px 14px}
+  .titre{font-size:42px}
+  .btn.p{height:52px;margin-top:8px}
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="cache">
+  <div class="hud-pause" id="bPause">II</div>
+  <div class="hud-score"><b id="hScore">0</b><span id="hDetail">0 m · 0 pièce</span></div>
+  <div class="hud-objectif" id="hObjectif"><i style="background:var(--bronze)"></i><span>Bronze · 1 500</span></div>
+  <div class="hud-mult" id="hMult">×1<i><b style="width:0%"></b></i></div>
+  <div class="hud-bonus" id="hBonus"></div>
+  <div class="hud-theme" id="hTheme">Usine<small>Tapis roulants</small></div>
+  <div class="hud-aide" id="hAide">Touche l'écran ou Espace : la gravité s'inverse, seulement quand tu touches le sol.</div>
+</div>
+
+<!-- Accueil -->
+<div class="voile" id="eAccueil">
+  <div class="coque"><div class="peigne"></div>
+    <div class="etiquette">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div><div class="titre">GRAVITY</div><div class="sous" id="aSous">Partie n° 1 · 5 thèmes</div></div>
+          <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true"><rect x="2" y="2" width="88" height="88" rx="6" fill="#0d1a1c" stroke="#2A1E16" stroke-width="3"/><rect x="2" y="8" width="88" height="10" fill="#2a4426"/><rect x="2" y="74" width="88" height="10" fill="#2a4426"/><rect x="2" y="18" width="88" height="3" fill="#8fc46a"/><rect x="2" y="71" width="88" height="3" fill="#8fc46a"/><g transform="translate(26 50)"><rect x="0" y="0" width="20" height="20" rx="3" fill="#FFD23F" stroke="#2A1E16" stroke-width="3"/><rect x="-1" y="5" width="22" height="4" fill="#2A1E16"/><circle cx="7" cy="13" r="2.4" fill="#2A1E16"/><circle cx="14" cy="13" r="2.4" fill="#2A1E16"/></g><g transform="translate(56 21)"><rect x="0" y="0" width="20" height="20" rx="3" fill="#FFD23F" stroke="#2A1E16" stroke-width="3" opacity=".45"/></g><path d="M50 58 C 60 50, 62 40, 64 30" stroke="#FFF6E0" stroke-width="2.5" stroke-dasharray="4 4" fill="none"/><path d="M60 30 l4 -6 l4 6" stroke="#FFF6E0" stroke-width="2.5" fill="none"/></svg>
+        </div>
+        <div class="replique">« Le sol, le plafond : même combat. Tant que tu touches quelque chose. »</div>
+        <div class="tuiles">
+          <div class="tuile"><div class="petit">Ton record du jour</div><div class="gros" id="aRecord">—</div><div style="font-size:12px">Toutes les parties comptent</div></div>
+          <div class="tuile noire"><div class="petit">Série Gravity</div><div class="gros">3 jours</div><div style="font-size:12px">Meilleur : 2 840</div></div>
+        </div>
+        <button class="btn p" id="bJouer">JOUER</button>
+        <div class="btns"><button class="btn" id="bAide">Comment jouer</button><button class="btn">Archives</button><button class="btn">Réglages</button></div>
+      </div>
+      <div>
+        <div class="panneau">
+          <div class="petit">Aujourd'hui · l'ordre des thèmes, le même pour tous</div>
+          <div class="themes" id="aThemes"></div>
+          <div style="font-size:12.5px">Un thème tous les 300 m, puis la boucle reprend, plus vite.<br><b>Médailles du jour</b> : <span id="aSeuils"></span></div>
+        </div>
+        <div class="panneau">
+          <div class="petit" style="margin-bottom:6px">Classement du jour · 41 classés</div>
+          <table>
+            <tr><td>1er</td><td>Biscotte</td><td class="r">6 215</td></tr>
+            <tr><td>2e</td><td>Galet</td><td class="r">4 980</td></tr>
+            <tr><td>3e</td><td>Léonie</td><td class="r">4 102</td></tr>
+            <tr class="toi"><td>13e</td><td>Toi</td><td class="r" id="aToi">1 840</td></tr>
+          </table>
+          <div style="margin-top:8px;font-weight:700;text-decoration:underline;font-size:14px">Tout le classement ›</div>
+        </div>
+        <div class="pied"><span>Nouveau niveau dans <span class="mono" style="font-family:'JetBrains Mono'">08:41:15</span></span><span style="text-decoration:underline">Mon profil Du Jour ›</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Comment jouer -->
+<div class="voile cache" id="eAide">
+  <div class="coque aide"><div class="peigne"></div>
+    <div class="etiquette">
+      <div class="titre" style="font-size:38px">COMMENT JOUER</div>
+      <div class="pas">
+        <div><svg viewBox="0 0 120 70"><rect y="0" width="120" height="10" fill="#2a4426"/><rect y="60" width="120" height="10" fill="#2a4426"/><rect x="20" y="42" width="16" height="16" rx="2" fill="#FFD23F" stroke="#2A1E16" stroke-width="2.5"/><path d="M45 50 h50" stroke="#FFF6E0" stroke-width="2" stroke-dasharray="4 4"/><path d="M90 46 l6 4 l-6 4" stroke="#FFF6E0" stroke-width="2" fill="none"/></svg>Tu cours tout seul. Le chemin est le même pour tous aujourd'hui.</div>
+        <div><svg viewBox="0 0 120 70"><rect y="0" width="120" height="10" fill="#2a4426"/><rect y="60" width="120" height="10" fill="#2a4426"/><rect x="20" y="42" width="16" height="16" rx="2" fill="#FFD23F" stroke="#2A1E16" stroke-width="2.5"/><rect x="60" y="12" width="16" height="16" rx="2" fill="#FFD23F" stroke="#2A1E16" stroke-width="2.5"/><path d="M36 44 C 48 30, 52 24, 60 22" stroke="#FFF6E0" stroke-width="2" stroke-dasharray="4 4" fill="none"/><circle cx="95" cy="35" r="10" fill="none" stroke="#FFF6E0" stroke-width="2"/><circle cx="95" cy="35" r="3" fill="#FFF6E0"/></svg>Touche l'écran, clique ou Espace : la gravité s'inverse. <b>Seulement quand tu touches une surface.</b></div>
+        <div><svg viewBox="0 0 120 70"><rect y="0" width="120" height="10" fill="#2a4426"/><rect y="60" width="50" height="10" fill="#2a4426"/><path d="M60 60 l6 -10 l6 10 z M74 60 l6 -10 l6 10 z" fill="#FF3B3B" stroke="#1a0408" stroke-width="1.5"/><rect x="90" y="60" width="30" height="10" fill="#2a4426"/><circle cx="30" cy="35" r="5" fill="#F4EFE2" stroke="#2A1E16" stroke-width="2"/><circle cx="44" cy="35" r="5" fill="#F4EFE2" stroke="#2A1E16" stroke-width="2"/><path d="M100 30 l6 -8 l6 8 l-6 8 z" fill="#4FC3DC" stroke="#2A1E16" stroke-width="2"/></svg>Le rouge tue, le vide aussi, et le bord gauche de l'écran. Ramasse les pièces (10) et les gemmes (100).</div>
+      </div>
+      <div class="petit" style="margin:4px 0 8px">Les blocs spéciaux, un par thème</div>
+      <div class="blocs">
+        <div><i style="background:#0b0e13;border-color:#2A1E16;background-image:repeating-linear-gradient(90deg,#0b0e13 0 6px,#e6eef2 6px 8px)"></i><span><b>Usine</b> : tapis roulant. Il te pousse plus vite.</span></div>
+        <div><i style="background:#0a2238;box-shadow:inset 0 3px 0 #dff8ff"></i><span><b>Glace</b> : trop glissant pour prendre appui. Pas d'inversion dessus.</span></div>
+        <div><i style="background:#2b3260;outline:2px dashed #9fb0ff;outline-offset:-6px"></i><span><b>Nuit</b> : blocs qui s'allument et s'éteignent en rythme.</span></div>
+        <div><i style="background:linear-gradient(90deg,#5ff3ff 50%,#ff6ad5 50%)"></i><span><b>Néon</b> : deux couleurs, une seule solide à la fois.</span></div>
+        <div><i style="background:#1f3420;background-image:repeating-linear-gradient(0deg,transparent 0 5px,rgba(220,255,200,.5) 5px 7px)"></i><span><b>Forêt</b> : courant d'air. Il te porte vers le haut.</span></div>
+        <div><i style="background:#3a3550;box-shadow:inset 0 0 0 4px #FFF6E0"></i><span><b>Partout</b> : l'inverseur. Il change ta gravité dès que tu le touches.</span></div>
+        <div><i style="background:#FFF6E0;border-radius:50%;box-shadow:inset 0 0 0 5px #4FC3DC"></i><span><b>Bouclier</b> : il te sauve une fois. Toujours au même endroit.</span></div>
+        <div><i style="background:#FFF6E0;box-shadow:inset 0 -9px 0 #4FC3DC"></i><span><b>Aimant</b> : 8 secondes, les pièces viennent à toi.</span></div>
+        <div><i style="background:#FFD23F;display:grid;place-items:center;font:13px 'Lilita One'">×3</i><span><b>Multiplicateur</b> : +1 toutes les 10 pièces d'affilée (jusqu'à ×5). Une pièce ratée, et il retombe.</span></div>
+      </div>
+      <button class="btn p" id="bAideOk" style="font-size:24px">C'EST PARTI</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fin de partie -->
+<div class="voile cache fin" id="eFin">
+  <div class="coque"><div class="peigne"></div>
+    <div class="etiquette">
+      <div>
+        <div class="petit">Partie terminée · <span id="fCause">tombé dans le vide</span></div>
+        <div class="score-fin" id="fScore">0</div>
+        <div id="fRecord" class="sticker cache">NOUVEAU RECORD !</div>
+        <div class="detail">
+          <div><b id="fDist">0 m</b><span>distance</span></div>
+          <div><b id="fPieces">0</b><span>pièces × 10</span></div>
+          <div><b id="fGemmes">0</b><span>gemmes × 100</span></div>
+        </div>
+        <div style="font-size:14px">Thème atteint : <b id="fTheme">Usine</b>. Multiplicateur max : <b id="fMult">×1</b>. Ton record du jour : <b id="fMeilleur">—</b>.</div>
+        <div id="fMedaille" style="margin-top:8px"></div>
+        <button class="btn p" id="bRejouer">REJOUER</button>
+        <div class="btns"><button class="btn" id="bAccueil">Accueil</button><button class="btn">Classement</button><button class="btn">Partager</button></div>
+      </div>
+      <div>
+        <div class="panneau">
+          <div class="petit" style="margin-bottom:6px">Classement du jour (démo)</div>
+          <table>
+            <tr><td>1er</td><td>Biscotte</td><td class="r">6 215</td></tr>
+            <tr><td>2e</td><td>Galet</td><td class="r">4 980</td></tr>
+            <tr><td>3e</td><td>Léonie</td><td class="r">4 102</td></tr>
+            <tr class="toi"><td id="fPlace">–</td><td>Toi</td><td class="r" id="fToi">0</td></tr>
+          </table>
+        </div>
+        <div class="panneau">
+          <div class="petit" style="margin-bottom:6px">Médailles du jour</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font:700 11px Archivo">
+            <div style="background:var(--bronze);border:2.5px solid var(--encre);padding:5px">BRONZE<br><span id="s0" style="font:700 14px 'JetBrains Mono'"></span></div>
+            <div style="background:var(--argent);border:2.5px solid var(--encre);padding:5px">ARGENT<br><span id="s1" style="font:700 14px 'JetBrains Mono'"></span></div>
+            <div style="background:var(--or);border:2.5px solid var(--encre);padding:5px">OR<br><span id="s2" style="font:700 14px 'JetBrains Mono'"></span></div>
+            <div style="background:var(--diamant);border:2.5px solid var(--encre);padding:5px;color:#0B2530">DIAMANT<br><span id="s3" style="font:700 14px 'JetBrains Mono'"></span></div>
+          </div>
+          <div style="font-size:12px;margin-top:6px">Calculés chaque jour : 60 % du score d'un robot qui prend tout, jusqu'à la fin du 1er, du 2e, du 3e thème, puis de la boucle.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================================== thèmes (palettes de Jump)
+const HAZARD = '#FF3B3B', HAZARD_OUT = '#1a0408', JOUEUR = '#FFD23F', ENCRE = '#2A1E16';
+const THEMES = {
+  foret: { nom: 'Forêt', meca: "Courants d'air", bg: '#070f0d', face: '#2a4426', fill: '#1f3420', rimTop: '#8fc46a', rimSide: '#456d3a', rimBot: '#33522d', piece: '#F4EFE2', loin: '#0d1a1c', pres: '#10201f', forme: 'collines' },
+  usine: { nom: 'Usine', meca: 'Tapis roulants', bg: '#07090c', face: '#363b44', fill: '#2a2e36', rimTop: '#aab4c0', rimSide: '#59616d', rimBot: '#454b55', piece: '#F4EFE2', loin: '#0f1218', pres: '#101218', forme: 'cheminees' },
+  glace: { nom: 'Glace', meca: 'Sols de glace', bg: '#050c18', face: '#1c3e58', fill: '#18374f', rimTop: '#dff4ff', rimSide: '#4f86a8', rimBot: '#2f5c7c', piece: '#F4EFE2', loin: '#0b1630', pres: '#0e1c3a', forme: 'montagnes' },
+  nuit:  { nom: 'Nuit', meca: 'Blocs clignotants', bg: '#04060e', face: '#2b3260', fill: '#20264a', rimTop: '#9fb0ff', rimSide: '#46508c', rimBot: '#363f74', piece: '#F0F2FF', loin: '#0a0e1e', pres: '#0d1226', forme: 'collines' },
+  neon:  { nom: 'Néon', meca: 'Blocs alternés', bg: '#07020f', face: '#40306e', fill: '#2f2252', rimTop: '#5ff3ff', rimSide: '#7a2fa0', rimBot: '#5a2078', piece: '#FFF6E0', loin: '#120a24', pres: '#1a0e34', forme: 'skyline' },
+};
+const NOMS = ['foret', 'usine', 'glace', 'nuit', 'neon'];
+const COULEURS_ETIQ = { foret: '#456d3a', usine: '#59616d', glace: '#4f86a8', nuit: '#46508c', neon: '#7a2fa0' };
+
+// =============================================================== graine du jour
+const params = new URLSearchParams(location.search);
+const jour = params.get('jour') || new Date().toISOString().slice(0, 10);
+function hash(s) { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const ordre = (() => { const r = rng(hash('ordre' + jour)); const a = NOMS.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
+if (params.get('theme') && THEMES[params.get('theme')]) { const t = params.get('theme'); ordre.splice(ordre.indexOf(t), 1); ordre.unshift(t); }
+
+// =============================================================== le monde : colonnes de 12 cases
+// 0 vide, 1 bloc, 2 pique, 3 tapis, 4 glace, 5 clignotant, 6 alterné A, 7 alterné B, 8 inverseur, 9 vent (non solide)
+const LIGNES = 12, LARGEUR_MORCEAU = 16, MORCEAUX_PAR_THEME = 19;
+const colonnes = []; const pieces = []; const gemmes = []; const motifs = []; const bonus = [];
+let morceauxFaits = 0;
+function themeDeColonne(x) { const m = Math.floor(x / LARGEUR_MORCEAU); return ordre[Math.floor(m / MORCEAUX_PAR_THEME) % ordre.length]; }
+function couloir() { const c = new Array(LIGNES).fill(0); c[0] = c[1] = 1; c[10] = c[11] = 1; return c; }
+function genererMorceau(m) {
+  const r = rng(hash(jour + ':' + m));
+  const th = ordre[Math.floor(m / MORCEAUX_PAR_THEME) % ordre.length];
+  const boucle = Math.floor(m / (MORCEAUX_PAR_THEME * ordre.length));
+  const d = Math.min(1, (m % (MORCEAUX_PAR_THEME * ordre.length)) / 60 + boucle * 0.35);
+  const x0 = m * LARGEUR_MORCEAU;
+  const cols = Array.from({ length: LARGEUR_MORCEAU }, couloir);
+  const piece = (cx, row) => pieces.push({ x: x0 + cx + 0.5, y: row + 0.5, ox: x0 + cx + 0.5, oy: row + 0.5, pris: false });
+  let voie = 9;
+  const lane = (from, to, row) => { voie = row; for (let c = from; c < to; c += 2) piece(c, row); };
+  const trou = (from, to, haut) => { for (let c = from; c < Math.min(to, 16); c++) { if (haut) { cols[c][0] = cols[c][1] = 0; } else { cols[c][10] = cols[c][11] = 0; } } };
+  const n = () => 3 + Math.floor(r() * (2 + d * 4));
+  if (m < 3) { lane(2, 14, m % 2 ? 2 : 9); return pousser(cols); }
+  // un morceau sur trois porte la mécanique du thème
+  const special = r() < 0.38;
+  const LISTE = ['trouBas', 'trouHaut', 'zigzag', 'pilier', 'pics', 'milieu', 'escalier', 'etages', 'inverseur', 'ilots'];
+  const motif = special ? 'special' : LISTE[Math.floor(r() * (d < 0.3 ? 7 : LISTE.length))];
+  motifs[m] = motif;
+  switch (motif) {
+    case 'trouBas': { const l = n(); trou(4, 4 + l, false); lane(3, 5 + l, 2); break; }
+    case 'trouHaut': { const l = n(); trou(4, 4 + l, true); lane(3, 5 + l, 9); break; }
+    case 'zigzag': { trou(2, 2 + n(), false); trou(9, 9 + Math.min(6, n()), true); lane(2, 7, 2); lane(10, 15, 9); break; }
+    case 'pilier': { const bas = r() < 0.5; for (const c of [8, 9]) for (let y = 0; y < 4; y++) cols[c][bas ? 9 - y : 2 + y] = 1; lane(3, 14, bas ? 2 : 9); break; }
+    case 'pics': { const bas = r() < 0.5, l = 4 + Math.floor(r() * (3 + d * 4)); for (let c = 4; c < Math.min(16, 4 + l); c++) cols[c][bas ? 9 : 2] = 2; lane(3, 4 + l, bas ? 2 : 9); break; }
+    case 'milieu': { trou(3, 13, false); trou(3, 13, true); for (let c = 2; c < 14; c++) cols[c][5] = cols[c][6] = 1; if (r() < 0.5) lane(3, 13, 4); else lane(3, 13, 7); if (r() < 0.25) gemmes.push({ x: x0 + 8.5, y: r() < 0.5 ? 4.5 : 7.5, pris: false }); break; }
+    case 'inverseur': { const bas = r() < 0.5; for (let c = 6; c < 9; c++) cols[c][bas ? 10 : 1] = 8; trou(10, 15, !bas); lane(4, 15, bas ? 9 : 2); break; }
+    case 'escalier': { // deux plateformes au milieu, en marches : on passe de l'une à l'autre sans toucher à rien
+      trou(3, 16, false); trou(3, 15, true);
+      for (let c = 1; c < 8; c++) cols[c][7] = 1;
+      for (let c = 6; c < 14; c++) cols[c][4] = 1;
+      lane(3, 8, 8); lane(8, 14, 5); break; }
+    case 'etages': { // deux étages au milieu de l'écran, troués en quinconce : quatre surfaces à choisir
+      for (let c = 0; c < 16; c++) { cols[c][4] = 1; cols[c][7] = 1; }
+      for (let c = 4; c < 7; c++) cols[c][4] = 0; for (let c = 10; c < 13; c++) cols[c][7] = 0;
+      trou(2, 14, false); if (r() < 0.5) trou(5, 12, true);
+      lane(1, 15, r() < 0.5 ? 3 : 8); if (r() < 0.35) gemmes.push({ x: x0 + 8.5, y: 5.5, pris: false }); break; }
+    case 'ilots': { // des îlots flottants, en haut puis en bas, au-dessus du vide
+      trou(2, 16, false); trou(2, 16, true);
+      for (const [c0, row] of [[2, 8], [6, 3], [10, 8], [13, 3]]) for (let c = c0; c < c0 + 3; c++) cols[c][row] = 1;
+      for (const [c, row] of [[3, 7.5], [7, 4.5], [11, 7.5], [14, 4.5]]) piece(c, row - 0.5);
+      voie = 7; break; }
+    case 'special': {
+      if (th === 'usine') { for (let c = 1; c < 15; c++) { cols[c][10] = 3; cols[c][1] = 3; } trou(9, 9 + Math.min(5, n()), r() < 0.5); lane(2, 15, 9); }
+      if (th === 'glace') { const bas = r() < 0.5; for (let c = 2; c < 10; c++) cols[c][bas ? 10 : 1] = 4; trou(10, 15, bas); lane(2, 15, bas ? 2 : 9); }
+      if (th === 'nuit') { const bas = r() < 0.5; for (let c = 4; c < 12; c++) cols[c][bas ? 10 : 1] = 5; trou(4, 12, !bas); lane(4, 12, bas ? 9 : 2); }
+      if (th === 'neon') { trou(3, 13, false); trou(3, 13, true); for (let c = 3; c < 8; c++) cols[c][10] = 6; for (let c = 7; c < 13; c++) cols[c][1] = 7; lane(3, 8, 9); lane(8, 13, 2); }
+      if (th === 'foret') { trou(4, 12, false); for (let c = 5; c < 11; c++) for (let y = 3; y < 10; y++) cols[c][y] = 9; lane(4, 12, 5); }
+      if (r() < 0.3) gemmes.push({ x: x0 + 13.5, y: r() < 0.5 ? 2.5 : 9.5, pris: false });
+      break;
+    }
+  }
+  // les bonus : posés par le niveau, aux mêmes endroits pour toutes les parties
+  if (m % 23 === 11) bonus.push({ x: x0 + 8.5, y: voie + 0.5, type: 'bouclier', pris: false });
+  if (m % 23 === 19) bonus.push({ x: x0 + 8.5, y: voie + 0.5, type: 'aimant', pris: false });
+  return pousser(cols);
+  function pousser(cs) { for (const c of cs) colonnes.push(c); }
+}
+function assurer(x) { while (colonnes.length < x + 40) genererMorceau(morceauxFaits++); }
+
+// cases qui changent avec le temps
+const CLIGNE = 1.6, BATTEMENT = 1.0;
+function solide(type, t) {
+  if (type === 1 || type === 3 || type === 4 || type === 8) return true;
+  if (type === 5) return (t % CLIGNE) < CLIGNE * 0.62;
+  if (type === 6) return Math.floor(t / BATTEMENT) % 2 === 0;
+  if (type === 7) return Math.floor(t / BATTEMENT) % 2 === 1;
+  return false;
+}
+function cellule(cx, cy) { if (cy < 0 || cy >= LIGNES || cx < 0) return 0; assurer(cx); return colonnes[cx][cy]; }
+
+// =============================================================== le joueur
+const TAILLE = 0.8;
+let J, cam, t, etat = 'accueil', vitesse, particules = [], themeAffiche = null, record = 0;
+try { record = +localStorage.getItem('gravity:' + jour) || 0; } catch (e) {}
+function nouvellePartie() {
+  J = { x: 3, y: 9.2, vy: 0, g: 1, sol: false, surface: 0, coyote: 0, tampon: 0, ecrase: 0, mort: null, pieces: 0, gemmes: 0, points: 0, chaine: 0, mult: 1, multMax: 1, bouclier: false, aimant: 0, invuln: 0 };
+  cam = 0; t = 0; vitesse = 7; particules = []; themeAffiche = null;
+  for (const p of pieces) { p.pris = false; p.manquee = false; p.x = p.ox; p.y = p.oy; } for (const g of gemmes) g.pris = false; for (const b of bonus) b.pris = false;
+}
+function heurte(x, y) {
+  const x0 = Math.floor(x), x1 = Math.floor(x + TAILLE - 1e-6), y0 = Math.floor(y), y1 = Math.floor(y + TAILLE - 1e-6);
+  let res = null;
+  for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
+    const ty = cellule(cx, cy);
+    if (ty === 2) { // pique : boîte réduite
+      if (x + TAILLE > cx + 0.15 && x < cx + 0.85 && y + TAILLE > cy + 0.3 && y < cy + 0.7) return { type: 2, cx, cy };
+    } else if (solide(ty, t)) res = res || { type: ty, cx, cy };
+  }
+  return res;
+}
+function inverser() {
+  if (etat !== 'jeu') return;
+  J.tampon = 0.12;
+}
+function pas(dt) {
+  t += dt;
+  vitesse = Math.min(12.5, 7 + cam / 220);
+  cam += vitesse * dt;
+  J.tampon -= dt; J.coyote -= dt;
+  // inversion : seulement au contact d'une surface (et jamais sur la glace)
+  if (J.tampon > 0 && (J.sol || J.coyote > 0) && J.surface !== 4) {
+    J.g = -J.g; J.sol = false; J.coyote = 0; J.tampon = 0; J.vy = -J.g * 2; poussiere(J.x + TAILLE / 2, J.g > 0 ? J.y : J.y + TAILLE, 6);
+  }
+  // horizontal : la course, avec rattrapage si on a pris du retard
+  const cible = cam + 4.2;
+  let vx = vitesse * (J.surface === 3 && J.sol ? 1.35 : 1) + (J.x < cible ? 2.2 : 0);
+  if (J.x > cible + 2) vx = vitesse * 0.9;
+  let nx = J.x + vx * dt;
+  let hx = heurte(nx, J.y);
+  if (hx && hx.type === 2) { if (danger('pique')) return; hx = null; }
+  if (hx) nx = hx.cx - TAILLE - 1e-4; // un mur : on reste derrière
+  J.x = Math.max(J.x, nx);
+  // vertical
+  const dansVent = cellule(Math.floor(J.x + TAILLE / 2), Math.floor(J.y + TAILLE / 2)) === 9;
+  J.vy += ((dansVent ? -26 : 0) + J.g * 46 * (dansVent ? 0.4 : 1)) * dt;
+  if (dansVent) J.vy = Math.max(J.vy, -9);
+  J.vy = Math.max(-17, Math.min(17, J.vy));
+  const etaitAuSol = J.sol;
+  let ny = J.y + J.vy * dt;
+  let hy = heurte(J.x, ny);
+  J.sol = false;
+  if (hy && hy.type === 2) { if (danger('pique')) return; hy = null; }
+  if (hy) {
+    if (J.vy > 0) ny = hy.cy - TAILLE - 1e-4; else ny = hy.cy + 1 + 1e-4;
+    const versLeSol = Math.sign(J.vy) === Math.sign(J.g);
+    if (versLeSol) {
+      if (!etaitAuSol && Math.abs(J.vy) > 6) { J.ecrase = 0.14; poussiere(J.x + TAILLE / 2, J.g > 0 ? ny + TAILLE : ny, 5); }
+      J.sol = true; J.surface = hy.type;
+      if (hy.type === 8) { J.g = -J.g; J.sol = false; J.vy = -J.g * 3; poussiere(J.x + TAILLE / 2, ny + TAILLE / 2, 8); }
+    }
+    J.vy = 0;
+  }
+  if (etaitAuSol && !J.sol) J.coyote = 0.07;
+  J.y = ny;
+  // ramassage
+  const cxj = J.x + TAILLE / 2, cyj = J.y + TAILLE / 2;
+  J.aimant = Math.max(0, J.aimant - dt); J.invuln = Math.max(0, J.invuln - dt);
+  for (const p of pieces) {
+    if (p.pris || p.manquee || p.x < cam - 4 || p.x > cam + 30) continue;
+    if (J.aimant > 0 && Math.hypot(p.x - cxj, p.y - cyj) < 3.5) { p.x += (cxj - p.x) * Math.min(1, 10 * dt); p.y += (cyj - p.y) * Math.min(1, 10 * dt); }
+    if (Math.abs(p.x - cxj) < 0.75 && Math.abs(p.y - cyj) < 0.75) {
+      p.pris = true; J.pieces++; J.chaine++; J.mult = Math.min(5, 1 + Math.floor(J.chaine / 10)); J.multMax = Math.max(J.multMax, J.mult);
+      J.points += 10 * J.mult; etincelles(p.x, p.y, THEMES[themeDeColonne(p.x)].piece);
+    } else if (p.x < cam - 0.6) { p.manquee = true; J.chaine = 0; J.mult = 1; } // une pièce ratée : le multiplicateur retombe
+  }
+  for (const g of gemmes) if (!g.pris && Math.abs(g.x - cxj) < 0.8 && Math.abs(g.y - cyj) < 0.8) { g.pris = true; J.gemmes++; J.points += 100 * J.mult; etincelles(g.x, g.y, '#4FC3DC', 18); }
+  for (const b of bonus) if (!b.pris && Math.abs(b.x - cxj) < 0.85 && Math.abs(b.y - cyj) < 0.85) { b.pris = true; if (b.type === 'bouclier') J.bouclier = true; else J.aimant = 8; etincelles(b.x, b.y, '#FFF6E0', 16); }
+  // morts (le bouclier en sauve une)
+  if (J.y < -1 || J.y > LIGNES) { if (danger('vide')) return; }
+  if (J.x < cam - 0.4) { if (danger('bord')) return; }
+}
+function score() { return Math.floor(J.x) + J.points; }
+function danger(cause) {
+  if (J.invuln > 0) { sauvetage(cause); return false; }
+  if (!J.bouclier) { mourir(cause); return true; }
+  J.bouclier = false; J.invuln = 0.8; etincelles(J.x + TAILLE / 2, J.y + TAILLE / 2, '#4FC3DC', 22); sauvetage(cause); return false;
+}
+function sauvetage(cause) {
+  if (cause === 'vide') { if (J.y > LIGNES - 1) { J.y = LIGNES - 1.5; J.g = -1; J.vy = -14; } else { J.y = 0.5; J.g = 1; J.vy = 14; } }
+  if (cause === 'bord') J.x = cam + 2;
+}
+function seuilsDuJour() {
+  // le « robot » : il prend toutes les pièces et toutes les gemmes jusqu'à la fin du 1er, du 2e, du 3e thème, puis de la boucle ; la médaille est à 60 % de son score
+  const etapes = [1, 2, 3, ordre.length].map((k) => k * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU);
+  assurer(etapes[3] + 40);
+  const objets = pieces.map((p) => ({ x: p.x, g: 0 })).concat(gemmes.map((g) => ({ x: g.x, g: 1 }))).sort((a, b) => a.x - b.x);
+  return etapes.map((d) => { let ch = 0, m = 1, pts = 0; for (const o of objets) { if (o.x >= d) break; if (o.g) pts += 100 * m; else { ch++; m = Math.min(5, 1 + Math.floor(ch / 10)); pts += 10 * m; } } return Math.round(((d + pts) * 0.6) / 10) * 10; });
+}
+function mourir(cause) {
+  if (etat !== 'jeu') return;
+  J.mort = cause; etat = 'mort';
+  for (let i = 0; i < 26; i++) particules.push({ x: J.x + TAILLE / 2, y: J.y + TAILLE / 2, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, v: 0.9, c: Math.random() < 0.6 ? JOUEUR : ENCRE, r: 0.12 + Math.random() * 0.12 });
+  setTimeout(finDePartie, 900);
+}
+function poussiere(x, y, n) { for (let i = 0; i < n; i++) particules.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 2, v: 0.4, c: '#FFF6E0', r: 0.06 + Math.random() * 0.06 }); }
+function etincelles(x, y, c, n = 8) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28; particules.push({ x, y, vx: Math.cos(a) * 5, vy: Math.sin(a) * 5, v: 0.45, c, r: 0.07 }); } }
+
+// =============================================================== rendu
+const cv = document.getElementById('c'), cx = cv.getContext('2d');
+let W, H, T, pr;
+function taille() { pr = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight; cv.width = W * pr; cv.height = H * pr; T = H / LIGNES; if (W / T < 14) T = W / 14; }
+addEventListener('resize', taille); taille();
+const hex = (h) => h;
+function fondTheme(th, x0, x1) {
+  const P = THEMES[th];
+  cx.fillStyle = P.bg; cx.fillRect(x0, 0, x1 - x0, H);
+  // plans lointains (parallaxe)
+  for (const [couleur, f, haut, base] of [[P.loin, 0.15, 0.32, 0.72], [P.pres, 0.35, 0.22, 0.86]]) {
+    cx.fillStyle = couleur; cx.beginPath(); cx.moveTo(x0, H);
+    for (let sx = x0; sx <= x1 + 8; sx += 8) {
+      const wx = (sx / T + cam * f) * 0.5;
+      let h;
+      if (P.forme === 'cheminees' || P.forme === 'skyline') h = (Math.floor(wx) % 3 === 0 ? 0.9 : (Math.floor(wx * 1.7) % 2 ? 0.55 : 0.35));
+      else if (P.forme === 'montagnes') h = Math.abs(((wx * 0.6) % 2) - 1);
+      else h = 0.5 + 0.5 * Math.sin(wx * 0.9) * Math.sin(wx * 0.37);
+      cx.lineTo(sx, H * base - h * H * haut);
+    }
+    cx.lineTo(x1 + 8, H); cx.closePath(); cx.fill();
+  }
+  if (th === 'nuit') { cx.fillStyle = '#252b58'; cx.beginPath(); cx.arc(x0 + (x1 - x0) * 0.75, H * 0.2, T * 0.9, 0, 6.28); cx.fill(); }
+}
+function dessinerCase(type, sx, sy, th, gx, gy) {
+  const P = THEMES[th], s = T;
+  if (type === 9) { // vent
+    cx.fillStyle = 'rgba(200,255,190,0.07)'; cx.fillRect(sx, sy, s, s);
+    cx.strokeStyle = 'rgba(220,255,200,0.45)'; cx.lineWidth = 2;
+    const o = ((t * 3 + gx * 0.37) % 1) * s;
+    cx.beginPath(); cx.moveTo(sx + s * 0.3, sy + s - o); cx.lineTo(sx + s * 0.3, sy + s - o - s * 0.3); cx.moveTo(sx + s * 0.7, sy + ((s - o + s / 2) % s)); cx.lineTo(sx + s * 0.7, sy + ((s - o + s / 2) % s) - s * 0.3); cx.stroke();
+    return;
+  }
+  if (type === 2) { // pique
+    const bas = cellule(gx, gy + 1) !== 0 && cellule(gx, gy + 1) !== 2 && cellule(gx, gy + 1) !== 9;
+    cx.fillStyle = HAZARD; cx.strokeStyle = HAZARD_OUT; cx.lineWidth = Math.max(1.5, s * 0.06);
+    for (let k = 0; k < 2; k++) {
+      const ax = sx + k * s / 2;
+      cx.beginPath();
+      if (bas) { cx.moveTo(ax + s * 0.04, sy + s); cx.lineTo(ax + s * 0.25, sy + s * 0.25); cx.lineTo(ax + s * 0.46, sy + s); }
+      else { cx.moveTo(ax + s * 0.04, sy); cx.lineTo(ax + s * 0.25, sy + s * 0.75); cx.lineTo(ax + s * 0.46, sy); }
+      cx.closePath(); cx.fill(); cx.stroke();
+    }
+    return;
+  }
+  const actif = solide(type, t);
+  let face = P.face, rim = P.rimTop;
+  if (type === 3) { face = '#0b0e13'; rim = '#e6eef2'; }
+  if (type === 4) { face = '#0a2238'; rim = '#dff8ff'; }
+  if (type === 6) { face = '#0f3a44'; rim = '#5ff3ff'; }
+  if (type === 7) { face = '#46153c'; rim = '#ff6ad5'; }
+  if (type === 8) { face = '#3a3550'; rim = '#FFF6E0'; }
+  if (type === 5) { face = '#3b4380'; rim = '#e8ecff'; }
+  if ((type === 5 || type === 6 || type === 7) && !actif) {
+    cx.strokeStyle = rim; cx.globalAlpha = 0.55; cx.lineWidth = 2; cx.setLineDash([5, 5]); cx.strokeRect(sx + 3, sy + 3, s - 6, s - 6); cx.setLineDash([]); cx.globalAlpha = 1; return;
+  }
+  cx.fillStyle = type === 1 ? P.fill : face; cx.fillRect(sx, sy, s + 0.5, s + 0.5);
+  if (type === 1) { cx.fillStyle = P.face; cx.fillRect(sx + s * 0.08, sy + s * 0.08, s * 0.84, s * 0.84); }
+  const vide = (dx, dy) => { const c = cellule(gx + dx, gy + dy); return !(c === 1 || c >= 3 && c <= 8 && c !== 9); };
+  const e = Math.max(3, s * 0.13);
+  cx.fillStyle = type === 1 ? P.rimTop : rim; if (vide(0, -1)) cx.fillRect(sx, sy, s + 0.5, e);
+  cx.fillStyle = type === 1 ? P.rimBot : rim; if (vide(0, 1)) cx.fillRect(sx, sy + s - e, s + 0.5, e);
+  cx.fillStyle = type === 1 ? P.rimSide : rim; if (vide(-1, 0)) cx.fillRect(sx, sy, e, s); if (vide(1, 0)) cx.fillRect(sx + s - e, sy, e, s);
+  if (type === 3) { // chevrons qui défilent
+    cx.strokeStyle = '#e6eef2'; cx.lineWidth = 2; const o = ((t * 4) % 1) * s / 2;
+    for (let k = -1; k < 2; k++) { const ax = sx + o + k * s / 2 + s * 0.15; cx.beginPath(); cx.moveTo(ax, sy + s * 0.35); cx.lineTo(ax + s * 0.15, sy + s * 0.5); cx.lineTo(ax, sy + s * 0.65); cx.stroke(); }
+  }
+  if (type === 5) { // la lampe du bloc, qui clignote juste avant de s'éteindre
+    const reste = CLIGNE * 0.62 - (t % CLIGNE); const prevenir = reste < 0.35 && Math.floor(t * 12) % 2 === 0;
+    cx.fillStyle = prevenir ? '#3b4380' : '#e8ecff'; cx.fillRect(sx + s * 0.38, sy + s * 0.38, s * 0.24, s * 0.24);
+  }
+  if (type === 4) { cx.fillStyle = 'rgba(244,253,255,.35)'; cx.beginPath(); cx.moveTo(sx + s * 0.2, sy + s * 0.75); cx.lineTo(sx + s * 0.45, sy + s * 0.3); cx.lineTo(sx + s * 0.55, sy + s * 0.3); cx.lineTo(sx + s * 0.3, sy + s * 0.75); cx.fill(); }
+  if (type === 8) { cx.strokeStyle = '#FFF6E0'; cx.lineWidth = Math.max(2, s * 0.08); cx.beginPath(); cx.moveTo(sx + s / 2, sy + s * 0.2); cx.lineTo(sx + s / 2, sy + s * 0.8); cx.moveTo(sx + s * 0.32, sy + s * 0.36); cx.lineTo(sx + s / 2, sy + s * 0.2); cx.lineTo(sx + s * 0.68, sy + s * 0.36); cx.moveTo(sx + s * 0.32, sy + s * 0.64); cx.lineTo(sx + s / 2, sy + s * 0.8); cx.lineTo(sx + s * 0.68, sy + s * 0.64); cx.stroke(); }
+}
+function dessinerJoueur() {
+  if (J.mort) return;
+  const s = T * TAILLE, sx = (J.x - cam) * T, sy = J.y * T;
+  const ec = J.ecrase > 0 ? J.ecrase / 0.14 : 0;
+  cx.save(); cx.translate(sx + s / 2, sy + s / 2); if (J.g < 0) cx.scale(1, -1);
+  cx.scale(1 + ec * 0.18, 1 - ec * 0.18);
+  const r = s * 0.16, lw = Math.max(2, s * 0.09);
+  // traînée de l'inversion
+  cx.beginPath(); cx.roundRect(-s / 2, -s / 2, s, s, r); cx.fillStyle = JOUEUR; cx.fill(); cx.lineWidth = lw; cx.strokeStyle = ENCRE; cx.stroke();
+  // bandeau et ses deux pans qui flottent
+  cx.fillStyle = ENCRE; cx.fillRect(-s / 2 - lw * 0.3, -s * 0.28, s + lw * 0.6, s * 0.16);
+  const f = Math.sin(t * 18) * s * 0.06;
+  cx.beginPath(); cx.moveTo(-s / 2, -s * 0.24); cx.lineTo(-s * 0.95, -s * 0.36 + f); cx.lineTo(-s * 0.9, -s * 0.18 + f); cx.closePath(); cx.fill();
+  cx.beginPath(); cx.moveTo(-s / 2, -s * 0.18); cx.lineTo(-s * 0.85, -s * 0.06 - f); cx.lineTo(-s * 0.78, -s * 0.0 - f); cx.closePath(); cx.fill();
+  // yeux
+  for (const ex of [0.08, 0.3]) { cx.fillStyle = '#FFF6E0'; cx.beginPath(); cx.arc(ex * s, -s * 0.02, s * 0.12, 0, 6.28); cx.fill(); cx.fillStyle = ENCRE; cx.beginPath(); cx.arc(ex * s + s * 0.04, -s * 0.0, s * 0.06, 0, 6.28); cx.fill(); }
+  // pieds qui courent
+  if (J.sol) { const p = Math.sin(J.x * 3.2) * s * 0.12; cx.fillStyle = ENCRE; cx.fillRect(-s * 0.3 + p, s / 2, s * 0.2, s * 0.1); cx.fillRect(s * 0.1 - p, s / 2, s * 0.2, s * 0.1); }
+  cx.restore();
+}
+function dessiner() {
+  cx.setTransform(pr, 0, 0, pr, 0, 0);
+  const c0 = Math.floor(cam) - 1, c1 = Math.ceil(cam + W / T) + 1;
+  // fonds par thème (une frontière nette au changement de thème)
+  let debut = c0, thCour = themeDeColonne(Math.max(0, c0));
+  for (let c = c0; c <= c1 + 1; c++) {
+    const th = themeDeColonne(Math.max(0, c));
+    if (th !== thCour || c === c1 + 1) { fondTheme(thCour, Math.max(0, (debut - cam) * T), Math.min(W, (c - cam) * T)); debut = c; thCour = th; }
+  }
+  // les cases
+  for (let c = Math.max(0, c0); c <= c1; c++) {
+    assurer(c); const th = themeDeColonne(c);
+    for (let y = 0; y < LIGNES; y++) { const ty = colonnes[c][y]; if (ty) dessinerCase(ty, (c - cam) * T, y * T, th, c, y); }
+  }
+  // pièces et gemmes
+  for (const p of pieces) if (!p.pris && p.x > cam - 1 && p.x < cam + W / T + 1) {
+    const sx = (p.x - cam) * T, sy = p.y * T, w = Math.abs(Math.cos(t * 3 + p.x)) * T * 0.22 + T * 0.06;
+    cx.fillStyle = THEMES[themeDeColonne(p.x)].piece; cx.strokeStyle = ENCRE; cx.lineWidth = Math.max(1.5, T * 0.06);
+    cx.beginPath(); cx.ellipse(sx, sy, w, T * 0.24, 0, 0, 6.28); cx.fill(); cx.stroke();
+  }
+  for (const g of gemmes) if (!g.pris && g.x > cam - 1 && g.x < cam + W / T + 1) {
+    const sx = (g.x - cam) * T, sy = g.y * T + Math.sin(t * 3) * T * 0.08, k = T * 0.32;
+    cx.fillStyle = '#4FC3DC'; cx.strokeStyle = ENCRE; cx.lineWidth = Math.max(2, T * 0.07);
+    cx.beginPath(); cx.moveTo(sx, sy - k); cx.lineTo(sx + k * 0.8, sy); cx.lineTo(sx, sy + k); cx.lineTo(sx - k * 0.8, sy); cx.closePath(); cx.fill(); cx.stroke();
+    cx.fillStyle = '#E8FBFF'; cx.beginPath(); cx.moveTo(sx - k * 0.2, sy - k * 0.45); cx.lineTo(sx + k * 0.15, sy - k * 0.2); cx.lineTo(sx - k * 0.25, sy - k * 0.1); cx.fill();
+  }
+  for (const b of bonus) if (!b.pris && b.x > cam - 1 && b.x < cam + W / T + 1) {
+    const sx = (b.x - cam) * T, sy = b.y * T + Math.sin(t * 2.5) * T * 0.1, k = T * 0.36;
+    cx.lineWidth = Math.max(2, T * 0.07); cx.strokeStyle = ENCRE;
+    cx.fillStyle = '#FFF6E0'; cx.beginPath(); cx.arc(sx, sy, k, 0, 6.28); cx.fill(); cx.stroke();
+    cx.fillStyle = '#4FC3DC';
+    if (b.type === 'bouclier') { cx.beginPath(); cx.moveTo(sx, sy - k * 0.6); cx.lineTo(sx + k * 0.5, sy - k * 0.35); cx.lineTo(sx + k * 0.4, sy + k * 0.25); cx.lineTo(sx, sy + k * 0.6); cx.lineTo(sx - k * 0.4, sy + k * 0.25); cx.lineTo(sx - k * 0.5, sy - k * 0.35); cx.closePath(); cx.fill(); cx.stroke(); }
+    else { cx.lineWidth = k * 0.32; cx.strokeStyle = '#4FC3DC'; cx.beginPath(); cx.arc(sx, sy - k * 0.05, k * 0.38, Math.PI, 0); cx.moveTo(sx - k * 0.38, sy - k * 0.05); cx.lineTo(sx - k * 0.38, sy + k * 0.4); cx.moveTo(sx + k * 0.38, sy - k * 0.05); cx.lineTo(sx + k * 0.38, sy + k * 0.4); cx.stroke(); }
+  }
+  if (!J.mort && (J.bouclier || J.invuln > 0)) {
+    cx.strokeStyle = '#4FC3DC'; cx.lineWidth = Math.max(2, T * 0.08); cx.globalAlpha = J.invuln > 0 ? 0.4 + 0.4 * Math.sin(t * 30) : 0.85;
+    cx.beginPath(); cx.arc((J.x + TAILLE / 2 - cam) * T, (J.y + TAILLE / 2) * T, T * 0.62, 0, 6.28); cx.stroke(); cx.globalAlpha = 1;
+  }
+  dessinerJoueur();
+  for (const p of particules) { cx.globalAlpha = Math.max(0, p.v * 2); cx.fillStyle = p.c; cx.fillRect((p.x - cam) * T - p.r * T / 2, p.y * T - p.r * T / 2, p.r * T, p.r * T); }
+  cx.globalAlpha = 1;
+}
+
+const SEUILS = seuilsDuJour();
+const MEDAILLES = [['bronze', 'Bronze'], ['argent', 'Argent'], ['or', 'Or'], ['diamant', 'Diamant']];
+// =============================================================== interface
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString('fr-FR');
+$('aThemes').innerHTML = ordre.map((k, i) => `<div style="background:${COULEURS_ETIQ[k]}"><b>${i + 1}. ${THEMES[k].nom}</b>${THEMES[k].meca}</div>`).join('');
+$('aRecord').textContent = record ? fmt(record) : '—';
+$('aSeuils').textContent = SEUILS.map((v, i) => `${MEDAILLES[i][1]} ${fmt(v)}`).join(' · ');
+SEUILS.forEach((v, i) => ($('s' + i).textContent = fmt(v)));
+function montrer(id) { for (const e of ['eAccueil', 'eAide', 'eFin']) $(e).classList.toggle('cache', e !== id); $('hud').classList.toggle('cache', id !== null); }
+function lancer() { nouvellePartie(); etat = 'jeu'; montrer(null); $('hud').classList.remove('cache'); $('hAide').style.opacity = 1; setTimeout(() => ($('hAide').style.opacity = 0), 4000); }
+function finDePartie() {
+  const s = score(); const nouveau = s > record;
+  if (nouveau) { record = s; try { localStorage.setItem('gravity:' + jour, String(s)); } catch (e) {} }
+  $('fScore').textContent = fmt(s); $('fDist').textContent = fmt(Math.floor(J.x)) + ' m'; $('fPieces').textContent = J.pieces; $('fGemmes').textContent = J.gemmes;
+  $('fCause').textContent = { vide: 'tombé dans le vide', pique: 'touché par un pique', bord: "rattrapé par le bord de l'écran" }[J.mort];
+  $('fTheme').textContent = THEMES[themeDeColonne(J.x)].nom; $('fMeilleur').textContent = fmt(record);
+  $('fRecord').classList.toggle('cache', !nouveau);
+  $('fMult').textContent = '×' + J.multMax;
+  const obtenue = SEUILS.filter((v) => s >= v).length;
+  $('fMedaille').innerHTML = obtenue ? `<span class="sticker" style="background:var(--${MEDAILLES[obtenue - 1][0]})">${MEDAILLES[obtenue - 1][1].toUpperCase()}</span>` : `<span style="font-size:13px">Bronze à ${fmt(SEUILS[0])}.</span>`;
+  const scores = [6215, 4980, 4102, 3650, 3020, 2711, 2400, 2210, 1990, 1840]; const place = scores.filter((x) => x > record).length + 1;
+  $('fPlace').textContent = place === 1 ? '1er' : place + 'e'; $('fToi').textContent = fmt(record);
+  $('aRecord').textContent = fmt(record); $('aToi').textContent = fmt(record);
+  etat = 'fin'; montrer('eFin');
+}
+$('bJouer').onclick = (e) => { e.stopPropagation(); lancer(); };
+$('bRejouer').onclick = (e) => { e.stopPropagation(); lancer(); };
+$('bAccueil').onclick = (e) => { e.stopPropagation(); etat = 'accueil'; montrer('eAccueil'); };
+$('bAide').onclick = (e) => { e.stopPropagation(); montrer('eAide'); };
+$('bAideOk').onclick = (e) => { e.stopPropagation(); lancer(); };
+$('bPause').onclick = (e) => { e.stopPropagation(); etat = etat === 'pause' ? 'jeu' : (etat === 'jeu' ? 'pause' : etat); };
+cv.addEventListener('pointerdown', (e) => { e.preventDefault(); inverser(); });
+addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'KeyW' || e.code === 'KeyS') { e.preventDefault(); if (etat === 'jeu') inverser(); else if (etat === 'accueil' || etat === 'fin') lancer(); }
+  if (e.code === 'KeyR' && (etat === 'jeu' || etat === 'fin')) lancer();
+  if (e.code === 'KeyP' || e.code === 'Escape') $('bPause').onclick(e);
+  if (e.code === 'KeyT' && etat === 'jeu') { const m = Math.floor(J.x / LARGEUR_MORCEAU); const prochain = (Math.floor(m / MORCEAUX_PAR_THEME) + 1) * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU; assurer(prochain + 60); J.x = prochain + 2; J.y = 9.2; J.g = 1; J.vy = 0; cam = J.x - 4; }
+});
+
+// =============================================================== boucle
+nouvellePartie();
+let avant = performance.now();
+function boucle(maintenant) {
+  const dt = Math.min(0.033, (maintenant - avant) / 1000); avant = maintenant;
+  if (etat === 'jeu') { const n = 4; for (let i = 0; i < n; i++) pas(dt / n); }
+  else if (etat === 'accueil' || etat === 'fin') { t += dt; cam += 4 * dt; } // la scène défile derrière les écrans
+  else if (etat === 'mort') { t += dt; }
+  J.ecrase = Math.max(0, J.ecrase - dt);
+  for (const p of particules) { p.x += p.vx * dt; p.y += p.vy * dt; p.v -= dt; }
+  particules = particules.filter((p) => p.v > 0);
+  dessiner();
+  if (etat === 'jeu' || etat === 'mort' || etat === 'pause') {
+    $('hScore').textContent = fmt(score());
+    $('hDetail').textContent = `${fmt(Math.floor(J.x))} m · ${J.pieces} pièce${J.pieces > 1 ? 's' : ''}${J.gemmes ? ` · ${J.gemmes} gemme${J.gemmes > 1 ? 's' : ''}` : ''}`;
+    const th = themeDeColonne(J.x);
+    if (th !== themeAffiche) { themeAffiche = th; $('hTheme').innerHTML = `${THEMES[th].nom}<small>${THEMES[th].meca}</small>`; $('hTheme').style.opacity = 1; setTimeout(() => ($('hTheme').style.opacity = 0), 1800); }
+    const s = score(); const k = Math.min(3, SEUILS.filter((v) => s >= v).length);
+    $('hObjectif').innerHTML = `<i style="background:var(--${MEDAILLES[k][0]})"></i><span>${MEDAILLES[k][1]} · ${fmt(SEUILS[k])}</span>`;
+    $('hMult').innerHTML = `×${J.mult}<i><b style="width:${J.mult >= 5 ? 100 : (J.chaine % 10) * 10}%"></b></i>`;
+    $('hBonus').innerHTML = (J.bouclier ? '<span>Bouclier</span>' : '') + (J.aimant > 0 ? `<span>Aimant ${Math.ceil(J.aimant)} s</span>` : '');
+  }
+  requestAnimationFrame(boucle);
+}
+requestAnimationFrame(boucle);
+// pour les tests et les captures
+window.__gravity = { get J() { return J; }, get etat() { return etat; }, lancer, inverser, ordre, motifs, assurer, aller(x, y = 9.2, g = 1) { assurer(x + 60); J.x = x; J.y = y; J.g = g; J.vy = 0; cam = x - 4.2; } };
+</script>
+</body>
+</html>

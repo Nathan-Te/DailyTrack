@@ -230,3 +230,31 @@
   flex-direction: column;
   font-size: var(--dj-taille-12);
 }
+
+/* Lot DA2 : la planche des plateformes (les cinq thèmes, le personnage, les blocs à mécanique). */
+.vitrine-plateformes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+.vitrine-plateformes__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+}
+.vitrine-plateformes__canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: var(--dj-trait) solid var(--dj-encre);
+}
+.vitrine-plateformes__bloc {
+  width: 7rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  margin: 0;
+}
+.vitrine-plateformes__legende {
+  font-size: var(--dj-taille-12);
+}

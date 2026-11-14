@@ -1,5 +1,6 @@
 import { TILE_BELT_LEFT, TILE_BELT_RIGHT, TILE_ICE, TILE_EMPTY, type Level } from "@cdj/jump-sim";
 import { isMatterTile } from "./autotile";
+import { BELT_BAND, BELT_GAP } from "@cdj/visuels/plateformes";
 
 // Les deux surfaces du lot 11 — tapis roulants `[` `]` et glace `~` — côté affichage, **pur** (aucune dépendance à Three.js ni au DOM, testé
 // sous Node) : on lit la grille, jamais la simulation. Une surface est un **bloc plein** dont seule la face du dessus a un traitement propre
@@ -15,9 +16,8 @@ import { isMatterTile } from "./autotile";
 // personnage) ; les chevrons sont clairs et peu saturés (ils se lisent en niveaux de gris et ne prennent la teinte ni du danger ni du
 // personnage ni d'un ressort) ; ils pointent dans le sens du tapis et **défilent dans ce sens**.
 
-/** Hauteur de la bande d'un tapis (tuiles), posée sous le contour clair de la face du dessus ; marge au-dessus. */
-export const BELT_BAND = 0.22;
-export const BELT_GAP = 0.05;
+// Lot DA2 : la bande d'un tapis (hauteur, marge) est dans `@cdj/visuels/plateformes`.
+export { BELT_BAND, BELT_GAP } from "@cdj/visuels/plateformes";
 /** Période des chevrons (tuiles) et vitesse d'affichage de leur défilement (tuiles/s : la moitié de la vitesse du tapis, pour ne pas hacher l'image). */
 export const BELT_PERIOD = 0.8;
 export const BELT_FLOW = 2.4;

@@ -21,23 +21,11 @@ import type { EventSource, GameEvent } from "./events";
 // on lit des états. Lot 18 : l'annonce d'un changement d'état est une jauge continue (`announce.ts`), plus un vacillement.
 
 // ——— Couleurs ———
-// Les mêmes dans tous les thèmes (comme le tapis et la glace). **Jamais le rouge des dangers (`HAZARD`, teinte 0°) ni le jaune du personnage
-// (`PLAYER`, teinte 44°)** : teinte à au moins 30° de chacun (règle du lot 9, test `blocks.test.ts`), et l'un et l'autre jeu se distinguent aussi
-// par leur repère (barre pour A, losange pour B) : la couleur ne porte pas seule l'information.
-
-export interface BlockStyle {
-  /** Face pleine, liseré clair (contour d'un bloc plein et d'un bloc absent) et repère. */
-  fill: number;
-  edge: number;
-}
-
-export const BLOCK_STYLE = {
-  /** Clignotant : bleu-violet (teinte 226°). */
-  blink: { fill: 0x6a8cff, edge: 0xd2e0ff },
-  /** Alterné, jeu A : turquoise (teinte 175°) ; jeu B : violet (teinte 269°). */
-  altA: { fill: 0x12b5a8, edge: 0xd2fffa },
-  altB: { fill: 0xb066ff, edge: 0xf0dcff },
-} as const satisfies Record<string, BlockStyle>;
+// Lot DA2 : les couleurs réservées des blocs (`BLOCK_STYLE`) sont dans `@cdj/visuels/plateformes`. **Jamais le rouge des dangers (`HAZARD`, teinte 0°)
+// ni le jaune du personnage (`PLAYER`, teinte 44°)** : teinte à au moins 30° de chacun (règle du lot 9, test `blocks.test.ts`), et l'un et l'autre jeu se
+// distinguent aussi par leur repère (barre pour A, losange pour B) : la couleur ne porte pas seule l'information.
+export { BLOCK_STYLE } from "@cdj/visuels/plateformes";
+export type { BlockStyle } from "@cdj/visuels/plateformes";
 
 // ——— État affiché ———
 

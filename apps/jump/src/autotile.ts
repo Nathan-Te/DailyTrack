@@ -1,79 +1,31 @@
 import { TILE_BELT_LEFT, TILE_BELT_RIGHT, TILE_ICE, TILE_SOLID, type Level } from "@cdj/jump-sim";
+import { depthMap as depthMapGrille, isMatter as isMatterGrille, neighbourMask as neighbourMaskGrille } from "@cdj/visuels/plateformes";
 
-// Auto-tuilage (lot 9), **pur** : chaque bloc plein se dessine selon ses 8 voisins. Rien ici ne touche à la simulation : on lit la grille.
-// Seuls les blocs pleins `#` — et, depuis le lot 11, les **tapis roulants** `[` `]` et la **glace** `~`, qui sont des blocs pleins dont seule la
-// face du dessus a un traitement propre — comptent comme matière (un bloc friable peut tomber, un ressort est un objet à part : la face d'un
-// bloc plein qui les touche est exposée et garde son contour). Hors de la grille, la gauche, la droite et le haut sont pleins (les bords du niveau),
-// le bas est ouvert (on en meurt en tombant).
+// Auto-tuilage (lot 9), **pur** : chaque bloc plein se dessine selon ses 8 voisins. **Lot DA2 : l'assemblage (bits, voisins, `tileShape`, profondeur,
+// bruit de case) est dans `@cdj/visuels/plateformes`** ; ce fichier ne dit que ce qui est de la matière dans Jump. Rien ici ne touche à la simulation :
+// on lit la grille. Seuls les blocs pleins `#` — et, depuis le lot 11, les **tapis roulants** `[` `]` et la **glace** `~`, qui sont des blocs pleins
+// dont seule la face du dessus a un traitement propre — comptent comme matière (un bloc friable peut tomber, un ressort est un objet à part : la
+// face d'un bloc plein qui les touche est exposée et garde son contour). Hors de la grille, la gauche, la droite et le haut sont pleins (les bords du
+// niveau), le bas est ouvert (on en meurt en tombant).
 
-export const N = 1;
-export const NE = 2;
-export const E = 4;
-export const SE = 8;
-export const S = 16;
-export const SW = 32;
-export const W = 64;
-export const NW = 128;
-
-/** Les 8 voisins, dans l'ordre des bits : décalage (colonne, rangée) — rangée vers le bas. */
-export const NEIGHBOURS: readonly (readonly [number, number, number])[] = [
-  [N, 0, -1],
-  [NE, 1, -1],
-  [E, 1, 0],
-  [SE, 1, 1],
-  [S, 0, 1],
-  [SW, -1, 1],
-  [W, -1, 0],
-  [NW, -1, -1],
-];
+export { CORNERS, E, N, NE, NEIGHBOURS, NW, S, SE, SW, W, cellHash, cellNoise, tileShape } from "@cdj/visuels/plateformes";
+export type { Corner, TileShape } from "@cdj/visuels/plateformes";
 
 /** Lot 11 : vrai pour un bloc plein, un tapis roulant ou de la glace (la matière de l'auto-tuilage, du pochoir des taches, de l'ancrage du décor). */
 export function isMatterTile(t: number): boolean {
   return t === TILE_SOLID || t === TILE_BELT_LEFT || t === TILE_BELT_RIGHT || t === TILE_ICE;
 }
 
+type Grille = Pick<Level, "width" | "height" | "tiles">;
+
 /** Vrai si la case est de la matière pour l'auto-tuilage. */
-export function isMatter(level: Pick<Level, "width" | "height" | "tiles">, col: number, row: number): boolean {
-  if (row >= level.height) return false;
-  if (col < 0 || col >= level.width || row < 0) return true;
-  return isMatterTile(level.tiles[row * level.width + col]!);
+export function isMatter(level: Grille, col: number, row: number): boolean {
+  return isMatterGrille(level, col, row, isMatterTile);
 }
 
 /** Masque des 8 voisins d'une case (bit levé = voisin plein). */
-export function neighbourMask(level: Pick<Level, "width" | "height" | "tiles">, col: number, row: number): number {
-  let m = 0;
-  for (const [bit, dc, dr] of NEIGHBOURS) if (isMatter(level, col + dc, row + dr)) m |= bit;
-  return m;
-}
-
-/** Coins, dans l'ordre : haut-gauche, haut-droite, bas-droite, bas-gauche. */
-export type Corner = 0 | 1 | 2 | 3;
-export const CORNERS: readonly Corner[] = [0, 1, 2, 3];
-
-export interface TileShape {
-  /** Faces exposées (le voisin direct n'est pas plein). */
-  top: boolean;
-  right: boolean;
-  bottom: boolean;
-  left: boolean;
-  /** Coins extérieurs (les deux faces qui s'y rejoignent sont exposées) : arrondis ou chanfreinés selon le thème. */
-  outer: readonly [boolean, boolean, boolean, boolean];
-  /** Coins intérieurs (les deux voisins directs sont pleins, la diagonale est vide) : le contour des voisins s'y raccorde. */
-  inner: readonly [boolean, boolean, boolean, boolean];
-  /** Aucune face exposée ni coin intérieur : plein intérieur. */
-  interior: boolean;
-}
-
-/** La forme d'une tuile d'après le masque de ses voisins : 256 configurations, une seule forme chacune. */
-export function tileShape(mask: number): TileShape {
-  const has = (b: number) => (mask & b) !== 0;
-  const top = !has(N);
-  const right = !has(E);
-  const bottom = !has(S);
-  const left = !has(W);
-  const outer = [top && left, top && right, bottom && right, bottom && left] as const;
-  const inner = [has(N) && has(W) && !has(NW), has(N) && has(E) && !has(NE), has(S) && has(E) && !has(SE), has(S) && has(W) && !has(SW)] as const;
-  return { top, right, bottom, left, outer, inner, interior: !top && !right && !bottom && !left && !inner.some(Boolean) };
+export function neighbourMask(level: Grille, col: number, row: number): number {
+  return neighbourMaskGrille(level, col, row, isMatterTile);
 }
 
 /**
@@ -81,55 +33,6 @@ export function tileShape(mask: number): TileShape {
  * tuile du bord, 1 juste derrière, etc. ; −1 pour une case qui n'est pas pleine. Les bords gauche, droit et haut du niveau ne comptent
  * pas comme du vide (ils sont pleins), le dessous de la grille si. Parcours en largeur, linéaire.
  */
-export function depthMap(level: Pick<Level, "width" | "height" | "tiles">): Int16Array {
-  const { width, height } = level;
-  const depth = new Int16Array(width * height).fill(-1);
-  const big = 0x7fff;
-  const queue = new Int32Array(width * height);
-  let head = 0;
-  let tail = 0;
-  for (let row = 0; row < height; row++) {
-    for (let col = 0; col < width; col++) {
-      const i = row * width + col;
-      if (!isMatter(level, col, row)) continue;
-      depth[i] = big;
-      for (const [, dc, dr] of NEIGHBOURS) {
-        if (!isMatter(level, col + dc, row + dr)) {
-          depth[i] = 0;
-          queue[tail++] = i;
-          break;
-        }
-      }
-    }
-  }
-  while (head < tail) {
-    const i = queue[head++]!;
-    const col = i % width;
-    const row = (i - col) / width;
-    const d = depth[i]! + 1;
-    for (const [, dc, dr] of NEIGHBOURS) {
-      const c = col + dc;
-      const r = row + dr;
-      if (c < 0 || c >= width || r < 0 || r >= height) continue;
-      const j = r * width + c;
-      if (depth[j]! > d) {
-        depth[j] = d;
-        queue[tail++] = j;
-      }
-    }
-  }
-  // Une masse sans aucun vide (impossible dans un vrai niveau) reste « profonde ».
-  for (let i = 0; i < depth.length; i++) if (depth[i] === big) depth[i] = 8;
-  return depth;
+export function depthMap(level: Grille): Int16Array {
+  return depthMapGrille(level, isMatterTile);
 }
-
-/** Hachage entier déterministe d'une case (motif procédural : texture, garniture). 0 … 2³² − 1. */
-export function cellHash(col: number, row: number, salt = 0): number {
-  let h = Math.imul(col | 0, 0x27d4eb2d) ^ Math.imul(row | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b1);
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
-  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-  return (h ^ (h >>> 16)) >>> 0;
-}
-
-/** Le même hachage ramené à [0, 1). */
-export const cellNoise = (col: number, row: number, salt = 0): number => cellHash(col, row, salt) / 4294967296;

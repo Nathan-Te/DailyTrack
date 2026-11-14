@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track — maquette visuelle (lot QA2)</title>
+<style>{{polices}}
+{{inclure:visuel.css}}
+.ecran{width:844px}.mini{position:absolute;right:10px;top:10px;width:150px;height:110px;background:#FFF6E0;border:2px solid #2A1E16;box-shadow:2px 2px 0 #2A1E16;line-height:1}.mini canvas{width:100%;height:100%}.mini small{position:absolute;left:6px;bottom:2px;font:700 10px Archivo;color:#2A1E16}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}</script>
+</head>
+<body>
+<div class="intro"><p><a href="index.html">‹ Toutes les maquettes des jeux</a></p><h1>Track — le visuel proposé</h1>
+<p>À gauche, une capture réelle d'une partie (circuit Canyon du 12 novembre, 1 440 × 900 réduite à 844 px). À droite, <b>une petite scène three.js 0.186.1</b> (la version de Track), qui reproduit un tronçon de circuit dans le style proposé, avec <b>la caméra « proche » du jeu</b> (5,6 m derrière, 2,3 m au-dessus, visée à 5 m, champ de vision de 68° qui s'ouvre jusqu'à 88° à pleine vitesse). Tout est géométrie, matériaux et code : aucun modèle, aucune image. Trois biomes : <b>Canyon</b>, <b>Col alpin</b> et <b>Nuit</b>. La voiture se conduit seule (en slalom) ; ← → : se placer, Espace : turbo, T : tracé suivant.</p>
+<p><b>Ce que cette maquette ne fait pas :</b> la voiture suit une courbe de démonstration, pas la simulation ; aucune collision ni aucune règle de <code>packages/sim</code> n'est reprise. Les propositions sur la <em>forme</em> du circuit (variété, 6) sont signalées « touche à la simulation » : elles passent par le générateur.</p></div>
+<div id="barre"><button id="suivant">Tracé suivant (T)</button></div>
+<div class="corps"><div class="duo">
+<figure><figcaption>Avant — la capture du 12 novembre 2026</figcaption><div class="ecran"><img alt="Capture d'une partie de Track, circuit Canyon" src="{{capture:track-partie/1440x900@844}}"></div><p class="aide">Le Canyon du jour : la route brun foncé et son ombre se confondent avec le sol, les parois sont de grands plans orange sans détail, et le reste de la scène est un dégradé de violet à orange sans profondeur.</p></figure>
+<figure class="apres"><figcaption>Après — la proposition (three.js 0.186.1, 844 × 527)</figcaption><div class="ecran" id="boite"><canvas id="c" width="844" height="527"></canvas><div class="mini"><canvas id="m" width="150" height="110"></canvas><small id="tr"></small></div></div><p class="aide">La scène demande WebGL. ← → pour se placer, Espace pour le turbo, T pour changer de tracé. Toutes les propositions éteintes (<code>#base</code>) = la scène de base de la maquette (route unie, blocs gris), pas le jeu actuel.</p></figure>
+</div></div>
+
+<div class="suite"><h2>Les propositions, avec leur coût</h2>
+<ol class="fiches">
+<li><h3>1 · Une identité par biome : des silhouettes, pas seulement des couleurs</h3><dl>
+<dt>Ce qui change</dt><dd><b>Canyon</b> : parois en strates de roche rouge et ocre, de grandes mesas qui s'étagent au loin, des arches de pierre qui enjambent la route. <b>Col alpin</b> : sapins, glissières rouges et blanches, crêtes enneigées. <b>Nuit</b> : lampadaires, fenêtres d'une ville lointaine, bordures néon. On reconnaît le biome à la silhouette, sans lire son nom.</dd>
+<dt>En code</dt><dd>Un module par biome (le jeu charge déjà le décor à la demande : lot 44, palier 1) ; des <code>InstancedMesh</code> de boîtes et de cônes, posés le long du tracé par une graine du jour. <b>Aucune</b> collision : le décor reste hors des cellules de la simulation, comme les murs bas de la Ville (lot 37).</dd>
+<dt>Coût</dt><dd>{{ko:biomes}} Ko gzip dans la maquette · {{mesure:track:biomes}} i/s (base {{mesure:track:base}}, tout {{mesure:track:tout}}) avec le processeur ralenti 4 fois. Mesure indicative : Chromium sans carte graphique, scène plus légère que le jeu.</dd>
+<dt>Golden</dt><dd>Inchangés : <code>packages/sim</code>, <code>SIM_VERSION</code> et le générateur ne bougent pas.</dd></dl></li>
+<li><h3>2 · Ciel, lumière, brume : la profondeur</h3><dl>
+<dt>Ce qui change</dt><dd>Le ciel est un dégradé du zénith à l'horizon avec un disque de soleil ou de lune ; la brume prend la couleur de l'horizon, donc les plans lointains s'éclaircissent (perspective aérienne) ; la lumière du soleil bas fait des ombres longues et nettes sur le décor, mais la route reste plus claire que son ombre.</dd>
+<dt>En code</dt><dd>Ce que <code>PALETTE_DEFS</code> et <code>LOOKS</code> portent déjà (zénith, disque, brume, hauteur du soleil) ; la nouveauté est la brume colorée par thème et l'ombre portée adoucie sur la route.</dd>
+<dt>Coût</dt><dd>{{ko:ciel}} Ko gzip · {{mesure:track:ciel}} i/s. L'ombre se coupe au palier de qualité « économie » (règle de qualité du lot 45).</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+<li><h3>3 · La route se lit : rive claire, bordures, ligne</h3><dl>
+<dt>Ce qui change</dt><dd>La route est franchement plus claire ou plus sombre que son sol, ses bordures alternent deux couleurs (un vibreur), une ligne de rive claire la cerne, les tirets du milieu sont visibles de loin. Dans le Canyon actuel, route et ombre sont du même brun : on ne distingue plus le bord.</dd>
+<dt>En code</dt><dd>Des rubans de triangles le long du tracé (déjà le cas pour la route) avec des couleurs de sommet ; deux couleurs de bordure par palette (<code>fence</code>). Les revêtements spéciaux (glace, terre, herbe de course) gardent leur teinte : la bordure ne les recouvre pas.</dd>
+<dt>Coût</dt><dd>{{ko:route}} Ko gzip · {{mesure:track:route}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés : les surfaces de la simulation (<code>S/z</code>, <code>turf</code>) ne changent pas, seule leur teinte se renforce.</dd></dl></li>
+<li><h3>4 · La voiture et la vitesse</h3><dl>
+<dt>Ce qui change</dt><dd>Une silhouette plus lisible de loin (livrée à bandes, feux arrière qui s'allument au freinage, roues qui tournent) ; à grande vitesse le champ de vision s'ouvre, des traits de vitesse défilent sur les bords, et le turbo laisse une traînée. Le rouge est réservé aux feux et à la livrée.</dd>
+<dt>En code</dt><dd>Quelques boîtes et cylindres de plus (<code>carMesh.ts</code>), un tableau de traits lié au réglage « Sensation de vitesse » (aucune / douce / normale / forte, déjà dans les Réglages), des particules du turbo (réglage « Particules »).</dd>
+<dt>Coût</dt><dd>{{ko:voiture}} Ko gzip · {{mesure:track:voiture}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+<li><h3>5 · Variété des circuits : un tracé par rythme (demande de Nathan)</h3><dl>
+<dt>Ce qui change</dt><dd>Les trois tracés de la maquette (touche T) montrent ce que les rythmes du lot V2 donnent à voir : <b>rapide</b> (grandes courbes), <b>technique</b> (virages serrés et rues courtes), <b>vertical</b> (lacets). Chaque biome garde son rythme dominant et sa silhouette propre ; la petite carte en haut à droite montre la forme. <span class="marque sim">touche à la simulation</span></dd>
+<dt>En code</dt><dd>Côté affichage seulement : la carte d'aperçu existe déjà (galerie <code>?debug&amp;galerie=30</code>, lot V2). Tout changement de la <em>forme</em> des circuits est un changement du générateur : <code>GENERATOR_VERSION</code> +1, vecteurs de golden régénérés, dans un lot de Track.</dd>
+<dt>Coût</dt><dd>{{ko:variete}} Ko gzip (la carte) · {{mesure:track:variete}} i/s.</dd>
+<dt>Golden</dt><dd>La carte et les silhouettes : inchangés. Une idée de forme de circuit : <b>change les golden</b> (générateur), à décider par Nathan.</dd></dl></li>
+</ol></div>
+
+<script>{{inclure:visuel.js}}</script>
+<script type="module">
+import * as THREE from "three";
+const V = initVisuel({ features: [{ k: "biomes", label: "Identité des biomes" }, { k: "ciel", label: "Ciel et brume" }, { k: "route", label: "Route lisible" }, { k: "voiture", label: "Voiture et vitesse" }, { k: "variete", label: "Variété (carte)" }], themes: [{ k: "canyon", label: "Canyon" }, { k: "alpin", label: "Col alpin" }, { k: "nuit", label: "Nuit" }], onTheme: () => reconstruire(), onFeature: () => reconstruire() });
+const cv = document.getElementById("c"), W = 844, H = 527;
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "low-power" }); renderer.setSize(W, H, false); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(68, W / H, 0.1, 700);
+const col = (h) => new THREE.Color(h);
+const PAL = {
+  canyon: { sky: 0xf2a463, zen: 0x6a5aa0, fog: 0xe8a36e, fogN: 80, fogF: 360, sun: [0xff9a4a, 2.4], amb: [0xffdcb8, 1.1], disc: 0xffd89a, sunPos: [-80, 28, 120], sol: 0xd49a55, route: 0x6f6460, routeCl: 0x8a7f78, ligne: 0xf6e6c8, k1: 0xb04a2a, k2: 0xf1e4cc, dash: 0xf6e6c8, ampl: 1.2 },
+  alpin: { sky: 0xcde6f7, zen: 0x3a82d6, fog: 0xcde6f7, fogN: 120, fogF: 420, sun: [0xfff6e2, 2.4], amb: [0xeaf4ff, 1.1], disc: 0xfffbe6, sunPos: [90, 70, 140], sol: 0x8fb67a, route: 0x4d525c, routeCl: 0x5d636d, ligne: 0xffffff, k1: 0xe8283a, k2: 0xf6f6f6, dash: 0xffffff, ampl: 1.8 },
+  nuit: { sky: 0x1b2450, zen: 0x02030f, fog: 0x141c42, fogN: 60, fogF: 300, sun: [0xaab8ff, 1.0], amb: [0x8fa0ff, 0.75], disc: 0xdfe8ff, sunPos: [70, 60, 150], sol: 0x1a1f3d, route: 0x2f3450, routeCl: 0x4a5072, ligne: 0xe9e6ff, k1: 0x00e5ff, k2: 0xff2bd6, dash: 0xe9e6ff, ampl: 0.8 },
+};
+const TRACES = [
+  { nom: "A · rapide", pts: [[0, 0], [90, -10], [160, 30], [170, 100], [110, 150], [20, 140], [-40, 90], [-30, 30]] },
+  { nom: "B · technique", pts: [[0, 0], [60, 10], [80, 50], [40, 70], [60, 110], [110, 120], [120, 160], [60, 190], [10, 150], [-20, 100], [-50, 60], [-30, 20]] },
+  { nom: "C · vertical (lacets)", pts: [[0, 0], [70, 0], [100, 25], [60, 45], [10, 50], [-20, 80], [30, 105], [100, 110], [130, 140], [80, 170], [10, 165], [-50, 130], [-60, 60]] },
+];
+let tr = 0, monde = null, courbe = null, longueur = 0, s = 0, lat = 0, vit = 24, rouleur = 0, boost = 0;
+const clavier = {}; addEventListener("keydown", (e) => { clavier[e.code] = true; if (e.code === "KeyT") suivant(); if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault(); }); addEventListener("keyup", (e) => (clavier[e.code] = false));
+const suivant = () => { tr = (tr + 1) % TRACES.length; reconstruire(); }; document.getElementById("suivant").onclick = suivant;
+const rng = (() => { let x = 12345; return () => (x = (x * 16807) % 2147483647) / 2147483647; });
+
+function lisse(m) { const p = TRACES[tr].pts.map(([x, z]) => new THREE.Vector3(x, 0, z)); const c = new THREE.CatmullRomCurve3(p, true, "centripetal"); return c; }
+const pointAt = (u) => { const p = courbe.getPointAt(((u % 1) + 1) % 1); p.y = Math.sin(u * Math.PI * 4 + tr) * PAL[V.theme].ampl; return p; };
+const tangentAt = (u) => { const a = pointAt(u), b = pointAt(u + 0.002); return b.sub(a).normalize(); };
+const normalAt = (u) => { const t = tangentAt(u); return new THREE.Vector3(-t.z, 0, t.x); };
+
+function ruban(n, largeur, decalage, hauteur, couleurFn) {
+  const pos = [], idx = [], cols = [];
+  const pt = (i, sgn) => { const u = i / n, p = pointAt(u), nn = normalAt(u), o = decalage + sgn * largeur / 2; return [p.x + nn.x * o, p.y + hauteur, p.z + nn.z * o]; };
+  for (let i = 0; i < n; i++) { const cc = couleurFn(i), k = pos.length / 3; for (const [j, sg] of [[i, -1], [i, 1], [i + 1, -1], [i + 1, 1]]) { pos.push(...pt(j, sg)); cols.push(cc.r, cc.g, cc.b); } idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })); m.receiveShadow = true; return m;
+}
+
+/*@f:route*/
+function construireRoute(P, groupe) {
+  const n = 420;
+  if (!V.on("route")) { groupe.add(ruban(n, 9, 0, 0.02, () => col(P.route))); return; }
+  groupe.add(ruban(n, 9, 0, 0.02, (i) => col(Math.floor(i / 10) % 2 ? P.routeCl : P.route)));
+  for (const sgn of [-1, 1]) {
+    groupe.add(ruban(n, 0.9, sgn * 5.05, 0.05, (i) => col(Math.floor(i / 3) % 2 ? P.k1 : P.k2)));
+    groupe.add(ruban(n, 0.22, sgn * 4.25, 0.06, () => col(P.ligne)));
+  }
+  const pos = [], idx = [], cc = col(P.dash);
+  for (let i = 0; i < n; i += 6) { const u0 = i / n, u1 = (i + 2.5) / n, a = pointAt(u0), b = pointAt(u1), nn = normalAt(u0); const k = pos.length / 3; for (const [q, sg] of [[a, -1], [a, 1], [b, -1], [b, 1]]) pos.push(q.x + nn.x * sg * 0.12, q.y + 0.07, q.z + nn.z * sg * 0.12); idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); groupe.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: cc, side: THREE.DoubleSide })));
+}
+/*@/f*/
+
+/*@f:biomes*/
+function boite(w, h, d, c) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c, flatShading: true })); m.castShadow = true; m.receiveShadow = true; return m; }
+function semer(P, groupe) {
+  const R = rng(), n = 150;
+  if (V.theme === "canyon") {
+    const strates = [0xb04a2a, 0xc6603a, 0xe08a52, 0xa8452a, 0xd9743f];
+    for (let i = 0; i < n; i++) for (const sgn of [-1, 1]) { const u = i / n, p = pointAt(u), nn = normalAt(u), o = sgn * (9 + R() * 9), h0 = 4 + R() * 9, w = 5 + R() * 6; let y = p.y; for (let k = 0; k < 3; k++) { const hh = h0 / 3 * (1 - k * .12), b = boite(w * (1 - k * .18), hh, w * (0.9 + R() * .3), strates[(i + k) % strates.length]); b.position.set(p.x + nn.x * o, y + hh / 2, p.z + nn.z * o); b.rotation.y = R() * 2; groupe.add(b); y += hh; } }
+    for (let k = 0; k < 22; k++) { const a = R() * Math.PI * 2, d = 110 + R() * 110, h = 22 + R() * 38; let y = -1; for (let q = 0; q < 3; q++) { const hh = h / 3, w = (46 - q * 9) * (.7 + R() * .5), b = boite(w, hh, w * .8, strates[(k + q) % 5]); b.position.set(60 + Math.cos(a) * d, y + hh / 2, 70 + Math.sin(a) * d); groupe.add(b); y += hh; } }
+    for (const u of [.12, .47, .8]) { const p = pointAt(u), nn = normalAt(u), t = tangentAt(u); for (const sgn of [-1, 1]) { const b = boite(3, 12, 3.5, 0xc6603a); b.position.set(p.x + nn.x * sgn * 7.2, p.y + 6, p.z + nn.z * sgn * 7.2); groupe.add(b); } const l = boite(18, 3, 4, 0xd9743f); l.position.set(p.x, p.y + 12.5, p.z); l.rotation.y = Math.atan2(nn.x, nn.z) + Math.PI / 2; groupe.add(l); }
+  } else if (V.theme === "alpin") {
+    const cone = new THREE.ConeGeometry(2.2, 6, 7), mv = new THREE.MeshLambertMaterial({ color: 0x2f6b3e, flatShading: true }), im = new THREE.InstancedMesh(cone, mv, 420), M = new THREE.Matrix4(); im.castShadow = true;
+    for (let i = 0; i < 420; i++) { const u = R(), p = pointAt(u), nn = normalAt(u), o = (R() < .5 ? -1 : 1) * (12 + R() * 70), sc = .7 + R() * 1.1; M.compose(new THREE.Vector3(p.x + nn.x * o, 3 * sc - 0.3, p.z + nn.z * o), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc)); im.setMatrixAt(i, M); } groupe.add(im);
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2 + R() * .3, d = 190 + R() * 60, h = 50 + R() * 50; const m = new THREE.Mesh(new THREE.ConeGeometry(34 + R() * 20, h, 6), new THREE.MeshLambertMaterial({ color: 0x78899e, flatShading: true })); m.position.set(60 + Math.cos(a) * d, h / 2 - 4, 70 + Math.sin(a) * d); groupe.add(m); const cap = new THREE.Mesh(new THREE.ConeGeometry(14 + R() * 6, h * .38, 6), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true })); cap.position.set(m.position.x, h * .81 - 4, m.position.z); groupe.add(cap); }
+    const g1 = new THREE.InstancedMesh(new THREE.BoxGeometry(0.15, 0.3, 3), new THREE.MeshLambertMaterial({ color: 0xe8283a }), 140), g2 = new THREE.InstancedMesh(new THREE.BoxGeometry(0.15, 0.3, 3), new THREE.MeshLambertMaterial({ color: 0xf6f6f6 }), 140);
+    for (let i = 0; i < 280; i++) { const u = i / 280, p = pointAt(u), nn = normalAt(u), sgn = i % 2 ? 1 : -1, t = tangentAt(u); M.compose(new THREE.Vector3(p.x + nn.x * sgn * 6, p.y + 0.55, p.z + nn.z * sgn * 6), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(t.x, t.z)), new THREE.Vector3(1, 1, 1)); ((Math.floor(i / 2) % 2) ? g1 : g2).setMatrixAt(Math.floor(i / 4), M); } groupe.add(g1, g2);
+  } else {
+    const lamp = new THREE.MeshBasicMaterial({ color: 0xffe9a8 });
+    for (let i = 0; i < 26; i++) for (const sgn of [-1, 1]) { const u = i / 26, p = pointAt(u), nn = normalAt(u); const pole = boite(.25, 7, .25, 0x2b3566); pole.position.set(p.x + nn.x * sgn * 7, p.y + 3.5, p.z + nn.z * sgn * 7); groupe.add(pole); const bulb = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), lamp); bulb.position.set(p.x + nn.x * sgn * 7, p.y + 7.2, p.z + nn.z * sgn * 7); groupe.add(bulb); const halo = new THREE.Mesh(new THREE.CircleGeometry(2.4, 14), new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: .18, depthWrite: false })); halo.position.copy(bulb.position); halo.userData.halo = 1; groupe.add(halo); }
+    for (let k = 0; k < 40; k++) { const a = k / 40 * Math.PI * 2, d = 170 + R() * 60, h = 20 + R() * 60, w = 12 + R() * 14; const b = boite(w, h, w, 0x141c3a); b.position.set(60 + Math.cos(a) * d, h / 2 - 2, 70 + Math.sin(a) * d); b.rotation.y = -a; groupe.add(b); const wd = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.6, 2), new THREE.MeshBasicMaterial({ color: 0xffd23f, side: THREE.DoubleSide }), 14); const M2 = new THREE.Matrix4(); for (let q = 0; q < 14; q++) { const ox = (R() - .5) * (w - 3), oy = (R() - .5) * (h - 6), side = R() < .5 ? -1 : 1; const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)); M2.compose(new THREE.Vector3(b.position.x - dir.x * (w / 2 + .05) + -dir.z * ox, b.position.y + oy, b.position.z - dir.z * (w / 2 + .05) + dir.x * ox), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(dir.x, dir.z)), new THREE.Vector3(1, 1, 1)); wd.setMatrixAt(q, M2); } groupe.add(wd); }
+    const pts = new Float32Array(500 * 3); for (let i = 0; i < 500; i++) { const a = R() * Math.PI * 2, e = .15 + R() * 1.2, d = 600; pts.set([Math.cos(a) * Math.cos(e) * d, Math.sin(e) * d, Math.sin(a) * Math.cos(e) * d], i * 3); } const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pts, 3)); groupe.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 2, fog: false })));
+  }
+}
+/*@/f*/
+
+/*@f:ciel*/
+function construireCiel(P, groupe) {
+  const g = new THREE.SphereGeometry(650, 24, 16), cols = [], pos = g.attributes.position, a = col(P.sky), b = col(P.zen);
+  for (let i = 0; i < pos.count; i++) { const k = Math.min(1, Math.max(0, pos.getY(i) / 650)); const cc = a.clone().lerp(b, Math.pow(k, .7)); cols.push(cc.r, cc.g, cc.b); }
+  g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3)); groupe.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(V.theme === "nuit" ? 18 : 30, 24), new THREE.MeshBasicMaterial({ color: P.disc, fog: false })); disc.position.set(...P.sunPos).normalize().multiplyScalar(560); disc.lookAt(0, 0, 0); groupe.add(disc);
+}
+/*@/f*/
+
+/*@f:voiture*/
+function construireVoiture() {
+  const g = new THREE.Group(), mat = (c) => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+  const carros = new THREE.Mesh(new THREE.BoxGeometry(1.9, .55, 4.2), mat(0xe8502a)); carros.position.y = .62; carros.castShadow = true; g.add(carros);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(1.55, .5, 2), mat(0x2a1e16)); cab.position.set(0, 1.1, -.2); cab.castShadow = true; g.add(cab);
+  if (V.on("voiture")) { const bande = new THREE.Mesh(new THREE.BoxGeometry(.5, .02, 4.22), mat(0xf4efe6)); bande.position.y = .91; g.add(bande); for (const sx of [-.7, .7]) { const f = new THREE.Mesh(new THREE.BoxGeometry(.4, .16, .06), new THREE.MeshBasicMaterial({ color: 0xff2a1a })); f.position.set(sx, .7, -2.12); f.name = "feu"; g.add(f); } }
+  g.userData.roues = []; for (const [x, z] of [[-.95, 1.3], [.95, 1.3], [-.95, -1.3], [.95, -1.3]]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .3, 12), mat(0x14110f)); w.rotation.z = Math.PI / 2; w.position.set(x, .42, z); w.castShadow = true; g.add(w); g.userData.roues.push(w); }
+  return g;
+}
+const traits = []; const traitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .0, depthWrite: false });
+/*@/f*/
+
+/*@f:variete*/
+function carte() {
+  const m = document.getElementById("m"), c = m.getContext("2d"); c.clearRect(0, 0, 150, 110); c.fillStyle = "#FFF6E0"; c.fillRect(0, 0, 150, 110);
+  if (!V.on("variete")) { document.getElementById("tr").textContent = ""; m.parentElement.style.display = "none"; return; } m.parentElement.style.display = "";
+  const P = TRACES[tr].pts, xs = P.map((q) => q[0]), zs = P.map((q) => q[1]), k = Math.min(120 / (Math.max(...xs) - Math.min(...xs)), 82 / (Math.max(...zs) - Math.min(...zs)));
+  c.strokeStyle = "#2A1E16"; c.lineWidth = 3; c.beginPath(); for (let i = 0; i <= 120; i++) { const p = pointAt(i / 120); const x = 15 + (p.x - Math.min(...xs)) * k, y = 12 + (p.z - Math.min(...zs)) * k; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
+  const p = pointAt(s / longueur), x = 15 + (p.x - Math.min(...xs)) * k, y = 12 + (p.z - Math.min(...zs)) * k; c.fillStyle = "#E8552D"; c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill(); c.strokeStyle = "#2A1E16"; c.lineWidth = 2; c.stroke();
+  document.getElementById("tr").textContent = "Tracé " + TRACES[tr].nom;
+}
+/*@/f*/
+
+let voiture = null, soleil = null, hemi = null;
+function reconstruire() {
+  if (monde) { scene.remove(monde); monde.traverse((o) => { o.geometry?.dispose?.(); }); }
+  monde = new THREE.Group(); scene.add(monde); courbe = lisse(); longueur = courbe.getLength();
+  const P = PAL[V.theme], nuit = V.theme === "nuit", ciel = V.on("ciel");
+  scene.background = col(ciel ? P.sky : 0x9fb0c8); scene.fog = new THREE.Fog(ciel ? P.fog : 0x9fb0c8, ciel ? P.fogN : 150, ciel ? P.fogF : 420);
+  if (soleil) scene.remove(soleil); if (hemi) scene.remove(hemi);
+  hemi = new THREE.HemisphereLight(P.amb[0], P.sol, P.amb[1]); scene.add(hemi);
+  soleil = new THREE.DirectionalLight(P.sun[0], P.sun[1]); soleil.position.set(...P.sunPos); soleil.castShadow = ciel; soleil.shadow.mapSize.set(1024, 1024); const sc = soleil.shadow.camera; sc.left = -40; sc.right = 40; sc.top = 40; sc.bottom = -40; sc.far = 400; scene.add(soleil, soleil.target);
+  const sol = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), new THREE.MeshLambertMaterial({ color: P.sol })); sol.rotation.x = -Math.PI / 2; sol.position.y = -.4; sol.receiveShadow = true; monde.add(sol);
+  if (ciel) construireCiel(P, monde);
+  construireRoute(P, monde);
+  if (V.on("biomes")) semer(P, monde); else { const R = rng(); for (let i = 0; i < 70; i++) for (const sgn of [-1, 1]) { const u = i / 70, p = pointAt(u), nn = normalAt(u), b = boite(4, 2, 4, 0xb7a58a); b.position.set(p.x + nn.x * sgn * (11 + R() * 4), p.y + 1, p.z + nn.z * sgn * (11 + R() * 4)); monde.add(b); } }
+  if (voiture) scene.remove(voiture); voiture = construireVoiture(); scene.add(voiture); carte();
+}
+const dummy = new THREE.Vector3();
+let derniere = 0;
+function majScene(t, dt) {
+  const P = PAL[V.theme], libre = clavier.ArrowLeft || clavier.ArrowRight;
+  boost = clavier.Space ? Math.min(1, boost + dt * 3) : Math.max(0, boost - dt * 2);
+  const cible = 24 + boost * 20; vit += (cible - vit) * Math.min(1, dt * 2.5);
+  s = (s + vit * dt) % longueur; const u = s / longueur;
+  const cibleLat = libre ? (clavier.ArrowLeft ? 3.4 : -3.4) : Math.sin(s * .045) * 2.6; lat += (cibleLat - lat) * Math.min(1, dt * 4);
+  const p = pointAt(u), nn = normalAt(u), tg = tangentAt(u), tg2 = tangentAt(u + .01);
+  const pos = new THREE.Vector3(p.x + nn.x * lat, p.y + .05, p.z + nn.z * lat);
+  voiture.position.copy(pos); voiture.rotation.order = "YXZ"; voiture.rotation.y = Math.atan2(tg.x, tg.z); const vir = tg.x * tg2.z - tg.z * tg2.x; rouleur += ((V.on("voiture") ? Math.max(-.08, Math.min(.08, -vir * 2.5)) : 0) - rouleur) * Math.min(1, dt * 5); voiture.rotation.z = rouleur;
+  voiture.userData.roues.forEach((w) => (w.rotation.x -= vit * dt / .42));
+  voiture.children.forEach((c) => { if (c.name === "feu") c.material.color.set(boost > .1 || vit > 25 ? 0x8a1a10 : 0xff3a22); });
+  const vr = Math.min(1, (vit - 24) / 20 + .15), back = 5.6 + 1.4 * vr, cam = pos.clone().sub(tg.clone().multiplyScalar(back)); cam.y += 2.3;
+  camera.position.lerp(cam, Math.min(1, dt * 14)); dummy.copy(pos).add(tg.clone().multiplyScalar(5)); dummy.y += 1; camera.lookAt(dummy);
+  camera.fov = 68 + (V.on("voiture") ? 20 * boost : 0); camera.updateProjectionMatrix();
+  soleil.target.position.copy(pos); soleil.position.set(pos.x + P.sunPos[0] * .4, P.sunPos[1] * .8 + 20, pos.z + P.sunPos[2] * .4);
+  monde.traverse((o) => { if (o.userData.halo) o.lookAt(camera.position); });
+  if (V.on("voiture")) { while (traits.length < 24) { const m = new THREE.Mesh(new THREE.PlaneGeometry(.04, 1.6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .55, depthWrite: false, fog: false })); m.userData = { a: Math.random() * 6.28, r: .8 + Math.random() * .9, z: -2 - Math.random() * 6 }; camera.add(m); traits.push(m); } scene.add(camera);
+    traits.forEach((m) => { m.visible = boost > .05 || vit > 28; m.userData.z += (vit * dt) * .6; if (m.userData.z > -1.2) m.userData.z = -8; const d = m.userData; m.position.set(Math.cos(d.a) * d.r * (-d.z) * .75, Math.sin(d.a) * d.r * (-d.z) * .45, d.z); m.material.opacity = Math.min(.7, boost * .8); m.rotation.z = Math.atan2(m.position.y, m.position.x) + Math.PI / 2; }); }
+  else traits.forEach((m) => (m.visible = false));
+  if (Math.floor(t * 4) !== derniere) { derniere = Math.floor(t * 4); carte(); }
+}
+reconstruire();
+V.loop((t, dt) => { majScene(t, dt); renderer.render(scene, camera); });
+</script>
+</body>
+</html>

@@ -55,6 +55,7 @@ import {
 import { CATALOGUE_VITRINE } from "./catalogueVitrine";
 import { remplirAmis } from "./vitrineAmis";
 import { remplirBlocs } from "./vitrineBlocs";
+import { remplirPlateformes } from "./vitrinePlateformes";
 import { stockageDuPortail } from "./stockage";
 
 // La vitrine des composants (`/ui/`, lot I1) : chaque composant de @cdj/ui dans tous ses états, en français ET en anglais (côte à côte), sur
@@ -368,6 +369,8 @@ function rendre(): void {
     el("div", { classe: "vitrine-section", attrs: { id: "couleurs-contrastes" } }, ...couleurs(t)),
     // Lot DA1 : la planche des blocs (Canvas 2D et dessinateur de Tower côte à côte), à la suite des couleurs.
     el("div", { classe: "vitrine-section", attrs: { id: "blocs" } }, section(t.t("vitrine.section.blocs"), "blocs-planche", remplirBlocs(langue, (cle) => t.t(cle as never)))),
+    // Lot DA2 : la planche des plateformes (les cinq thèmes, le personnage, les blocs à mécanique), par le dessinateur commun de Jump.
+    el("div", { classe: "vitrine-section", attrs: { id: "plateformes" } }, section(t.t("vitrine.section.plateformes"), "plateformes-planche", remplirPlateformes(langue, (cle) => t.t(cle as never)))),
   );
 }
 

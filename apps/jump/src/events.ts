@@ -1,3 +1,4 @@
+import { STRIDE_TILES } from "@cdj/visuels/plateformes";
 import { blockEvents } from "./blocks";
 import { windEvents } from "./wind";
 import {
@@ -179,7 +180,8 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
 ];
 
 /** Distance au sol entre deux bruits de pas (tuiles) : à pleine course (11 tuiles/s), un peu plus de 7 pas par seconde. */
-export const STRIDE_TILES = 1.5;
+// Lot DA2 : la distance entre deux pas est celle du cycle des pieds du personnage (`@cdj/visuels/plateformes`).
+export { STRIDE_TILES };
 const STRIDE = STRIDE_TILES * UNITS_PER_TILE;
 /** « Pleine vitesse » : au moins cette part de la vitesse de course (poussière de course, traînée). */
 export const FULL_SPEED = 0.92;
