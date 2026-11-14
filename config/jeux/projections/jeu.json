@@ -268,13 +268,19 @@
       "messageOu": "gravity",
       "zoneNouveautes": "gravity",
       "themes": [
-        "clair",
-        "sombre"
+        "foret",
+        "usine",
+        "glace",
+        "nuit",
+        "neon"
       ],
       "scenes": [
         "menu",
-        "theme:clair",
-        "theme:sombre"
+        "theme:foret",
+        "theme:usine",
+        "theme:glace",
+        "theme:nuit",
+        "theme:neon"
       ]
     }
   ],

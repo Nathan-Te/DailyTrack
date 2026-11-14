@@ -538,11 +538,11 @@ export const FICHES_SERVEUR = [
     "classement": {
       "colonnes": [
         {
-          "nom": "touches",
+          "nom": "score",
           "sens": "desc"
         },
         {
-          "nom": "dernier",
+          "nom": "ticks",
           "sens": "asc"
         },
         {
@@ -559,17 +559,13 @@ export const FICHES_SERVEUR = [
       "format": "entier"
     },
     "medailles": {
-      "methode": "pourcentage-diamant",
-      "bareme": [
-        50,
-        30,
-        15
-      ],
-      "plafondDiamant": 20
+      "methode": "figees-niveau",
+      "bareme": []
     },
     "versions": {
       "sim": "packages/gravity-sim/src/constantes.ts:GRAVITY_SIM_VERSION",
-      "generateur": "packages/gravity-sim/src/constantes.ts:GRAVITY_GENERATOR_VERSION"
+      "generateur": "packages/gravity-sim/src/constantes.ts:GRAVITY_GENERATOR_VERSION",
+      "medailles": "packages/gravity-sim/src/constantes.ts:GRAVITY_BOT_VERSION"
     },
     "jours": {
       "mode": "fichier-par-jour",
@@ -586,7 +582,8 @@ export const FICHES_SERVEUR = [
     },
     "rejeu": {
       "unitesServeur": 1,
-      "maxTicks": 900
+      "maxTicks": 72000,
+      "ticksParUnite": 5000
     },
     "tables": [],
     "tableCommune": "resultats_jeu",

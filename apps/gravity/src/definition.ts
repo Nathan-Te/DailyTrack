@@ -1,44 +1,26 @@
-import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, dailyGravity, lireJourFige, medailleDe, numeroGravity, seuilsDe, themeDuJour, touchesDuBot, enregistrer, type Contenu } from "@cdj/gravity-sim";
-import { formatDay } from "@cdj/core";
-import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
+import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroGravity, themeDuJour, type Contenu } from "@cdj/gravity-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
 import { nouvellePartieGravity } from "./scene";
 
-// La définition de « Gravity » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Moins de 100 lignes de glue** : c'est la mesure du lot K4f.
-declare const __JOURS_FIGES__: readonly string[] | undefined;
-const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? [] : __JOURS_FIGES__;
-
-/** Le contenu d'un jour : le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
-async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
-  const date = formatDay(jour);
-  if (dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) {
-    try {
-      const lu = lireJourFige(await lireFichierDeJour("jours", date, base, 4000));
-      if (lu) return lu;
-    } catch {
-      /* absent ou abîmé : le générateur */
-    }
-  }
-  return dailyGravity(jour, GRAVITY_GENERATOR_VERSION);
-}
-
+// La définition de « Gravity » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le niveau (générateur, morceaux, seuils) est chargé à la demande** (`niveau.ts`) : le premier chargement
+// est l'accueil seul (ligne de budget `gravity.jsCss`). La scène (`scene.ts`) est dans le morceau de la partie, chargé par le kit au clic sur JOUER.
 export const DEFINITION: DefinitionJeu<Contenu> = {
   ticksParSeconde: TICKS_PAR_SECONDE,
   versions: { simVersion: GRAVITY_SIM_VERSION, generatorVersion: GRAVITY_GENERATOR_VERSION },
-  actions: [
-    { id: "gauche", clavier: ["ArrowLeft", "KeyA"], manette: null },
-    { id: "droite", clavier: ["ArrowRight", "KeyD"], manette: null },
-    { id: "haut", clavier: ["ArrowUp", "KeyW"], manette: null },
-    { id: "bas", clavier: ["ArrowDown", "KeyS"], manette: null },
-    { id: "toucher", clavier: ["Space", "KeyX"], manette: "b0" },
-  ],
+  // Une seule commande : toucher. Espace, les flèches haut et bas, W et S, A à la manette (b0) ; l'écran tactile et le clic sont la scène elle-même. La touche T (thème suivant) est celle de la scène, seulement avec `?theme=`.
+  actions: [{ id: "toucher", clavier: ["Space", "ArrowUp", "ArrowDown", "KeyW", "KeyS"], manette: "b0" }],
   themeDuJour,
   numero: numeroGravity,
-  contenuDuJour,
-  seuils: (c) => seuilsDe(c),
-  medaille: (score, s) => medailleDe(score, s),
+  contenuDuJour: async (jour, base, theme) => (await import("./niveau")).contenuDuJour(jour, base, theme),
+  // Les seuils sont écrits dans le contenu quand il est lu (`niveau.ts`) : ceux du fichier de jour figé, sinon le calcul provisoire.
+  seuils: (c) => c.seuilsFiges!,
+  medaille: (score, s) => VARIANTE.medaille(score, s),
   nouvellePartie: nouvellePartieGravity,
-  rediffusionDiamant: (c) => enregistrer(c, touchesDuBot(c)),
+  // Pas de fantôme ni de Diamant en GR1 : le robot du jour arrive au lot GR2.
+  sansFantome: true,
+  rediffusionDiamant: () => "",
+  // Une partie d'essai (`?theme=` : thème imposé, touche T) n'est ni classée ni envoyée ; le kit le sait déjà pour `?theme=`, on le dit aussi pour qu'aucun essai ne soit jamais pris pour une partie du jour.
+  classable: (adresse) => !new URLSearchParams(adresse).has("theme"),
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),
   aide: ["aide.point1", "aide.point2", "aide.point3"],

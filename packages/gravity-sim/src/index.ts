@@ -1,10 +1,14 @@
 export * from "./constantes";
 export * from "./calendrier";
+export * from "./camera";
+export * from "./monde";
+export * from "./themes";
 export * from "./generateur";
 export * from "./partie";
 export * from "./rediffusion";
-export * from "./bot";
-export * from "./medailles";
-export * from "./themes";
+export * from "./seuils";
+export { seuilsDe, medailleDe, medailleDeResultat } from "./medailles";
 export * from "./jours";
-export * from "./variante";
+export { VARIANTE, scoreParColonnes, grouper, dureeEnTexte, type Variante, type FicheVariante } from "./variante";
+export type { Medaille, Seuils } from "./types";
+export { piloter } from "./pilote";

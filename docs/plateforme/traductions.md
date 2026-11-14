@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2714 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2729 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -706,8 +706,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.tower.nuit` | Nuit | Night |
 | `portail.theme.cibles.sable` | Sable | Sand |
 | `portail.theme.cibles.ardoise` | Ardoise | Slate |
-| `portail.theme.gravity.clair` | Clair (à remplacer) | Light (to replace) |
-| `portail.theme.gravity.sombre` | Sombre (à remplacer) | Dark (to replace) |
+| `portail.theme.gravity.foret` | Forêt | Forest |
+| `portail.theme.gravity.usine` | Usine | Factory |
+| `portail.theme.gravity.glace` | Glace | Ice |
+| `portail.theme.gravity.nuit` | Nuit | Night |
+| `portail.theme.gravity.neon` | Néon | Neon |
 | `portail.theme.vertige.clair` | Clair (à remplacer) | Light (to replace) |
 | `portail.theme.vertige.sombre` | Sombre (à remplacer) | Dark (to replace) |
 | `portail.theme.rush.prairie` | Prairie | Meadow |
@@ -3476,26 +3479,25 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `accueil.phrase.clair` | À remplacer : une phrase d'accroche pour le thème « Clair ». | To replace: a tagline for the “Light” theme. |
-| `accueil.phrase.sombre` | À remplacer : une phrase d'accroche pour le thème « Sombre ». | To replace: a tagline for the “Dark” theme. |
+| `accueil.phrase.foret` | Le sol, le plafond : même combat. Tant que tu touches quelque chose. | Floor, ceiling: same fight. As long as you're touching something. |
+| `accueil.phrase.usine` | Les tapis poussent plus vite : inverse avant qu'ils s'arrêtent. | The belts push faster: flip before they run out. |
+| `accueil.phrase.glace` | Impossible de s'appuyer sur la glace : inverse avant, ou après. | You can't push off ice: flip before it, or after. |
+| `accueil.phrase.nuit` | Les blocs s'allument et s'éteignent : traverse en rythme. | The blocks switch on and off: cross in rhythm. |
+| `accueil.phrase.neon` | Deux couleurs, une seule solide à la fois : suis le battement. | Two colours, only one solid at a time: follow the beat. |
 
 ### Commandes (`commandes.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `commandes.action.gauche` | Curseur à gauche | Cursor left |
-| `commandes.action.droite` | Curseur à droite | Cursor right |
-| `commandes.action.haut` | Curseur en haut | Cursor up |
-| `commandes.action.bas` | Curseur en bas | Cursor down |
-| `commandes.action.toucher` | Toucher la case | Hit the square |
+| `commandes.action.toucher` | Inverser la gravité | Flip gravity |
 
 ### Comment jouer (`aide.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `aide.point1` | À remplacer : le but du jeu en une phrase. | To replace: the goal of the game in one sentence. |
-| `aide.point2` | À remplacer : ce que fait le joueur, en une phrase. | To replace: what the player does, in one sentence. |
-| `aide.point3` | À remplacer : comment les égalités se départagent. | To replace: how ties are broken. |
+| `aide.point1` | Un coureur sans fin : il court tout seul vers la droite. Le but : aller le plus loin possible, en ramassant pièces et gemmes. | An endless runner: it runs right by itself. The goal: get as far as you can, collecting coins and gems. |
+| `aide.point2` | Touche l'écran (ou Espace, A à la manette) : la gravité s'inverse, mais seulement quand tu touches une surface : sol, plafond ou plateforme. Pas d'inversion en l'air ni sur la glace. | Touch the screen (or Space, A on a controller): gravity flips, but only while you touch a surface: floor, ceiling or platform. No flipping in mid-air or on ice. |
+| `aide.point3` | À remplacer : les pièces, le multiplicateur et les bonus (texte complet au lot GR4). | To replace: coins, the multiplier and power-ups (full text in lot GR4). |
 
 ### kit (`kit.*`, `apps/gravity/src/catalogue.*.ts`)
 
@@ -3594,21 +3596,44 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
 | `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
 
+### mort (`mort.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `mort.vide` | Tombé dans le vide | Fell into the void |
+| `mort.pique` | Touché par un pique | Hit a spike |
+| `mort.bord` | Rattrapé par le bord de l'écran | Caught by the edge of the screen |
+| `mort.temps` | Temps écoulé : dix minutes ! | Time's up: ten minutes! |
+
 ### Page (titre, chargement) (`page.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
 | `page.titre` | Gravity — Du Jour | Gravity — Du Jour |
 
+### Partie (surimpressions) (`hud.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.detail` | {m} m · ×{mult} | {m} m · ×{mult} |
+
 ### scene (`scene.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | Plateau de jeu (texte à remplacer) | Game board (text to replace) |
+| `scene.aria` | Le coureur et le niveau du jour : touche l'écran pour inverser la gravité | The runner and today's level: touch the screen to flip gravity |
 
 ### Thèmes (`theme.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `theme.clair` | Clair (à remplacer) | Light (to replace) |
-| `theme.sombre` | Sombre (à remplacer) | Dark (to replace) |
+| `theme.foret` | Forêt | Forest |
+| `theme.usine` | Usine | Factory |
+| `theme.glace` | Glace | Ice |
+| `theme.nuit` | Nuit | Night |
+| `theme.neon` | Néon | Neon |
+| `theme.foret.meca` | Courants d'air | Air currents |
+| `theme.usine.meca` | Tapis roulants | Conveyor belts |
+| `theme.glace.meca` | Sols de glace | Icy floors |
+| `theme.nuit.meca` | Blocs clignotants | Blinking blocks |
+| `theme.neon.meca` | Blocs alternés | Alternating blocks |

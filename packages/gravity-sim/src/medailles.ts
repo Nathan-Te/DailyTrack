@@ -1,16 +1,16 @@
 import type { Resultat } from "./partie";
-import { partieDuBot } from "./bot";
+import { seuilsDuJour } from "./seuils";
 import type { Contenu } from "./generateur";
-import { VARIANTE, type Medaille, type Seuils, type Variante } from "./variante";
+import { VARIANTE, type Medaille, type Seuils } from "./variante";
 
-// Les médailles : le Diamant est la partie du bot, l'or, l'argent et le bronze s'en déduisent selon la variante (`variante.ts` : pourcentages du Diamant, `pourcentage-diamant` de la fiche).
+// Les médailles : quatre seuils par jour, **figés avec le niveau** (`seuils.ts`, `jours.ts`). Bronze : fin du 1er thème ; argent : fin du 2e ; or : fin du 3e ; Diamant : fin de la boucle des cinq thèmes — chacun à 60 % de ce
+// que prendrait un robot parfait. En GR1 le calcul est « sur le papier » (provisoire) ; le robot arrive au lot GR2.
 export type { Medaille, Seuils };
-export const BAREME_PCT = VARIANTE.fiche.bareme;
 
-export const seuilsDe = (contenu: Contenu, variante: Variante = VARIANTE): Seuils => variante.seuils(partieDuBot(contenu, variante));
+export const seuilsDe = (contenu: Contenu): Seuils => seuilsDuJour(contenu);
 
 /** La médaille d'un score (les colonnes de classement, dans l'ordre de la fiche). */
-export const medailleDe = (score: readonly number[], s: Seuils, variante: Variante = VARIANTE): Medaille | null => variante.medaille(score, s);
+export const medailleDe = (score: readonly number[], s: Seuils): Medaille | null => VARIANTE.medaille(score, s);
 
 /** La médaille d'un résultat rejoué. */
-export const medailleDeResultat = (r: Pick<Resultat, "touches" | "dernier">, s: Seuils, variante: Variante = VARIANTE): Medaille | null => variante.medaille(variante.score(r), s);
+export const medailleDeResultat = (r: Pick<Resultat, "score" | "ticks">, s: Seuils): Medaille | null => VARIANTE.medaille(VARIANTE.score(r), s);
