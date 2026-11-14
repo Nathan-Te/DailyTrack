@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2584 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2604 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -924,6 +924,26 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.blocs.etat.clin` | clin d'œil | blink |
 | `vitrine.blocs.etat.regardGauche` | regard à gauche | looking left |
 | `vitrine.blocs.etat.regardDroite` | regard à droite | looking right |
+| `vitrine.section.plateformes` | Plateformes | Platformers |
+| `vitrine.plateformes.intro` | La direction artistique d'un jeu de plateformes, reprise par tout jeu qui lit le module commun des plateformes : les cinq thèmes sur une petite grille (sol, bloc surélevé, tapis roulants, glace), dessinés par le dessinateur Three.js commun, celui que Jump appelle en jeu. Le décor posé dépend du niveau d'un jeu : il n'est pas montré ici. | The art direction of a platform game, reused by any game that reads the shared platformers module: the five themes on a small grid (floor, raised block, conveyor belts, ice), drawn by the shared Three.js drawer, the one Jump calls in play. The placed decor depends on a game's level: it is not shown here. |
+| `vitrine.plateformes.sansWebgl` | WebGL indisponible : seuls les blocs à mécanique sont montrés | WebGL unavailable: only the mechanic blocks are shown |
+| `vitrine.plateformes.theme.foret` | Forêt | Forest |
+| `vitrine.plateformes.theme.usine` | Usine | Factory |
+| `vitrine.plateformes.theme.glace` | Glace | Ice |
+| `vitrine.plateformes.theme.nuit` | Nuit | Night |
+| `vitrine.plateformes.theme.neon` | Néon | Neon |
+| `vitrine.plateformes.poses` | Le personnage | The character |
+| `vitrine.plateformes.pose.arret` | à l'arrêt | standing |
+| `vitrine.plateformes.pose.course` | en course | running |
+| `vitrine.plateformes.pose.montee` | en montée | rising |
+| `vitrine.plateformes.pose.chute` | en chute | falling |
+| `vitrine.plateformes.pose.mur` | contre un mur | on a wall |
+| `vitrine.plateformes.blocs` | Blocs à mécanique (couleurs réservées) | Mechanic blocks (reserved colours) |
+| `vitrine.plateformes.bloc.clignotant` | clignotant (plein) | blinking (solid) |
+| `vitrine.plateformes.bloc.absent` | clignotant (absent) | blinking (absent) |
+| `vitrine.plateformes.bloc.alterneA` | alterné A (barre) | alternating A (bar) |
+| `vitrine.plateformes.bloc.alterneB` | alterné B (losange) | alternating B (diamond) |
+| `vitrine.plateformes.bloc.vent` | zone de vent | wind zone |
 
 ## Track
 

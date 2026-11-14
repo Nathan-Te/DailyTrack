@@ -36,3 +36,7 @@ export const WIND_EDGE_OPACITY = 0.16;
 export const WIND_ARROW_IDLE = 0.22;
 export const WIND_ARROW_ON = 0.8;
 
+
+/** Le tapis roulant : hauteur de la bande (tuiles), posée sous le contour clair de la face du dessus, et marge au-dessus. */
+export const BELT_BAND = 0.22;
+export const BELT_GAP = 0.05;
