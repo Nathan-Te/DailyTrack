@@ -1,0 +1,4 @@
+# Lot BR-A3 : les fichiers extraits des packs et les modèles convertis ne se commitent JAMAIS (dépôt public : docs/rush/licences-tiers.md).
+.brut/
+build/
+__pycache__/

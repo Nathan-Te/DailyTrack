@@ -1,0 +1,32 @@
+{
+ "vitrine": {
+  "appels": 34,
+  "triangles": 86096,
+  "skinnedMesh": 8,
+  "msParImage": 2.3099999999937912
+ },
+ "vitrine-procedural": {
+  "appels": 62,
+  "triangles": 110816,
+  "skinnedMesh": 0,
+  "msParImage": 1.7449999999875823
+ },
+ "vitrine-basse": {
+  "appels": 30,
+  "triangles": 109752,
+  "skinnedMesh": 8,
+  "msParImage": 1.013333333345751
+ },
+ "arene-40": {
+  "appels": 68,
+  "triangles": 154000,
+  "skinnedMesh": 25,
+  "msParImage": 2.5283333333209157
+ },
+ "arene-40-procedural": {
+  "appels": 27,
+  "triangles": 137290,
+  "skinnedMesh": 0,
+  "msParImage": 1.4033333333209157
+ }
+}

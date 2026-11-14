@@ -149,9 +149,16 @@ export class Ombres {
   debut(): void {
     this.n = 0;
   }
+  /** Lot BR-A3 : en haute qualité, les disques restent comme OCCLUSION DE CONTACT (une tache serrée et plus sombre sous les pieds, en plus de l'ombre portée du soleil) ; en basse, ils sont l'ombre entière. */
+  contact = false;
+  regler(haute: boolean): void {
+    this.contact = haute;
+    (this.maillage.material as MeshBasicMaterial).opacity = haute ? 0.8 : 1;
+  }
   poser(x: number, z: number, rayon: number, ecart = 0): void {
     if (this.n >= this.maillage.instanceMatrix.count) return;
-    const r = rayon * (1 - Math.min(0.5, ecart * 0.25));
+    if (this.contact && ecart > 0.5) return; // ce qui vole n'a pas de contact
+    const r = rayon * (1 - Math.min(0.5, ecart * 0.25)) * (this.contact ? 0.62 : 1);
     this.m.compose(this.p.set(x, 0.02, z), this.q.identity(), this.s.set(r, 1, r));
     this.maillage.setMatrixAt(this.n++, this.m);
   }
@@ -165,7 +172,7 @@ export class Ombres {
 const VERTEX_PLAN = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
 
 /** Les transparences d'une annonce au sol (le fond du disque, avec le remplissage en plus ; le liseré) : le test de lisibilité les lit pour mesurer l'écart contre chaque sol. Lot BR3 : la bande a les mêmes. */
-export const ALPHAS_ANNONCE = { fond: 0.26, fondInvocation: 0.16, rempli: 0.2, bord: 0.9 } as const;
+export const ALPHAS_ANNONCE = { fond: 0.34, fondInvocation: 0.16, rempli: 0.2, bord: 0.9 } as const;
 
 /** Un cercle d'annonce (lot BR0c, la cible : `cible-ia.png`) : un disque rouge CORAIL translucide, un bord plus clair et fin (moins sombre qu'au BR0b), et un remplissage plus soutenu qui grandit du centre jusqu'au bord à l'instant du coup ; il clignote juste avant. */
 export class Annonces {

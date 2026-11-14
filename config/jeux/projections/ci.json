@@ -1338,6 +1338,9 @@
           ],
           "monde.spec.ts": [
             "rush-jeu"
+          ],
+          "modeles-tiers.spec.ts": [
+            "rush-jeu"
           ]
         },
         "parts": {
