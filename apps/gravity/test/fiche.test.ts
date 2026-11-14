@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, dailyGravity, numeroGravity, partieDuBot, PREMIER_JOUR_GRAVITY, themeDuJour, VARIANTE } from "@cdj/gravity-sim";
+import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, dailyGravity, numeroGravity, ordreDesThemes, PREMIER_JOUR_GRAVITY, seuilsSurLePapier, themeDuJour, VARIANTE } from "@cdj/gravity-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_GRAVITY } from "../src/catalogue";
 import { DEFINITION } from "../src/definition";
@@ -40,18 +40,38 @@ describe("« Gravity » : le client suit sa fiche", () => {
       for (const k of [...DEFINITION.aide, "page.titre", "scene.aria", ...DEFINITION.actions.map((a) => `commandes.action.${a.id}`)]) expect(c, `${lang} ${k}`).toHaveProperty([k]);
     }
   });
-  it("la définition : numéro, thème, médaille, texte du score et du partage", () => {
+  it("la définition : numéro, thème, médaille, texte du score et du partage, aucun fantôme", () => {
     const J = PREMIER_JOUR_GRAVITY + 3;
     expect(DEFINITION.numero(J)).toBe(numeroGravity(J));
     expect(DEFINITION.numero(J)).toBe(4);
     expect(DEFINITION.themeDuJour(J)).toBe(themeDuJour(J));
+    expect(DEFINITION.themeDuJour(J)).toBe(ordreDesThemes(J)[0]);
     const c = dailyGravity(J);
-    const s = DEFINITION.seuils(c);
-    // La médaille et les textes du score viennent de la variante du jeu (`variante.ts`) : la définition ne fait que les brancher.
-    expect(DEFINITION.medaille(VARIANTE.score(partieDuBot(c)), s)).toBe("author");
-    expect(DEFINITION.medaille(VARIANTE.score({ touches: 0, dernier: 900 }), s)).toBeNull();
-    const exemple = VARIANTE.score({ touches: 17, dernier: 300 });
+    // Les seuils sont écrits dans le contenu quand le niveau est lu (`niveau.ts`) : la définition les rend tels quels.
+    const s = DEFINITION.seuils({ ...c, seuilsFiges: seuilsSurLePapier(c) });
+    expect(s).toEqual(seuilsSurLePapier(c));
+    expect(DEFINITION.medaille([s.author, 100], s)).toBe("author");
+    expect(DEFINITION.medaille([s.bronze, 100], s)).toBe("bronze");
+    expect(DEFINITION.medaille([0, 100], s)).toBeNull();
+    const exemple = VARIANTE.score({ score: 4582, ticks: 3600 });
     expect(DEFINITION.formatScore(exemple, "fr", (cle) => cle)).toBe(VARIANTE.formatScore(exemple, "fr"));
-    expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe(VARIANTE.scorePartage(exemple, "en"));
+    expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe("4,582");
+    expect(DEFINITION.sansFantome).toBe(true);
+  });
+  it("une seule action : toucher (Espace, flèches, W, S, A à la manette) ; ?theme= est un essai, jamais classé", () => {
+    expect(DEFINITION.actions.map((a) => a.id)).toEqual(["toucher"]);
+    expect(DEFINITION.actions[0]!.clavier).toEqual(expect.arrayContaining(["Space", "ArrowUp", "ArrowDown", "KeyW", "KeyS"]));
+    expect(DEFINITION.actions[0]!.manette).toBe("b0");
+    expect(DEFINITION.classable!("?debug&manuel")).toBe(true);
+    expect(DEFINITION.classable!("")).toBe(true);
+    expect(DEFINITION.classable!("?theme=glace")).toBe(false);
+  });
+  it("les textes que la scène lit existent dans les deux langues : bandeau de thème, causes de mort, ligne du HUD", () => {
+    for (const lang of ["fr", "en"] as const) {
+      const c = CATALOGUE_GRAVITY[lang];
+      for (const t of FICHE.themes) expect(c, `${lang} theme.${t}.meca`).toHaveProperty([`theme.${t}.meca`]);
+      for (const k of ["vide", "pique", "bord", "temps"]) expect(c, `${lang} mort.${k}`).toHaveProperty([`mort.${k}`]);
+      expect(c).toHaveProperty(["hud.detail"]);
+    }
   });
 });

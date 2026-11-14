@@ -1604,7 +1604,9 @@
         "classement-",
         "reglages-",
         "retours-",
-        "version-"
+        "version-",
+        "niveau-",
+        "rediffusion-"
       ],
       "outilsAdmin": false
     }

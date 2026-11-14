@@ -1,84 +1,229 @@
 {
-  "_": "Golden de Gravity (lot K4f). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
-  "sim": 1,
-  "generateur": 1,
+  "_": "Golden de Gravity (lot GR1). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
+  "sim": 2,
+  "generateur": 2,
   "jours": [
     {
       "date": "2026-11-02",
-      "empreinte": "bf1febd8"
+      "ordre": [
+        "foret",
+        "glace",
+        "usine",
+        "nuit",
+        "neon"
+      ],
+      "empreinte": "cf3b4b5b",
+      "seuils": {
+        "bronze": 2250,
+        "silver": 6060,
+        "gold": 10230,
+        "author": 19810
+      }
     },
     {
       "date": "2026-11-05",
-      "empreinte": "8b8dac76"
+      "ordre": [
+        "foret",
+        "usine",
+        "glace",
+        "neon",
+        "nuit"
+      ],
+      "empreinte": "475c3c45",
+      "seuils": {
+        "bronze": 2490,
+        "silver": 6600,
+        "gold": 11130,
+        "author": 19750
+      }
     },
     {
       "date": "2026-11-08",
-      "empreinte": "437dba64"
+      "ordre": [
+        "glace",
+        "usine",
+        "nuit",
+        "neon",
+        "foret"
+      ],
+      "empreinte": "b4fcb378",
+      "seuils": {
+        "bronze": 2970,
+        "silver": 6720,
+        "gold": 11010,
+        "author": 19540
+      }
     },
     {
       "date": "2026-11-11",
-      "empreinte": "95ddc000"
+      "ordre": [
+        "neon",
+        "usine",
+        "foret",
+        "nuit",
+        "glace"
+      ],
+      "empreinte": "6846468e",
+      "seuils": {
+        "bronze": 3030,
+        "silver": 6330,
+        "gold": 11370,
+        "author": 20980
+      }
     },
     {
       "date": "2026-11-14",
-      "empreinte": "2fc3b748"
+      "ordre": [
+        "foret",
+        "neon",
+        "glace",
+        "usine",
+        "nuit"
+      ],
+      "empreinte": "15626d78",
+      "seuils": {
+        "bronze": 3150,
+        "silver": 7080,
+        "gold": 11550,
+        "author": 21310
+      }
     },
     {
       "date": "2026-11-17",
-      "empreinte": "80224e34"
+      "ordre": [
+        "foret",
+        "usine",
+        "glace",
+        "neon",
+        "nuit"
+      ],
+      "empreinte": "6892890a",
+      "seuils": {
+        "bronze": 2370,
+        "silver": 6330,
+        "gold": 10410,
+        "author": 19660
+      }
     },
     {
       "date": "2026-11-20",
-      "empreinte": "de7e0688"
+      "ordre": [
+        "glace",
+        "foret",
+        "nuit",
+        "neon",
+        "usine"
+      ],
+      "empreinte": "94aec3a4",
+      "seuils": {
+        "bronze": 3180,
+        "silver": 6900,
+        "gold": 10410,
+        "author": 18970
+      }
     },
     {
       "date": "2026-11-23",
-      "empreinte": "582563d3"
+      "ordre": [
+        "usine",
+        "foret",
+        "glace",
+        "nuit",
+        "neon"
+      ],
+      "empreinte": "7338f3e2",
+      "seuils": {
+        "bronze": 3840,
+        "silver": 9330,
+        "gold": 14190,
+        "author": 21550
+      }
     },
     {
       "date": "2026-11-26",
-      "empreinte": "6cc05b9b"
+      "ordre": [
+        "foret",
+        "nuit",
+        "usine",
+        "neon",
+        "glace"
+      ],
+      "empreinte": "2e625348",
+      "seuils": {
+        "bronze": 3210,
+        "silver": 6990,
+        "gold": 11310,
+        "author": 20830
+      }
     },
     {
       "date": "2026-11-29",
-      "empreinte": "4d9d7a65"
+      "ordre": [
+        "foret",
+        "glace",
+        "neon",
+        "usine",
+        "nuit"
+      ],
+      "empreinte": "f6022aad",
+      "seuils": {
+        "bronze": 3090,
+        "silver": 8760,
+        "gold": 13590,
+        "author": 21970
+      }
     }
   ],
   "rediffusions": [
     {
-      "nom": "bot",
-      "date": "2026-11-02",
-      "g": 1,
-      "code": "AQEBAJeiASAcLxslES4mKhIrHSgkKwQnJSkvLwMmGi4YJwQsGCcSLSEqFCoOKgM",
-      "resultat": {
-        "touches": 20,
-        "dernier": 834,
-        "ratees": 0,
-        "ticks": 900
-      }
-    },
-    {
-      "nom": "joueur-lent",
-      "date": "2026-11-02",
-      "g": 1,
-      "code": "AQEBAJeiARkdCRwwGyYRWhIsHRolDyRUJRgAEi8wA0EZChgoBC0YViErFBsPEA4",
-      "resultat": {
-        "touches": 15,
-        "dernier": 801,
-        "ratees": 5,
-        "ticks": 900
-      }
-    },
-    {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 1,
-      "code": "AQEBAJeiAQ",
+      "g": 2,
+      "code": "AQICAJeiAQ",
       "resultat": {
-        "touches": 0,
-        "dernier": 900,
-        "ratees": 0,
-        "ticks": 900
+        "score": 256,
+        "distance": 66,
+        "pieces": 17,
+        "gemmes": 0,
+        "multMax": 2,
+        "ticks": 1098,
+        "cause": 1,
+        "appuis": 0,
+        "inversions": 0
+      }
+    },
+    {
+      "nom": "reguliere",
+      "date": "2026-11-02",
+      "g": 2,
+      "code": "AQICAJeiATxaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa",
+      "resultat": {
+        "score": 263,
+        "distance": 113,
+        "pieces": 15,
+        "gemmes": 0,
+        "multMax": 1,
+        "ticks": 1863,
+        "cause": 1,
+        "appuis": 21,
+        "inversions": 18
+      }
+    },
+    {
+      "nom": "pilote",
+      "date": "2026-11-14",
+      "g": 2,
+      "code": "AQICAKOiAZEBkALKBNUCwQGXGb4BiAL1BIsF1QGwAXmeAbcB0AG8Ad4BiAPHAbYB9gGyBT4vLfIB_wGvAbcBtwG1AeYCsQGxAdwC1QKaAakBqAHdB6EBoAFgOy0tfxs3JS0tuAFssQZrdJEDtALEA-cB5wHHArgB6gZr_ANrZxvWBXqbAdEBggF9mQGYAdIB_gGaAZkBvAK4AWhs4gJrT7wCmgGaAbMCe9EBnAKZAbkDuAFotAJrdH1xbNsB4wNdOy0tvAFMoAKiA80DtAKaAQ",
+      "resultat": {
+        "score": 21250,
+        "distance": 2820,
+        "pieces": 795,
+        "gemmes": 29,
+        "multMax": 5,
+        "ticks": 30785,
+        "cause": 1,
+        "appuis": 120,
+        "inversions": 120
       }
     }
   ]

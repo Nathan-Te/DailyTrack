@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, VARIANTE, dailyGravity, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, themeDuJour, touchesDuBot } from "@cdj/gravity-sim";
+import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, DUREE_MAX_TICKS, MAX_APPUIS, dailyGravity, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsSurLePapier, terrainDuJour, themeDuJour } from "@cdj/gravity-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_GRAVITY } from "../scripts/gravity-essais";
 import { contenuDeGravity } from "../src/gravity";
@@ -7,16 +7,15 @@ import { crc32Hex } from "../src/identity";
 import { GAMES } from "../src/registry";
 import { DAY_MS, makeApi, ouvrirJeu, playerId, type TestApi } from "./helpers";
 
-// Lot K4f — « Gravity », le jeu témoin du kit, sur le contrat minimal d'un jeu neuf et la table commune `resultats_jeu` : le serveur sert le contenu du jeu (serveur = jeu), rejoue, classe dans le sens de la fiche
-// (les colonnes de la fiche : celles de la variante du jeu, `variante.ts`), refuse les copies et les rediffusions abîmées, range l'aperçu à part, efface un joueur, filtre « Mon groupe » et lit le jour figé de l'image.
-// SQLite et libSQL (`file:`), jamais Turso. Ce test passe pour les deux variantes (score, temps) : ce qui diffère passe par `VARIANTE`.
+// Lot GR1 — « Gravity » sur le contrat minimal d'un jeu neuf et la table commune `resultats_jeu` : le serveur sert le contenu du jeu (serveur = jeu), **rejoue la liste des appuis jusqu'à la mort ou aux dix minutes**,
+// classe au score du plus grand au plus petit (puis la durée), refuse les copies et les rediffusions abîmées ou trop longues, range l'aperçu à part, efface un joueur, filtre « Mon groupe » et lit le jour figé de l'image
+// (ses seuils comptent, jamais ceux du calcul). SQLite et libSQL (`file:`), jamais Turso.
 
 const JOUR = daysFromCivil(2026, 11, 10);
 const DATE = formatDay(JOUR);
 const MIDI = JOUR * DAY_MS + 12 * 3_600_000;
 const VERSIONS = { simVersion: GRAVITY_SIM_VERSION, generatorVersion: GRAVITY_GENERATOR_VERSION };
 const entete = (n: number) => ({ "X-Player-Id": playerId(n) });
-const PREMIERE = VARIANTE.fiche.colonnes[0]!;
 const hotePr = { "X-Forwarded-Host": "site-recette--pr-12-0123abcd.web.app" };
 
 async function monter(options: { copies?: boolean; frozen?: Record<string, unknown>; adminToken?: string } = {}): Promise<TestApi> {
@@ -28,79 +27,104 @@ async function monter(options: { copies?: boolean; frozen?: Record<string, unkno
 const envoyer = (t: TestApi, n: number, variante: number) => t.call("POST", "/api/gravity/submit", { replay: ESSAIS_GRAVITY.partie(JOUR, VERSIONS, variante).rediffusion, name: `Joueur${n}` }, { headers: entete(n) });
 
 describe("Gravity sur le serveur", () => {
-  it("sert le contenu du jour de la simulation (serveur = jeu), jamais la preuve", async () => {
+  it("sert le contenu du jour de la simulation (serveur = jeu) : seuils, thème, jamais de preuve", async () => {
     const t = await monter();
     const c = dailyGravity(JOUR);
     const info = await t.call("GET", "/api/gravity/info");
-    expect(info.body).toMatchObject({ game: "gravity", simVersion: 1, generatorVersion: 1, today: DATE });
+    expect(info.body).toMatchObject({ game: "gravity", simVersion: GRAVITY_SIM_VERSION, generatorVersion: GRAVITY_GENERATOR_VERSION, today: DATE });
     const jour = await t.call("GET", `/api/gravity/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.medals).toEqual(seuilsDe(c));
-    expect(jour.body.medals.author).toBe(VARIANTE.seuils(jouer(c, touchesDuBot(c))).author);
+    expect(jour.body.medals).toEqual(seuilsSurLePapier(c)); // sans fichier de jour : le calcul provisoire
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/gravity/day/2026-11-11")).status).toBe(404);
   });
 
-  it("rejoue chaque partie, classe dans l'ordre de la fiche et garde le résultat du serveur", async () => {
+  it("rejoue chaque partie, classe dans l'ordre de la fiche (le score du plus grand au plus petit) et garde le résultat du serveur", async () => {
     const t = await monter();
-    for (const [n, v] of [[1, 3], [2, 0], [3, 9]] as const) {
-      const attendu = ESSAIS_GRAVITY.partie(JOUR, VERSIONS, v).attendu;
+    const parties = [[1, 4], [2, 0], [3, 9]] as const;
+    const attendus = parties.map(([, v]) => ESSAIS_GRAVITY.partie(JOUR, VERSIONS, v).attendu);
+    for (const [i, [n, v]] of parties.entries()) {
       const r = await envoyer(t, n, v);
-      expect(r.status).toBe(200);
-      expect(r.body.score).toEqual(attendu);
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
+      expect(r.body.score).toEqual(attendus[i]);
     }
     const board = await t.call("GET", `/api/gravity/day/${DATE}/board`, undefined, { headers: entete(3) });
     expect(board.body.participants).toBe(3);
-    const lignes = board.body.top as ({ name: string; medal: string | null } & Record<string, number>)[];
-    expect(lignes.map((l) => l.name)).toEqual(["Joueur2", "Joueur1", "Joueur3"]);
-    // La première colonne de la fiche range le classement, dans son sens.
-    for (let i = 1; i < lignes.length; i++) expect(PREMIERE.sens === "desc" ? lignes[i - 1]![PREMIERE.nom]! >= lignes[i]![PREMIERE.nom]! : lignes[i - 1]![PREMIERE.nom]! <= lignes[i]![PREMIERE.nom]!).toBe(true);
-    expect(lignes[0]!.medal).not.toBeNull();
-    expect(board.body.me).toMatchObject({ name: "Joueur3", rank: 3 });
+    const lignes = board.body.top as ({ name: string; score: number; ticks: number; medal: string | null })[];
+    const attendu = parties.map(([n], i) => ({ n: `Joueur${n}`, score: attendus[i]!.score!, ticks: attendus[i]!.ticks! })).sort((a, b) => b.score - a.score || a.ticks - b.ticks);
+    expect(lignes.map((l) => l.name)).toEqual(attendu.map((x) => x.n));
+    for (let i = 1; i < lignes.length; i++) expect(lignes[i - 1]!.score).toBeGreaterThanOrEqual(lignes[i]!.score);
+    expect(board.body.me).toMatchObject({ name: "Joueur3" });
   });
 
-  it("à score égal, le plus rapide passe devant (le départage de la fiche)", async () => {
+  it("à score égal, la partie la plus courte (le moins de pas) passe devant (le départage de la fiche)", async () => {
+    // Deux parties qui meurent au même endroit à des pas différents sont impossibles : on compare les colonnes que le serveur range.
     const t = await monter();
     const c = dailyGravity(JOUR);
-    const avecDelai = (delai: number) => enregistrer(c, VARIANTE.joueur(c, () => delai));
-    await t.call("POST", "/api/gravity/submit", { replay: avecDelai(20), name: "Lent" }, { headers: entete(1) });
-    await t.call("POST", "/api/gravity/submit", { replay: avecDelai(15), name: "Vif" }, { headers: entete(2) });
+    const a = jouer(terrainDuJour(c), []);
+    const b = jouer(terrainDuJour(c), [20]);
+    expect(a.score).not.toBe(b.score); // (garde-fou : deux parties différentes)
+    await t.call("POST", "/api/gravity/submit", { replay: enregistrer(c, []), name: "Immobile" }, { headers: entete(1) });
+    await t.call("POST", "/api/gravity/submit", { replay: enregistrer(c, [20]), name: "Un appui" }, { headers: entete(2) });
     const board = await t.call("GET", `/api/gravity/day/${DATE}/board`);
-    expect((board.body.top as { name: string }[]).map((l) => l.name)).toEqual(["Vif", "Lent"]);
+    const noms = (board.body.top as { name: string }[]).map((l) => l.name);
+    expect(noms).toEqual(a.score >= b.score ? ["Immobile", "Un appui"] : ["Un appui", "Immobile"]);
+    const cles = await t.db.all<{ cle1: number; cle2: number }>("SELECT cle1, cle2 FROM resultats_jeu WHERE jeu = 'gravity' ORDER BY cle1, cle2");
+    expect(cles.map((x) => x.cle1)).toEqual([...cles.map((x) => x.cle1)].sort((x, y) => x - y)); // cle1 = −score : croissant
   });
 
-  it("refuse les copies (la partie du bot, deux fois les mêmes touches), les illisibles et les autres jours", async () => {
+  it("refuse les copies (deux fois les mêmes appuis), les rediffusions illisibles, trafiquées, trop longues et les autres jours", async () => {
     const t = await monter({ copies: false });
     const c = dailyGravity(JOUR);
-    const bot = await t.call("POST", "/api/gravity/submit", { replay: enregistrer(c, touchesDuBot(c)), name: "Copieur" }, { headers: entete(1) });
-    expect(bot.status).toBe(409);
-    expect(bot.body.error).toBe("replay_copy");
-    expect((await envoyer(t, 2, 1)).status).toBe(200);
-    const copie = await envoyer(t, 3, 1);
+    expect((await envoyer(t, 1, 2)).status).toBe(200);
+    const copie = await envoyer(t, 2, 2);
+    expect(copie.status).toBe(409);
     expect(copie.body.error).toBe("replay_copy");
-    expect((await t.call("POST", "/api/gravity/submit", { replay: "pas-une-rediffusion", name: "Zéro" }, { headers: entete(4) })).body.error).toBe("invalid_replay");
-    const autreJour = enregistrer(dailyGravity(JOUR - 1), []);
-    expect((await t.call("POST", "/api/gravity/submit", { replay: autreJour, name: "Hier" }, { headers: entete(5) })).status).toBe(409);
+    const refuse = async (n: number, replay: string, erreur: string) => expect((await t.call("POST", "/api/gravity/submit", { replay, name: `X${n}` }, { headers: entete(n) })).body.error, `${n}`).toBe(erreur);
+    await refuse(4, "pas-une-rediffusion", "invalid_replay");
+    await refuse(5, "A".repeat(20000), "invalid_replay"); // trop de caractères
+    const bon = enregistrer(c, [30, 200]);
+    await refuse(6, bon.slice(0, bon.length - 2), "invalid_replay"); // tronquée
+    await refuse(7, bon.replace(/.$/, "!"), "invalid_replay"); // un caractère hors alphabet
+    const trop = Array.from({ length: MAX_APPUIS + 1 }, (_, i) => i * 3 + 5);
+    await refuse(8, enregistrer(c, trop), "invalid_replay"); // trop d'appuis
+    await refuse(9, enregistrer(c, [DUREE_MAX_TICKS + 5]), "invalid_replay"); // un appui après les dix minutes
+    expect((await t.call("POST", "/api/gravity/submit", { replay: enregistrer(dailyGravity(JOUR - 1), []), name: "Hier" }, { headers: entete(10) })).status).toBe(409);
+    expect((await t.call("POST", "/api/gravity/submit", { name: "Sans" }, { headers: entete(11) })).status).toBeGreaterThanOrEqual(400);
   });
 
-  it("une partie vide est classée la dernière, sans médaille", async () => {
+  it("le score vient du seul rejeu : une rediffusion ne peut pas annoncer mieux que ce qu'elle joue", async () => {
     const t = await monter();
     const c = dailyGravity(JOUR);
-    const r = await t.call("POST", "/api/gravity/submit", { replay: enregistrer(c, []), name: "Rêveur" }, { headers: entete(1) });
+    const replay = enregistrer(c, [30, 200]);
+    const r = await t.call("POST", "/api/gravity/submit", { replay, name: "Menteur", score: 999999, ticks: 1 }, { headers: entete(1) });
     expect(r.status).toBe(200);
-    expect(r.body.score).toEqual(scoreParColonnes(jouer(c, [])));
-    expect(r.body.medal).toBeNull();
+    expect(r.body.score).toEqual(scoreParColonnes(jouer(terrainDuJour(c), [30, 200])));
   });
 
-  it("lit le jour figé de l'image s'il se vérifie, l'ignore sinon", async () => {
-    const fige = figerJour(JOUR);
-    expect(contenuDeGravity(JOUR, { [DATE]: fige })).toEqual(dailyGravity(JOUR));
-    const abime = { ...fige, contenu: { gravity: fige.contenu.gravity.slice(1) } };
-    expect(empreinteContenu(contenuDeGravity(JOUR, { [DATE]: abime }))).toBe(empreinteContenu(dailyGravity(JOUR)));
+  it("une partie vide est rejouée jusqu'à sa mort, classée la dernière", async () => {
+    const t = await monter();
+    const c = dailyGravity(JOUR);
+    await envoyer(t, 2, 3);
+    const r = await t.call("POST", "/api/gravity/submit", { replay: enregistrer(c, []), name: "Rêveur" }, { headers: entete(1) });
+    expect(r.status).toBe(200);
+    expect(r.body.score).toEqual(scoreParColonnes(jouer(terrainDuJour(c), [])));
+    const board = await t.call("GET", `/api/gravity/day/${DATE}/board`);
+    expect((board.body.top as { name: string }[]).at(-1)!.name).toBe("Rêveur");
+  });
+
+  it("lit le jour figé de l'image s'il se vérifie ; ses seuils figés l'emportent sur le calcul ; un fichier abîmé est ignoré", async () => {
+    const fige = figerJour(JOUR, { bronze: 111, silver: 222, gold: 333, author: 444 });
+    expect(contenuDeGravity(JOUR, { [DATE]: fige }).seuilsFiges).toEqual({ bronze: 111, silver: 222, gold: 333, author: 444 });
+    const abime = { ...fige, contenu: { ...fige.contenu, empreinte: "00000000" } };
+    expect(contenuDeGravity(JOUR, { [DATE]: abime }).seuilsFiges).toBeUndefined();
     const t = await monter({ frozen: { [DATE]: fige } });
-    const info = await t.call("GET", "/api/gravity/info");
-    expect(info.body.frozenDays).toEqual([DATE]);
+    expect((await t.call("GET", "/api/gravity/info")).body.frozenDays).toEqual([DATE]);
+    expect((await t.call("GET", `/api/gravity/day/${DATE}`)).body.medals).toEqual({ bronze: 111, silver: 222, gold: 333, author: 444 });
+    const r = await envoyer(t, 1, 0);
+    expect(r.body.medal).toBe("author"); // 444 points suffisent au Diamant figé
   });
 
   it("le profil du joueur et le jeu fermé (`off`) répondent comme les autres jeux", async () => {

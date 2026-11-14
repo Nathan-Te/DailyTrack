@@ -14,7 +14,14 @@ import { CATALOGUE_FR } from "./catalogue.fr";
 import { DEFINITION } from "./definition";
 import { FICHE } from "./fiche";
 
-// « Gravity » (lot K4f) : tout le jeu tient dans `brancherJeu` — la fiche, la définition (simulation, rendu, aide) et les catalogues. Les écrans, l'interrupteur, le serveur, les records, les amis… sont le kit.
+// « Gravity » : tout le jeu tient dans `brancherJeu` — la fiche, la définition (simulation, rendu, aide) et les catalogues. Les écrans, l'interrupteur, le serveur, les records, les amis… sont le kit.
+// Essais (hors production, jamais classés) : `?jour=AAAA-MM-JJ` joue ce jour (c'est le `?seed=` du kit : une archive), `?theme=<id>` commence sur ce thème, la touche T saute au thème suivant (`scene.ts`).
+const adresse = new URLSearchParams(location.search);
+if (adresse.has("jour") && !adresse.has("seed")) {
+  adresse.set("seed", adresse.get("jour")!);
+  adresse.delete("jour");
+  history.replaceState(null, "", `${location.pathname}?${adresse.toString()}${location.hash}`);
+}
 void brancherJeu(FICHE, DEFINITION, {
   catalogues: { fr: CATALOGUE_FR, chargerEn: () => import("./catalogue.en").then((m) => ({ jeu: m.CATALOGUE_EN, commun: m.CATALOGUE_COMMUN_EN })) },
   musique: brancherMusique("gravity", gameStorage),

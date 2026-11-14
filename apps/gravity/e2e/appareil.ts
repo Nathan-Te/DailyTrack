@@ -1,4 +1,4 @@
-import { dailyGravity, jouer, VARIANTE, type Resultat } from "@cdj/gravity-sim";
+import { dailyGravity, jouer, piloter, terrainDuJour, type Resultat } from "@cdj/gravity-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -53,21 +53,22 @@ export async function lancer(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu);
 }
 
+/** La partie scriptée des essais : le pilote d'essai de la simulation joue le jour pendant `pas` pas (ses appuis sont la rediffusion) ; sans l'aide du pilote une partie d'essai meurt en quelques secondes. */
+export const appuisDeLEssai = (pas = 12000): number[] => piloter(terrainDuJour(dailyGravity(parseDay(JOUR)!)), pas).appuis;
+
 /**
- * Joue la partie du jour à la main, pas à pas : une touche sur la case de chaque cible, `delai` ticks après son apparition (la rediffusion du jeu est donc la suite de ces touches). `sauf` : les rangs des gravity
- * qu'on laisse filer (variante « score ») ou sur lesquelles on hésite (variante « temps »). Rend ce que la simulation (Node, la même) attend de ces touches.
+ * Joue la partie du jour à la main, pas à pas : un appui (`action("toucher")`) à chaque pas de la liste, la rediffusion du jeu est donc cette liste ; puis la partie se joue seule jusqu'à la mort. Rend ce que la
+ * simulation (Node, la même) attend de ces appuis.
  */
-export async function jouerLeJour(page: Page, delai = 15, sauf: readonly number[] = []): Promise<Resultat> {
-  const contenu = dailyGravity(parseDay(JOUR)!);
-  const touches = VARIANTE.joueur(contenu, () => delai, (i) => sauf.includes(i));
-  await page.evaluate((touches) => {
+export async function jouerLeJour(page: Page, appuis: readonly number[] = appuisDeLEssai()): Promise<Resultat> {
+  await page.evaluate((appuis) => {
     let t = 0;
-    for (const x of touches) {
-      window.__jeu.avancer(x.tick - t);
-      t = x.tick;
-      window.__jeu.action(`case:${x.c}`);
+    for (const x of appuis) {
+      window.__jeu.avancer(x - t);
+      t = x;
+      window.__jeu.action("toucher");
     }
-    window.__jeu.avancer(1000);
-  }, touches);
-  return jouer(contenu, touches);
+    window.__jeu.avancer(80000);
+  }, [...appuis]);
+  return jouer(terrainDuJour(dailyGravity(parseDay(JOUR)!)), appuis);
 }
