@@ -63,10 +63,10 @@ export interface SmokeCheck {
 
 /** Les champs de `/api/health` (lot 28, inchangés depuis) : `testClock` n'existe qu'avec l'horloge de test, `revision` qu'en ligne. */
 /**
- * Les jeux ouverts qui n'ont VOLONTAIREMENT pas de médaille (leur `seuils` rend `null` : le Diamant vient d'un robot qui n'existe pas encore). Pour eux, la route du jour rend `medals: null` et c'est le bon état ;
- * pour tous les autres, des médailles ordonnées dans le sens du classement sont exigées. **Vertige** : jusqu'au lot V3 (le robot et les médailles) — retirer alors son identifiant d'ici.
+ * Les jeux ouverts qui n'ont VOLONTAIREMENT pas de médaille (leur `seuils` rend `null` : par exemple un Diamant qui vient d'un robot qui n'existe pas encore). Pour eux, la route du jour rend `medals: null` et c'est le bon état ;
+ * pour tous les autres, des médailles ordonnées dans le sens du classement sont exigées. **Vide depuis le lot V3** (Vertige a son robot et ses médailles) : un jeu neuf sans médaille s'y ajoute le temps de son lot.
  */
-export const JEUX_SANS_MEDAILLE: readonly string[] = ["vertige"];
+export const JEUX_SANS_MEDAILLE: readonly string[] = [];
 
 /** Les médailles d'un jour sont-elles celles qu'attend le smoke ? `croissant` : un temps (l'or est plus court que le bronze), sinon un score (l'or est plus grand). Un jeu sans médaille attendue n'en a aucune (`null`). */
 export function medaillesValides(id: string, m: { author: number; gold: number; silver: number; bronze: number } | null | undefined, croissant: boolean): boolean {

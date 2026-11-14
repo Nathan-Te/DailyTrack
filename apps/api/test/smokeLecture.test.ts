@@ -227,12 +227,12 @@ describe(`smoke --lecture-seule --par-hosting : le cache respecte Vary: X-Player
 
 describe("smoke : les médailles d'un jeu ouvert", () => {
   const ordonnees = { author: 10, gold: 20, silver: 30, bronze: 40 };
-  it("un jeu sans médaille volontaire (Vertige avant son robot) rend `medals: null` ; une médaille là où il n'y en a pas est un échec", () => {
-    expect(JEUX_SANS_MEDAILLE).toEqual(["vertige"]);
+  it("aucun jeu n'est sans médaille depuis le lot V3 : Vertige rend ses médailles (un temps : l'or est plus court), `null` y est un échec", () => {
+    expect(JEUX_SANS_MEDAILLE).toEqual([]);
     for (const id of JEUX_SANS_MEDAILLE) expect(FICHES_SERVEUR.some((f) => f.id === id), `« ${id} » est une fiche`).toBe(true);
-    expect(medaillesValides("vertige", null, true)).toBe(true);
-    expect(medaillesValides("vertige", undefined, true)).toBe(true);
-    expect(medaillesValides("vertige", ordonnees, true)).toBe(false);
+    expect(medaillesValides("vertige", ordonnees, true)).toBe(true);
+    expect(medaillesValides("vertige", null, true)).toBe(false);
+    expect(medaillesValides("vertige", undefined, true)).toBe(false);
   });
   it("tout autre jeu garde l'exigence : des médailles ordonnées dans le sens du classement, un bronze positif ; `null` est un échec", () => {
     expect(medaillesValides("tower", null, false)).toBe(false);
