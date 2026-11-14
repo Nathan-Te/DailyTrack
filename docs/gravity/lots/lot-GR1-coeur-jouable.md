@@ -35,13 +35,19 @@ Branche `claude/gravity-playable-core-1lfho4`, PR brouillon `jeu:gravity`. Le sq
 - Mort en dessous d'une plateforme au milieu à très haute vitesse, particules, sons, vibrations : non traités. Pas de fantôme ni de Diamant (`sansFantome`).
 - Mentions légales : voir ci-dessous (marqueur « À remplacer » gardé à dessein). Firefox / WebKit hors `determinisme.spec.ts` non essayés ; libSQL non rejoué en local (CI).
 
-## Zones partagées touchées (à valider, une ligne chacune)
-- `apps/portail/src/catalogue.ts` : les clés `portail.theme.gravity.*` passent de clair / sombre aux cinq thèmes (le test des fiches l'exige : ce sont « ses clés de catalogue »).
-- `apps/portail/test/consignes.test.ts` : deux lignes dans la liste des `CLAUDE.md` (`apps/gravity`, `packages/gravity-sim`, demandés par le prompt).
-- **À proposer à la plateforme** : (1) **mentions légales** (FR + EN) pour les clés `gravity:records`, `:reglages`, `:aide:vu`, `:identite:vue` avant `preview` : `aide.point3` garde « À remplacer » pour que `mentions.test.ts` ne le traite pas encore comme livré ; (2) identité de la fiche (illustration, motif, police) au GR5 ; (3) la teinte corail reste provisoire.
+## Zones partagées touchées — le job CI `zones` est ROUGE, volontairement (à trancher par Nathan)
+Tout le reste de la CI est vert (unit ×4, e2e-pr ×4, jeu fictif ×3, Kit de bout en bout, Budgets, api-image, scope) ; seuls `zones` et son agrégat `test` échouent : 3 fichiers hors des zones de Gravity, **inévitables** avec ce prompt :
+- `apps/portail/src/catalogue.ts` : les clés `portail.theme.gravity.*` passent de clair / sombre aux cinq thèmes (`jeuxFiches.test.ts` l'exige dès que la fiche change de thèmes ; `?theme=<id>` exige les cinq codes dans la fiche).
+- `apps/portail/test/consignes.test.ts` : deux lignes dans la liste des `CLAUDE.md` (`apps/gravity`, `packages/gravity-sim`, que le prompt demande de créer).
+- `packages/musique/src/fiches.production.generated.ts` : sortie de `npm run fiches` (scènes de musique des cinq thèmes), absente des exceptions du job (seul `fiches.generated.ts` y est).
+Pas de contournement (pas de test sauté, pas de renommage de branche). **Option** : fusionner comme une PR de la plateforme (retirer l'étiquette `jeu:gravity`, ajouter `plateforme` au nom de branche), ou ajouter ces chemins aux exceptions du job (lot de plateforme).
+- **À proposer à la plateforme** : (1) **mentions légales** (FR + EN) pour `gravity:records`, `:reglages`, `:aide:vu`, `:identite:vue` avant `preview` — `aide.point3` garde « À remplacer » pour que `mentions.test.ts` ne traite pas encore le jeu comme livré ; (2) identité de la fiche (illustration, motif, police) au GR5 ; (3) teinte corail provisoire.
 
-## Pour tester en 2 clics (recette, le jeu est `off`)
-Les liens de la recette (aperçu de la PR) sont dans le commentaire de la PR : un lien par thème (`?theme=foret|usine|glace|nuit|neon`, puis **T** pour passer au suivant) et un lien « partie normale » sans paramètre. `?jour=AAAA-MM-JJ` essaie un autre jour. Ces parties d'essai ne sont pas classées ; la partie normale l'est (sur la base de la recette).
+## Pour tester en 2 clics (recette, le jeu est `off`, l'aperçu de la PR le sert)
+Base : `https://playdujour-recette--pr-331-2x9eksiq.web.app/gravity/` (les liens répondent 200 ; l'aperçu expire 7 jours après la dernière poussée).
+- **Partie normale** (classée sur la base de la recette) : `/gravity/`
+- Un lien par thème (la partie commence sur ce thème, jamais classée ; **T** passe au thème suivant) : `/gravity/?theme=foret`, `?theme=usine`, `?theme=glace`, `?theme=nuit`, `?theme=neon`
+- Un autre jour : `/gravity/?jour=AAAA-MM-JJ` (jamais classée).
 
 ## Attend les lots suivants
 GR2 : le robot (chemin sûr, seuils définitifs, fantôme Diamant, `GRAVITY_BOT_VERSION` 2) · GR3 : `@cdj/visuels` (la DA de Jump, le héros à bandeau) · GR4 : textes complets · GR5 : identité, accueil, fin de partie, mentions, publication.
