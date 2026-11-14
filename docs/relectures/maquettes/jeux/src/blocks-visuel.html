@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blocks — maquette visuelle (lot QA2)</title>
+<style>{{polices}}
+{{inclure:visuel.css}}</style>
+</head>
+<body>
+<div class="intro"><p><a href="index.html">‹ Toutes les maquettes des jeux</a></p><h1>Blocks — le visuel proposé</h1>
+<p>À gauche, une capture réelle d'une partie (thème Chantier, téléphone en paysage, 844 × 390). À droite, la même scène redessinée en canvas, <b>en code seulement</b>. Deux thèmes : <b>Chantier</b> et <b>Nuit</b>, avec les palettes de pièces de <code>@cdj/visuels/blocs</code>. Un joueur automatique de démonstration choisit une pièce, la glisse dans la grille, efface des lignes : on voit la prévisualisation de la pose, l'effacement et le combo.</p>
+<p><b>Ce que cette maquette ne fait pas :</b> le choix des pièces et le score sont ceux d'une démonstration ; la simulation <code>blocks-sim</code> (grille 8 × 8, règles de pose, effacement) n'est ni reprise ni modifiée. Tout ce qui est proposé se lit dans la vue de la partie.</p></div>
+<div id="barre"></div>
+<div class="corps"><div class="duo">
+<figure><figcaption>Avant — la capture du 12 novembre 2026</figcaption><div class="ecran"><img alt="Capture d'une partie de Blocks, thème Chantier" src="{{capture:blocks-partie/844x390@844}}"></div><p class="aide">Une grille grise unie, sans rien qui dise où poser ni ce qui va s'effacer, sur un décor chaleureux : c'est l'élément le moins dessiné de l'écran.</p></figure>
+<figure class="apres"><figcaption>Après — la proposition (canvas 844 × 390)</figcaption><div class="ecran"><canvas id="c" width="844" height="390"></canvas></div><p class="aide">La démonstration tourne seule ; elle recommence quand la grille est pleine.</p></figure>
+</div></div>
+
+<div class="suite"><h2>Les propositions, avec leur coût</h2>
+<ol class="fiches">
+<li><h3>1 · La grille devient un plan de coffrage</h3><dl>
+<dt>Ce qui change</dt><dd>Les 64 cases sont des alvéoles en creux (ombre en haut et à gauche, reflet en bas et à droite), dans un cadre épais d'encre avec quatre boulons aux coins. Elle se lit comme un objet du chantier, pas comme une ardoise, et reste uni : aplats seulement.</dd>
+<dt>En code</dt><dd>Quatre rectangles par case dans le dessinateur Canvas 2D ; les couleurs viennent de la palette du thème (<code>sol</code>, <code>plateforme</code>) par <code>melanger</code>.</dd>
+<dt>Coût</dt><dd>{{ko:grille}} Ko gzip · {{mesure:blocks:grille}} i/s (base {{mesure:blocks:base}}, tout {{mesure:blocks:tout}}), processeur ralenti 4 fois.</dd>
+<dt>Golden</dt><dd>Inchangés : <code>blocks-sim</code> ne bouge pas.</dd></dl></li>
+<li><h3>2 · Pièces en relief, avec leurs yeux</h3><dl>
+<dt>Ce qui change</dt><dd>Les pièces posées et celles du plateau ont le relief et les petits yeux de Tower (la famille de Du Jour), les yeux regardent vers la grille quand on prend une pièce et clignent au repos.</dd>
+<dt>En code</dt><dd>Rien de neuf à écrire : <code>decrirePiece</code>, <code>dessinerPiece</code> et <code>dessinerYeux</code> de <code>@cdj/visuels/blocs/canvas</code>, avec <code>expressionDe</code> pour le regard.</dd>
+<dt>Coût</dt><dd>{{ko:pieces}} Ko gzip dans la maquette (le module commun est déjà chargé par Blocks) · {{mesure:blocks:pieces}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés. La planche <code>/ui/ › Blocs</code> garde sa limite de 1 % de pixels différents entre dessinateurs.</dd></dl></li>
+<li><h3>3 · La pose se voit avant le lâcher</h3><dl>
+<dt>Ce qui change</dt><dd>Quand on glisse une pièce, les cases visées s'éclairent à la couleur de la pièce ; les lignes et les colonnes qui seraient effacées prennent une hachure d'encre, et leur score s'affiche en pastille. Une pose impossible est hachurée en gris (jamais en rouge : le rouge est réservé aux dangers de Jump).</dd>
+<dt>En code</dt><dd>La prévisualisation existe dans la logique (<code>peutPoser</code>, lignes complétées) ; le dessin ajoute des hachures et une pastille.</dd>
+<dt>Coût</dt><dd>{{ko:pose}} Ko gzip · {{mesure:blocks:pose}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+<li><h3>4 · L'effacement et le combo en chantier</h3><dl>
+<dt>Ce qui change</dt><dd>Les cases d'une ligne complète clignent deux fois, puis sautent l'une après l'autre avec des éclats ; une pastille « +420 » monte ; le crochet de la grue, en haut, descend d'un cran à chaque combo (un compteur qu'on lit sans chiffre). Au thème Nuit, un projecteur balaie la ligne.</dd>
+<dt>En code</dt><dd>Un minuteur par case (décalage de 40 ms), un tableau de particules, le crochet est un trait et un rectangle ; les événements d'effacement sont déjà dans la vue.</dd>
+<dt>Coût</dt><dd>{{ko:efface}} Ko gzip · {{mesure:blocks:efface}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés. Le délai d'animation ne retarde jamais le calcul : la partie avance, seul le dessin attend.</dd></dl></li>
+<li><h3>5 · Décor de chantier, décor de nuit</h3><dl>
+<dt>Ce qui change</dt><dd>Chantier : la grue, les engins, les cônes et l'échafaudage en deux plans qui défilent à peine (parallaxe de 4 et 10 px). Nuit : la ligne d'horizon d'une ville, des fenêtres qui s'allument, un projecteur. La grille reste devant, au centre, sans rien qui la recouvre.</dd>
+<dt>En code</dt><dd>Un module par thème, chargé à la demande comme le décor de Tower ; rectangles et polygones ; coupé avec le mouvement réduit.</dd>
+<dt>Coût</dt><dd>{{ko:decor}} Ko gzip · {{mesure:blocks:decor}} i/s. À la demande : rien dans le premier chargement.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+</ol>
+<p><b>Marqué « touche à la simulation » :</b> rien. Écarté : montrer d'avance les trois pièces suivantes (cela changerait ce que le joueur sait et suppose un choix de règle).</p></div>
+
+<script>{{inclure:visuel.js}}</script>
+<script>
+const V = initVisuel({ features: [{ k: "grille", label: "Plan de coffrage" }, { k: "pieces", label: "Pièces et yeux" }, { k: "pose", label: "Prévisualisation" }, { k: "efface", label: "Effacement et combo" }, { k: "decor", label: "Décor" }], themes: [{ k: "chantier", label: "Chantier" }, { k: "nuit", label: "Nuit" }] });
+const cv = document.getElementById("c"), c = cv.getContext("2d");
+const W = 844, H = 390, N = 8, S = 37, GX = 300, GY = 47, ENC = "#2A1E16";
+const PAL = {
+  chantier: { ciel: "#F6E7C8", sol: "#4A4F55", plat: "#8A6B3E", ref: "#B08A52", fond: "#E8D2A6", alv: "#6C737A", pieces: ["#E8731A", "#F2B705", "#8A5CC8", "#D9558F", "#2F6FC4", "#3F9F4A", "#D63F37"] },
+  nuit: { ciel: "#1B2A4A", sol: "#101A30", plat: "#4A5A7A", ref: "#6A7C9E", fond: "#22345a", alv: "#34425E", pieces: ["#F28C38", "#FFD23F", "#B58CF0", "#F59AC4", "#5C9BF0", "#7AD07F", "#F0706A"] },
+};
+const FORMES = [[[0, 0], [1, 0]], [[0, 0], [1, 0], [0, 1], [1, 1]], [[0, 0], [0, 1], [1, 1]], [[0, 0], [1, 0], [2, 0]], [[0, 0], [1, 0], [2, 0], [3, 0]], [[0, 0], [1, 0], [2, 0], [1, 1]], [[0, 0], [0, 1], [0, 2], [1, 2]], [[0, 0]]];
+let grille, plateau, etat, t = 0, parts = [], score = 0, combo = 0, crochet = 0, pastilles = [];
+const rnd = (n) => Math.floor(Math.random() * n);
+function nouvellePartie() {
+  grille = Array.from({ length: N }, () => Array(N).fill(-1)); score = 0; combo = 0;
+  for (let y = 4; y < N; y++) for (let x = 0; x < N; x++) if (Math.random() < .55 && !(y === 6 && x > 4)) grille[y][x] = rnd(7);
+  for (let x = 0; x < 5; x++) grille[6][x] = grille[6][x] < 0 ? rnd(7) : grille[6][x];
+  plateau = [rnd(8), rnd(8), rnd(8)].map((f) => ({ f, c: rnd(7) })); etat = { ph: "attente", t: 0 };
+}
+const aplat = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+const peut = (f, gx, gy) => FORMES[f].every(([dx, dy]) => gx + dx >= 0 && gx + dx < N && gy + dy >= 0 && gy + dy < N && grille[gy + dy][gx + dx] < 0);
+function lignes(f, gx, gy) { const g = grille.map((r) => r.slice()); FORMES[f].forEach(([dx, dy]) => (g[gy + dy][gx + dx] = 9)); const R = [], C = []; for (let y = 0; y < N; y++) if (g[y].every((v) => v >= 0)) R.push(y); for (let x = 0; x < N; x++) if (g.every((r) => r[x] >= 0)) C.push(x); return { R, C }; }
+function meilleur() { let best = null; plateau.forEach((p, i) => { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (peut(p.f, x, y)) { const { R, C } = lignes(p.f, x, y), s = R.length + C.length + Math.random() * .4; if (!best || s > best.s) best = { i, x, y, s, R, C }; } }); return best; }
+
+/*@f:decor*/
+function decor(P, t) {
+  c.fillStyle = P.ciel; c.fillRect(0, 0, W, H);
+  if (V.theme === "chantier") {
+    for (let k = 0; k < 6; k++) aplat(k * 150 - 30 + Math.sin(t * .2) * 4, 160 + (k % 3) * 20, 90, 190, "#E3C590");
+    for (const [x, y] of [[40, 70], [200, 130]]) { aplat(x, y, 4, 250, "#C9A35E"); aplat(x - 60, y, 220, 4, "#C9A35E"); }
+    aplat(0, 330, W, 60, "#9a968f"); for (let k = 0; k < 10; k++) aplat(k * 90 + 10, 360, 50, 6, "#E8D2A6");
+    for (const x of [90, 700, 780]) { c.fillStyle = "#E8731A"; c.beginPath(); c.moveTo(x, 330); c.lineTo(x + 12, 300); c.lineTo(x + 24, 330); c.fill(); aplat(x + 4, 312, 16, 5, "#fff"); }
+    aplat(60, 306, 70, 22, "#F2B705"); aplat(70, 294, 30, 14, "#F2B705"); aplat(48, 322, 94, 10, "#2A1E16");
+  } else {
+    for (let k = 0; k < 9; k++) { const h = 90 + (k * 53) % 120, x = k * 100 - 20; aplat(x, 330 - h, 70, h, "#16223E"); for (let r = 0; r < h / 20; r++) for (let q = 0; q < 3; q++) if ((r * 3 + q + k + Math.floor(t * .5)) % 3 === 0) aplat(x + 10 + q * 20, 340 - h + r * 20, 8, 8, "#FFD23F"); }
+    aplat(0, 330, W, 60, "#101A30"); for (let k = 0; k < 6; k++) aplat(k * 160 + 20, 360, 70, 4, "#2B3F6B");
+    c.fillStyle = "#22345a"; c.beginPath(); c.moveTo(80, 330); c.lineTo(GX - 20 + Math.sin(t * .7) * 80, 0); c.lineTo(GX + 40 + Math.sin(t * .7) * 80, 0); c.lineTo(100, 330); c.fill();
+  }
+}
+/*@/f*/
+function decorPlat(P) { aplat(0, 0, W, H, P.ciel); }
+
+/*@f:grille*/
+function cadre(P) {
+  aplat(GX - 8, GY - 8, N * S + 16, N * S + 16, ENC); aplat(GX - 4, GY - 4, N * S + 8, N * S + 8, P.plat); aplat(GX - 4, GY - 4, N * S + 8, 3, P.ref);
+  for (const [bx, by] of [[GX - 2, GY - 2], [GX + N * S - 4, GY - 2], [GX - 2, GY + N * S - 4], [GX + N * S - 4, GY + N * S - 4]]) { aplat(bx, by, 6, 6, ENC); aplat(bx + 1, by + 1, 3, 3, P.ref); }
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const X = GX + x * S, Y = GY + y * S; aplat(X, Y, S, S, P.sol); aplat(X + 2, Y + 2, S - 4, S - 4, P.alv); aplat(X + 2, Y + 2, S - 4, 3, "rgba(0,0,0,.35)"); aplat(X + 2, Y + 2, 3, S - 4, "rgba(0,0,0,.25)"); aplat(X + 2, Y + S - 5, S - 4, 3, "rgba(255,255,255,.14)"); }
+}
+/*@/f*/
+function cadrePlat() { aplat(GX, GY, N * S, N * S, "#5d6269"); for (let i = 1; i < N; i++) { aplat(GX + i * S, GY, 1, N * S, "#484d54"); aplat(GX, GY + i * S, N * S, 1, "#484d54"); } c.strokeStyle = ENC; c.lineWidth = 3; c.strokeRect(GX, GY, N * S, N * S); }
+
+/*@f:pieces*/
+function bloc(x, y, s, col, yeux, regard, cl) {
+  aplat(x, y, s, s, ENC); aplat(x + 2, y + 2, s - 4, s - 4, col); aplat(x + 2, y + 2, s - 4, 4, "rgba(255,255,255,.38)"); aplat(x + 2, y + s - 7, s - 4, 5, "rgba(0,0,0,.2)");
+  if (yeux) { const r = s * .15; for (const ox of [-s * .2, s * .2]) { c.fillStyle = "#fff"; c.strokeStyle = ENC; c.lineWidth = 2; c.beginPath(); c.arc(x + s / 2 + ox, y + s / 2 - 1, r + 1, 0, 7); c.fill(); c.stroke(); c.fillStyle = ENC; if (cl) c.fillRect(x + s / 2 + ox - r, y + s / 2 - 1, 2 * r, 2); else { c.beginPath(); c.arc(x + s / 2 + ox + regard[0] * 2, y + s / 2 - 1 + regard[1] * 2, 2, 0, 7); c.fill(); } } }
+}
+/*@/f*/
+function blocPlat(x, y, s, col) { aplat(x, y, s, s, ENC); aplat(x + 2, y + 2, s - 4, s - 4, col); }
+function piece(P, f, col, x, y, s, vivante, regard, cl) { const cs = FORMES[f], mid = cs[Math.floor(cs.length / 2)]; cs.forEach(([dx, dy]) => (V.on("pieces") ? bloc(x + dx * s, y + dy * s, s, P.pieces[col], dx === mid[0] && dy === mid[1] && vivante, regard, cl) : blocPlat(x + dx * s, y + dy * s, s, P.pieces[col]))); }
+
+/*@f:pose*/
+function apercu(P, f, gx, gy, ok, R, C) {
+  const cs = FORMES[f]; if (ok) { cs.forEach(([dx, dy]) => { aplat(GX + (gx + dx) * S + 3, GY + (gy + dy) * S + 3, S - 6, S - 6, P.pieces[etat.col] + "88"); });
+    c.strokeStyle = ENC; c.lineWidth = 2; c.setLineDash([5, 4]); for (const y of R) c.strokeRect(GX + 1, GY + y * S + 1, N * S - 2, S - 2); for (const x of C) c.strokeRect(GX + x * S + 1, GY + 1, S - 2, N * S - 2); c.setLineDash([]);
+    if (R.length + C.length) { const px = GX + N * S + 12, py = GY + (R[0] ?? 2) * S + 4; aplat(px - 40, py - 14, 46, 24, "#FFF6E0"); c.strokeStyle = ENC; c.lineWidth = 2; c.strokeRect(px - 40, py - 14, 46, 24); c.fillStyle = ENC; c.font = "700 13px 'JetBrains Mono'"; c.fillText("+" + (R.length + C.length) * 60, px - 36, py + 3); } }
+  else { c.strokeStyle = "#8a8a8a"; c.lineWidth = 2; cs.forEach(([dx, dy]) => { const X = GX + (gx + dx) * S, Y = GY + (gy + dy) * S; c.strokeRect(X + 3, Y + 3, S - 6, S - 6); c.beginPath(); c.moveTo(X + 3, Y + S - 3); c.lineTo(X + S - 3, Y + 3); c.stroke(); }); }
+}
+/*@/f*/
+
+/*@f:efface*/
+function efface(P, dt) {
+  const e = etat; if (e.ph !== "efface") return;
+  const ordre = (x, y) => (e.R.includes(y) ? x : y) * .05;
+  for (const [x, y] of e.cases) { const d = e.t - ordre(x, y); if (d < 0) { if (Math.floor(e.t * 8) % 2 === 0) aplat(GX + x * S + 3, GY + y * S + 3, S - 6, S - 6, "#fff"); } else if (!e.fait.has(x + "," + y)) { e.fait.add(x + "," + y); for (let k = 0; k < 6; k++) parts.push({ x: GX + x * S + S / 2, y: GY + y * S + S / 2, vx: (Math.random() - .5) * 260, vy: -Math.random() * 260, t: 0, vie: .6, col: P.pieces[grille[y][x] >= 0 ? grille[y][x] : 0], s: 5, g: 700 }); grille[y][x] = -1; } }
+  const px = GX + N * S / 2, py = GY + N * S / 2 - e.t * 50; c.font = "700 24px 'Archivo Black'"; c.fillStyle = "#FFF6E0"; c.strokeStyle = ENC; c.lineWidth = 4; const txt = "+" + e.gain; c.strokeText(txt, px - 30, py); c.fillText(txt, px - 30, py);
+}
+function crochetDessin(P) { const y = 6 + crochet * 6; aplat(GX + N * S / 2 - 1, 0, 3, y + 14, ENC); aplat(GX + N * S / 2 - 8, y + 14, 16, 10, "#F2B705"); c.strokeStyle = ENC; c.lineWidth = 2; c.strokeRect(GX + N * S / 2 - 8, y + 14, 16, 10); }
+function majParts(dt) { for (let i = parts.length - 1; i >= 0; i--) { const q = parts[i]; q.t += dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; if (q.t > q.vie) { parts.splice(i, 1); continue; } c.globalAlpha = 1 - q.t / q.vie; aplat(q.x, q.y, q.s, q.s, q.col); } c.globalAlpha = 1; }
+/*@/f*/
+
+function plaque(x, y, w, ti, v) { aplat(x, y, w, 52, ENC); aplat(x + 2, y + 2, w - 4, 48, "#FFF6E0"); c.fillStyle = "#6B5847"; c.font = "700 10px Archivo"; c.fillText(ti, x + 8, y + 16); c.fillStyle = ENC; c.font = "700 20px 'JetBrains Mono'"; c.fillText(v, x + 8, y + 40); }
+
+function maj(dt) {
+  t += dt; etat.t += dt;
+  if (etat.ph === "attente" && etat.t > .9) { const b = meilleur(); if (!b) { nouvellePartie(); return; } etat = { ph: "glisse", t: 0, ...b, col: plateau[b.i].c, f: plateau[b.i].f }; }
+  else if (etat.ph === "glisse" && etat.t > 1.1) { FORMES[etat.f].forEach(([dx, dy]) => (grille[etat.y + dy][etat.x + dx] = etat.col)); const g = grille; const R = [], C = []; for (let y = 0; y < N; y++) if (g[y].every((v) => v >= 0)) R.push(y); for (let x = 0; x < N; x++) if (g.every((r) => r[x] >= 0)) C.push(x); plateau[etat.i] = { f: rnd(8), c: rnd(7) };
+    if (R.length + C.length) { const cases = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (R.includes(y) || C.includes(x)) cases.push([x, y]); combo++; crochet = Math.min(8, combo); const gain = (R.length + C.length) * 60 * combo; score += gain; etat = { ph: "efface", t: 0, R, C, cases, gain, fait: new Set() }; } else { combo = 0; crochet = 0; etat = { ph: "attente", t: 0 }; } }
+  else if (etat.ph === "efface") { if (!V.on("efface")) { for (const [x, y] of etat.cases) grille[y][x] = -1; etat = { ph: "attente", t: 0 }; } else if (etat.t > 1.1) { for (const [x, y] of etat.cases) grille[y][x] = -1; etat = { ph: "attente", t: 0 }; } }
+}
+function dessiner() {
+  const P = PAL[V.theme];
+  if (V.on("decor")) decor(P, t); else decorPlat(P);
+  if (V.on("grille")) cadre(P); else cadrePlat();
+  if (V.on("efface")) crochetDessin(P);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grille[y][x] >= 0) { if (V.on("pieces")) bloc(GX + x * S, GY + y * S, S, P.pieces[grille[y][x]], (x * 7 + y * 3) % 11 === 0, [0, 0], (t + x) % 4 < .12); else blocPlat(GX + x * S, GY + y * S, S, P.pieces[grille[y][x]]); }
+  // plateau
+  const tx = W - 47 - 110; aplat(tx, GY, 110, N * S, ENC); aplat(tx + 3, GY + 3, 104, N * S - 6, "#FFF6E0"); c.fillStyle = "#6B5847"; c.font = "700 10px Archivo"; c.fillText("TES PIÈCES", tx + 10, GY + 18);
+  plateau.forEach((p, i) => { if (etat.ph === "glisse" && etat.i === i && false) return; const s = 20, cs = FORMES[p.f], w = Math.max(...cs.map((q) => q[0])) + 1, h = Math.max(...cs.map((q) => q[1])) + 1; const px = tx + 55 - w * s / 2, py = GY + 34 + i * 82 + 40 - h * s / 2; if (!(etat.ph === "glisse" && etat.i === i)) piece(P, p.f, p.c, px, py, s, true, [-1, 0], t % 3.4 < .12); else aplat(tx + 8, GY + 26 + i * 82, 94, 70, "rgba(0,0,0,.06)"); });
+  if (etat.ph === "glisse") { const k = Math.min(1, etat.t / .9), e = 1 - Math.pow(1 - k, 3), cs = FORMES[etat.f], w = Math.max(...cs.map((q) => q[0])) + 1, h = Math.max(...cs.map((q) => q[1])) + 1; const sx = tx + 55 - w * 10, sy = GY + 34 + etat.i * 82 + 40 - h * 10, ex = GX + etat.x * S, ey = GY + etat.y * S; const x = sx + (ex - sx) * e, y = sy + (ey - sy) * e, s = 20 + 17 * e;
+    if (V.on("pose") && k > .5) apercu(P, etat.f, etat.x, etat.y, true, etat.R, etat.C);
+    piece(P, etat.f, etat.col, x, y - (1 - e) * 0, s, true, [(ex - sx) < 0 ? -1 : 1, 0], false); }
+  if (V.on("efface")) { efface(P, 0); majParts(1 / 60); } else parts.length = 0;
+  plaque(47, 47, 132, "SCORE", String(score)); plaque(47, 107, 132, "COMBO", combo ? "×" + combo : "—");
+  aplat(W - 47 - 44, 8, 44, 44, ENC); aplat(W - 47 - 42, 10, 40, 40, "#FFF6E0"); aplat(W - 47 - 30, 22, 5, 16, ENC); aplat(W - 47 - 19, 22, 5, 16, ENC);
+}
+nouvellePartie();
+V.loop((tt, dt) => { maj(dt); dessiner(); });
+</script>
+</body>
+</html>

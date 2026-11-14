@@ -7,6 +7,7 @@
   "types": "src/index.ts",
   "sideEffects": false,
   "dependencies": {
+    "@cdj/core": "*",
     "three": "^0.186.1"
   },
   "devDependencies": {
@@ -17,6 +18,8 @@
     "./blocs": "./src/blocs/index.ts",
     "./blocs/themes": "./src/blocs/themes.ts",
     "./blocs/canvas": "./src/blocs/canvas.ts",
-    "./blocs/three": "./src/blocs/three.ts"
+    "./blocs/three": "./src/blocs/three.ts",
+    "./plateformes": "./src/plateformes/index.ts",
+    "./plateformes/three": "./src/plateformesThree/index.ts"
   }
 }

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relecture de novembre 2026 — maquettes des jeux</title>
+<style>
+body{margin:0;background:#D8CCB3;color:#2A1E16;font:16px/1.55 system-ui,sans-serif;padding:32px 20px 80px}
+main{max-width:1000px;margin:0 auto}
+h1{font:800 28px/1.2 system-ui,sans-serif;margin:0 0 8px}
+h2{font:800 21px system-ui,sans-serif;margin:44px 0 10px;border-bottom:3px solid #2A1E16;padding-bottom:6px}
+p{margin:0 0 12px;max-width:860px}
+.cartes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding:0;margin:18px 0}
+.cartes>li{list-style:none;background:#FFF6E0;border:3px solid #2A1E16;border-radius:4px;box-shadow:4px 4px 0 #2A1E16;padding:14px 16px}
+.cartes h3{font:800 17px system-ui,sans-serif;margin:0 0 6px}.cartes h3 a{color:inherit}
+.cartes ol{margin:0;padding-left:20px;font-size:14.5px}.cartes ol li{padding:1px 0}
+.m{display:inline-block;font:700 11px system-ui,sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:1px 7px;border-radius:3px;border:2px solid #2A1E16;background:#E8B23A;white-space:nowrap}.m.sim{background:#C2401F;color:#FFF4E0}.m.pl{background:#4FC3DC}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:12px 0}th,td{border:2px solid #2A1E16;padding:8px 10px;text-align:left;vertical-align:top}th{background:#2A1E16;color:#EDE3CF}td:first-child{font-weight:700;white-space:nowrap}
+code{font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>Relecture de novembre 2026 — maquettes des jeux</h1>
+<p>Lot QA2. Pour Track, Jump, Tower, Blocks et Rush : une maquette d'interface (avant / après, ordinateur et téléphone, légende numérotée), une maquette visuelle (la capture réelle d'une partie à côté de la scène redessinée, deux thèmes au moins, des propositions qui s'allument et s'éteignent) et une comparaison des cinq jeux. Les captures sont celles du 12 novembre 2026 (<code>npm run relecture</code>) ; les constats numérotés (J1, T2…) sont ceux de <code>docs/relectures/2026-11-constat.md</code>.</p>
+<p>Rien n'est codé : les maquettes sont des documents à lire. <span class="m sim">touche à la simulation</span> marque une idée qui changerait ce qui se rejoue sur le serveur ; il n'y en a qu'une (la forme des circuits de Track). <span class="m pl">plateforme</span> marque ce qui se règle une fois pour les cinq jeux.</p>
+<p><b>Pour valider</b> : ouvrir d'abord <a href="comparaison.html">la comparaison</a>, puis une maquette de jeu, et dire pour chaque numéro « je garde », « je ne garde pas » ou « autrement ».</p>
+
+<h2>La comparaison</h2>
+<ul class="cartes"><li><h3><a href="comparaison.html">Les cinq jeux côte à côte</a></h3><ol>
+<li>Un seul accueil à deux colonnes, borné à 1 160 px sur grand écran, « Jouer » de 62 px. <span class="m pl">plateforme</span></li>
+<li>Un seul ordre d'arrivée : temps, médaille écrite, place, actions, « Jeu suivant du jour » ancré. <span class="m pl">plateforme</span></li>
+<li>Ce qui reste propre à chacun : couleur, police, motif, aperçu, panneau « Aujourd'hui », commandes.</li></ol></li></ul>
+
+<h2>Les maquettes d'interface</h2>
+<ul class="cartes">
+<li><h3><a href="track-interface.html">Track — interface</a></h3><ol><li>L'accueil en paysage se range autour de « Courir » : aperçu, médailles écrites, classement visibles.</li><li>HUD : trois plaques à gauche, trois à droite, bande de 30 px ; objectif à 13 px (T2).</li><li>« Tourne ton téléphone » devient une ligne sous la bande au lieu d'une carte sur la voiture (T3).</li></ol></li>
+<li><h3><a href="jump-interface.html">Jump — interface</a></h3><ol><li>Le sol du niveau remonte à 62 % en paysage : les commandes ne recouvrent plus les tuiles ni le drapeau.</li><li>Le message « Tourne ton téléphone » ne couvre plus la flèche de droite.</li><li>Lignes du classement de 44 px avec focus (JU1).</li></ol></li>
+<li><h3><a href="tower-interface.html">Tower — interface</a></h3><ol><li>Accueil en paysage : « Jouer » ancré (J1) ; étiquette de grand écran remplie (J2).</li><li>Taquets à 44 px (TO1) ; note des médailles à 12 px (TO2).</li><li>Arrivée alignée sur l'ordre commun, avec « Jeu suivant du jour » ancré.</li></ol></li>
+<li><h3><a href="blocks-interface.html">Blocks — interface</a></h3><ol><li>Portrait : la grille descend, le chantier monte, à la place du trou du milieu (B1).</li><li>Paysage : score, combo et plateau dans les marges de l'iPhone.</li><li>« Bientôt » à 12 px (B2) ; arrivée à l'ordre commun.</li></ol></li>
+<li><h3><a href="rush-interface.html">Rush — interface</a></h3><ol><li>La barre crème de 52 px devient la bande de 30 px du kit ; le monde gagne de la hauteur.</li><li>Cœurs, niveau et XP sur une plaque ; flèche du boss sous la bande.</li><li>Joystick, compétence, Coup et Esquive dans les marges, sans se recouvrir.</li></ol></li>
+</ul>
+
+<h2>Les maquettes visuelles</h2>
+<ul class="cartes">
+<li><h3><a href="track-visuel.html">Track — visuel</a> <span style="font-weight:400;font-size:13px">(three.js)</span></h3><ol><li>Une identité par biome : strates et arches du Canyon, sapins et crêtes du Col, lampadaires et néon de la Nuit.</li><li>Ciel, brume colorée et soleil bas : la profondeur ; route plus claire que son ombre, bordures en vibreur.</li><li>Variété : trois tracés (rapide, technique, lacets) et leur carte. <span class="m sim">touche à la simulation</span> pour la forme des circuits.</li></ol></li>
+<li><h3><a href="jump-visuel.html">Jump — visuel</a> <span style="font-weight:400;font-size:13px">(canvas)</span></h3><ol><li>Parallaxe à trois plans par thème (Néon : horizon et tours ; Forêt : collines et sapins).</li><li>Tuiles en relief, liseré clair et ombre : le sol se détache du fond violet.</li><li>Personnage qui s'écrase et cligne, dangers cernés (rouge réservé), poussière, drapeau, confettis.</li></ol></li>
+<li><h3><a href="tower-visuel.html">Tower — visuel</a> <span style="font-weight:400;font-size:13px">(canvas)</span></h3><ol><li>Ciel par bandes d'aplats avec soleil, lune et étoiles ; profondeur par thème (phare, bateau, fenêtres).</li><li>Règle de hauteur, repère du palier et ombre de contact : on lit où on en est.</li><li>Pièces qui respirent et s'écarquillent ; étoile de pose, plaque « BONUS », confettis.</li></ol></li>
+<li><h3><a href="blocks-visuel.html">Blocks — visuel</a> <span style="font-weight:400;font-size:13px">(canvas)</span></h3><ol><li>La grille devient un plan de coffrage en creux, avec boulons.</li><li>Prévisualisation de la pose : cases éclairées, lignes qui s'effaceraient hachurées, score en pastille.</li><li>Effacement en chantier : cases qui sautent, crochet de grue pour le combo ; décors Chantier et Nuit.</li></ol></li>
+<li><h3><a href="rush-visuel.html">Rush — visuel</a> <span style="font-weight:400;font-size:13px">(three.js)</span></h3><ol><li>Ombrage en cinq paliers et contour d'encre sur les acteurs seulement.</li><li>Ambiance par thème : pollen en Prairie ; lumière verte, brume, rais et lucioles en Sous-bois.</li><li>Anneau sous le chevalier, cercle corail avant un bond, arc de coup, éclats et gemmes.</li></ol></li>
+</ul>
+
+<h2>Proposition de lots</h2>
+<p>Les lots de la plateforme (kit, HUD commun) se font d'abord : les jeux s'y branchent. Chaque lot de jeu se porte dans <b>la conversation de son jeu</b>, avec la liste de ses maquettes ; il compare son écran à la maquette et relance <code>npm run relecture -- --seulement &lt;jeu&gt;</code>. Aucun de ces lots ne change un golden : les maquettes ne proposent que de l'affichage, sauf la forme des circuits de Track (lot à part, décidé par Nathan).</p>
+<table>
+<thead><tr><th>Lot</th><th>Zone de code</th><th>Contenu</th><th>Maquettes</th></tr></thead>
+<tbody>
+<tr><td>Plateforme P1 — Accueil du kit</td><td><code>packages/kit</code>, <code>packages/ui</code></td><td>Barre d'actions ancrée en paysage (J1), étiquette de grand écran bornée à 1 160 px (J2), « Bientôt » à 12 px (B2, R2).</td><td><a href="comparaison.html">comparaison</a>, les cinq <i>-interface</i></td></tr>
+<tr><td>Plateforme P2 — Pause et arrivée du kit</td><td><code>packages/kit</code>, <code>packages/ui</code></td><td>Pause en deux colonnes (J3) ; un composant d'arrivée à l'ordre commun qui reçoit le panneau du jeu ; « Jeu suivant du jour » ancré avec marge de 34 px.</td><td><a href="comparaison.html">comparaison</a></td></tr>
+<tr><td>Plateforme P3 — HUD commun</td><td><code>packages/kit</code> (bande, plaques), <code>packages/ui</code> (jetons)</td><td>Bande de 30 px sur plaque, plaques de 44 px à liseré clair, zone de sécurité de l'iPhone, ligne « Tourne ton téléphone » à la place de la carte. À vérifier d'abord : la marge du haut de l'iPhone en portrait.</td><td>les cinq <i>-interface</i>, sections « En partie »</td></tr>
+<tr><td>Track T-A — HUD</td><td><code>apps/web</code></td><td>Plaques regroupées, objectif à 13 px, portrait, accueil en paysage.</td><td><a href="track-interface.html">track-interface</a></td></tr>
+<tr><td>Track T-B — Biomes et lumière</td><td><code>apps/web</code> (décor à la demande)</td><td>Silhouettes par biome, ciel et brume colorée, route lisible, voiture et vitesse.</td><td><a href="track-visuel.html">track-visuel</a></td></tr>
+<tr><td>Track T-C — Variété (optionnel)</td><td><code>packages/sim</code> <span class="m sim">touche à la simulation</span></td><td>Formes de circuits par rythme : change le générateur et les golden.</td><td><a href="track-visuel.html">track-visuel</a> (5)</td></tr>
+<tr><td>Jump J-A — Commandes et cadrage</td><td><code>apps/jump</code></td><td>Sol remonté en paysage, message portrait, classement à 44 px.</td><td><a href="jump-interface.html">jump-interface</a></td></tr>
+<tr><td>Jump J-B — Décor et personnage</td><td><code>apps/jump</code></td><td>Parallaxe par thème, relief des tuiles, dangers cernés, personnage et effets.</td><td><a href="jump-visuel.html">jump-visuel</a></td></tr>
+<tr><td>Tower T-A — Interface</td><td><code>apps/tower</code></td><td>Taquets à 44 px, note des médailles, arrivée à l'ordre commun.</td><td><a href="tower-interface.html">tower-interface</a></td></tr>
+<tr><td>Tower T-B — Visuels</td><td><code>apps/tower</code> (décors et habits à la demande)</td><td>Ciel par bandes, profondeur par thème, règle de hauteur, pièces vivantes, effets.</td><td><a href="tower-visuel.html">tower-visuel</a></td></tr>
+<tr><td>Blocks B-A — Portrait et plateau</td><td><code>apps/blocks</code></td><td>Grille descendue, décor en haut, plateau dans la marge.</td><td><a href="blocks-interface.html">blocks-interface</a></td></tr>
+<tr><td>Blocks B-B — Grille et effacement</td><td><code>apps/blocks</code>, module <code>@cdj/visuels</code> (plateforme, si la description change)</td><td>Plan de coffrage, prévisualisation, effacement, décors.</td><td><a href="blocks-visuel.html">blocks-visuel</a></td></tr>
+<tr><td>Rush R-A — HUD en bande</td><td><code>apps/rush</code></td><td>Bande de 30 px, plaque cœurs/XP, flèche du boss, commandes dans les marges.</td><td><a href="rush-interface.html">rush-interface</a></td></tr>
+<tr><td>Rush R-B — Ambiance et acteurs</td><td><code>apps/rush</code></td><td>Rampe et contour, ambiance par thème, anneau et cercles, effets, profondeur.</td><td><a href="rush-visuel.html">rush-visuel</a></td></tr>
+</tbody>
+</table>
+<p><b>Limites</b> : les mesures d'images par seconde des fiches sont prises dans Chromium sans carte graphique, processeur ralenti 4 fois ; elles comparent les propositions entre elles et ne prédisent pas un téléphone. Les marges de l'iPhone sont simulées, Safari n'est pas lancé. Les scènes de Track et de Rush sont plus légères que les jeux (pas de post-traitement, moins d'objets).</p>
+</main>
+</body>
+</html>

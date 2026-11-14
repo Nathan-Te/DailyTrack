@@ -253,3 +253,27 @@ test("vitrine /ui/ › Blocs : les pièces Canvas 2D et celles de Tower sont les
   }));
   expect(nonVides).toBe(true);
 });
+
+// Lot DA2 : la planche « Plateformes » de la vitrine — les cinq thèmes, les poses du personnage et les blocs à mécanique, dessinés par le dessinateur Three.js commun (`@cdj/visuels/plateformes/three`, celui de Jump).
+// Chromium seulement (WebGL). Régression (la nuit) : la parité du dessin de Jump est gardée par `apps/jump/test/dessinFige.test.ts`, la structure du module par les unitaires de `packages/visuels`.
+test("vitrine /ui/ › Plateformes : cinq thèmes, cinq poses du personnage et les blocs à mécanique, non vides", { tag: "@regression" }, async ({ browser }) => {
+  const page = await (await newClockedContext(browser, { viewport: { width: 1280, height: 900 }, locale: "fr-FR" })).newPage();
+  await page.goto(`${SITE}/ui/`);
+  await page.waitForSelector("[data-plateformes][data-pret=true]", { timeout: 60_000 });
+  const compte = await page.evaluate(() => ({
+    themes: [...document.querySelectorAll<HTMLCanvasElement>("canvas[data-theme]")].map((c) => c.dataset.theme!),
+    poses: document.querySelectorAll("[data-pose] canvas").length,
+    blocs: [...document.querySelectorAll<HTMLElement>("[data-bloc]")].map((c) => c.dataset.bloc!),
+  }));
+  expect(new Set(compte.themes)).toEqual(new Set(["foret", "usine", "glace", "nuit", "neon"]));
+  expect(compte.poses).toBe(5);
+  expect(compte.blocs).toEqual(expect.arrayContaining(["clignotant", "absent", "alterneA", "alterneB", "vent"]));
+  // Aucun canvas ne montre que son fond : le dessinateur a bien posé des tuiles et le personnage.
+  const nonVides = await page.evaluate(() => [...document.querySelectorAll<HTMLCanvasElement>(".vitrine-plateformes__canvas")].every((c) => {
+    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+    let autres = 0;
+    for (let i = 4; i < d.length; i += 4) if (d[i] !== d[0] || d[i + 1] !== d[1] || d[i + 2] !== d[2]) autres++;
+    return autres > 200;
+  }));
+  expect(nonVides).toBe(true);
+});

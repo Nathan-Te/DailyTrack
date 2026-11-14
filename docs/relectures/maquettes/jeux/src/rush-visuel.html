@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rush — maquette visuelle (lot QA2)</title>
+<style>{{polices}}
+{{inclure:visuel.css}}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}</script>
+</head>
+<body>
+<div class="intro"><p><a href="index.html">‹ Toutes les maquettes des jeux</a></p><h1>Rush — le visuel proposé</h1>
+<p>À gauche, une capture réelle d'une partie (thème Prairie, 844 × 390). À droite, <b>une petite scène three.js 0.186.1</b> (la version de Rush) qui reproduit un tronçon de niveau — une île, un chemin de terre, des haies, des buissons, un chevalier et des gélatons — vu avec <b>la caméra haute et inclinée du jeu</b>. Tout est en code (formes, ombrage en rampe, contour par coque inversée) : ni modèle, ni image. Deux thèmes : <b>Prairie</b> et <b>Sous-bois</b>. Le chevalier se promène seul et frappe ; ZQSD ou les flèches pour le conduire, Espace pour frapper.</p>
+<p><b>Ce que cette maquette ne fait pas :</b> les déplacements et les coups sont ceux d'une démonstration ; la simulation <code>rush-sim</code> (niveau, collisions, attaques annoncées, boss) n'est ni reprise ni modifiée. Le rouge-corail reste réservé aux attaques annoncées (« un cercle = ça frappe »).</p></div>
+<div id="barre"></div>
+<div class="corps"><div class="duo">
+<figure><figcaption>Avant — la capture du 12 novembre 2026</figcaption><div class="ecran"><img alt="Capture d'une partie de Rush, thème Prairie" src="{{capture:rush-partie/844x390@844}}"></div><p class="aide">Un monde déjà riche et lumineux. Ce qui manque : le chevalier (1,7 m) se perd sur le chemin de terre, et l'île flotte dans un ciel sans nuages ni îles lointaines.</p></figure>
+<figure class="apres"><figcaption>Après — la proposition (three.js 0.186.1, 844 × 390)</figcaption><div class="ecran"><canvas id="c" width="844" height="390"></canvas></div><p class="aide">ZQSD ou flèches : se déplacer. Espace : frapper. La scène demande WebGL.</p></figure>
+</div></div>
+
+<div class="suite"><h2>Les propositions, avec leur coût</h2>
+<ol class="fiches">
+<li><h3>1 · Ombrage en rampe et contour d'encre sur les acteurs</h3><dl>
+<dt>Ce qui change</dt><dd>Les personnages et les monstres prennent un ombrage à cinq paliers (cinq tons nets, comme la cible du jeu) et un contour d'encre régulier. Les décors gardent un ombrage doux : le contour ne sert qu'à détacher ce qu'on doit lire.</dd>
+<dt>En code</dt><dd>C'est ce que <code>cel.ts</code> et le post-traitement (contour par la profondeur en qualité haute, coque inversée en qualité basse) font déjà ; la proposition règle l'épaisseur pour les petits écrans (2,5 px à 1080 de haut, mais pas moins de 2 px sur un téléphone).</dd>
+<dt>Coût</dt><dd>{{ko:toon}} Ko gzip dans la maquette · {{mesure:rush:toon}} i/s (base {{mesure:rush:base}}, tout {{mesure:rush:tout}}) avec le processeur ralenti 4 fois. Mesure indicative : Chromium sans carte graphique ; scène plus légère que le jeu (le jeu s'impose moins de 200 appels de dessin).</dd>
+<dt>Golden</dt><dd>Inchangés : <code>RUSH_SIM_VERSION</code> et le golden de <code>rush-sim</code> ne bougent pas.</dd></dl></li>
+<li><h3>2 · Une ambiance par thème : lumière, brume, particules</h3><dl>
+<dt>Ce qui change</dt><dd><b>Prairie</b> : ciel clair, soleil chaud, pollen qui flotte. <b>Sous-bois</b> : lumière verte et basse, brume épaisse, rais obliques qui traversent les feuillages, lucioles. Le thème se reconnaît à la couleur de l'air autant qu'au sol.</dd>
+<dt>En code</dt><dd>Tout est dans <code>PaletteMonde</code> (lumière, ciel, brume, étalonnage, particules, rais, brume basse) : la règle du lot BR-A2. Un nouveau réglage doit passer <code>test/lisibilite.test.ts</code> (dalles, terre, herbe).</dd>
+<dt>Coût</dt><dd>{{ko:ambiance}} Ko gzip · {{mesure:rush:ambiance}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+<li><h3>3 · Acteurs lisibles : ombre au sol, anneau, cercles d'attaque</h3><dl>
+<dt>Ce qui change</dt><dd>Le chevalier a un anneau clair sous les pieds et une ombre portée nette, qui le retrouvent sur le chemin de terre ; chaque ennemi a une ombre ronde. Avant un bond, un cercle <b>corail</b> grandit sous le monstre jusqu'à l'impact (« un cercle = ça frappe ») : cette couleur n'est utilisée pour rien d'autre dans la scène.</dd>
+<dt>En code</dt><dd>Disques et anneaux posés au sol, lus depuis la vue de la partie (position, état d'annonce) ; le cercle d'annonce existe déjà (<code>COULEURS.corail</code>), la proposition ajoute l'anneau du chevalier.</dd>
+<dt>Coût</dt><dd>{{ko:acteurs}} Ko gzip · {{mesure:rush:acteurs}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés. Les cercles de la maquette ne changent pas la durée d'annonce (au moins 70 ticks, règle de la simulation).</dd></dl></li>
+<li><h3>4 · Effets de combat : arc de coup, éclats, gemmes</h3><dl>
+<dt>Ce qui change</dt><dd>Un arc blanc balaie l'espace du coup, des éclats jaillissent du monstre touché (sans arrêt sur image pour les coups 1 et 2 : règle d'impact du lot BR0c), la gemme d'XP s'envole vers le chevalier en laissant un petit trait.</dd>
+<dt>En code</dt><dd>Un anneau partiel, un tableau de particules, un octaèdre ambre ; lus dans les événements de la partie ; coupés avec « Particules » et le mouvement réduit.</dd>
+<dt>Coût</dt><dd>{{ko:combat}} Ko gzip · {{mesure:rush:combat}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés. La secousse d'écran reste réservée au troisième coup.</dd></dl></li>
+<li><h3>5 · Profondeur : nuages sous l'île, îles lointaines, strates</h3><dl>
+<dt>Ce qui change</dt><dd>L'île a une épaisseur lisible (strates de terre, racines pendantes), une mer de nuages sous elle, et deux îles lointaines qui défilent à 20 % : on sent la hauteur.</dd>
+<dt>En code</dt><dd>Des blocs arrondis par la fabrique de pièces (<code>fabriquer(genre, contexte, variante)</code>, lot BR-A2), jamais une forme écrite à la main dans le décor ; loin de la grille de collision (<code>VIDE</code>), donc sans effet sur la simulation.</dd>
+<dt>Coût</dt><dd>{{ko:profondeur}} Ko gzip · {{mesure:rush:profondeur}} i/s.</dd>
+<dt>Golden</dt><dd>Inchangés.</dd></dl></li>
+</ol>
+<p><b>Marqué « touche à la simulation » :</b> rien. Écarté : agrandir le chevalier (sa taille est celle de sa collision) ; on propose l'anneau à la place.</p></div>
+
+<script>{{inclure:visuel.js}}</script>
+<script type="module">
+import * as THREE from "three";
+const V = initVisuel({ features: [{ k: "toon", label: "Rampe et contour" }, { k: "ambiance", label: "Ambiance" }, { k: "acteurs", label: "Acteurs lisibles" }, { k: "combat", label: "Effets de combat" }, { k: "profondeur", label: "Profondeur" }], themes: [{ k: "prairie", label: "Prairie" }, { k: "sousbois", label: "Sous-bois" }], onTheme: () => reconstruire(), onFeature: () => reconstruire() });
+const cv = document.getElementById("c"), W = 844, H = 390, INK = 0x2a1e16;
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: "low-power" }); renderer.setSize(W, H, false); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38, W / H, .5, 400);
+const PAL = {
+  prairie: { ciel: 0xbfe3f2, fog: 0xd6edf6, fogN: 40, fogF: 130, hemi: [0xdff0ff, 0x9a8a5a, 1.0], sun: [0xfff0c8, 2.2], herbe: 0x7db36a, terre: 0xcaa46b, buisson: 0x5dbb63, tronc: 0xb9783a, gel: 0x5dbb63, pol: 0xfff6c8 },
+  sousbois: { ciel: 0x2c4a3a, fog: 0x2a4a3a, fogN: 14, fogF: 70, hemi: [0x9fd0b0, 0x24402c, .62], sun: [0xcfe8b0, 1.5], herbe: 0x3f7a4a, terre: 0x8a6a45, buisson: 0x2f6b3e, tronc: 0x7a5232, gel: 0x6b8fd6, pol: 0xd8ff7a },
+};
+const rampe = new THREE.DataTexture(new Uint8Array([70, 120, 170, 220, 255]), 5, 1, THREE.RedFormat); rampe.minFilter = rampe.magFilter = THREE.NearestFilter; rampe.needsUpdate = true;
+const rng = (() => { let x = 4242; return () => (x = (x * 16807) % 2147483647) / 2147483647; });
+let monde, chev, gels = [], parts = [], fx = [], gemmes = [], particulesAir, clouds = [], t0 = 0, coup = 0, delaiCoup = 1.5;
+const clavier = {}; addEventListener("keydown", (e) => { clavier[e.code] = true; if (e.code === "Space") { e.preventDefault(); frapper(); } }); addEventListener("keyup", (e) => (clavier[e.code] = false));
+
+/*@f:toon*/
+function mat(c, acteur) { return V.on("toon") && acteur ? new THREE.MeshToonMaterial({ color: c, gradientMap: rampe }) : new THREE.MeshLambertMaterial({ color: c, flatShading: !acteur }); }
+function contour(mesh, k = 1.07) { if (!V.on("toon")) return; const o = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide })); o.scale.setScalar(k); mesh.add(o); }
+/*@/f*/
+function matPlat(c, a) { return new THREE.MeshLambertMaterial({ color: c }); }
+const M = (c, a) => (V.on("toon") ? mat(c, a) : matPlat(c, a));
+const mesh = (g, c, a, o = {}) => { const m = new THREE.Mesh(g, M(c, a)); m.castShadow = !!a || !!o.ombre; m.receiveShadow = true; if (a) contour(m); return m; };
+
+/*@f:profondeur*/
+function profondeur(P, groupe) {
+  const R = rng();
+  for (const [y, c] of [[-1.2, 0xb08a5a], [-2.6, 0x9a7348], [-4.2, 0x7d5c38]]) { const w = 24 + y * 1.2; const b = new THREE.Mesh(new THREE.BoxGeometry(w, 1.5, w * .9), new THREE.MeshLambertMaterial({ color: c, flatShading: true })); b.position.y = y; groupe.add(b); }
+  for (let i = 0; i < 9; i++) { const k = new THREE.Mesh(new THREE.ConeGeometry(.5 + R() * .5, 3 + R() * 3, 5), new THREE.MeshLambertMaterial({ color: 0x6a4a2e })); k.rotation.x = Math.PI; k.position.set((R() - .5) * 16, -6.4 - R(), (R() - .5) * 14); groupe.add(k); }
+  clouds.length = 0;
+  for (let i = 0; i < 12; i++) { const n = new THREE.Group(); for (let j = 0; j < 4; j++) { const s = new THREE.Mesh(new THREE.SphereGeometry(2 + R() * 2.2, 8, 6), new THREE.MeshBasicMaterial({ color: V.theme === "prairie" ? 0xffffff : 0x5f8a73, fog: false })); s.position.set(j * 2.6 - 4, R(), R() * 2); s.scale.y = .55; n.add(s); } n.position.set((R() - .5) * 150, -12 - R() * 3, (R() - .5) * 120); n.userData.v = .4 + R() * .5; groupe.add(n); clouds.push(n); }
+  for (const [x, z, k] of [[-55, -70, 1.6], [70, -90, 2.2]]) { const il = new THREE.Group(); const top = new THREE.Mesh(new THREE.BoxGeometry(14 * k, 1, 12 * k), new THREE.MeshLambertMaterial({ color: P.herbe })); const bas = new THREE.Mesh(new THREE.ConeGeometry(6 * k, 7 * k, 6), new THREE.MeshLambertMaterial({ color: 0xa08560 })); bas.position.y = -4 * k; bas.rotation.x = Math.PI; il.add(top, bas); il.position.set(x, -4, z); groupe.add(il); }
+}
+/*@/f*/
+
+function construireChevalier() {
+  const g = new THREE.Group(), P = PAL[V.theme];
+  const corps = mesh(new THREE.SphereGeometry(.5, 14, 10), 0xf2b544, true); corps.position.y = .55; corps.scale.set(1, .9, 1); g.add(corps);
+  const tete = mesh(new THREE.SphereGeometry(.62, 16, 12), 0xe7e9f3, true); tete.position.y = 1.35; g.add(tete);
+  const fente = new THREE.Mesh(new THREE.BoxGeometry(.7, .14, .1), new THREE.MeshBasicMaterial({ color: INK })); fente.position.set(0, 1.35, .58); g.add(fente);
+  for (const x of [-.14, .14]) { const y = new THREE.Mesh(new THREE.SphereGeometry(.05, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff })); y.position.set(x, 1.35, .62); g.add(y); }
+  const plume = mesh(new THREE.ConeGeometry(.16, .55, 6), 0xd7263d, true); plume.position.set(0, 2.05, -.1); plume.rotation.x = -.4; g.add(plume);
+  const bras = new THREE.Group(); bras.position.set(.6, .9, .2); const lame = mesh(new THREE.BoxGeometry(.12, 1.5, .06), 0xf4efe6, true); lame.position.y = .75; bras.add(lame); g.add(bras); g.userData.bras = bras;
+  const bouclier = mesh(new THREE.CylinderGeometry(.34, .34, .08, 10), 0xd7263d, true); bouclier.rotation.z = Math.PI / 2; bouclier.position.set(-.62, .85, .1); g.add(bouclier);
+  g.userData.corps = corps; g.userData.tete = tete; return g;
+}
+/*@f:acteurs*/
+function pieds(groupe, couleurAnneau) { const o = new THREE.Mesh(new THREE.CircleGeometry(.75, 20), new THREE.MeshBasicMaterial({ color: 0x1a1008, transparent: true, opacity: .32, depthWrite: false })); o.rotation.x = -Math.PI / 2; o.position.y = .03; groupe.add(o); if (couleurAnneau) { const r = new THREE.Mesh(new THREE.RingGeometry(.95, 1.1, 24), new THREE.MeshBasicMaterial({ color: 0xfff6e0, transparent: true, opacity: .9, depthWrite: false })); r.rotation.x = -Math.PI / 2; r.position.y = .05; groupe.add(r); } }
+function cercle(x, z) { const c = new THREE.Mesh(new THREE.CircleGeometry(1, 28), new THREE.MeshBasicMaterial({ color: 0xff6f61, transparent: true, opacity: .45, depthWrite: false })); c.rotation.x = -Math.PI / 2; c.position.set(x, .06, z); c.userData.cercle = 1; monde.add(c); return c; }
+/*@/f*/
+
+function construireGelee(x, z) {
+  const P = PAL[V.theme], g = new THREE.Group(), d = mesh(new THREE.SphereGeometry(.75, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), P.gel, true); g.add(d);
+  for (const ox of [-.25, .25]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff })); e.position.set(ox, .42, .62); g.add(e); const p = new THREE.Mesh(new THREE.SphereGeometry(.045, 6, 6), new THREE.MeshBasicMaterial({ color: INK })); p.position.set(ox, .42, .7); g.add(p); }
+  if (V.on("acteurs")) pieds(g, false); g.position.set(x, 0, z); g.userData = { vx: 0, vz: 0, hop: Math.random() * 3, vie: 1, cercle: null, ann: 0, base: d }; return g;
+}
+
+/*@f:combat*/
+function frapper() { if (coup > 0 || !chev) return; coup = .32; if (!V.on("combat")) return; const a = new THREE.Mesh(new THREE.RingGeometry(1.2, 2.3, 24, 1, -Math.PI * .45, Math.PI * .9), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, side: THREE.DoubleSide, depthWrite: false })); a.rotation.x = -Math.PI / 2; a.position.copy(chev.position).add(new THREE.Vector3(0, .9, 0)); a.rotation.z = chev.rotation.y - Math.PI / 2; a.userData = { vie: .22, t: 0 }; fx.push(a); monde.add(a); }
+function eclats(p, n, col) { if (!V.on("combat")) return; for (let i = 0; i < n; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.14, .14, .14), new THREE.MeshBasicMaterial({ color: col })); m.position.copy(p); m.userData = { v: new THREE.Vector3((Math.random() - .5) * 9, 3 + Math.random() * 5, (Math.random() - .5) * 9), vie: .6, t: 0 }; parts.push(m); monde.add(m); } }
+function gemme(p) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(.28), new THREE.MeshBasicMaterial({ color: 0xf2b544 })); m.position.copy(p).add(new THREE.Vector3(0, .5, 0)); m.userData = { t: 0, v: 0 }; contourGem(m); gemmes.push(m); monde.add(m); }
+function contourGem(m) { const o = new THREE.Mesh(m.geometry, new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide })); o.scale.setScalar(1.25); m.add(o); }
+/*@/f*/
+
+/*@f:ambiance*/
+function ambiance(P, groupe) {
+  const R = rng(), n = 120, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) pos.set([(R() - .5) * 30, R() * 7, (R() - .5) * 30], i * 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); particulesAir = new THREE.Points(g, new THREE.PointsMaterial({ color: P.pol, size: V.theme === "prairie" ? .13 : .22, transparent: true, opacity: .85, depthWrite: false })); groupe.add(particulesAir);
+  if (V.theme === "sousbois") for (let i = 0; i < 4; i++) { const r = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 18), new THREE.MeshBasicMaterial({ color: 0xe8f5b0, transparent: true, opacity: .1, side: THREE.DoubleSide, depthWrite: false, fog: false })); r.position.set(-8 + i * 5, 6, -4 + (i % 2) * 6); r.rotation.set(0, .3, .45); groupe.add(r); }
+}
+/*@/f*/
+
+function reconstruire() {
+  if (monde) scene.remove(monde);
+  monde = new THREE.Group(); scene.add(monde); gels = []; parts = []; fx = []; gemmes = [];
+  const P = PAL[V.theme], amb = V.on("ambiance"), R = rng();
+  scene.background = new THREE.Color(amb ? P.ciel : 0xbfe3f2); scene.fog = amb ? new THREE.Fog(P.fog, P.fogN, P.fogF) : new THREE.Fog(0xd6edf6, 40, 130);
+  const a = amb ? P : PAL.prairie;
+  monde.add(new THREE.HemisphereLight(a.hemi[0], a.hemi[1], a.hemi[2])); const sol = new THREE.DirectionalLight(a.sun[0], a.sun[1]); sol.position.set(10, 20, 8); sol.castShadow = true; sol.shadow.mapSize.set(1024, 1024); const sc = sol.shadow.camera; sc.left = -16; sc.right = 16; sc.top = 16; sc.bottom = -16; monde.add(sol);
+  const herbe = new THREE.Mesh(new THREE.BoxGeometry(26, 1, 23), new THREE.MeshLambertMaterial({ color: P.herbe })); herbe.position.y = -.5; herbe.receiveShadow = true; monde.add(herbe);
+  const cv2 = document.createElement("canvas"); cv2.width = cv2.height = 256; const c2 = cv2.getContext("2d"); c2.fillStyle = "#" + new THREE.Color(P.terre).getHexString(); c2.fillRect(0, 0, 256, 256); for (let i = 0; i < 60; i++) { c2.fillStyle = `rgba(${90 + (i % 5) * 12},${60 + (i % 4) * 10},40,.12)`; c2.beginPath(); c2.arc(R() * 256, R() * 256, 8 + R() * 22, 0, 7); c2.fill(); }
+  const tex = new THREE.CanvasTexture(cv2); const chemin = new THREE.Mesh(new THREE.PlaneGeometry(13, 17), new THREE.MeshLambertMaterial({ map: tex })); chemin.rotation.x = -Math.PI / 2; chemin.position.y = .01; chemin.receiveShadow = true; monde.add(chemin);
+  for (const sgn of [-1, 1]) for (let i = 0; i < 9; i++) { const post = new THREE.Mesh(new THREE.BoxGeometry(.45, 1.2, .45), new THREE.MeshLambertMaterial({ color: P.tronc })); post.position.set(sgn * 11.6, .6, -10 + i * 2.5); post.castShadow = true; monde.add(post); if (i < 8) { const rail = new THREE.Mesh(new THREE.BoxGeometry(.12, .14, 2.5), new THREE.MeshLambertMaterial({ color: P.tronc })); rail.position.set(sgn * 11.6, .8, -8.75 + i * 2.5); monde.add(rail); } }
+  for (let i = 0; i < 10; i++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1 + R() * .8, 0), new THREE.MeshLambertMaterial({ color: P.buisson, flatShading: true })); b.position.set((R() < .5 ? -1 : 1) * (7 + R() * 4), .8, -9 + R() * 18); b.castShadow = true; monde.add(b); }
+  for (const [x, z] of [[-9, -4], [9.5, 3]]) { const tr = new THREE.Mesh(new THREE.CylinderGeometry(.35, .5, 2.4, 7), new THREE.MeshLambertMaterial({ color: P.tronc })); tr.position.set(x, 1.2, z); tr.castShadow = true; const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(2.1, 0), new THREE.MeshLambertMaterial({ color: P.buisson, flatShading: true })); cr.position.set(x, 3.6, z); cr.castShadow = true; monde.add(tr, cr); }
+  if (V.on("profondeur")) profondeur(P, monde); else { const b = new THREE.Mesh(new THREE.BoxGeometry(26, 2, 23), new THREE.MeshLambertMaterial({ color: 0x9a7348 })); b.position.y = -2; monde.add(b); }
+  if (V.on("ambiance")) ambiance(P, monde);
+  chev = construireChevalier(); chev.position.set(0, 0, 4); if (V.on("acteurs")) pieds(chev, true); monde.add(chev);
+  for (const [x, z] of [[-4, -3], [3, -5], [5.5, -1], [-2, -7]]) { const g = construireGelee(x, z); gels.push(g); monde.add(g); }
+}
+const camP = new THREE.Vector3();
+function maj(t, dt) {
+  const u = chev.userData; let mx = 0, mz = 0;
+  if (clavier.ArrowLeft || clavier.KeyA || clavier.KeyQ) mx -= 1; if (clavier.ArrowRight || clavier.KeyD) mx += 1; if (clavier.ArrowUp || clavier.KeyW || clavier.KeyZ) mz -= 1; if (clavier.ArrowDown || clavier.KeyS) mz += 1;
+  const auto = !(mx || mz); if (auto) { const a = t * .5; mx = Math.cos(a) * .9; mz = Math.sin(a * 1.3) * .6 - .2; }
+  const v = Math.hypot(mx, mz); if (v > 0) { const sp = auto ? 2.6 : 5; chev.position.x = THREE.MathUtils.clamp(chev.position.x + mx / v * sp * dt, -10, 10); chev.position.z = THREE.MathUtils.clamp(chev.position.z + mz / v * sp * dt, -9, 9); const ang = Math.atan2(mx, mz); chev.rotation.y += Math.atan2(Math.sin(ang - chev.rotation.y), Math.cos(ang - chev.rotation.y)) * Math.min(1, dt * 10); }
+  u.corps.position.y = .55 + Math.abs(Math.sin(t * 9)) * .09 * (v > 0 ? 1 : 0); u.tete.position.y = 1.35 + Math.abs(Math.sin(t * 9 + .5)) * .07 * (v > 0 ? 1 : 0);
+  delaiCoup -= dt; if (auto && delaiCoup < 0) { frapper(); delaiCoup = 2.4; }
+  if (coup > 0) { coup -= dt; u.bras.rotation.set(-Math.PI / 2 * Math.sin((1 - coup / .32) * Math.PI), 0, 0); if (coup < .2 && coup + dt >= .2) for (const g of gels) if (g.position.distanceTo(chev.position) < 3.6 && g.userData.vie > 0) { g.userData.vie = 0; eclats(g.position.clone().add(new THREE.Vector3(0, .5, 0)), 14, V.theme === "prairie" ? 0xfff0a0 : 0xc8ff90); if (g.userData.cercle) g.userData.cercle.visible = false; gemme(g.position); monde.remove(g); setTimeout(() => { g.userData.vie = 1; g.userData.ann = 0; g.position.set((Math.random() - .5) * 14, 0, -3 - Math.random() * 5); monde.add(g); }, 2600); } } else u.bras.rotation.set(0, 0, Math.sin(t * 9) * .15 * (v > 0 ? 1 : 0));
+  for (const g of gels) { const d = g.userData; if (d.vie <= 0) continue; d.hop += dt * 3; g.position.y = Math.max(0, Math.sin(d.hop * 2)) * .35; d.base.scale.set(1 + Math.max(0, -Math.sin(d.hop * 2)) * .12, 1 - Math.max(0, -Math.sin(d.hop * 2)) * .12, 1);
+    const dx = chev.position.x - g.position.x, dz = chev.position.z - g.position.z, dist = Math.hypot(dx, dz); g.position.x += dx / dist * .9 * dt; g.position.z += dz / dist * .9 * dt; g.rotation.y = Math.atan2(dx, dz);
+    if (V.on("acteurs") && dist < 5 && dist > 1.4) { d.ann += dt; if (!d.cercle) d.cercle = cercle(g.position.x, g.position.z); const k = Math.min(1, d.ann / 1.2); d.cercle.scale.setScalar(.4 + 2.2 * k); d.cercle.position.set(g.position.x, .06, g.position.z); d.cercle.visible = true; d.cercle.material.opacity = .25 + .35 * k; if (d.ann > 1.4) d.ann = 0; } else if (d.cercle) d.cercle.visible = false; }
+  for (let i = fx.length - 1; i >= 0; i--) { const q = fx[i]; q.userData.t += dt; q.material.opacity = .9 * (1 - q.userData.t / q.userData.vie); q.scale.setScalar(1 + q.userData.t * 4); if (q.userData.t > q.userData.vie) { monde.remove(q); fx.splice(i, 1); } }
+  for (let i = parts.length - 1; i >= 0; i--) { const q = parts[i], d = q.userData; d.t += dt; d.v.y -= 20 * dt; q.position.addScaledVector(d.v, dt); q.rotation.x += dt * 8; if (d.t > d.vie) { monde.remove(q); parts.splice(i, 1); } }
+  for (let i = gemmes.length - 1; i >= 0; i--) { const q = gemmes[i], d = q.userData; d.t += dt; if (d.t > .5) { d.v += dt * 30; const dir = chev.position.clone().add(new THREE.Vector3(0, 1, 0)).sub(q.position); if (dir.length() < .5) { monde.remove(q); gemmes.splice(i, 1); continue; } q.position.addScaledVector(dir.normalize(), d.v * dt); } q.rotation.y += dt * 4; }
+  if (particulesAir) { const p = particulesAir.geometry.attributes.position; for (let i = 0; i < p.count; i++) { p.setY(i, (p.getY(i) + dt * (V.theme === "prairie" ? .35 : .15) + 7) % 7); p.setX(i, p.getX(i) + Math.sin(t + i) * dt * .3); } p.needsUpdate = true; }
+  for (const c of clouds) c.position.x = ((c.position.x + 75 + c.userData.v * dt) % 150) - 75;
+  camP.set(chev.position.x * .7, 19, chev.position.z * .7 + 17); camera.position.lerp(camP, Math.min(1, dt * 4)); camera.lookAt(chev.position.x * .7, 0, chev.position.z * .7 - 1);
+}
+reconstruire();
+V.loop((t, dt) => { maj(t, dt); renderer.render(scene, camera); });
+</script>
+</body>
+</html>
