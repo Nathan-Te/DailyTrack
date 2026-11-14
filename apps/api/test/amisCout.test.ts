@@ -14,7 +14,7 @@ import { TEST_DB } from "./helpers";
 //   - routes des amis seules (liste, suggestions, ajout, lien) : 2 à 102 lignes à froid → plafond **150** ; elles ne lisent que la liste du joueur (une lecture par ami : clé primaire de `amities`).
 //   - classements filtrés et « 3e entre amis » : le classement du jour est celui que le portail garde déjà (calculé une fois par fenêtre et par instance, comme « Tous » : ≈ 600 lues à froid pour la
 //     référence) + une ligne par ami à froid comme à chaud ; Jump lit en plus les morts des seuls amis. Plafond à froid **770 + 2 lignes par ami** ; à chaud **30 + 2 lignes par ami**.
-//   - dans tous les cas : au plus 10 lignes parcourues sans index (un `SCAN`) et 30 instructions.
+//   - dans tous les cas : au plus 10 lignes parcourues sans index (un `SCAN`) et 36 instructions (le portail du jour coûte environ une instruction par jeu : 30 mesurées avec les 8 fiches, 31 avec le jeu fictif de la CI ; plafond relevé de 30 à 36 au lot GR0 par décision de Nathan, pour la marge de quelques jeux).
 const SEULES = new Set(["GET /api/amis", "suggestions (q=pil)", "ajouter un ami", "créer un lien d'invitation"]);
 
 describe.skipIf(TEST_DB === "libsql")("amis : lignes lues pour 0, 10 et 100 amis", () => {
@@ -44,7 +44,7 @@ describe.skipIf(TEST_DB === "libsql")("amis : lignes lues pour 0, 10 et 100 amis
           const plafond = seule ? 150 : quand === "à froid" ? 770 + 2 * n : 30 + 2 * n;
           expect(x.lues, `${n} amis · ${m.route} ${quand} : lignes lues`).toBeLessThanOrEqual(plafond);
           expect(x.parcourues, `${n} amis · ${m.route} ${quand} : lignes parcourues sans index`).toBeLessThanOrEqual(10);
-          expect(x.instructions, `${n} amis · ${m.route} ${quand} : instructions`).toBeLessThanOrEqual(30);
+          expect(x.instructions, `${n} amis · ${m.route} ${quand} : instructions`).toBeLessThanOrEqual(36);
         }
       }
     }
