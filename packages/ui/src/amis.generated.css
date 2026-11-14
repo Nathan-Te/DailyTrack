@@ -19,3 +19,8 @@
   --sel-actif-fond: var(--dj-encre);
   --sel-actif-texte: #F7C59F;
 }
+.dj-amis-selecteur.dj-amis-selecteur--gravity {
+  --sel-fond: #FFB892;
+  --sel-actif-fond: var(--dj-encre);
+  --sel-actif-texte: #FFB892;
+}

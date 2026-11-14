@@ -1,0 +1,85 @@
+{
+  "_": "Golden de Gravity (lot K4f). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
+  "sim": 1,
+  "generateur": 1,
+  "jours": [
+    {
+      "date": "2026-11-02",
+      "empreinte": "bf1febd8"
+    },
+    {
+      "date": "2026-11-05",
+      "empreinte": "8b8dac76"
+    },
+    {
+      "date": "2026-11-08",
+      "empreinte": "437dba64"
+    },
+    {
+      "date": "2026-11-11",
+      "empreinte": "95ddc000"
+    },
+    {
+      "date": "2026-11-14",
+      "empreinte": "2fc3b748"
+    },
+    {
+      "date": "2026-11-17",
+      "empreinte": "80224e34"
+    },
+    {
+      "date": "2026-11-20",
+      "empreinte": "de7e0688"
+    },
+    {
+      "date": "2026-11-23",
+      "empreinte": "582563d3"
+    },
+    {
+      "date": "2026-11-26",
+      "empreinte": "6cc05b9b"
+    },
+    {
+      "date": "2026-11-29",
+      "empreinte": "4d9d7a65"
+    }
+  ],
+  "rediffusions": [
+    {
+      "nom": "bot",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiASAcLxslES4mKhIrHSgkKwQnJSkvLwMmGi4YJwQsGCcSLSEqFCoOKgM",
+      "resultat": {
+        "touches": 20,
+        "dernier": 834,
+        "ratees": 0,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "joueur-lent",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiARkdCRwwGyYRWhIsHRolDyRUJRgAEi8wA0EZChgoBC0YViErFBsPEA4",
+      "resultat": {
+        "touches": 15,
+        "dernier": 801,
+        "ratees": 5,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "vide",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiAQ",
+      "resultat": {
+        "touches": 0,
+        "dernier": 900,
+        "ratees": 0,
+        "ticks": 900
+      }
+    }
+  ]
+}

@@ -246,6 +246,36 @@
         "theme:clair",
         "theme:sombre"
       ]
+    },
+    {
+      "id": "gravity",
+      "code": "gravity",
+      "ordre": 8,
+      "nom": {
+        "fr": "Gravity",
+        "en": "Gravity"
+      },
+      "etiquette": {
+        "fond": "#FFB892",
+        "coque": "#C9622E",
+        "police": "\"Lilita One\", \"Archivo\", sans-serif",
+        "dessin": "generique"
+      },
+      "etatDepart": "off",
+      "format": "entier",
+      "unite": "points",
+      "prefixe": "gravity:",
+      "messageOu": "gravity",
+      "zoneNouveautes": "gravity",
+      "themes": [
+        "clair",
+        "sombre"
+      ],
+      "scenes": [
+        "menu",
+        "theme:clair",
+        "theme:sombre"
+      ]
     }
   ],
   "publics": [
@@ -259,7 +289,8 @@
     "cibles:",
     "blocks:",
     "rush:",
-    "vertige:"
+    "vertige:",
+    "gravity:"
   ],
   "ou": [
     "portail",
@@ -269,7 +300,8 @@
     "cibles",
     "blocks",
     "rush",
-    "vertige"
+    "vertige",
+    "gravity"
   ],
   "zones": [
     "dujour",
@@ -279,7 +311,8 @@
     "cibles",
     "blocks",
     "rush",
-    "vertige"
+    "vertige",
+    "gravity"
   ],
   "nomsDeZones": {
     "dujour": "Du Jour",
@@ -289,6 +322,7 @@
     "cibles": "Cibles",
     "blocks": "Blocks",
     "rush": "Rush",
-    "vertige": "Vertige"
+    "vertige": "Vertige",
+    "gravity": "Gravity"
   }
 }

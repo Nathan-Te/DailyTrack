@@ -24,3 +24,11 @@
 .dj-cartouche--vertige {
   background: #8A3B12;
 }
+.jeu-etiquette--gravity {
+  --jeu-fond: #FFB892;
+  --jeu-coque: #C9622E;
+  --jeu-police: "Lilita One", "Archivo", sans-serif;
+}
+.dj-cartouche--gravity {
+  background: #C9622E;
+}

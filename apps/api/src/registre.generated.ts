@@ -8,6 +8,7 @@ import { CIBLES_GAME } from "./cibles";
 import { BLOCKS_GAME } from "./blocks";
 import { RUSH_GAME } from "./rush";
 import { VERTIGE_GAME } from "./vertige";
+import { GRAVITY_GAME } from "./gravity";
 
 // Lot K4e : le registre vient des fiches. `temoin` : un jeu témoin n'est jamais dans le registre d'un serveur de production (`jeuxPourEnvironnement`, `registry.ts`).
 export const JEUX_DU_REGISTRE: readonly { code: string; temoin: boolean; jeu: GameDefinition<never> }[] = [
@@ -18,4 +19,5 @@ export const JEUX_DU_REGISTRE: readonly { code: string; temoin: boolean; jeu: Ga
   { code: "blocks", temoin: false, jeu: BLOCKS_GAME as unknown as GameDefinition<never> },
   { code: "rush", temoin: false, jeu: RUSH_GAME as unknown as GameDefinition<never> },
   { code: "vertige", temoin: false, jeu: VERTIGE_GAME as unknown as GameDefinition<never> },
+  { code: "gravity", temoin: false, jeu: GRAVITY_GAME as unknown as GameDefinition<never> },
 ];

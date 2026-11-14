@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2604 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2714 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -300,6 +300,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `jeu.jump.titre` | JUMP | JUMP |
 | `jeu.tower.nom` | Tower | Tower |
 | `jeu.cibles.nom` | Cibles | Targets |
+| `jeu.gravity.nom` | Gravity | Gravity |
 | `jeu.vertige.nom` | Vertige | Vertige |
 | `jeu.rush.nom` | Rush | Rush |
 | `jeu.blocks.nom` | Blocks | Blocks |
@@ -652,6 +653,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.jump.accroche` | Un niveau de plateforme par jour, le même pour tous. | One platform level a day, the same for everyone. |
 | `portail.tower.accroche` | Une tour par jour, les mêmes pièces pour tous. | One tower a day, the same pieces for everyone. |
 | `portail.cibles.accroche` | Trente secondes, vingt cibles, les mêmes pour tous. | Thirty seconds, twenty targets, the same for everyone. |
+| `portail.gravity.accroche` | À remplacer : l'accroche de Gravity. | To replace: the tagline of Gravity. |
 | `portail.vertige.accroche` | À remplacer : l'accroche de Vertige. | To replace: the tagline of Vertige. |
 | `portail.rush.accroche` | Un chevalier, des gelées, un golem : bats le boss le plus vite possible. | A knight, some slimes, a golem: take the boss down as fast as you can. |
 | `portail.blocks.accroche` | À remplacer : l'accroche de Blocks. | To replace: the tagline of Blocks. |
@@ -704,6 +706,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.tower.nuit` | Nuit | Night |
 | `portail.theme.cibles.sable` | Sable | Sand |
 | `portail.theme.cibles.ardoise` | Ardoise | Slate |
+| `portail.theme.gravity.clair` | Clair (à remplacer) | Light (to replace) |
+| `portail.theme.gravity.sombre` | Sombre (à remplacer) | Dark (to replace) |
 | `portail.theme.vertige.clair` | Clair (à remplacer) | Light (to replace) |
 | `portail.theme.vertige.sombre` | Sombre (à remplacer) | Dark (to replace) |
 | `portail.theme.rush.prairie` | Prairie | Meadow |
@@ -3460,6 +3464,149 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `scene.verrou.reprise` | Cliquer pour reprendre la souris | Click to take the mouse back |
 
 ### Thèmes (`theme.*`, `apps/vertige/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `theme.clair` | Clair (à remplacer) | Light (to replace) |
+| `theme.sombre` | Sombre (à remplacer) | Dark (to replace) |
+
+## Gravity
+
+### Accueil (`accueil.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `accueil.phrase.clair` | À remplacer : une phrase d'accroche pour le thème « Clair ». | To replace: a tagline for the “Light” theme. |
+| `accueil.phrase.sombre` | À remplacer : une phrase d'accroche pour le thème « Sombre ». | To replace: a tagline for the “Dark” theme. |
+
+### Commandes (`commandes.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `commandes.action.gauche` | Curseur à gauche | Cursor left |
+| `commandes.action.droite` | Curseur à droite | Cursor right |
+| `commandes.action.haut` | Curseur en haut | Cursor up |
+| `commandes.action.bas` | Curseur en bas | Cursor down |
+| `commandes.action.toucher` | Toucher la case | Hit the square |
+
+### Comment jouer (`aide.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `aide.point1` | À remplacer : le but du jeu en une phrase. | To replace: the goal of the game in one sentence. |
+| `aide.point2` | À remplacer : ce que fait le joueur, en une phrase. | To replace: what the player does, in one sentence. |
+| `aide.point3` | À remplacer : comment les égalités se départagent. | To replace: how ties are broken. |
+
+### kit (`kit.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `kit.accueil.aria` | Accueil du jeu | Game home |
+| `kit.accueil.jouer` | Jouer | Play |
+| `kit.accueil.aide` | Comment jouer | How to play |
+| `kit.accueil.reglages` | Réglages | Settings |
+| `kit.accueil.archives` | Archives | Archives |
+| `kit.accueil.bientot` | Bientôt | Soon |
+| `kit.accueil.aujourdhui` | Aujourd'hui | Today |
+| `kit.accueil.record` | Ton record | Your record |
+| `kit.accueil.record.aucun` | Pas encore joué aujourd'hui | Not played yet today |
+| `kit.accueil.record.sous` | {medaille} · {envoi} | {medaille} · {envoi} |
+| `kit.accueil.serie` | Ta série | Your streak |
+| `kit.accueil.classement` | Classement du jour | Today's ranking |
+| `kit.accueil.toutLeClassement` | Tout le classement › | Full ranking › |
+| `kit.accueil.prochaine` | Prochaine partie dans | Next game in |
+| `kit.accueil.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `kit.accueil.attente` | Chargement du jeu… | Loading the game… |
+| `kit.accueil.echec` | Le jeu n'a pas pu se charger. Réessaie. | The game could not load. Try again. |
+| `kit.accueil.numero` | Partie n° {numero} · {theme} | Game no. {numero} · {theme} |
+| `kit.accueil.sansNumero` | {theme} | {theme} |
+| `kit.accueil.pasEncore` | Cette partie n'est pas encore sortie : voici celle d'aujourd'hui. | That game is not out yet: here is today's. |
+| `kit.classement.titre` | Classement | Ranking |
+| `kit.classement.vide` | Personne n'est encore classé aujourd'hui. | Nobody is ranked yet today. |
+| `kit.classement.chargement` | Chargement du classement… | Loading the ranking… |
+| `kit.classement.indisponible` | Classement indisponible pour le moment. | Ranking unavailable for now. |
+| `kit.classement.fermer` | Fermer | Close |
+| `kit.pause.aria` | Pause | Pause |
+| `kit.pause.titre` | Pause | Pause |
+| `kit.pause.reprendre` | Reprendre | Resume |
+| `kit.pause.recommencer` | Recommencer | Restart |
+| `kit.pause.aide` | Comment jouer | How to play |
+| `kit.pause.reglages` | Réglages | Settings |
+| `kit.pause.accueil` | Accueil | Home |
+| `kit.pause.retours` | Un bug ? Une idée ? | A bug? An idea? |
+| `kit.pause.mentions` | Mentions légales | Legal notice |
+| `kit.pause.etat` | Score : {score} | Score: {score} |
+| `kit.fin.aria` | Fin de la partie | End of the game |
+| `kit.fin.titre` | Partie terminée | Game over |
+| `kit.fin.rang` | {rang}e sur {n} | {rang} of {n} |
+| `kit.fin.rang.attente` | Classement en cours… | Ranking in progress… |
+| `kit.fin.record.nouveau` | Nouveau record | New record |
+| `kit.fin.record.pasMieux` | Pas mieux que ton record du jour | Not better than today's record |
+| `kit.fin.horsLigne` | Hors ligne, non classé : ta partie sera envoyée. | Offline, not ranked: your game will be sent. |
+| `kit.fin.medailles` | Médailles du jour | Today's medals |
+| `kit.fin.medaille.encore` | {medaille} : encore {reste} | {medaille}: {reste} to go |
+| `kit.fin.partager` | Partager | Share |
+| `kit.fin.partage.copie` | Copié | Copied |
+| `kit.fin.partage.echec` | Copie impossible : sélectionne le texte. | Could not copy: select the text. |
+| `kit.fin.rejouer` | Rejouer | Play again |
+| `kit.fin.accueil` | Accueil | Home |
+| `kit.fin.classement` | Classement | Ranking |
+| `kit.fin.pseudo.label` | Choisis un pseudo pour être classé | Pick a nickname to be ranked |
+| `kit.fin.pseudo.valider` | Valider | Confirm |
+| `kit.fin.pseudo.suggestions` | Libres : | Available: |
+| `kit.fin.archive` | Archive : partie non classée. | Archive: game not ranked. |
+| `kit.fin.essai` | Partie d'essai : non classée. | Practice game: not ranked. |
+| `kit.envoi.enCours` | Envoi en cours… | Sending… |
+| `kit.envoi.attente` | Envoi en attente : ta partie sera prise en compte dès que possible. | Sending is pending: your game will count as soon as possible. |
+| `kit.envoi.deja` | Partie déjà enregistrée. | Game already recorded. |
+| `kit.envoi.version` | Nouvelle version en ligne : recharge la page. | A new version is online: reload the page. |
+| `kit.envoi.refuse` | Partie refusée par le serveur. | Game refused by the server. |
+| `kit.envoi.revoque` | Ce code n'est plus valide. | This code is no longer valid. |
+| `kit.reglages.aria` | Réglages | Settings |
+| `kit.reglages.titre` | Réglages | Settings |
+| `kit.reglages.son` | Son | Sound |
+| `kit.reglages.affichage` | Affichage | Display |
+| `kit.reglages.mouvement` | Animations | Animations |
+| `kit.reglages.mouvement.normal` | Normales | Normal |
+| `kit.reglages.mouvement.reduit` | Réduites | Reduced |
+| `kit.reglages.vibration` | Vibration | Vibration |
+| `kit.reglages.vibration.oui` | Activée | On |
+| `kit.reglages.vibration.non` | Coupée | Off |
+| `kit.reglages.effets` | Volume des effets | Effects volume |
+| `kit.reglages.fantome` | Fantôme au départ | Ghost at the start |
+| `kit.reglages.fantome.aucun` | Aucun | None |
+| `kit.reglages.fantome.meilleure` | Ma meilleure | My best |
+| `kit.reglages.commandes` | Commandes | Controls |
+| `kit.reglages.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `kit.reglages.mentions` | Mentions légales | Legal notice |
+| `kit.reglages.retours` | Un bug ? Une idée ? | A bug? An idea? |
+| `kit.aide.aria` | Comment jouer | How to play |
+| `kit.aide.titre` | Comment jouer | How to play |
+| `kit.aide.ok` | C'est parti | Let's go |
+| `kit.hud.pause` | Pause | Pause |
+| `kit.hud.fantome` | Fantôme : {nom} | Ghost: {nom} |
+| `kit.fantome.aucun` | aucun | none |
+| `kit.fantome.meilleure` | ma meilleure | my best |
+| `kit.fantome.diamant` | Diamant | Diamond |
+| `kit.commandes.action.pause` | Pause | Pause |
+| `kit.commandes.action.recommencer` | Recommencer | Restart |
+| `kit.commandes.action.fantome` | Fantôme | Ghost |
+| `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
+| `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
+
+### Page (titre, chargement) (`page.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `page.titre` | Gravity — Du Jour | Gravity — Du Jour |
+
+### scene (`scene.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `scene.aria` | Plateau de jeu (texte à remplacer) | Game board (text to replace) |
+
+### Thèmes (`theme.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
