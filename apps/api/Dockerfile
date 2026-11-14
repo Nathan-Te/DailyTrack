@@ -24,6 +24,9 @@ COPY apps/tower/package.json apps/tower/
 # Cibles (lot K4f, jeu témoin : sans effet en production, le registre ne le monte pas) : de même.
 COPY apps/cibles/package.json apps/cibles/
 COPY packages/cibles-sim/package.json packages/cibles-sim/
+# Pinball (généré par `npm run nouveau-jeu`) : le verrou liste l'espace de travail du jeu.
+COPY apps/pinball/package.json apps/pinball/
+COPY packages/pinball-sim/package.json packages/pinball-sim/
 # Gravity (généré par `npm run nouveau-jeu`) : le verrou liste l'espace de travail du jeu.
 COPY apps/gravity/package.json apps/gravity/
 COPY packages/gravity-sim/package.json packages/gravity-sim/
@@ -53,6 +56,9 @@ COPY apps/jump/public/levels apps/jump/public/levels
 # Lot K4f : la simulation de Cibles (le serveur rejoue ses parties) et ses jours figés.
 COPY packages/cibles-sim packages/cibles-sim
 COPY apps/cibles/public/jours apps/cibles/public/jours
+# Pinball : sa simulation (le serveur rejoue ses parties) et ses jours figés.
+COPY packages/pinball-sim packages/pinball-sim
+COPY apps/pinball/public/jours apps/pinball/public/jours
 # Gravity : sa simulation (le serveur rejoue ses parties) et ses jours figés.
 COPY packages/gravity-sim packages/gravity-sim
 COPY apps/gravity/public/jours apps/gravity/public/jours
