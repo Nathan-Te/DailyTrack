@@ -1,6 +1,6 @@
 import { mixSeed, Rng } from "@cdj/core";
-import { tickOuLeJoueurArrive } from "./camera";
-import { ALTERNE_BATTEMENT, CASE, CLIGNOTANT_CYCLE, GRAVITY_GENERATOR_VERSION, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_BOUCLE, MORCEAUX_PAR_THEME, NB_THEMES } from "./constantes";
+import { tickOuLeJoueurArrive, vitesseCamera } from "./camera";
+import { ALTERNE_BATTEMENT, CASE, CIBLE_CAMERA, CLIGNOTANT_CYCLE, GRAVITE, GRAVITY_GENERATOR_VERSION, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_BOUCLE, MORCEAUX_PAR_THEME, NB_THEMES, TICKS_PAR_SECONDE, VY_MAX } from "./constantes";
 import { ALTERNE_A, ALTERNE_B, BLOC, CLIGNOTANT, GLACE, INVERSEUR, PIQUE, TAPIS, VENT, VIDE, type Bonus, type Etape, type Morceau, type Motif, type Objet, type Terrain } from "./monde";
 import { ordreDesThemes, THEMES_GRAVITY, type ThemeGravity } from "./themes";
 import type { Seuils } from "./types";
@@ -37,6 +37,24 @@ const RAMPE_PAR_BOUCLE = 35;
 export function dailyGravity(jour: number, version: number = GRAVITY_GENERATOR_VERSION): Contenu {
   if (version !== GRAVITY_GENERATOR_VERSION) throw new ErreurGenerateur(`version de générateur inconnue : ${version}`);
   return { jour, g: version, ordre: ordreDesThemes(jour) };
+}
+
+/** Le nombre de pas d'une traversée verticale de `h` unités, partie de l'arrêt (la gravité de la partie, plafonnée à `VY_MAX`) : le temps d'un vol d'une surface à l'autre. Entier, comme tout ici. */
+export function pasDeTraversee(h: number): number {
+  let vy = 0;
+  let y = 0;
+  let pas = 0;
+  while (y < h && pas < 1000) {
+    vy = Math.min(VY_MAX, vy + GRAVITE);
+    y += Math.trunc(vy / TICKS_PAR_SECONDE);
+    pas++;
+  }
+  return pas;
+}
+/** Combien de colonnes (arrondi au-dessus) le joueur parcourt en `pas` pas quand il arrive à la colonne `colonne` : la vitesse de la caméra y est connue d'avance (elle ne dépend que de la distance). **C'est ce qui permet de poser les surfaces à la vitesse à laquelle le morceau sera abordé.** */
+export function colonnesParcourues(pas: number, colonne: number): number {
+  const parPas = Math.trunc(vitesseCamera(Math.max(0, colonne * CASE - CIBLE_CAMERA)) / TICKS_PAR_SECONDE);
+  return Math.trunc((pas * parPas + CASE - 1) / CASE);
 }
 
 /** Les 12 cases d'une colonne vide : un plafond et un sol de deux cases. */
@@ -183,38 +201,48 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
         break;
       }
       case "etages": {
-        // Deux étages au milieu de l'écran, troués en quinconce : quatre surfaces. Par-dessus l'étage haut (arrivée du plafond), on tombe dans son trou sur l'étage bas puis on s'accroche sous l'étage haut ; par-dessous l'étage bas
-        // (arrivée du sol), on passe dans son trou jusque sous l'étage haut. Pas de miroir : les deux chemins existent.
+        // Deux étages au milieu de l'écran : l'étage haut (rangée 4) troué en A, l'étage bas (rangée 7) long de 13 colonnes ; sous eux le sol est un vide, et le plafond reste là pour finir. Par-dessus l'étage haut (arrivée
+        // du plafond), on tombe dans le trou A sur l'étage bas, puis on s'accroche sous lui jusqu'à son bout et on monte au plafond ; par-dessous l'étage bas (arrivée du sol), on le suit jusqu'à son bout et le plafond d'en haut
+        // vous prend. Pas de miroir : les deux chemins existent, et **les deux finissent au plafond**, comme le morceau suivant l'attend (lot GR2 : l'étage haut ne retenait plus le joueur jusqu'au bord du morceau).
+        // **Le trou A suit la vitesse.** Pour traverser un étage d'une case la boîte (0,8) doit descendre de 1,8 case : 34 pas, soit `trav` colonnes de course (3 à 9 m/s, 4 à 12,5 m/s) ; le trou est large de `trav + 3` colonnes
+        // (de quoi y tenir, plus une fenêtre) ; l'étage haut commence par 5 colonnes, de quoi se poser en arrivant du plafond (le morceau d'avant finit souvent à la colonne 16 sous un îlot : le plafond se rejoint aux premières colonnes).
+        const trav = colonnesParcourues(pasDeTraversee(Math.trunc((9 * CASE) / 5)), x0 + 8);
+        const chute = colonnesParcourues(pasDeTraversee(3 * CASE), x0 + 8);
+        const a0 = 5;
+        const a1 = Math.min(LARGEUR_MORCEAU - 4, a0 + trav + 3);
         for (let c = 0; c < LARGEUR_MORCEAU; c++) {
-          poser(c, 4, BLOC);
-          poser(c, 7, BLOC);
+          if (c < a0 || (c >= a1 && c < a1 + 3)) poser(c, 4, BLOC);
+          if (c < 13) poser(c, 7, BLOC);
         }
-        for (let c = 4; c < 7; c++) poser(c, 4, VIDE);
-        for (let c = 10; c < 13; c++) poser(c, 7, VIDE);
         trou(2, 14, false);
-        if (rng.chance(50)) trou(5, 12, true);
+        rng.chance(50);
         rng.chance(50);
         if (entree === -1) {
-          voie(1, 4, 3, 1);
-          voie(6, 9, 6, 1);
-          voie(9, 16, 5, -1);
-        } else {
-          voie(1, 10, 8, -1);
-          voie(10, 16, 5, -1);
-        }
-        if (rng.chance(35)) gemme(8, 5);
+          voie(1, a0 + 1, 3, 1);
+          voie(Math.min(a0 + chute - 1, 10), 13, 6, 1);
+        } else voie(1, 13, 8, -1);
+        voie(14, 16, 2, -1);
+        if (rng.chance(35)) gemme(14, 2);
         break;
       }
       case "ilots": {
         // Des îlots flottants, en bas puis en haut, au-dessus du vide : on saute de l'un à l'autre en inversant (on arrive du plafond sur le premier ; en miroir, du sol sous le premier).
+        // **Lot GR2 : l'écart entre deux îlots suit la vitesse** — un vol d'un îlot bas (rangée 8) à un îlot haut (rangée 3) dure 45 pas et fait 3 colonnes à 7 m/s, 5 à 12,5 m/s : les îlots sont posés tous les
+        // `vol + 3` colonnes (de quoi se poser, attendre `ROBOT_ECART_MIN` pas et repartir avec une fenêtre), larges de `vol − 1` (3 à 4 colonnes), et le vide s'arrête après le dernier.
         orienter(1, false);
-        trou(2, 16, false);
-        trou(2, 16, true);
-        for (const [c0, rangee] of [[2, 8], [6, 3], [10, 8], [13, 3]] as const) for (let c = c0; c < c0 + 3; c++) poser(c, rangee, BLOC);
-        voie(2, 5, 7, 1);
-        voie(6, 9, 4, -1);
-        voie(10, 13, 7, 1);
-        voie(13, 16, 4, -1);
+        const vol = colonnesParcourues(pasDeTraversee(Math.trunc((13 * CASE) / 4)), x0 + 8);
+        const largeur = Math.max(3, Math.min(5, vol));
+        const ecart = vol + 4;
+        const iles: number[] = [];
+        for (let c = 2; c + largeur <= LARGEUR_MORCEAU && iles.length < 4; c += ecart) iles.push(c);
+        const finVide = Math.min(LARGEUR_MORCEAU, iles[iles.length - 1]! + largeur + 2);
+        trou(2, finVide, false);
+        trou(2, finVide, true);
+        iles.forEach((c0, k) => {
+          const bas = k % 2 === 0;
+          for (let c = c0; c < c0 + largeur; c++) poser(c, bas ? 8 : 3, BLOC);
+          voie(c0, c0 + largeur, bas ? 7 : 4, bas ? 1 : -1);
+        });
         break;
       }
       case "special": {
@@ -262,13 +290,18 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
           }
           case "neon": {
             // Deux couleurs, une seule solide à la fois : on court sur la première, on inverse au battement, on se pose sur la seconde. Le battement est aligné sur l'arrivée du joueur.
+            // **Lot GR2 : la seconde couleur est posée là où le vol d'une surface à l'autre atterrit.** Du plafond au sol il y a 7,25 cases : 75 pas, soit `vol` colonnes de course (5 à 7 m/s, 8 à 12,5 m/s) ; partant de
+            // la première couleur (colonnes 3 à 7) on atterrit à `vol` colonnes de plus, la seconde commence donc `vol − 1` colonnes après sa première colonne et le vide la suit.
             orienter(1, true);
-            trou(3, 13, false);
-            trou(3, 13, true);
+            const vol = colonnesParcourues(pasDeTraversee(Math.trunc((29 * CASE) / 4)), x0 + 8);
+            const b0 = Math.min(LARGEUR_MORCEAU - 3, 2 + vol);
+            const b1 = Math.min(LARGEUR_MORCEAU, 9 + vol);
+            trou(3, b1, false);
+            trou(3, b1, true);
             for (let c = 3; c < 8; c++) poser(c, 10, ALTERNE_A);
-            for (let c = 7; c < 13; c++) poser(c, 1, ALTERNE_B);
+            for (let c = b0; c < b1; c++) poser(c, 1, ALTERNE_B);
             voie(3, 8, 9, 1);
-            voie(8, 13, 2, -1);
+            voie(b0 + 1, b1, 2, -1);
             const bascule = tickOuLeJoueurArrive((x0 + 7) * CASE);
             decalage = (((ALTERNE_BATTEMENT - bascule) % (2 * ALTERNE_BATTEMENT)) + 2 * ALTERNE_BATTEMENT) % (2 * ALTERNE_BATTEMENT);
             break;

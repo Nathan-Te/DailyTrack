@@ -27,6 +27,7 @@ export const CATALOGUE_FR = {
   "aide.point3": "À remplacer : les pièces, le multiplicateur et les bonus (texte complet au lot GR4).",
   "commandes.action.toucher": "Inverser la gravité",
   "hud.detail": "{m} m · ×{mult}",
+  "essai.robot": "Le robot joue",
   "mort.vide": "Tombé dans le vide",
   "mort.pique": "Touché par un pique",
   "mort.bord": "Rattrapé par le bord de l'écran",

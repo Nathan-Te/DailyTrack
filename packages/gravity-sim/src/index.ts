@@ -11,4 +11,4 @@ export { seuilsDe, medailleDe, medailleDeResultat } from "./medailles";
 export * from "./jours";
 export { VARIANTE, scoreParColonnes, grouper, dureeEnTexte, type Variante, type FicheVariante } from "./variante";
 export type { Medaille, Seuils } from "./types";
-export { piloter } from "./pilote";
+export * from "./robot";

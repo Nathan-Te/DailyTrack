@@ -25,14 +25,14 @@ import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type 
 // le niveau du jour (le fichier figé de l'image s'il se relit et se régénère à l'identique, sinon le générateur courant — avec les seuils des médailles **figés dans le fichier**, jamais recalculés pour un jour figé), le
 // décodage et le rejeu de la rediffusion (la liste des pas où le joueur a touché l'écran : le serveur rejoue jusqu'à la mort ou aux dix minutes et retrouve le score **lui-même** — la plateforme ne lit jamais un score
 // annoncé par le client), les colonnes de classement de la fiche, l'empreinte des entrées (refus des copies). Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et les crochets sont
-// ceux du module des jeux (`jeux/`), la table est la table commune `resultats_jeu`. Pas de robot en GR1 : pas d'empreinte de la partie de l'auteur ; les seuils sont provisoires (`seuils.ts` de `@cdj/gravity-sim`).
+// ceux du module des jeux (`jeux/`), la table est la table commune `resultats_jeu`. Les seuils viennent du robot (lot GR2, `seuils.ts` de `@cdj/gravity-sim`) : lus dans le fichier du jour figé, sinon calculés **une fois** par le module des jeux (qui garde le niveau d'un jour en mémoire), jamais à chaque partie ; pas d'empreinte de la partie de l'auteur (le robot ne sert ni de fantôme ni de preuve : `sansFantome`).
 
 const fiche = FICHES_SERVEUR.find((f) => f.id === "gravity") as unknown as FicheServeur;
 
 interface Niveau {
   jour: number;
   contenu: Contenu;
-  /** Les seuils des médailles du jour (ceux du fichier de jour s'il y en a un), calculés une fois. */
+  /** Les seuils des médailles du jour (ceux du fichier de jour s'il y en a un, sinon ceux du robot), calculés une fois. */
   seuils: Seuils;
 }
 type Mesure = Resultat;

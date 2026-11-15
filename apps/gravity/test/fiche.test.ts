@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, dailyGravity, numeroGravity, ordreDesThemes, PREMIER_JOUR_GRAVITY, seuilsSurLePapier, themeDuJour, VARIANTE } from "@cdj/gravity-sim";
+import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, dailyGravity, numeroGravity, ordreDesThemes, PREMIER_JOUR_GRAVITY, seuilsDuRobot, themeDuJour, VARIANTE } from "@cdj/gravity-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_GRAVITY } from "../src/catalogue";
 import { DEFINITION } from "../src/definition";
@@ -47,9 +47,9 @@ describe("« Gravity » : le client suit sa fiche", () => {
     expect(DEFINITION.themeDuJour(J)).toBe(themeDuJour(J));
     expect(DEFINITION.themeDuJour(J)).toBe(ordreDesThemes(J)[0]);
     const c = dailyGravity(J);
-    // Les seuils sont écrits dans le contenu quand le niveau est lu (`niveau.ts`) : la définition les rend tels quels.
-    const s = DEFINITION.seuils({ ...c, seuilsFiges: seuilsSurLePapier(c) });
-    expect(s).toEqual(seuilsSurLePapier(c));
+    // Les seuils sont écrits dans le contenu quand le niveau est lu (`niveau.ts` : ceux du fichier figé, sinon le robot) : la définition les rend tels quels.
+    const s = DEFINITION.seuils({ ...c, seuilsFiges: seuilsDuRobot(c) });
+    expect(s).toEqual(seuilsDuRobot(c));
     expect(DEFINITION.medaille([s.author, 100], s)).toBe("author");
     expect(DEFINITION.medaille([s.bronze, 100], s)).toBe("bronze");
     expect(DEFINITION.medaille([0, 100], s)).toBeNull();

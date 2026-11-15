@@ -1,5 +1,6 @@
 import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroGravity, themeDuJour, type Contenu } from "@cdj/gravity-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
+import { lireEssais } from "./essai";
 import { nouvellePartieGravity } from "./scene";
 
 // La définition de « Gravity » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le niveau (générateur, morceaux, seuils) est chargé à la demande** (`niveau.ts`) : le premier chargement
@@ -16,11 +17,14 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   seuils: (c) => c.seuilsFiges!,
   medaille: (score, s) => VARIANTE.medaille(score, s),
   nouvellePartie: nouvellePartieGravity,
-  // Pas de fantôme ni de Diamant en GR1 : le robot du jour arrive au lot GR2.
+  // Pas de fantôme ni de Diamant (le robot du lot GR2 sert aux seuils et aux essais de recette ; un fantôme est un lot de la plateforme et de Nathan).
   sansFantome: true,
   rediffusionDiamant: () => "",
-  // Une partie d'essai (`?theme=` : thème imposé, touche T) n'est ni classée ni envoyée ; le kit le sait déjà pour `?theme=`, on le dit aussi pour qu'aucun essai ne soit jamais pris pour une partie du jour.
-  classable: (adresse) => !new URLSearchParams(adresse).has("theme"),
+  // Une partie d'essai (`?theme=` : thème imposé, touche T ; `?robot` et `?morceau=<n>` du lot GR2 : hors production seulement) n'est ni classée ni envoyée ; le kit le sait déjà pour `?theme=`, on le dit aussi pour qu'aucun essai ne soit jamais pris pour une partie du jour.
+  classable: (adresse) => {
+    const e = lireEssais(adresse, import.meta.env.VITE_PRODUCTION === "1");
+    return !new URLSearchParams(adresse).has("theme") && !e.robot && e.morceau === null;
+  },
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),
   aide: ["aide.point1", "aide.point2", "aide.point3"],

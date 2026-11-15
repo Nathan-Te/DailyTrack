@@ -1,5 +1,8 @@
-import { avancerCamera, vitesseCamera } from "./camera";
-import {
+import * as Cam from "./camera";
+const { avancerCamera, vitesseCamera } = Cam;
+// Les constantes de la boucle de pas sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, 3 fois plus lent dans une boucle de millions de pas (le robot).
+import * as K from "./constantes";
+const {
   AIMANT_PART,
   AIMANT_RAYON,
   AIMANT_TICKS,
@@ -44,8 +47,10 @@ import {
   VIDE_BAS,
   VIDE_HAUT,
   VY_MAX,
-} from "./constantes";
-import { GLACE, INVERSEUR, PIQUE, TAPIS, VENT, solide, type Terrain } from "./monde";
+} = K;
+import * as M from "./monde";
+import type { Terrain } from "./monde";
+const { GLACE, INVERSEUR, PIQUE, TAPIS, VENT, solide } = M;
 
 // La partie de Gravity : **entière, un pas = 1/120 s**. Le joueur court vers la droite à la vitesse de la caméra ; **la seule entrée est un appui** (`appuyer`), qui inverse la gravité s'il y a une surface sous les
 // pieds (ou si on vient de la quitter : temps de grâce), jamais sur la glace ; un appui juste avant un contact est gardé (tampon). Tout est en unités du monde (1 case = 4 096) et en unités par seconde, **aucun flottant** :
@@ -150,6 +155,11 @@ export class Partie {
   essai = false;
   /** Les objets, morceau par morceau (chargés à la demande, dans l'ordre : `charge(k)`). */
   charges: ChargeMorceau[] = [];
+  /**
+   * Vrai : on ramasse (pièces, gemmes, bonus, aimant). Faux (lot GR2) : une **copie de planification** (`copier(true)`), qui ne ramasse rien — ni pièce, ni bouclier : la physique est exactement la même (le ramassage ne
+   * change jamais le mouvement), mais le bouclier n'existe pas, donc un danger tue : c'est ce que veut le robot (passer sans bouclier), à un coût moindre (pas de boucle sur les objets).
+   */
+  ramasse = true;
 
   // Le résultat de la dernière collision (`heurte`), sans allocation.
   private hCx = 0;
@@ -193,11 +203,52 @@ export class Partie {
     this.tampon = TAMPON;
   }
 
-  /** Une copie indépendante de l'état (pour essayer un coup à l'avance : le robot, les tests). Le terrain est partagé (il est immuable). */
-  copier(): Partie {
+  /**
+   * Une copie indépendante de l'état (pour essayer un coup à l'avance : le robot, les tests). Le terrain est partagé (il est immuable).
+   * `planification` (lot GR2) : une copie qui ne ramasse rien (`ramasse` faux, `charges` vide) — la même physique, sans le coût des objets.
+   * Sinon, **seuls les morceaux que le ramassage peut encore toucher sont recopiés** (ceux d'avant le joueur ne changent plus : la caméra ne recule jamais, la copie les partage) : le coût d'une copie ne grandit pas avec la partie.
+   */
+  copier(planification = false): Partie {
     const c = new Partie(this.terrain);
-    Object.assign(c, this);
-    c.charges = this.charges.map((ch) => ({ pieces: ch.pieces.map((p) => ({ ...p })), gemmes: [...ch.gemmes], bonus: [...ch.bonus] }));
+    // Champ par champ (plus rapide qu'`Object.assign`, qui dominait le coût du robot) : `test/robot.test.ts` vérifie qu'aucun champ n'est oublié.
+    c.tick = this.tick;
+    c.cam = this.cam;
+    c.x = this.x;
+    c.y = this.y;
+    c.vy = this.vy;
+    c.g = this.g;
+    c.sol = this.sol;
+    c.surface = this.surface;
+    c.grace = this.grace;
+    c.tampon = this.tampon;
+    c.invuln = this.invuln;
+    c.aimant = this.aimant;
+    c.bouclier = this.bouclier;
+    c.pieces = this.pieces;
+    c.gemmes = this.gemmes;
+    c.points = this.points;
+    c.chaine = this.chaine;
+    c.mult = this.mult;
+    c.multMax = this.multMax;
+    c.appuis = this.appuis;
+    c.inversions = this.inversions;
+    c.mort = this.mort;
+    c.ev = this.ev;
+    c.precX = this.precX;
+    c.precY = this.precY;
+    c.precCam = this.precCam;
+    c.essai = this.essai;
+    if (planification) {
+      // Une copie de planification n'a ni bouclier, ni invulnérabilité, ni aimant (même si la partie copiée en a) : un danger la tue.
+      c.ramasse = false;
+      c.bouclier = false;
+      c.invuln = 0;
+      c.aimant = 0;
+      return c;
+    }
+    c.ramasse = this.ramasse;
+    const figes = Math.max(0, Math.min(this.charges.length, idiv(this.cam - 8 * CASE, CASES_PAR_MORCEAU)));
+    c.charges = this.charges.map((ch, k) => (k < figes ? ch : { pieces: ch.pieces.map((p) => ({ ...p })), gemmes: [...ch.gemmes], bonus: [...ch.bonus] }));
     return c;
   }
 
@@ -326,7 +377,7 @@ export class Partie {
     if (this.invuln > 0) this.invuln--;
     const k0 = Math.max(0, idiv(this.cam - 8 * CASE, CASES_PAR_MORCEAU));
     const k1 = idiv(this.cam + 30 * CASE, CASES_PAR_MORCEAU);
-    for (let k = k0; k <= k1; k++) {
+    for (let k = k0; this.ramasse && k <= k1; k++) {
       const charge = this.charge(k);
       const morceau = this.terrain.morceau(k);
       for (const p of charge.pieces) {

@@ -7,10 +7,10 @@
  * **On monte la version, jamais une date** : un jour figé nomme la version qui l'a produit.
  */
 export const GRAVITY_SIM_VERSION = 2;
-/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. */
-export const GRAVITY_GENERATOR_VERSION = 2;
-/** La version du calcul des SEUILS des médailles. v1 (lot GR1) : provisoire, « sur le papier » (`seuils.ts`) ; le lot GR2 le remplace par le robot (v2). Un jour figé garde les seuils de son fichier. */
-export const GRAVITY_BOT_VERSION = 1;
+/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. v3 (lot GR2) : les îlots, les étages et le néon suivent la vitesse du morceau, les étages finissent au plafond (le robot prouve le chemin sûr). */
+export const GRAVITY_GENERATOR_VERSION = 3;
+/** La version du calcul des SEUILS des médailles (et du robot qui les produit). v1 (lot GR1) : provisoire, « sur le papier ». v2 (lot GR2) : le robot (`robot.ts`), 60 % de son score aux points d'arrêt de `seuils.ts`. **Tout changement du robot, du pourcentage ou des points d'arrêt la monte.** Un jour figé garde les seuils de son fichier. */
+export const GRAVITY_BOT_VERSION = 2;
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 // Le temps : 120 pas par seconde — **la fréquence de Jump** (`TICK_RATE` de `@cdj/jump-sim`), pour la même raison : à 17 m/s une case se traverse en 7 pas, la collision par axe ne saute jamais une case, et la

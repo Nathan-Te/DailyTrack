@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2839 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2840 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3502,6 +3502,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.point1` | Un coureur sans fin : il court tout seul vers la droite. Le but : aller le plus loin possible, en ramassant pièces et gemmes. | An endless runner: it runs right by itself. The goal: get as far as you can, collecting coins and gems. |
 | `aide.point2` | Touche l'écran (ou Espace, A à la manette) : la gravité s'inverse, mais seulement quand tu touches une surface : sol, plafond ou plateforme. Pas d'inversion en l'air ni sur la glace. | Touch the screen (or Space, A on a controller): gravity flips, but only while you touch a surface: floor, ceiling or platform. No flipping in mid-air or on ice. |
 | `aide.point3` | À remplacer : les pièces, le multiplicateur et les bonus (texte complet au lot GR4). | To replace: coins, the multiplier and power-ups (full text in lot GR4). |
+
+### essai (`essai.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `essai.robot` | Le robot joue | The robot is playing |
 
 ### kit (`kit.*`, `apps/gravity/src/catalogue.*.ts`)
 

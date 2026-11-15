@@ -1,4 +1,5 @@
-import { CIBLE_CAMERA, DISTANCE_PAR_CRAN, DUREE_MAX_TICKS, TICKS_PAR_SECONDE, VITESSE_BASE, VITESSE_MAX } from "./constantes";
+import * as K from "./constantes";
+const { CIBLE_CAMERA, DISTANCE_PAR_CRAN, DUREE_MAX_TICKS, TICKS_PAR_SECONDE, VITESSE_BASE, VITESSE_MAX } = K;
 
 // La caméra défile toute seule, plus vite avec la distance (maquette : `7 + distance / 220`, plafonnée à 12,5 cases/s). Sa trajectoire ne dépend de rien d'autre que du temps : le générateur s'en sert pour savoir QUAND le
 // joueur arrive à une colonne (les cases qui battent d'un morceau sont alignées sur cette arrivée, `generateur.ts`).

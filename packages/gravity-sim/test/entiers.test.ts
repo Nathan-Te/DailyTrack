@@ -2,8 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { dailyGravity, Partie, terrainDuJour } from "../src/index";
-import { piloter } from "../src/pilote";
+import { dailyGravity, jouerRobot, Partie, terrainDuJour } from "../src/index";
 
 // **Pas un seul flottant dans la simulation** (règle du lot GR1) : la partie, le générateur et la rediffusion ne manient que des entiers. Deux gardes : (1) le code — aucun littéral décimal, aucune racine ni transcendante,
 // aucun arrondi de flottant, aucun texte converti en nombre décimal (`describePurity` interdit déjà `Math.sin`…, le hasard, les dates et `**`) ; (2) l'état — après une vraie partie, chaque nombre de la partie est un entier.
@@ -31,9 +30,9 @@ describe("aucun flottant dans le code de la simulation", () => {
 });
 
 describe("tout l'état d'une partie est entier", () => {
-  it("après une vraie partie (le pilote d'essai, 6 000 pas, tous les champs)", () => {
+  it("après une vraie partie (le robot, 6 000 pas, tous les champs)", () => {
     const jour = daysFromCivil(2026, 11, 9);
-    const { partie } = piloter(terrainDuJour(dailyGravity(jour)), 6000);
+    const { partie } = jouerRobot(terrainDuJour(dailyGravity(jour)), { maxTicks: 6000 });
     const nombres: [string, unknown][] = [];
     const visiter = (nom: string, v: unknown): void => {
       if (typeof v === "number") nombres.push([nom, v]);
@@ -49,6 +48,8 @@ describe("tout l'état d'une partie est entier", () => {
     for (let i = 0; i < 500; i++) p.avancer();
     const c = p.copier();
     expect(JSON.stringify(c.resultat())).toBe(JSON.stringify(p.resultat()));
+    // Aucun champ oublié : la copie est égale champ pour champ (la copie de planification du robot est écrite champ par champ).
+    expect(JSON.stringify({ ...c, terrain: 0, hCx: 0, hCy: 0, hType: 0 })).toBe(JSON.stringify({ ...p, terrain: 0, hCx: 0, hCy: 0, hType: 0 }));
     for (let i = 0; i < 300; i++) c.avancer();
     expect(p.tick).toBe(500);
     expect(c.tick).toBe(800);
