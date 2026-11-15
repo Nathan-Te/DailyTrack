@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, VARIANTE, dailyPinball, empreinteContenu, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, themeDuJour, touchesDuBot } from "@cdj/pinball-sim";
+import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsSurLePapier, themeDuJour, type Evenement } from "@cdj/pinball-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_PINBALL } from "../scripts/pinball-essais";
 import { contenuDePinball } from "../src/pinball";
@@ -7,16 +7,17 @@ import { crc32Hex } from "../src/identity";
 import { GAMES } from "../src/registry";
 import { DAY_MS, makeApi, ouvrirJeu, playerId, type TestApi } from "./helpers";
 
-// Lot K4f — « Pinball », le jeu témoin du kit, sur le contrat minimal d'un jeu neuf et la table commune `resultats_jeu` : le serveur sert le contenu du jeu (serveur = jeu), rejoue, classe dans le sens de la fiche
-// (les colonnes de la fiche : celles de la variante du jeu, `variante.ts`), refuse les copies et les rediffusions abîmées, range l'aperçu à part, efface un joueur, filtre « Mon groupe » et lit le jour figé de l'image.
-// SQLite et libSQL (`file:`), jamais Turso. Ce test passe pour les deux variantes (score, temps) : ce qui diffère passe par `VARIANTE`.
+// Lot PB1 — « Pinball » sur le contrat minimal d'un jeu neuf et la table commune `resultats_jeu` : le serveur sert le contenu du jeu (serveur = jeu), **rejoue les événements des commandes jusqu'à la fin de la partie** (dernière bille perdue, ou quinze minutes),
+// classe au score du plus grand au plus petit (puis la durée), refuse les copies et les rediffusions abîmées ou trop longues, range l'aperçu à part, efface un joueur, filtre « Mon groupe » et lit le jour figé de l'image
+// (ses seuils comptent, jamais ceux du calcul). SQLite et libSQL (`file:`), jamais Turso.
 
 const JOUR = daysFromCivil(2026, 11, 10);
 const DATE = formatDay(JOUR);
 const MIDI = JOUR * DAY_MS + 12 * 3_600_000;
 const VERSIONS = { simVersion: PINBALL_SIM_VERSION, generatorVersion: PINBALL_GENERATOR_VERSION };
 const entete = (n: number) => ({ "X-Player-Id": playerId(n) });
-const PREMIERE = VARIANTE.fiche.colonnes[0]!;
+/** Une rediffusion valide et courte : le lanceur tenu 0,5 s, relâché. */
+const VALIDE: Evenement[] = [{ tick: 30, c: LANCEUR, enfonce: true }, { tick: 330, c: LANCEUR, enfonce: false }];
 const hotePr = { "X-Forwarded-Host": "site-recette--pr-12-0123abcd.web.app" };
 
 async function monter(options: { copies?: boolean; frozen?: Record<string, unknown>; adminToken?: string } = {}): Promise<TestApi> {
@@ -28,79 +29,98 @@ async function monter(options: { copies?: boolean; frozen?: Record<string, unkno
 const envoyer = (t: TestApi, n: number, variante: number) => t.call("POST", "/api/pinball/submit", { replay: ESSAIS_PINBALL.partie(JOUR, VERSIONS, variante).rediffusion, name: `Joueur${n}` }, { headers: entete(n) });
 
 describe("Pinball sur le serveur", () => {
-  it("sert le contenu du jour de la simulation (serveur = jeu), jamais la preuve", async () => {
+  it("sert le contenu du jour de la simulation (serveur = jeu) : seuils, thème, jamais de preuve", async () => {
     const t = await monter();
     const c = dailyPinball(JOUR);
     const info = await t.call("GET", "/api/pinball/info");
-    expect(info.body).toMatchObject({ game: "pinball", simVersion: 1, generatorVersion: 1, today: DATE });
+    expect(info.body).toMatchObject({ game: "pinball", simVersion: PINBALL_SIM_VERSION, generatorVersion: PINBALL_GENERATOR_VERSION, today: DATE });
     const jour = await t.call("GET", `/api/pinball/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.medals).toEqual(seuilsDe(c));
-    expect(jour.body.medals.author).toBe(VARIANTE.seuils(jouer(c, touchesDuBot(c))).author);
+    expect(jour.body.medals).toEqual(seuilsSurLePapier(c)); // sans fichier de jour : le calcul provisoire
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/pinball/day/2026-11-11")).status).toBe(404);
   });
 
-  it("rejoue chaque partie, classe dans l'ordre de la fiche et garde le résultat du serveur", async () => {
+  it("rejoue chaque partie, classe dans l'ordre de la fiche (le score du plus grand au plus petit) et garde le résultat du serveur", async () => {
     const t = await monter();
-    for (const [n, v] of [[1, 3], [2, 0], [3, 9]] as const) {
-      const attendu = ESSAIS_PINBALL.partie(JOUR, VERSIONS, v).attendu;
+    const parties = [[1, 4], [2, 0], [3, 9]] as const;
+    const attendus = parties.map(([, v]) => ESSAIS_PINBALL.partie(JOUR, VERSIONS, v).attendu);
+    for (const [i, [n, v]] of parties.entries()) {
       const r = await envoyer(t, n, v);
-      expect(r.status).toBe(200);
-      expect(r.body.score).toEqual(attendu);
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
+      expect(r.body.score).toEqual(attendus[i]);
     }
     const board = await t.call("GET", `/api/pinball/day/${DATE}/board`, undefined, { headers: entete(3) });
     expect(board.body.participants).toBe(3);
-    const lignes = board.body.top as ({ name: string; medal: string | null } & Record<string, number>)[];
-    expect(lignes.map((l) => l.name)).toEqual(["Joueur2", "Joueur1", "Joueur3"]);
-    // La première colonne de la fiche range le classement, dans son sens.
-    for (let i = 1; i < lignes.length; i++) expect(PREMIERE.sens === "desc" ? lignes[i - 1]![PREMIERE.nom]! >= lignes[i]![PREMIERE.nom]! : lignes[i - 1]![PREMIERE.nom]! <= lignes[i]![PREMIERE.nom]!).toBe(true);
-    expect(lignes[0]!.medal).not.toBeNull();
-    expect(board.body.me).toMatchObject({ name: "Joueur3", rank: 3 });
+    const lignes = board.body.top as ({ name: string; score: number; ticks: number; medal: string | null })[];
+    const attendu = parties.map(([n], i) => ({ n: `Joueur${n}`, score: attendus[i]!.score!, ticks: attendus[i]!.ticks! })).sort((a, b) => b.score - a.score || a.ticks - b.ticks);
+    expect(lignes.map((l) => l.name)).toEqual(attendu.map((x) => x.n));
+    for (let i = 1; i < lignes.length; i++) expect(lignes[i - 1]!.score).toBeGreaterThanOrEqual(lignes[i]!.score);
+    expect(board.body.me).toMatchObject({ name: "Joueur3" });
   });
 
-  it("à score égal, le plus rapide passe devant (le départage de la fiche)", async () => {
+  it("range la durée de la partie (en pas) comme départage, à côté du score (cle1 = −score, cle2 = pas)", async () => {
     const t = await monter();
-    const c = dailyPinball(JOUR);
-    const avecDelai = (delai: number) => enregistrer(c, VARIANTE.joueur(c, () => delai));
-    await t.call("POST", "/api/pinball/submit", { replay: avecDelai(20), name: "Lent" }, { headers: entete(1) });
-    await t.call("POST", "/api/pinball/submit", { replay: avecDelai(15), name: "Vif" }, { headers: entete(2) });
-    const board = await t.call("GET", `/api/pinball/day/${DATE}/board`);
-    expect((board.body.top as { name: string }[]).map((l) => l.name)).toEqual(["Vif", "Lent"]);
+    expect((await envoyer(t, 1, 3)).status).toBe(200);
+    const attendu = ESSAIS_PINBALL.partie(JOUR, VERSIONS, 3).attendu;
+    expect(attendu.score).toBeGreaterThan(0);
+    const cles = await t.db.all<{ cle1: number; cle2: number }>("SELECT cle1, cle2 FROM resultats_jeu WHERE jeu = 'pinball'");
+    expect(cles).toEqual([{ cle1: -attendu.score!, cle2: attendu.ticks! }]);
   });
 
-  it("refuse les copies (la partie du bot, deux fois les mêmes touches), les illisibles et les autres jours", async () => {
+  it("refuse les copies (deux fois les mêmes événements), les rediffusions illisibles, trafiquées, trop longues et les autres jours", async () => {
     const t = await monter({ copies: false });
     const c = dailyPinball(JOUR);
-    const bot = await t.call("POST", "/api/pinball/submit", { replay: enregistrer(c, touchesDuBot(c)), name: "Copieur" }, { headers: entete(1) });
-    expect(bot.status).toBe(409);
-    expect(bot.body.error).toBe("replay_copy");
-    expect((await envoyer(t, 2, 1)).status).toBe(200);
-    const copie = await envoyer(t, 3, 1);
+    expect((await envoyer(t, 1, 2)).status).toBe(200);
+    const copie = await envoyer(t, 2, 2);
+    expect(copie.status).toBe(409);
     expect(copie.body.error).toBe("replay_copy");
-    expect((await t.call("POST", "/api/pinball/submit", { replay: "pas-une-rediffusion", name: "Zéro" }, { headers: entete(4) })).body.error).toBe("invalid_replay");
-    const autreJour = enregistrer(dailyPinball(JOUR - 1), []);
-    expect((await t.call("POST", "/api/pinball/submit", { replay: autreJour, name: "Hier" }, { headers: entete(5) })).status).toBe(409);
+    const refuse = async (n: number, replay: string, erreur: string) => expect((await t.call("POST", "/api/pinball/submit", { replay, name: `X${n}` }, { headers: entete(n) })).body.error, `${n}`).toBe(erreur);
+    await refuse(4, "pas-une-rediffusion", "invalid_replay");
+    await refuse(5, "A".repeat(70000), "invalid_replay"); // trop de caractères
+    const bon = enregistrer(c, VALIDE);
+    await refuse(6, bon.slice(0, bon.length - 2), "invalid_replay"); // tronquée
+    await refuse(7, bon.replace(/.$/, "!"), "invalid_replay"); // un caractère hors alphabet
+    const trop: Evenement[] = Array.from({ length: MAX_EVENEMENTS + 2 }, (_, i) => ({ tick: i * 2, c: GAUCHE, enfonce: i % 2 === 0 }));
+    await refuse(8, enregistrer(c, trop), "invalid_replay"); // trop d'événements
+    await refuse(9, enregistrer(c, [{ tick: DUREE_MAX_TICKS + 5, c: GAUCHE, enfonce: true }]), "invalid_replay"); // un appui après les quinze minutes
+    await refuse(12, enregistrer(c, [{ tick: 5, c: DROITE, enfonce: true }, { tick: 9, c: DROITE, enfonce: true }]), "invalid_replay"); // un double appui
+    expect((await t.call("POST", "/api/pinball/submit", { replay: enregistrer(dailyPinball(JOUR - 1), []), name: "Hier" }, { headers: entete(10) })).status).toBe(409);
+    expect((await t.call("POST", "/api/pinball/submit", { name: "Sans" }, { headers: entete(11) })).status).toBeGreaterThanOrEqual(400);
   });
 
-  it("une partie vide est classée la dernière, sans médaille", async () => {
+  it("le score vient du seul rejeu : une rediffusion ne peut pas annoncer mieux que ce qu'elle joue", async () => {
     const t = await monter();
     const c = dailyPinball(JOUR);
+    const replay = enregistrer(c, VALIDE);
+    const r = await t.call("POST", "/api/pinball/submit", { replay, name: "Menteur", score: 999999, ticks: 1 }, { headers: entete(1) });
+    expect(r.status).toBe(200);
+    expect(r.body.score).toEqual(scoreParColonnes(jouer(c, VALIDE)));
+  });
+
+  it("une partie vide est rejouée jusqu'à sa fin (les quinze minutes, zéro point), classée la dernière", async () => {
+    const t = await monter();
+    const c = dailyPinball(JOUR);
+    await envoyer(t, 2, 3);
     const r = await t.call("POST", "/api/pinball/submit", { replay: enregistrer(c, []), name: "Rêveur" }, { headers: entete(1) });
     expect(r.status).toBe(200);
     expect(r.body.score).toEqual(scoreParColonnes(jouer(c, [])));
-    expect(r.body.medal).toBeNull();
+    const board = await t.call("GET", `/api/pinball/day/${DATE}/board`);
+    expect((board.body.top as { name: string }[]).at(-1)!.name).toBe("Rêveur");
   });
 
-  it("lit le jour figé de l'image s'il se vérifie, l'ignore sinon", async () => {
-    const fige = figerJour(JOUR);
-    expect(contenuDePinball(JOUR, { [DATE]: fige })).toEqual(dailyPinball(JOUR));
-    const abime = { ...fige, contenu: { pinball: fige.contenu.pinball.slice(1) } };
-    expect(empreinteContenu(contenuDePinball(JOUR, { [DATE]: abime }))).toBe(empreinteContenu(dailyPinball(JOUR)));
+  it("lit le jour figé de l'image s'il se vérifie ; ses seuils figés l'emportent sur le calcul ; un fichier abîmé est ignoré", async () => {
+    const fige = figerJour(JOUR, { bronze: 111, silver: 222, gold: 333, author: 444 });
+    expect(contenuDePinball(JOUR, { [DATE]: fige }).seuilsFiges).toEqual({ bronze: 111, silver: 222, gold: 333, author: 444 });
+    const abime = { ...fige, contenu: { ...fige.contenu, empreinte: "00000000" } };
+    expect(contenuDePinball(JOUR, { [DATE]: abime }).seuilsFiges).toBeUndefined();
     const t = await monter({ frozen: { [DATE]: fige } });
-    const info = await t.call("GET", "/api/pinball/info");
-    expect(info.body.frozenDays).toEqual([DATE]);
+    expect((await t.call("GET", "/api/pinball/info")).body.frozenDays).toEqual([DATE]);
+    expect((await t.call("GET", `/api/pinball/day/${DATE}`)).body.medals).toEqual({ bronze: 111, silver: 222, gold: 333, author: 444 });
+    const r = await envoyer(t, 1, 0);
+    expect(r.body.medal).toBe("author"); // 444 points suffisent au Diamant figé
   });
 
   it("le profil du joueur et le jeu fermé (`off`) répondent comme les autres jeux", async () => {

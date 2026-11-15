@@ -1,84 +1,246 @@
 {
-  "_": "Golden de Pinball (lot K4f). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
-  "sim": 1,
-  "generateur": 1,
+  "_": "Golden de Pinball (lot PB1). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
+  "sim": 2,
+  "generateur": 2,
   "jours": [
     {
       "date": "2026-11-02",
-      "empreinte": "7bc550a5"
+      "theme": "espace",
+      "modules": [
+        "spinner",
+        "mini",
+        "cibles",
+        "spinner",
+        "mini",
+        "bumpers"
+      ],
+      "empreinte": "8dabe595",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-05",
-      "empreinte": "dfb7a5eb"
+      "theme": "foire",
+      "modules": [
+        "bumpers",
+        "bumpers",
+        "cibles",
+        "cibles",
+        "trou",
+        "cibles"
+      ],
+      "empreinte": "bad563d0",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-08",
-      "empreinte": "ca9a9414"
+      "theme": "ocean",
+      "modules": [
+        "mini",
+        "mini",
+        "cibles",
+        "trou",
+        "trou",
+        "mini"
+      ],
+      "empreinte": "0de7836f",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-11",
-      "empreinte": "a1d665bf"
+      "theme": "foire",
+      "modules": [
+        "mini",
+        "bumpers",
+        "cibles",
+        "trou",
+        "mini",
+        "mini"
+      ],
+      "empreinte": "928e12ed",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-14",
-      "empreinte": "7ff79ade"
+      "theme": "ocean",
+      "modules": [
+        "spinner",
+        "bumpers",
+        "mini",
+        "cibles",
+        "mini",
+        "mini"
+      ],
+      "empreinte": "d0464210",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-17",
-      "empreinte": "ff925cf8"
+      "theme": "espace",
+      "modules": [
+        "cibles",
+        "bumpers",
+        "spinner",
+        "cibles",
+        "trou",
+        "trou"
+      ],
+      "empreinte": "7000a087",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-20",
-      "empreinte": "76998343"
+      "theme": "volcan",
+      "modules": [
+        "mini",
+        "bumpers",
+        "spinner",
+        "spinner",
+        "mini",
+        "trou"
+      ],
+      "empreinte": "28222aa4",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-23",
-      "empreinte": "a436dca2"
+      "theme": "espace",
+      "modules": [
+        "bumpers",
+        "bumpers",
+        "cibles",
+        "spinner",
+        "trou",
+        "bumpers"
+      ],
+      "empreinte": "7f0536c1",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-26",
-      "empreinte": "f10d2b4e"
+      "theme": "volcan",
+      "modules": [
+        "mini",
+        "bumpers",
+        "spinner",
+        "trou",
+        "trou",
+        "spinner"
+      ],
+      "empreinte": "7c7a41bb",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     },
     {
       "date": "2026-11-29",
-      "empreinte": "14c4f96a"
+      "theme": "volcan",
+      "modules": [
+        "spinner",
+        "bumpers",
+        "cibles",
+        "spinner",
+        "trou",
+        "cibles"
+      ],
+      "empreinte": "2b797909",
+      "seuils": {
+        "bronze": 10000,
+        "silver": 30000,
+        "gold": 80000,
+        "author": 200000
+      }
     }
   ],
   "rediffusions": [
     {
-      "nom": "bot",
-      "date": "2026-11-02",
-      "g": 1,
-      "code": "AQEBAJeiASETLgcmHyoDKi0sFCcpLBYtACcfLCMqBicvLCMoFS4GJyApCSknLQQ",
-      "resultat": {
-        "touches": 20,
-        "dernier": 833,
-        "ratees": 0,
-        "ticks": 900
-      }
-    },
-    {
-      "nom": "joueur-lent",
-      "date": "2026-11-02",
-      "g": 1,
-      "code": "AQEBAJeiARoUCRMvBycfVi0tFBkqDylbABYgEh8tIz4ACi8tIykVVyAqCRooECc",
-      "resultat": {
-        "touches": 15,
-        "dernier": 797,
-        "ratees": 5,
-        "ticks": 900
-      }
-    },
-    {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 1,
-      "code": "AQEBAJeiAQ",
+      "g": 2,
+      "code": "AQICAJeiAQ",
       "resultat": {
-        "touches": 0,
-        "dernier": 900,
-        "ratees": 0,
-        "ticks": 900
+        "score": 0,
+        "ticks": 540000,
+        "billes": 3,
+        "multMax": 1
+      }
+    },
+    {
+      "nom": "batteurs-tenus",
+      "date": "2026-11-02",
+      "g": 2,
+      "code": "AQICAJeiAUDRDZAcPu1FAw",
+      "resultat": {
+        "score": 250,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 1
+      }
+    },
+    {
+      "nom": "pilote-2-minutes",
+      "date": "2026-11-05",
+      "g": 2,
+      "code": "AQICAJqiAQT7E6g0gwWsQboLoQjpA_gC-xOoNIMFiiizBZ4ZhgzXCfUCkAP7E6g0gwWKKLMF0LYBwQS4Kb8F7DatBawM2QXQG-EEvDrDBNwbqQW-IcMEgj6zBd6jAdkErhSpBdgUqQW6IoMF3iyhBvwLwwS0GrUFyiHDBOIVtQXWL7MFnhmGDNcJ9QI",
+      "resultat": {
+        "score": 16210,
+        "ticks": 32920,
+        "billes": 0,
+        "multMax": 1
+      }
+    },
+    {
+      "nom": "pilote-8-minutes",
+      "date": "2026-11-14",
+      "g": 2,
+      "code": "AQICAKOiAQT7E6g0gwXaGKEF5C7HBIharwWKLoMFgCfHBPxKuwWkD5UFqjfDBN5V2QT4DKcFulvNBJgn8QTWSvEEmg6tBagXrwXAQMEE1DTbBIaGAfsTqDSDBdoYoQXkLscEiFqvBYougwWAJ8cE_Eq7BZAcvwXoDrkF4AnxBKC0AYEc2AvDBM42pwWQdscE1n3ZBOANqQXcCPUF1AbHBN4ivwXeFv0EmFjHBfhXxwSITY8F5BOJBfAfxQWMPN8EjhiFBcQzwwSyEY8FjGq7BZAiuAatBfkHihHDBKZlxwTecbUF7EXBBOoi8QT4QMME-jsa_QRFrCaJBc4KtQXWCALPBHm8EsEEwEHrBYwTwwTUN68FrAuDBZ4txwTQNb8F2g2pBdIu3QX6JsEEiiLxBIAZyQS6I8ME1jmhBtILwwT2NcUG8gfDBOoOuwXoIcMErhBizQQDzAvDBPAx_QSmIMUFrlLNBMIPmwWMP8EEyB7ZBOgYrwWEI8MEjjsC3wRpxj2zBaAJrwXeMbkFznb_BPRWmwXOEKkFliKDBZAWoQXiCK0FzAu1BaZEwQSuULsFrFnBBPgSlQXuHcEEriOXBaocqQWYNMkE-Cn7E6g0gwXaGKEF5C7HBIharwWKLoMFgCfHBPxKuwWkD5UFqjfDBN5V2QT4DKcFzJEBxwSQSb8F4BXBBMAixQWSDMEEzhaRBbo7wwTcPvEEsjbBBbQivwWUD7UFhBfhBIQk-xOoNIMF2hihBeQuxwSIWq8Fii6DBYAnxwT8SrsFpA-VBao3wwTeVdkE-AynBcyRAccEkEm_BeAVwQTAIsUFkgzBBM4WkQW6O8ME3D7xBLI2wQW0Ir8FzBG1Bc4fwwTuIcMEslG1BQ6VG8wLwwTidMEEqiKRBb4vpwXuVsEEzkWzBeBLwQT4Nq0FtjACuQUDhkvHBJItiQXyD6UGvAbHBKA0-xOoNIMF2hihBeQuxwSIWq8Fii6DBYAnxwT8SrsFpA-VBao3wwTeVdkE-AynBcyRAccEkEm_BeAVwQTAIsUFkgzBBM4WkQW6O8ME3D7xBLI2wQW0Ir8FzBG1Bc4fwwTuIcMEslG1BQ6VG8wLwwTidMEEqiKRBb4vpwXuVsEEzkWzBeBLwQT4Nq0FtjACuQUDhkvHBJItiQXyD6UGvAbHBKA0-xOoNIMF2hihBeQuxwSIWq8Fii6DBYAnxwT8SrsFpA-VBao3wwTeVdkE-AynBcyRAccEkEm_BeAVwQTAIsUFkgzBBM4WkQW6O8ME3D7xBLI2wQW0Ir8FzBG1Bc4fwwTuIcMEslG1BQ6VG8wLwwTidMEEqiKRBb4vpwXuVsEEzkWzBeBLwQT4Nq0FtjACuQUDhkvHBJIt",
+      "resultat": {
+        "score": 88030,
+        "ticks": 540000,
+        "billes": 3,
+        "multMax": 1
       }
     }
   ]

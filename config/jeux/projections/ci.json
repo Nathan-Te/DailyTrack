@@ -1718,7 +1718,10 @@
         "classement-",
         "reglages-",
         "retours-",
-        "version-"
+        "version-",
+        "niveau-",
+        "scene-",
+        "rediffusion-"
       ],
       "outilsAdmin": false
     }

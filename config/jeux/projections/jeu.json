@@ -304,13 +304,17 @@
       "messageOu": "pinball",
       "zoneNouveautes": "pinball",
       "themes": [
-        "clair",
-        "sombre"
+        "foire",
+        "ocean",
+        "espace",
+        "volcan"
       ],
       "scenes": [
         "menu",
-        "theme:clair",
-        "theme:sombre"
+        "theme:foire",
+        "theme:ocean",
+        "theme:espace",
+        "theme:volcan"
       ]
     }
   ],
