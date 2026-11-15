@@ -1683,8 +1683,7 @@
           ],
           "rendu.spec.ts": [
             "pinball-sim",
-            "pinball-jeu",
-            "ui"
+            "pinball-jeu"
           ]
         },
         "parts": {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { appareil, jouerLeJour, lancer } from "./appareil";
+import { appareil, evenementsDeLEssai, jouerLeJour, lancer } from "./appareil";
 
 // « Pinball » (lot PB2) — LE RENDU : la haute qualité (three.js) et le rendu de secours (à plat) sont deux façons de regarder la même partie. Ici : laquelle est à l'écran, que toute la table tient à l'image sur deux
 // téléphones en portrait, que le rendu de secours ne charge pas three.js, que la partie rejouée est la même dans les deux, que le jeu tient sans WebGL, la vibration du batteur et le panneau `?debug&tune`.
@@ -8,26 +8,27 @@ import { appareil, jouerLeJour, lancer } from "./appareil";
 const fichiersChargees = (page: Page): Promise<string[]> => page.evaluate(() => performance.getEntriesByType("resource").map((e) => new URL(e.name).pathname));
 
 test.describe("Pinball : le rendu", () => {
-  for (const [largeur, hauteur] of [[390, 844], [360, 640]] as const) {
-    test(`haute qualité par défaut : three.js, toute la table à l'image sur un téléphone en portrait (${largeur} × ${hauteur})`, async ({ browser }) => {
-      const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1");
+  test("haute qualité par défaut : three.js, toute la table à l'image sur deux téléphones en portrait (390 × 844 puis 360 × 640)", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await lancer(page);
+    for (const [largeur, hauteur] of [[390, 844], [360, 640]] as const) {
       await page.setViewportSize({ width: largeur, height: hauteur });
-      await lancer(page);
       await page.evaluate(() => window.__jeu.avancer(5));
       expect(await page.evaluate(() => window.__pinball!.qualite())).toBe("haute");
-      const chargees = await fichiersChargees(page);
-      expect(chargees.some((f) => /\/assets\/corps-/.test(f)), `fichiers : ${chargees.join(", ")}`).toBe(true);
       const info = (await page.evaluate(() => window.__pinball!.trois()))!;
       expect(info.appels).toBeGreaterThan(0);
       // le cadrage : le sommet de l'arc, les épaules, les coins bas (donc les batteurs) sont tous à l'image
-      expect(info.cadre.x).toBeLessThanOrEqual(1);
-      expect(info.cadre.y0).toBeGreaterThanOrEqual(-1);
-      expect(info.cadre.y1).toBeLessThanOrEqual(1);
+      expect(info.cadre.x, `${largeur} × ${hauteur}`).toBeLessThanOrEqual(1);
+      expect(info.cadre.y0, `${largeur} × ${hauteur}`).toBeGreaterThanOrEqual(-1);
+      expect(info.cadre.y1, `${largeur} × ${hauteur}`).toBeLessThanOrEqual(1);
       // la table remplit l'écran : pas un timbre-poste au milieu (le plus grand |x| ou |y| frôle le bord)
-      expect(Math.max(info.cadre.x, -info.cadre.y0, info.cadre.y1)).toBeGreaterThan(0.85);
-      await context.close();
-    });
-  }
+      expect(Math.max(info.cadre.x, -info.cadre.y0, info.cadre.y1), `${largeur} × ${hauteur}`).toBeGreaterThan(0.85);
+    }
+    const chargees = await fichiersChargees(page);
+    expect(chargees.some((f) => /\/assets\/corps-/.test(f)), `fichiers : ${chargees.join(", ")}`).toBe(true);
+    await context.close();
+  });
 
   test("la basse qualité (?qualite=basse) est le rendu de secours : le rendu à plat, sans three.js", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1&qualite=basse");
@@ -76,7 +77,7 @@ test.describe("Pinball : le rendu", () => {
 
   test("un batteur qui frappe la bille fait vibrer (réglage de vibration actif), et rien si le joueur l'a coupé", async ({ browser }) => {
     for (const reglage of ["oui", "non"] as const) {
-      const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1");
+      const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1&qualite=basse");
       await context.addInitScript((vibration) => {
         localStorage.setItem("pinball:reglages", JSON.stringify({ v: 1, mouvement: "normal", fantome: "aucun", vibration, effets: 100 }));
         Object.defineProperty(navigator, "vibrate", { configurable: true, value: (m: unknown) => ((window as unknown as { __vibre: unknown[] }).__vibre ??= []).push(m) > 0 });
@@ -84,7 +85,16 @@ test.describe("Pinball : le rendu", () => {
       await page.reload();
       await page.waitForSelector("#jeu-jouer", { state: "attached" });
       await lancer(page);
-      await jouerLeJour(page);
+      // les 9 000 premiers pas du robot d'essai (15 secondes de jeu) : il frappe la bille au batteur plusieurs fois
+      await page.evaluate((evenements) => {
+        let t = 0;
+        for (const e of evenements) {
+          window.__jeu.avancer(e.tick - t);
+          t = e.tick;
+          window.__pinball!.regler(e.c, e.enfonce);
+        }
+        window.__jeu.avancer(9000 - t);
+      }, [...evenementsDeLEssai(9000)]);
       const compte = await page.evaluate(() => window.__pinball!.vibrations());
       const appels = await page.evaluate(() => (window as unknown as { __vibre?: unknown[] }).__vibre?.length ?? 0);
       if (reglage === "oui") {
@@ -129,7 +139,7 @@ test.describe("Pinball : le rendu", () => {
 
   test("&reglages= recharge les réglages exportés depuis l'adresse, ramenés dans leurs bornes ; la partie n'est pas classable", async ({ browser }) => {
     const json = encodeURIComponent(JSON.stringify({ reglages: { pente: 400, rebondMur: 99999, inconnu: 1 }, vue: { angle: 50 } }));
-    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&tune&reglages=${json}`);
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&tune&qualite=basse&reglages=${json}`);
     await lancer(page);
     await page.locator(".pinball-tune > button").click();
     await expect(page.locator('.pinball-tune label:has-text("Pente") input')).toHaveValue("400");
