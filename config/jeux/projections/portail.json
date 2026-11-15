@@ -185,12 +185,16 @@
       "accroche": "portail.pinball.accroche",
       "nomsThemes": {
         "fr": {
-          "clair": "Clair (à remplacer)",
-          "sombre": "Sombre (à remplacer)"
+          "foire": "Fête foraine",
+          "ocean": "Océan",
+          "espace": "Espace",
+          "volcan": "Volcan"
         },
         "en": {
-          "clair": "Light (to replace)",
-          "sombre": "Dark (to replace)"
+          "foire": "Funfair",
+          "ocean": "Ocean",
+          "espace": "Space",
+          "volcan": "Volcano"
         }
       },
       "cumul": false,

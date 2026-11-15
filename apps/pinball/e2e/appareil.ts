@@ -1,4 +1,4 @@
-import { dailyPinball, jouer, VARIANTE, type Resultat } from "@cdj/pinball-sim";
+import { dailyPinball, jouer, piloter, type Evenement, type Resultat } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -15,9 +15,16 @@ export interface Porte {
   score(): number[] | null;
   rediffusion(): string | null;
 }
+/** Les essais de la scène (`?debug`) : dicter un changement de commande (0 gauche, 1 droite, 2 lanceur), lire le pas et le journal des changements datés. */
+export interface PorteScene {
+  regler(c: number, enfonce: boolean): void;
+  tick(): number;
+  evenements(): Evenement[];
+}
 declare global {
   interface Window {
     __jeu: Porte;
+    __pinball?: PorteScene;
   }
 }
 
@@ -53,21 +60,22 @@ export async function lancer(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu);
 }
 
+/** La partie scriptée des essais : le pilote d'essai de la simulation joue le jour pendant `pas` pas (ses changements de commandes sont la rediffusion). */
+export const evenementsDeLEssai = (pas = 9000): Evenement[] => piloter(dailyPinball(parseDay(JOUR)!), pas).evenements;
+
 /**
- * Joue la partie du jour à la main, pas à pas : une touche sur la case de chaque cible, `delai` ticks après son apparition (la rediffusion du jeu est donc la suite de ces touches). `sauf` : les rangs des pinball
- * qu'on laisse filer (variante « score ») ou sur lesquelles on hésite (variante « temps »). Rend ce que la simulation (Node, la même) attend de ces touches.
+ * Joue la partie du jour à la main, pas à pas : chaque changement de commande est dicté à son pas (`__pinball.regler`), la rediffusion du jeu est donc cette liste ; puis la partie se joue seule jusqu'à sa fin
+ * (les commandes restent comme elles sont : une bille perdue finit la partie). Rend ce que la simulation (Node, la même) attend de ces événements.
  */
-export async function jouerLeJour(page: Page, delai = 15, sauf: readonly number[] = []): Promise<Resultat> {
-  const contenu = dailyPinball(parseDay(JOUR)!);
-  const touches = VARIANTE.joueur(contenu, () => delai, (i) => sauf.includes(i));
-  await page.evaluate((touches) => {
+export async function jouerLeJour(page: Page, evenements: readonly Evenement[] = evenementsDeLEssai()): Promise<Resultat> {
+  await page.evaluate((evenements) => {
     let t = 0;
-    for (const x of touches) {
-      window.__jeu.avancer(x.tick - t);
-      t = x.tick;
-      window.__jeu.action(`case:${x.c}`);
+    for (const e of evenements) {
+      window.__jeu.avancer(e.tick - t);
+      t = e.tick;
+      window.__pinball!.regler(e.c, e.enfonce);
     }
-    window.__jeu.avancer(1000);
-  }, touches);
-  return jouer(contenu, touches);
+    window.__jeu.avancer(600000);
+  }, [...evenements]);
+  return jouer(dailyPinball(parseDay(JOUR)!), evenements);
 }
