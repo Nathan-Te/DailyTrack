@@ -1,5 +1,6 @@
 import type { Catalogues } from "@cdj/ui";
-import { FICHES } from "./jeuxFiches";
+// Lot K7 : la projection JSON seule (pas `jeuxFiches`, qui importe `@cdj/core` : `vite.config.ts` charge ce fichier sans le résoudre).
+import projection from "../../../config/jeux/projections/portail.json";
 
 // Le catalogue du portail (lot I1 ; lot I2 : l'accueil riche et le profil commun) : français et anglais, clés `portail.*`. Les textes des
 // composants (barre, langue, médailles) et les noms des jeux sont dans le catalogue commun de `@cdj/ui`. Ton (charte § 7) : Du Jour est
@@ -250,7 +251,8 @@ const en: Catalogues<typeof fr>["en"] = {
  * Lot K7 : les noms des thèmes ne sont plus écrits ici. Chaque jeu les déclare dans sa fiche (`nomsThemes`, `config/jeux/<id>.json`) ; `npm run fiches` les projette dans `portail.json` et ce catalogue en fait
  * les clés `portail.theme.<code du jeu>.<thème>` (en production, la projection est écrite sans les jeux témoins). Un jeu qui change ses thèmes ne touche donc pas ce fichier.
  */
+const JEUX = (projection as unknown as { jeux: { id: string; code?: string; nomsThemes: { fr: Record<string, string>; en: Record<string, string> } }[] }).jeux;
 const nomsDesThemes = (langue: "fr" | "en"): Record<string, string> =>
-  Object.fromEntries(FICHES.flatMap((f) => Object.entries(f.nomsThemes[langue]).map(([theme, nom]) => [`portail.theme.${f.code}.${theme}`, nom])));
+  Object.fromEntries(JEUX.flatMap((j) => Object.entries(j.nomsThemes[langue]).map(([theme, nom]) => [`portail.theme.${j.code ?? j.id}.${theme}`, nom])));
 
 export const CATALOGUE_PORTAIL = { fr: { ...fr, ...nomsDesThemes("fr") }, en: { ...en, ...nomsDesThemes("en") } } as unknown as { readonly fr: typeof fr; readonly en: typeof en };

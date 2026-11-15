@@ -8,7 +8,8 @@ import projection from "../../../config/jeux/projections/portail.json";
 
 /** Une fiche telle que le portail la lit : la projection (qui n'écrit pas ce qui va de soi) avec ses valeurs par défaut rétablies. */
 export type FichePortail = Required<Pick<ProjectionPortail["jeux"][number], "code" | "format">> & Omit<ProjectionPortail["jeux"][number], "code" | "format" | "cumul" | "categorie"> & { cumul: boolean; categorie: CategorieJeu };
-export const FICHES: readonly FichePortail[] = (projection as ProjectionPortail).jeux.map((j) => ({ code: j.id, cumul: true, format: "temps" as const, categorie: "jour" as const, ...j }));
+// Lot K7 : `unknown` d'abord, le type déduit du JSON (une union aux clés de thèmes propres à chaque jeu) n'est pas comparable à `Record<string, string>`.
+export const FICHES: readonly FichePortail[] = (projection as unknown as ProjectionPortail).jeux.map((j) => ({ code: j.id, cumul: true, format: "temps" as const, categorie: "jour" as const, ...j }));
 
 /** La fiche d'un jeu d'après son dossier sur le site (`track`, `jump`, `tower`), ou `undefined` (un dossier qui n'est pas un jeu). */
 export const ficheDuJeu = (id: string): FichePortail | undefined => FICHES.find((f) => f.id === id);
