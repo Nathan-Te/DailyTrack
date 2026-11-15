@@ -71,6 +71,24 @@
     "jungle",
     "nuit"
   ],
+  "nomsThemes": {
+    "fr": {
+      "port": "Port",
+      "chantier": "Chantier",
+      "canyon": "Canyon",
+      "banquise": "Banquise",
+      "jungle": "Jungle",
+      "nuit": "Nuit"
+    },
+    "en": {
+      "port": "Harbour",
+      "chantier": "Building site",
+      "canyon": "Canyon",
+      "banquise": "Ice floe",
+      "jungle": "Jungle",
+      "nuit": "Night"
+    }
+  },
   "versions": {
     "sim": "packages/tower-sim/src/constantes.ts:TOWER_SIM_VERSION",
     "generateur": "packages/tower-sim/src/generateur/index.ts:TOWER_GENERATOR_VERSION",

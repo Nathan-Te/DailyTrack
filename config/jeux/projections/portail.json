@@ -5,6 +5,28 @@
       "code": "cdj",
       "accroche": "portail.track.accroche",
       "titre": "jeu.track.titre",
+      "nomsThemes": {
+        "fr": {
+          "stade": "Stade",
+          "rallye": "Rallye",
+          "banquise": "Banquise",
+          "nuit": "Nuit",
+          "campagne": "Campagne",
+          "canyon": "Canyon",
+          "col": "Col alpin",
+          "ville": "Ville"
+        },
+        "en": {
+          "stade": "Stadium",
+          "rallye": "Rally",
+          "banquise": "Ice floe",
+          "nuit": "Night",
+          "campagne": "Countryside",
+          "canyon": "Canyon",
+          "col": "Mountain pass",
+          "ville": "City"
+        }
+      },
       "premierJour": "2026-10-13"
     },
     {
@@ -12,11 +34,45 @@
       "accroche": "portail.jump.accroche",
       "titre": "jeu.jump.titre",
       "accrocheTheme": "jump.replique.",
+      "nomsThemes": {
+        "fr": {
+          "foret": "Forêt",
+          "usine": "Usine",
+          "glace": "Glace",
+          "nuit": "Nuit",
+          "neon": "Néon"
+        },
+        "en": {
+          "foret": "Forest",
+          "usine": "Factory",
+          "glace": "Ice",
+          "nuit": "Night",
+          "neon": "Neon"
+        }
+      },
       "premierJour": "2026-10-16"
     },
     {
       "id": "tower",
       "accroche": "portail.tower.accroche",
+      "nomsThemes": {
+        "fr": {
+          "port": "Port",
+          "chantier": "Chantier",
+          "canyon": "Canyon",
+          "banquise": "Banquise",
+          "jungle": "Jungle",
+          "nuit": "Nuit"
+        },
+        "en": {
+          "port": "Harbour",
+          "chantier": "Building site",
+          "canyon": "Canyon",
+          "banquise": "Ice floe",
+          "jungle": "Jungle",
+          "nuit": "Night"
+        }
+      },
       "cumul": false,
       "categorie": "arcade",
       "format": "hauteur",
@@ -25,6 +81,16 @@
     {
       "id": "cibles",
       "accroche": "portail.cibles.accroche",
+      "nomsThemes": {
+        "fr": {
+          "sable": "Sable",
+          "ardoise": "Ardoise"
+        },
+        "en": {
+          "sable": "Sand",
+          "ardoise": "Slate"
+        }
+      },
       "cumul": false,
       "format": "entier",
       "illustration": true
@@ -32,6 +98,24 @@
     {
       "id": "blocks",
       "accroche": "portail.blocks.accroche",
+      "nomsThemes": {
+        "fr": {
+          "port": "Port",
+          "chantier": "Chantier",
+          "canyon": "Canyon",
+          "banquise": "Banquise",
+          "jungle": "Jungle",
+          "nuit": "Nuit"
+        },
+        "en": {
+          "port": "Harbour",
+          "chantier": "Building site",
+          "canyon": "Canyon",
+          "banquise": "Ice floe",
+          "jungle": "Jungle",
+          "nuit": "Night"
+        }
+      },
       "cumul": false,
       "categorie": "arcade",
       "format": "entier",
@@ -40,6 +124,18 @@
     {
       "id": "rush",
       "accroche": "portail.rush.accroche",
+      "nomsThemes": {
+        "fr": {
+          "prairie": "Prairie",
+          "carriere": "Carrière",
+          "sousbois": "Sous-bois"
+        },
+        "en": {
+          "prairie": "Meadow",
+          "carriere": "Quarry",
+          "sousbois": "Woods"
+        }
+      },
       "cumul": false,
       "categorie": "arcade",
       "illustration": true
@@ -47,6 +143,16 @@
     {
       "id": "vertige",
       "accroche": "portail.vertige.accroche",
+      "nomsThemes": {
+        "fr": {
+          "clair": "Clair (à remplacer)",
+          "sombre": "Sombre (à remplacer)"
+        },
+        "en": {
+          "clair": "Light (to replace)",
+          "sombre": "Dark (to replace)"
+        }
+      },
       "cumul": false,
       "categorie": "arcade",
       "illustration": true
@@ -54,6 +160,22 @@
     {
       "id": "gravity",
       "accroche": "portail.gravity.accroche",
+      "nomsThemes": {
+        "fr": {
+          "foret": "Forêt",
+          "usine": "Usine",
+          "glace": "Glace",
+          "nuit": "Nuit",
+          "neon": "Néon"
+        },
+        "en": {
+          "foret": "Forest",
+          "usine": "Factory",
+          "glace": "Ice",
+          "nuit": "Night",
+          "neon": "Neon"
+        }
+      },
       "cumul": false,
       "categorie": "arcade",
       "format": "entier"
@@ -61,6 +183,16 @@
     {
       "id": "pinball",
       "accroche": "portail.pinball.accroche",
+      "nomsThemes": {
+        "fr": {
+          "clair": "Clair (à remplacer)",
+          "sombre": "Sombre (à remplacer)"
+        },
+        "en": {
+          "clair": "Light (to replace)",
+          "sombre": "Dark (to replace)"
+        }
+      },
       "cumul": false,
       "categorie": "arcade",
       "format": "entier"

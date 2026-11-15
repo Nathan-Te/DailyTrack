@@ -1,4 +1,5 @@
 import type { Catalogues } from "@cdj/ui";
+import { FICHES } from "./jeuxFiches";
 
 // Le catalogue du portail (lot I1 ; lot I2 : l'accueil riche et le profil commun) : français et anglais, clés `portail.*`. Les textes des
 // composants (barre, langue, médailles) et les noms des jeux sont dans le catalogue commun de `@cdj/ui`. Ton (charte § 7) : Du Jour est
@@ -58,46 +59,6 @@ const fr = {
   "portail.accueil": "Bienvenue ! Un jeu par jour, le même pour tous : choisis ta première cartouche.",
   "portail.horsLigne": "Serveur injoignable : tes statuts reviendront dès qu'il répondra.",
   "portail.delai": "Le serveur ne répond pas : tes statuts reviendront plus tard.",
-  // Thèmes du jour (codes des jeux)
-  "portail.theme.cdj.stade": "Stade",
-  "portail.theme.cdj.rallye": "Rallye",
-  "portail.theme.cdj.banquise": "Banquise",
-  "portail.theme.cdj.nuit": "Nuit",
-  "portail.theme.cdj.campagne": "Campagne",
-  "portail.theme.cdj.canyon": "Canyon",
-  "portail.theme.cdj.col": "Col alpin",
-  "portail.theme.cdj.ville": "Ville",
-  "portail.theme.jump.foret": "Forêt",
-  "portail.theme.jump.usine": "Usine",
-  "portail.theme.jump.glace": "Glace",
-  "portail.theme.jump.nuit": "Nuit",
-  "portail.theme.jump.neon": "Néon",
-  "portail.theme.tower.port": "Port",
-  "portail.theme.tower.chantier": "Chantier",
-  "portail.theme.tower.canyon": "Canyon",
-  "portail.theme.tower.banquise": "Banquise",
-  "portail.theme.tower.jungle": "Jungle",
-  "portail.theme.tower.nuit": "Nuit",
-  "portail.theme.cibles.sable": "Sable",
-  "portail.theme.cibles.ardoise": "Ardoise",
-  "portail.theme.pinball.clair": "Clair (à remplacer)",
-  "portail.theme.pinball.sombre": "Sombre (à remplacer)",
-  "portail.theme.gravity.foret": "Forêt",
-  "portail.theme.gravity.usine": "Usine",
-  "portail.theme.gravity.glace": "Glace",
-  "portail.theme.gravity.nuit": "Nuit",
-  "portail.theme.gravity.neon": "Néon",
-  "portail.theme.vertige.clair": "Clair (à remplacer)",
-  "portail.theme.vertige.sombre": "Sombre (à remplacer)",
-  "portail.theme.rush.prairie": "Prairie",
-  "portail.theme.rush.carriere": "Carrière",
-  "portail.theme.rush.sousbois": "Sous-bois",
-  "portail.theme.blocks.port": "Port",
-  "portail.theme.blocks.chantier": "Chantier",
-  "portail.theme.blocks.canyon": "Canyon",
-  "portail.theme.blocks.banquise": "Banquise",
-  "portail.theme.blocks.jungle": "Jungle",
-  "portail.theme.blocks.nuit": "Nuit",
   // Les répliques de Jump, une par thème (la mécanique du jour)
   // Lot I3 : la journée partagée — le numéro de journée, le classement du jour, la ligne de partage
   "portail.journee": "Journée {numero}",
@@ -217,45 +178,6 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.accueil": "Welcome! One game a day, the same for everyone: pick your first cartridge.",
   "portail.horsLigne": "Can't reach the server: your progress will show up once it's back.",
   "portail.delai": "The server isn't answering: your progress will show up later.",
-  "portail.theme.cdj.stade": "Stadium",
-  "portail.theme.cdj.rallye": "Rally",
-  "portail.theme.cdj.banquise": "Ice floe",
-  "portail.theme.cdj.nuit": "Night",
-  "portail.theme.cdj.campagne": "Countryside",
-  "portail.theme.cdj.canyon": "Canyon",
-  "portail.theme.cdj.col": "Mountain pass",
-  "portail.theme.cdj.ville": "City",
-  "portail.theme.jump.foret": "Forest",
-  "portail.theme.jump.usine": "Factory",
-  "portail.theme.jump.glace": "Ice",
-  "portail.theme.jump.nuit": "Night",
-  "portail.theme.jump.neon": "Neon",
-  "portail.theme.tower.port": "Harbour",
-  "portail.theme.tower.chantier": "Building site",
-  "portail.theme.tower.canyon": "Canyon",
-  "portail.theme.tower.banquise": "Ice floe",
-  "portail.theme.tower.jungle": "Jungle",
-  "portail.theme.tower.nuit": "Night",
-  "portail.theme.cibles.sable": "Sand",
-  "portail.theme.cibles.ardoise": "Slate",
-  "portail.theme.pinball.clair": "Light (to replace)",
-  "portail.theme.pinball.sombre": "Dark (to replace)",
-  "portail.theme.gravity.foret": "Forest",
-  "portail.theme.gravity.usine": "Factory",
-  "portail.theme.gravity.glace": "Ice",
-  "portail.theme.gravity.nuit": "Night",
-  "portail.theme.gravity.neon": "Neon",
-  "portail.theme.vertige.clair": "Light (to replace)",
-  "portail.theme.vertige.sombre": "Dark (to replace)",
-  "portail.theme.rush.prairie": "Meadow",
-  "portail.theme.rush.carriere": "Quarry",
-  "portail.theme.rush.sousbois": "Woods",
-  "portail.theme.blocks.port": "Harbour",
-  "portail.theme.blocks.chantier": "Building site",
-  "portail.theme.blocks.canyon": "Canyon",
-  "portail.theme.blocks.banquise": "Ice floe",
-  "portail.theme.blocks.jungle": "Jungle",
-  "portail.theme.blocks.nuit": "Night",
   "portail.journee": "Day {numero}",
   "portail.classement.legende": "Today's leaderboard",
   "portail.classement.cumul": "{temps} combined",
@@ -324,4 +246,11 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.groupe.aucun": "Create or join a group ›",
 } as const;
 
-export const CATALOGUE_PORTAIL = { fr, en } as const;
+/**
+ * Lot K7 : les noms des thèmes ne sont plus écrits ici. Chaque jeu les déclare dans sa fiche (`nomsThemes`, `config/jeux/<id>.json`) ; `npm run fiches` les projette dans `portail.json` et ce catalogue en fait
+ * les clés `portail.theme.<code du jeu>.<thème>` (en production, la projection est écrite sans les jeux témoins). Un jeu qui change ses thèmes ne touche donc pas ce fichier.
+ */
+const nomsDesThemes = (langue: "fr" | "en"): Record<string, string> =>
+  Object.fromEntries(FICHES.flatMap((f) => Object.entries(f.nomsThemes[langue]).map(([theme, nom]) => [`portail.theme.${f.code}.${theme}`, nom])));
+
+export const CATALOGUE_PORTAIL = { fr: { ...fr, ...nomsDesThemes("fr") }, en: { ...en, ...nomsDesThemes("en") } } as unknown as { readonly fr: typeof fr; readonly en: typeof en };

@@ -6,15 +6,19 @@
 //   --dans-config                               → pose la fiche dans `config/jeux/essai.json` de la copie au lieu de la variable `CDJ_FICHES_SUPPLEMENTAIRES` (mesure « avant » : la variable n'existait pas)
 //   --garder                                    → garde la copie (affiche son chemin)
 //   --sans-suite                                → typage seulement
+//   (lot K7) après `npm run fiches`, le banc joue « un lot de jeu qui change ses thèmes » : il ajoute un thème, en renomme un et crée les CLAUDE.md du jeu, relance `npm run fiches` puis compare l'arbre avant / après :
+//   tout fichier changé ou créé doit être dans les zones du jeu ou dans les exceptions du job des zones (`scripts/zones-jeu.mjs`) ; sinon le banc échoue.
 //   --part i/n                                  → la i-ᵉ part sur n de la suite (`vitest --shard`) ; le typage n'est refait que par la part 1 (la CI lance les n parts en parallèle)
 //
 // La fiche et ses fichiers vivent ici, dans le script, pas dans le dépôt : `config/jeux/` ne reçoit aucune fiche de test. Les fichiers créés dans la copie sont TOUS dans les zones du jeu
 // (`apps/essai/`, `packages/essai-sim/`, `apps/api/src/essai*.ts`…) ; le script le vérifie et l'écrit dans son rapport. Aucune dépendance, aucun réseau, aucune base distante.
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { estException } from "./zones-jeu.mjs";
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -54,6 +58,8 @@ export const FICHE_ESSAI = {
   medailles: { methode: "pourcentage-diamant", bareme: [50, 30, 15], plafondDiamant: 1000 },
   partage: { extras: [] },
   themes: ["clair", "sombre"],
+  // Lot K7 : les noms des thèmes sont dans la fiche (plus dans le catalogue du portail).
+  nomsThemes: { fr: { clair: "Clair", sombre: "Sombre" }, en: { clair: "Light", sombre: "Dark" } },
   versions: {
     sim: "packages/essai-sim/src/constantes.ts:ESSAI_SIM_VERSION",
     generateur: "packages/essai-sim/src/constantes.ts:ESSAI_GENERATOR_VERSION",
@@ -90,6 +96,23 @@ export const FICHE_ESSAI = {
   },
   budget: { lignes: ["essai.jsCss"] },
   temoin: true,
+};
+
+/**
+ * Lot K7 — **un lot de jeu qui change ses thèmes** : la fiche du jeu fictif après le lot (un thème ajouté, `aube` ; un thème renommé, `sombre` devient `nuit`, avec ses deux noms et sa scène de musique).
+ * Rien d'autre ne change : le portail, le catalogue et les tests partagés ne sont pas touchés.
+ */
+export const FICHE_ESSAI_THEMES_CHANGES = {
+  ...FICHE_ESSAI,
+  themes: ["clair", "aube", "nuit"],
+  nomsThemes: { fr: { clair: "Clair", aube: "Aube", nuit: "Nuit" }, en: { clair: "Light", aube: "Dawn", nuit: "Night" } },
+  musique: { scenes: ["menu", "theme:clair", "theme:aube", "theme:nuit"] },
+};
+
+/** Les CLAUDE.md que crée le lot de jeu (zones du jeu : `apps/essai/**`, `packages/essai-sim/**`) : le test des consignes les découvre tout seul, sans liste à tenir. */
+export const CONSIGNES_ESSAI = {
+  "apps/essai/CLAUDE.md": "# `apps/essai` : le jeu fictif de la CI\n\nChargé quand on lit un fichier de `apps/essai`. Jeu témoin : il n'existe que dans la copie du dépôt que fabrique `scripts/jeu-fictif.mjs`.\n",
+  "packages/essai-sim/CLAUDE.md": "# `packages/essai-sim` : consignes\n\nSimulation du jeu fictif de la CI (témoin, jamais en production).\n",
 };
 
 /** Les fichiers que la fiche promet (versions, empreinte, e2e) : un jeu qui existe, réduit à ce que les contrôles de cohérence regardent. Tous dans les zones de `essai`. */
@@ -144,9 +167,10 @@ export const ESSAI_GAME: GameDefinition<never> = definirJeuNeuf<Niveau, Rejeu, M
 
 /** Les clés de catalogue du jeu fictif, insérées après celles de Tower (ancres) dans la copie. Le générateur du lot suivant les écrira ; ici, le banc s'en charge. */
 const CLES_COMMUN = { fr: ['"jeu.essai.nom": "Essai",'], en: ['"jeu.essai.nom": "Trial",'] };
+// Lot K7 : les noms des thèmes ne sont plus des clés du portail (ils sont dans la fiche) ; reste l'accroche.
 const CLES_PORTAIL = {
-  fr: ['"portail.essai.accroche": "Un essai par jour.",', '"portail.theme.essai.clair": "Clair",', '"portail.theme.essai.sombre": "Sombre",'],
-  en: ['"portail.essai.accroche": "One trial a day.",', '"portail.theme.essai.clair": "Light",', '"portail.theme.essai.sombre": "Dark",'],
+  fr: ['"portail.essai.accroche": "Un essai par jour.",'],
+  en: ['"portail.essai.accroche": "One trial a day.",'],
 };
 
 function inserer(fichier, ancre, lignes, occurrence) {
@@ -164,7 +188,7 @@ const globVersRegExp = (glob) => new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g
 export const horsDesZones = (chemins, fiche = FICHE_ESSAI) => chemins.filter((c) => !fiche.zones.jeu.some((g) => globVersRegExp(g).test(c)));
 
 function lancer(cmd, argv, cwd, env = {}, sortie = false) {
-  const r = spawnSync(cmd, argv, { cwd, env: { ...process.env, ...env }, encoding: "utf8", maxBuffer: 1 << 29 });
+  const r = spawnSync(cmd, argv, { cwd, env: { ...process.env, ...env }, encoding: "utf8", maxBuffer: 1 << 29, shell: process.platform === "win32" });
   if (sortie) process.stdout.write(`$ ${cmd} ${argv.join(" ")}\n`);
   return r;
 }
@@ -196,13 +220,16 @@ export function preparerCopie(src, { dansConfig }) {
   }
   const texte = JSON.stringify(FICHE_ESSAI, null, 2) + "\n";
   let supplementaires;
+  let ficheChemin;
   if (dansConfig) {
     const f = JSON.stringify({ ...FICHE_ESSAI, temoin: undefined }, null, 2) + "\n";
-    writeFileSync(join(copie, "config/jeux/essai.json"), f);
+    ficheChemin = join(copie, "config/jeux/essai.json");
+    writeFileSync(ficheChemin, f);
     creés.push("config/jeux/essai.json");
   } else {
     supplementaires = mkdtempSync(join(tmpdir(), "cdj-fiches-"));
-    writeFileSync(join(supplementaires, "essai.json"), texte);
+    ficheChemin = join(supplementaires, "essai.json");
+    writeFileSync(ficheChemin, texte);
   }
   // Le bloc du jeu dans le Dockerfile de l'image : un `COPY` ne se calcule pas, le générateur d'un jeu neuf l'écrit (lot K4f) ; le banc fait de même (apps/api/test/dockerfile.test.ts le exige).
   const docker = join(copie, "apps/api/Dockerfile");
@@ -220,12 +247,31 @@ export function preparerCopie(src, { dansConfig }) {
   inserer(join(ui, "catalogue.ts"), '"jeu.tower.nom"', CLES_COMMUN.fr, 0);
   inserer(join(ui, "catalogue.en.ts"), '"jeu.tower.nom"', CLES_COMMUN.en, 0);
   const portail = join(copie, "apps/portail/src/catalogue.ts");
-  inserer(portail, '"portail.tower.accroche"', [CLES_PORTAIL.fr[0]], 0);
-  inserer(portail, '"portail.theme.tower.nuit"', CLES_PORTAIL.fr.slice(1), 0);
-  inserer(portail, '"portail.tower.accroche"', [CLES_PORTAIL.en[0]], 1);
-  inserer(portail, '"portail.theme.tower.nuit"', CLES_PORTAIL.en.slice(1), 1);
-  return { copie, supplementaires, creés };
+  inserer(portail, '"portail.tower.accroche"', CLES_PORTAIL.fr, 0);
+  inserer(portail, '"portail.tower.accroche"', CLES_PORTAIL.en, 1);
+  return { copie, supplementaires, creés, ficheChemin };
 }
+
+/** Une empreinte par fichier de la copie (hors `node_modules`, sorties de construction et rapports du banc) : la comparaison avant / après du lot K7. */
+export function empreintes(copie) {
+  const sortie = new Map();
+  const parcourir = (dossier) => {
+    for (const e of readdirSync(join(copie, dossier), { withFileTypes: true })) {
+      if (["node_modules", ".git", "dist", "site"].includes(e.name) || e.name.startsWith("vitest-") || e.name === "rapport-jeu-fictif.json") continue;
+      const c = dossier ? `${dossier}/${e.name}` : e.name;
+      if (e.isDirectory()) parcourir(c);
+      else if (statSync(join(copie, c)).isFile()) sortie.set(c, createHash("sha1").update(readFileSync(join(copie, c))).digest("hex"));
+    }
+  };
+  parcourir("");
+  return sortie;
+}
+
+/** Les fichiers créés ou changés entre deux relevés d'empreintes. */
+export const fichiersChanges = (avant, apres) => [...apres].filter(([chemin, h]) => avant.get(chemin) !== h).map(([chemin]) => chemin).sort();
+
+/** Parmi ces fichiers, ceux qu'un lot du jeu fictif n'a pas le droit de toucher : ni dans ses zones, ni une exception du job des zones. */
+export const horsDesZonesNiExceptions = (chemins, fiche = FICHE_ESSAI) => horsDesZones(chemins, fiche).filter((c) => !estException(c));
 
 function echecsVitest(fichierJson) {
   if (!existsSync(fichierJson)) return null;
@@ -241,7 +287,7 @@ function echecsVitest(fichierJson) {
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   const dansConfig = args.includes("--dans-config");
-  const { copie, supplementaires, creés } = preparerCopie(source, { dansConfig });
+  const { copie, supplementaires, creés, ficheChemin } = preparerCopie(source, { dansConfig });
   const env = { CDJ_MODE_ESSAI: "1", ...(supplementaires ? { CDJ_FICHES_SUPPLEMENTAIRES: supplementaires } : {}) };
   console.log(`copie : ${copie}${supplementaires ? ` · fiches en plus : ${supplementaires}` : " · fiche dans config/jeux de la copie"}`);
   const rapport = { fiches: null, typage: null, projets: {} };
@@ -254,6 +300,25 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   r = lancer("npm", ["run", "traductions"], copie, env, true);
   rapport.traductions = r.status === 0 ? "ok" : `échec : ${(r.stderr + r.stdout).split("\n").filter(Boolean).slice(-6).join("\n")}`;
   console.log(`npm run traductions : ${rapport.traductions}`);
+
+  // Lot K7 : le lot de jeu qui change ses thèmes et crée ses CLAUDE.md. L'état d'avant est celui de la copie après `npm run fiches` ; celui d'après, après la fiche changée et les commandes de la plateforme.
+  const avant = empreintes(copie);
+  writeFileSync(ficheChemin, JSON.stringify(dansConfig ? { ...FICHE_ESSAI_THEMES_CHANGES, temoin: undefined } : FICHE_ESSAI_THEMES_CHANGES, null, 2) + "\n");
+  for (const [chemin, contenu] of Object.entries(CONSIGNES_ESSAI)) {
+    mkdirSync(dirname(join(copie, chemin)), { recursive: true });
+    writeFileSync(join(copie, chemin), contenu);
+    creés.push(chemin);
+  }
+  r = lancer("npm", ["run", "fiches"], copie, env, true);
+  const fichesApres = r.status === 0 ? "ok" : `échec : ${(r.stderr + r.stdout).split("\n").filter(Boolean).slice(-8).join("\n")}`;
+  r = lancer("npm", ["run", "traductions"], copie, env, true);
+  const traductionsApres = r.status === 0 ? "ok" : `échec : ${(r.stderr + r.stdout).split("\n").filter(Boolean).slice(-6).join("\n")}`;
+  const changes = fichiersChanges(avant, empreintes(copie));
+  const exceptions = changes.filter((c) => estException(c));
+  const interditsLot = horsDesZonesNiExceptions(changes.filter((c) => c !== "config/jeux/essai.json"));
+  rapport.themesChanges = { fiches: fichesApres, traductions: traductionsApres, fichiersChanges: changes.length, dansZonesDuJeu: changes.length - exceptions.length - interditsLot.length, sortiesDeFiches: exceptions.length, partages: interditsLot };
+  console.log(`lot « thèmes changés » (un thème ajouté, un renommé, deux CLAUDE.md) : ${changes.length} fichier(s) changé(s) ou créé(s), ${exceptions.length} sortie(s) de \`npm run fiches\``);
+  console.log(interditsLot.length === 0 ? "fichiers partagés touchés par le lot : aucun" : `FICHIERS PARTAGÉS TOUCHÉS : ${interditsLot.join(", ")}`);
 
   if (premierePart) {
     r = lancer("npx", ["tsc", "-b"], copie, env, true);
@@ -280,7 +345,7 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   rapport.horsDesZones = dehors;
   console.log(dehors.length === 0 ? "fichiers créés hors des zones du jeu : aucun" : `FICHIERS HORS DES ZONES : ${dehors.join(", ")}`);
   writeFileSync(join(copie, "rapport-jeu-fictif.json"), JSON.stringify(rapport, null, 2));
-  const ok = rapport.horsDesZones.length === 0 && rapport.fiches === "ok" && rapport.typage.statut === 0 && Object.values(rapport.projets).every((p) => p && p.echecs.length === 0);
+  const ok = rapport.horsDesZones.length === 0 && rapport.themesChanges.partages.length === 0 && rapport.themesChanges.fiches === "ok" && rapport.themesChanges.traductions === "ok" && rapport.fiches === "ok" && rapport.typage.statut === 0 && Object.values(rapport.projets).every((p) => p && p.echecs.length === 0);
   if (!args.includes("--garder")) rmSync(copie, { recursive: true, force: true });
   else console.log(`copie gardée : ${copie}`);
   console.log(ok ? "JEU FICTIF : zéro échec" : "JEU FICTIF : des échecs");

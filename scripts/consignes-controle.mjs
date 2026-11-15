@@ -40,7 +40,8 @@ export function fichiersDuDepot() {
 }
 
 export function claudeMd() {
-  return fichiersDuDepot().filter((f) => /(^|\/)CLAUDE\.md$/.test(f));
+  // Lot K7 : tous les CLAUDE.md du dépôt (le test des consignes ne les liste plus à la main), jamais ceux d'un node_modules.
+  return fichiersDuDepot().filter((f) => /(^|\/)CLAUDE\.md$/.test(f) && !f.split("/").includes("node_modules"));
 }
 
 const lire = (f) => readFileSync(join(racine, f), "utf8");

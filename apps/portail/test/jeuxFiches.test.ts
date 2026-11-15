@@ -7,7 +7,7 @@ import { CATALOGUE_PORTAIL } from "../src/catalogue";
 import { FICHES, categorieDuJeu, ficheDuJeu, ficheDuRegistre, titreDeCarte } from "../src/jeuxFiches";
 import { cartes } from "../src/jours";
 import { daysFromCivil } from "@cdj/core";
-import { JEUX_SANS_NOM_DE_THEME, clesManquantes } from "@cdj/core/fiche";
+import { clesManquantes } from "@cdj/core/fiche";
 
 // Lots K1, K1b et K1c : le portail lit la fiche de chaque jeu (Track, Jump, Tower) : cartouches, accroche, titre, nom, filtre du cumul, thèmes du catalogue, tableau de bord.
 const ROOT = join(__dirname, "../../..");
@@ -48,11 +48,20 @@ describe("les cartouches, le catalogue et les noms viennent de la fiche", () => 
   it("chaque fiche a toutes les clés de catalogue qu'elle exige, en français et en anglais : aucune ne manque, aucune ne reste en trop pour ses thèmes", () => {
     const catalogues = { commun: { fr: CATALOGUE_COMMUN.fr, en: CATALOGUE_COMMUN.en }, portail: { fr: CATALOGUE_PORTAIL.fr, en: CATALOGUE_PORTAIL.en } };
     expect(fichesDuDepot.flatMap((f) => clesManquantes(f as never, catalogues))).toEqual([]);
-    // Pas de nom de thème « orphelin » : ceux du catalogue sont exactement les thèmes de la fiche (Track n'en a pas : exception nommée, `JEUX_SANS_NOM_DE_THEME`).
-    for (const f of fichesDuDepot.filter((x) => !JEUX_SANS_NOM_DE_THEME.includes(x.id))) {
-      const cles = (c: Record<string, string>) => Object.keys(c).filter((k) => k.startsWith(`portail.theme.${f.id}.`)).map((k) => k.slice(`portail.theme.${f.id}.`.length)).sort();
-      expect(cles(CATALOGUE_PORTAIL.fr), `thèmes de ${f.id} (fr)`).toEqual([...f.themes].sort());
-      expect(cles(CATALOGUE_PORTAIL.en), `thèmes de ${f.id} (en)`).toEqual([...f.themes].sort());
+  });
+
+  // Lot K7 : les noms des thèmes viennent de la fiche (`nomsThemes`), projetés dans `portail.json` ; le catalogue du portail en fait `portail.theme.<code du jeu>.<thème>`. Chaque thème a son nom dans les deux
+  // langues, aucun nom n'est en trop, et le texte affiché est celui de la fiche (Track y compris : son code au registre est `cdj`).
+  it("chaque thème de chaque fiche a son nom dans le catalogue du portail, en français et en anglais, et aucun n'est en trop", () => {
+    for (const f of fichesDuDepot) {
+      const code = (f as { code?: string }).code ?? f.id;
+      for (const langue of ["fr", "en"] as const) {
+        const catalogue = CATALOGUE_PORTAIL[langue] as Record<string, string>;
+        const prefixe = `portail.theme.${code}.`;
+        const cles = Object.keys(catalogue).filter((k) => k.startsWith(prefixe)).map((k) => k.slice(prefixe.length));
+        expect(cles.sort(), `thèmes de ${f.id} (${langue})`).toEqual([...f.themes].sort());
+        for (const t of f.themes) expect(catalogue[`${prefixe}${t}`], `${f.id} ${t} (${langue})`).toBe(f.nomsThemes[langue][t]);
+      }
     }
   });
 

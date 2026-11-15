@@ -59,6 +59,22 @@
     "nuit",
     "neon"
   ],
+  "nomsThemes": {
+    "fr": {
+      "foret": "Forêt",
+      "usine": "Usine",
+      "glace": "Glace",
+      "nuit": "Nuit",
+      "neon": "Néon"
+    },
+    "en": {
+      "foret": "Forest",
+      "usine": "Factory",
+      "glace": "Ice",
+      "nuit": "Night",
+      "neon": "Neon"
+    }
+  },
   "versions": {
     "sim": "packages/gravity-sim/src/constantes.ts:GRAVITY_SIM_VERSION",
     "generateur": "packages/gravity-sim/src/constantes.ts:GRAVITY_GENERATOR_VERSION",

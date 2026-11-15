@@ -61,6 +61,16 @@
     "clair",
     "sombre"
   ],
+  "nomsThemes": {
+    "fr": {
+      "clair": "Clair (à remplacer)",
+      "sombre": "Sombre (à remplacer)"
+    },
+    "en": {
+      "clair": "Light (to replace)",
+      "sombre": "Dark (to replace)"
+    }
+  },
   "versions": {
     "sim": "packages/pinball-sim/src/constantes.ts:PINBALL_SIM_VERSION",
     "generateur": "packages/pinball-sim/src/constantes.ts:PINBALL_GENERATOR_VERSION"

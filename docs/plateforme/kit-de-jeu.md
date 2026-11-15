@@ -83,7 +83,7 @@ Lecture : « fichiers » = fichiers qui nomment le jeu ; « logique » = ceux qu
 
 - **Un fichier JSON par jeu : `config/jeux/<id>.json`**, avec son type et son contrôle dans `@cdj/core` (`fiche.ts`). JSON, parce que tous les lecteurs le lisent sans compilation (scripts `.mjs`, shell des workflows, Vite, esbuild de l'image) et que le dépôt le fait déjà (`config/lancement.json`, `e2e/zones.json`, `jours-track.json`, `musique/musiques.json`). Un fichier par jeu : un lot de jeu n'écrit que **sa** fiche, sans conflit avec un autre lot.
 - **Aucune requête de plus au chargement** : la fiche est lue **à la construction**. `npm run fiches` en tire de petits fichiers générés, un par lecteur, **versés au dépôt** et vérifiés « à jour » par un test (comme `jetons.css`) : `portail` (nom, ordre, lien, étiquette, thèmes, unité : seulement ce que l'accueil dessine), `serveur` (registre et image), `ci` (zones, specs, budget, matrices), `jeu` (nom, préfixe, scènes). Le portail n'embarque que sa projection, qui remplace les ternaires et tableaux supprimés (marge actuelle : 1 558 o, `portail.premier` de `budgets.md`) ; K1 le mesure.
-- Les textes restent dans les catalogues `fr` + `en` ; la fiche porte les **clés** (`jeu.<id>.nom`, `portail.theme.<id>.<code>`).
+- Les textes restent dans les catalogues `fr` + `en` ; la fiche porte les **clés** (`jeu.<id>.nom`) et, lot K7, **les noms des thèmes eux-mêmes** (`nomsThemes`, fr et en : le portail en fait `portail.theme.<code>.<thème>`).
 
 ### Le schéma proposé
 

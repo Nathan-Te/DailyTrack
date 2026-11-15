@@ -26,7 +26,7 @@ const ALIAS_PRODUCTION = sansTemoins
   : [];
 
 /**
- * Lot K4f : en production, les textes d'un jeu témoin (`jeu.<id>.nom`, `portail.<id>.accroche`, `portail.theme.<id>.<code>`) quittent les catalogues du portail et du socle : une clé par ligne, retirée à la lecture
+ * Lot K4f : en production, les textes d'un jeu témoin (`jeu.<id>.nom`, `portail.<id>.accroche` ; lot K7 : les noms des thèmes sont dans la projection du portail, déjà écrite sans les témoins) quittent les catalogues du portail et du socle : une clé par ligne, retirée à la lecture
  * des fichiers (`config/jeux/projections/ci.json` dit quels jeux sont des témoins). Sans effet hors production (`sansTemoins`).
  */
 function sansCataloguesDesTemoins(): Plugin {

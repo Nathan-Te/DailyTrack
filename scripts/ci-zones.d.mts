@@ -36,6 +36,9 @@ export function graphe(racine?: string): Graphe;
 export function atteint(g: Graphe, test: string): { fichiers: Set<string>; citees: Set<string> };
 export function touche(g: Graphe, test: string, f: string): boolean;
 export function docsLusParLesTests(g: Graphe): Map<string, string[]>;
+/** Lot K7 : le test des consignes, lancé dès qu'un CLAUDE.md change (règle explicite, il ne les cite plus). */
+export const TEST_DES_CONSIGNES: string;
+export function estClaudeMd(fichier: string): boolean;
 export function testsPour(files: string[], g: Graphe, options?: { complet?: boolean; regression?: string[] }): { fichiers: string[]; tous: boolean; docsSeuls: boolean; raisons: string[] };
 export function dureesUnitaires(racine?: string): Record<string, number>;
 export function nombreDeParts(charge: number, cible: number, max: number): number;

@@ -60,6 +60,22 @@
     "nuit",
     "neon"
   ],
+  "nomsThemes": {
+    "fr": {
+      "foret": "Forêt",
+      "usine": "Usine",
+      "glace": "Glace",
+      "nuit": "Nuit",
+      "neon": "Néon"
+    },
+    "en": {
+      "foret": "Forest",
+      "usine": "Factory",
+      "glace": "Ice",
+      "nuit": "Night",
+      "neon": "Neon"
+    }
+  },
   "versions": {
     "sim": "packages/jump-sim/src/constants.ts:JUMP_SIM_VERSION",
     "generateur": "packages/jump-sim/src/constants.ts:JUMP_GENERATOR_VERSION",
