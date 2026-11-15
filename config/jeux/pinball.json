@@ -187,6 +187,11 @@
       "ecrans-kit.spec.ts": [
         "pinball-jeu",
         "ui"
+      ],
+      "rendu.spec.ts": [
+        "pinball-sim",
+        "pinball-jeu",
+        "ui"
       ]
     },
     "parts": {
@@ -210,6 +215,8 @@
       "version-",
       "niveau-",
       "scene-",
+      "corps-",
+      "dessin-",
       "rediffusion-"
     ]
   },

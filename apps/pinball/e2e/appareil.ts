@@ -20,6 +20,10 @@ export interface PorteScene {
   regler(c: number, enfonce: boolean): void;
   tick(): number;
   evenements(): Evenement[];
+  /** Le rendu qui est à l'écran, ce que dessine le rendu three.js (appels, triangles, ms de fil principal par image, où tombent les points du terrain à l'écran : tout est à l'image si |x| ≤ 1 et −1 ≤ y ≤ 1), les vibrations demandées. */
+  qualite(): "haute" | "basse";
+  trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } } | null;
+  vibrations(): number;
 }
 declare global {
   interface Window {

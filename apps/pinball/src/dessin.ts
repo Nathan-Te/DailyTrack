@@ -1,12 +1,14 @@
-import { AXE, DROITE, GAUCHE, HAUTEUR, LARGEUR, MULT_MAX, RAYON, UNITE, pointeDuBatteur, type Partie, type ThemePinball } from "@cdj/pinball-sim";
+import { AXE, DROITE, GAUCHE, HAUTEUR, LARGEUR, MULT_MAX, RAYON, UNITE, pointeDuBatteur, type Partie, type Table, type ThemePinball } from "@cdj/pinball-sim";
 
 // Le rendu À PLAT de « Pinball » (lot PB1) : le dessin « Canvas+ » de la maquette (`docs/pinball/maquettes/pinball-maquette-jouable.html`) — rails avec leur ombre, bumpers à jupe et à yeux, cibles debout, lance-pierres à
 // caoutchouc, batteurs, flèches de tir devant chaque module, nom de chaque module, lampes des couloirs et des multiplicateurs. **Écrit pour être gardé comme rendu de secours** (qualité minimale, petits écrans) quand le
 // rendu three.js du lot PB2 arrivera : il ne connaît que la partie (`Partie`, en lecture) et un canvas ; aucune entrée, aucun DOM autre que le canvas. Les couleurs sont celles de la maquette (palettes des quatre thèmes) :
 // elles passeront aux jetons avec le rendu définitif.
-const ENCRE = "#2A1E16";
-const PAPIER = "#FFF6E0";
-const MOUTARDE = "#E8B23A";
+// **Lot PB2 : ce fichier est aussi la source du SOL du rendu three.js** (`dessinerSol` : bandes, lampes, étiquettes, flèches, dans les palettes des quatre thèmes, posé en texture par `corps.ts`) et des pastilles de nom
+// (`pastille`) : une seule description du sol pour les deux rendus. Il ne charge ni three.js ni rien d'autre que la simulation (types et constantes).
+export const ENCRE = "#2A1E16";
+export const PAPIER = "#FFF6E0";
+export const MOUTARDE = "#E8B23A";
 
 export interface Palette {
   fond: string;
@@ -24,8 +26,168 @@ export const PALETTES: Readonly<Record<ThemePinball, Palette>> = {
   volcan: { fond: "#E8C6A8", fond2: "#E0B796", bumper: "#C2401F", accent: "#5A3A22", cible: "#4A4A52", sling: "#E8B23A", sombre: false },
 };
 /** Le rayon d'un module (px) : la distance où se pose sa flèche et son nom. */
-const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22 };
+export const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22 };
 const TAU = 6.283185307179586;
+
+/** Ce qu'il faut savoir d'une partie pour dessiner son sol : le thème (palette), la table (les modules posés, les couloirs du haut), le nom du thème peint sur la table et la police du jeu. */
+export interface DonneesSol {
+  theme: ThemePinball;
+  table: Table;
+  titre: string;
+  police: string;
+  /** Hors de la table (au-dessus de l'arc) : l'encre pour le rendu à plat ; le bois de la caisse pour le rendu three.js. */
+  hors?: string;
+}
+
+/** Une flèche de tir, à `(x, y)`, tournée de `a`. */
+function fleche(c: CanvasRenderingContext2D, P: Palette, x: number, y: number, a: number): void {
+  c.save();
+  c.translate(x, y);
+  c.rotate(a);
+  c.beginPath();
+  c.moveTo(13, 0);
+  c.lineTo(-7, -11);
+  c.lineTo(-3, 0);
+  c.lineTo(-7, 11);
+  c.closePath();
+  c.fillStyle = P.sombre ? "rgba(255,246,224,.14)" : "rgba(255,255,255,.55)";
+  c.fill();
+  c.lineWidth = 2.5;
+  c.strokeStyle = ENCRE;
+  c.stroke();
+  c.restore();
+}
+
+/** Une pastille de texte (le nom d'un module, « Bille sauvée ! ») : `echelle` la grossit autour de son centre, pour les étiquettes du haut que la perspective rapetisse (lot PB2). */
+export function pastille(c: CanvasRenderingContext2D, police: string, x: number, y: number, texte: string, echelle = 1): void {
+  c.save();
+  c.translate(x, y);
+  c.scale(echelle, echelle);
+  c.font = `700 9px ${police}`;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  const w = c.measureText(texte).width + 10;
+  c.fillStyle = ENCRE;
+  c.beginPath();
+  c.roundRect(-w / 2, -7, w, 14, 3);
+  c.fill();
+  c.fillStyle = PAPIER;
+  c.fillText(texte, 0, 0.5);
+  c.restore();
+}
+
+/** Au-dessus de l'arc : hors de la table. */
+function masque(c: CanvasRenderingContext2D, couleur: string): void {
+  c.save();
+  c.beginPath();
+  c.rect(0, 0, LARGEUR, 205);
+  c.moveTo(20, 205);
+  c.arc(196.25, 205, 176.25, Math.PI, 0, false);
+  c.closePath();
+  c.fillStyle = couleur;
+  c.fill("evenodd");
+  c.restore();
+}
+
+/** Où se pose le nom d'un module sur la table (px) : au-dessous de lui, sans jamais passer sous les lance-pierres. */
+export function placeDuNom(m: { type: string; x: number; y: number }): { x: number; y: number } {
+  const r = RAYON_MODULE[m.type] ?? 30;
+  const y = m.type === "cibles" ? px(m.y) + 22 : px(m.y) + r * (m.type === "bumpers" ? 0.95 : 0.9) + 4;
+  return { x: px(m.x), y: Math.min(y, 470) };
+}
+
+/** Le sol : tout ce qui ne bouge pas et se dessine à plat (bandes, zone des batteurs, nom du thème, flèches, lampes éteintes). Sur un canvas dont l'unité est le pixel de la table (375 × 760). */
+export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
+  const { theme, table: t, titre, police } = d;
+  const P = PALETTES[theme];
+  c.fillStyle = P.fond;
+  c.fillRect(0, 0, LARGEUR, HAUTEUR);
+  c.save();
+  c.globalAlpha = 0.45;
+  c.strokeStyle = P.fond2;
+  c.lineWidth = 14;
+  for (let k = -HAUTEUR; k < LARGEUR + HAUTEUR; k += 36) {
+    c.beginPath();
+    c.moveTo(k, 0);
+    c.lineTo(k - HAUTEUR, HAUTEUR);
+    c.stroke();
+  }
+  c.restore();
+  if (theme === "espace") {
+    c.fillStyle = "#EDE3CF";
+    let a = 12345; // des étoiles qui ne bougent pas : un petit générateur entier, jamais Math.random
+    for (let i = 0; i < 70; i++) {
+      a = (Math.imul(a, 1664525) + 1013904223) >>> 0;
+      const x = (a >>> 8) % LARGEUR;
+      a = (Math.imul(a, 1664525) + 1013904223) >>> 0;
+      c.globalAlpha = 0.25 + ((a >>> 8) % 50) / 100;
+      c.fillRect(x, (a >>> 4) % HAUTEUR, 1.6, 1.6);
+    }
+    c.globalAlpha = 1;
+  }
+  // la zone des batteurs : un sol plus sombre, le danger est en bas
+  c.beginPath();
+  c.moveTo(20, 560);
+  c.lineTo(118, 634);
+  c.lineTo(AXE, 690);
+  c.lineTo(2 * AXE - 118, 634);
+  c.lineTo(348, 560);
+  c.lineTo(348, HAUTEUR);
+  c.lineTo(20, HAUTEUR);
+  c.closePath();
+  c.fillStyle = P.sombre ? "rgba(0,0,0,.28)" : "rgba(42,30,22,.09)";
+  c.fill();
+  c.fillStyle = "#1a120c";
+  c.beginPath();
+  c.ellipse(AXE, HAUTEUR - 4, 46, 20, 0, 0, TAU);
+  c.fill();
+  // le nom du thème, peint sur la table
+  c.save();
+  c.translate(AXE, 512);
+  c.rotate(-0.06);
+  c.font = `700 28px ${police}`;
+  c.textAlign = "center";
+  c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(42,30,22,.10)";
+  c.fillText(titre.toLocaleUpperCase(), 0, 0);
+  c.restore();
+  // une flèche de tir devant chaque module, qui pointe vers lui depuis les batteurs
+  for (const m of t.poses) {
+    const mx = px(m.x);
+    const my = px(m.y);
+    const dx = mx - AXE;
+    const dy = my - 600;
+    const d = Math.hypot(dx, dy);
+    const r = RAYON_MODULE[m.type] ?? 30;
+    fleche(c, P, mx - (dx / d) * (r + 18), my - (dy / d) * (r + 18), Math.atan2(dy, dx));
+  }
+  // les multiplicateurs, au-dessus du trou
+  c.font = `700 10px ${police}`;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  for (let k = 2; k <= MULT_MAX; k++) {
+    const x = AXE + (k - 4) * 26;
+    c.beginPath();
+    c.roundRect(x - 11, 590, 22, 16, 4);
+    c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(255,255,255,.5)";
+    c.fill();
+    c.lineWidth = 2;
+    c.strokeStyle = ENCRE;
+    c.stroke();
+    c.fillStyle = ENCRE;
+    c.fillText(`×${k}`, x, 598.5);
+  }
+  // les lampes des couloirs du haut, éteintes
+  for (const v of t.voies) {
+    c.beginPath();
+    c.arc(px(v.x), px(v.y) + 24, 6, 0, TAU);
+    c.fillStyle = P.sombre ? "rgba(255,246,224,.15)" : "rgba(255,255,255,.55)";
+    c.fill();
+    c.lineWidth = 2;
+    c.strokeStyle = ENCRE;
+    c.stroke();
+  }
+  masque(c, d.hors ?? ENCRE);
+}
 
 export interface Surimpression {
   /** Le pas de la simulation (le compteur de `?debug`). */
@@ -46,9 +208,11 @@ export interface Rendu {
   /** La taille du canvas en pixels CSS, à chaque changement. */
   redimensionner(largeur: number, hauteur: number): void;
   dessiner(s: Surimpression): void;
+  /** Libère ce que le rendu tient (le rendu three.js : ses géométries, ses textures, son contexte WebGL). Absent du rendu à plat. */
+  detruire?(): void;
 }
 
-const px = (u: number): number => u / UNITE;
+export const px = (u: number): number => u / UNITE;
 
 /** Crée le rendu à plat d'une partie. `nom(module)` : le nom du module sur la table (déjà traduit, ou null) ; `titre` : le nom du thème peint sur la table ; `police` : la famille du jeu. */
 export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: ThemePinball, nom: (module: string) => string | null, titre: string, police: string): Rendu {
@@ -98,146 +262,12 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.fill();
     }
   };
-  const fleche = (c: CanvasRenderingContext2D, x: number, y: number, a: number): void => {
-    c.save();
-    c.translate(x, y);
-    c.rotate(a);
-    c.beginPath();
-    c.moveTo(13, 0);
-    c.lineTo(-7, -11);
-    c.lineTo(-3, 0);
-    c.lineTo(-7, 11);
-    c.closePath();
-    c.fillStyle = P.sombre ? "rgba(255,246,224,.14)" : "rgba(255,255,255,.55)";
-    c.fill();
-    c.lineWidth = 2.5;
-    c.strokeStyle = ENCRE;
-    c.stroke();
-    c.restore();
-  };
-  const pastille = (c: CanvasRenderingContext2D, x: number, y: number, texte: string): void => {
-    c.font = `700 9px ${police}`;
-    c.textAlign = "center";
-    c.textBaseline = "middle";
-    const w = c.measureText(texte).width + 10;
-    c.fillStyle = ENCRE;
-    c.beginPath();
-    c.roundRect(x - w / 2, y - 7, w, 14, 3);
-    c.fill();
-    c.fillStyle = PAPIER;
-    c.fillText(texte, x, y + 0.5);
-  };
-  const masque = (c: CanvasRenderingContext2D): void => {
-    // au-dessus de l'arc : hors de la table
-    c.save();
-    c.beginPath();
-    c.rect(0, 0, LARGEUR, 205);
-    c.moveTo(20, 205);
-    c.arc(196.25, 205, 176.25, Math.PI, 0, false);
-    c.closePath();
-    c.fillStyle = ENCRE;
-    c.fill("evenodd");
-    c.restore();
-  };
-
-  /** Le sol : tout ce qui ne bouge pas et se dessine à plat (bandes, zone des batteurs, nom du thème, flèches, noms, lampes éteintes). Dessiné une fois par taille. */
-  function dessinerSol(c: CanvasRenderingContext2D): void {
-    c.fillStyle = P.fond;
-    c.fillRect(0, 0, LARGEUR, HAUTEUR);
-    c.save();
-    c.globalAlpha = 0.45;
-    c.strokeStyle = P.fond2;
-    c.lineWidth = 14;
-    for (let k = -HAUTEUR; k < LARGEUR + HAUTEUR; k += 36) {
-      c.beginPath();
-      c.moveTo(k, 0);
-      c.lineTo(k - HAUTEUR, HAUTEUR);
-      c.stroke();
-    }
-    c.restore();
-    if (theme === "espace") {
-      c.fillStyle = "#EDE3CF";
-      let a = 12345; // des étoiles qui ne bougent pas : un petit générateur entier, jamais Math.random
-      for (let i = 0; i < 70; i++) {
-        a = (Math.imul(a, 1664525) + 1013904223) >>> 0;
-        const x = (a >>> 8) % LARGEUR;
-        a = (Math.imul(a, 1664525) + 1013904223) >>> 0;
-        c.globalAlpha = 0.25 + ((a >>> 8) % 50) / 100;
-        c.fillRect(x, (a >>> 4) % HAUTEUR, 1.6, 1.6);
-      }
-      c.globalAlpha = 1;
-    }
-    // la zone des batteurs : un sol plus sombre, le danger est en bas
-    c.beginPath();
-    c.moveTo(20, 560);
-    c.lineTo(118, 634);
-    c.lineTo(AXE, 690);
-    c.lineTo(2 * AXE - 118, 634);
-    c.lineTo(348, 560);
-    c.lineTo(348, HAUTEUR);
-    c.lineTo(20, HAUTEUR);
-    c.closePath();
-    c.fillStyle = P.sombre ? "rgba(0,0,0,.28)" : "rgba(42,30,22,.09)";
-    c.fill();
-    c.fillStyle = "#1a120c";
-    c.beginPath();
-    c.ellipse(AXE, HAUTEUR - 4, 46, 20, 0, 0, TAU);
-    c.fill();
-    // le nom du thème, peint sur la table
-    c.save();
-    c.translate(AXE, 512);
-    c.rotate(-0.06);
-    c.font = `700 28px ${police}`;
-    c.textAlign = "center";
-    c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(42,30,22,.10)";
-    c.fillText(titre.toLocaleUpperCase(), 0, 0);
-    c.restore();
-    // une flèche de tir devant chaque module, qui pointe vers lui depuis les batteurs
-    for (const m of t.poses) {
-      const mx = px(m.x);
-      const my = px(m.y);
-      const dx = mx - AXE;
-      const dy = my - 600;
-      const d = Math.hypot(dx, dy);
-      const r = RAYON_MODULE[m.type] ?? 30;
-      fleche(c, mx - (dx / d) * (r + 18), my - (dy / d) * (r + 18), Math.atan2(dy, dx));
-    }
-    // les multiplicateurs, au-dessus du trou
-    c.font = `700 10px ${police}`;
-    c.textAlign = "center";
-    c.textBaseline = "middle";
-    for (let k = 2; k <= MULT_MAX; k++) {
-      const x = AXE + (k - 4) * 26;
-      c.beginPath();
-      c.roundRect(x - 11, 590, 22, 16, 4);
-      c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(255,255,255,.5)";
-      c.fill();
-      c.lineWidth = 2;
-      c.strokeStyle = ENCRE;
-      c.stroke();
-      c.fillStyle = ENCRE;
-      c.fillText(`×${k}`, x, 598.5);
-    }
-    // les lampes des couloirs du haut, éteintes
-    for (const v of t.voies) {
-      c.beginPath();
-      c.arc(px(v.x), px(v.y) + 24, 6, 0, TAU);
-      c.fillStyle = P.sombre ? "rgba(255,246,224,.15)" : "rgba(255,255,255,.55)";
-      c.fill();
-      c.lineWidth = 2;
-      c.strokeStyle = ENCRE;
-      c.stroke();
-    }
-    masque(c);
-  }
-
   function noms(c: CanvasRenderingContext2D): void {
     for (const m of t.poses) {
       const n = nom(m.type);
       if (!n) continue;
-      const r = RAYON_MODULE[m.type] ?? 30;
-      const y = m.type === "cibles" ? px(m.y) + 22 : px(m.y) + r * (m.type === "bumpers" ? 0.95 : 0.9) + 4;
-      pastille(c, px(m.x), Math.min(y, 470), n.toLocaleUpperCase());
+      const p = placeDuNom(m);
+      pastille(c, police, p.x, p.y, n.toLocaleUpperCase());
     }
   }
 
@@ -257,7 +287,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     o.height = Math.ceil(HAUTEUR * echelle * dpr);
     const oc = o.getContext("2d")!;
     oc.setTransform(o.width / LARGEUR, 0, 0, o.height / HAUTEUR, 0, 0);
-    dessinerSol(oc);
+    dessinerSol(oc, { theme, table: t, titre, police });
     sol = o;
   }
 
@@ -471,10 +501,10 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.fillStyle = "#fff";
       g.fill();
     }
-    masque(g);
+    masque(g, ENCRE);
     if (s.sauvee > 0) {
       g.globalAlpha = Math.min(1, s.sauvee * 2);
-      pastille(g, AXE, 520 - (1 - s.sauvee) * 16, s.texteSauvee.toLocaleUpperCase());
+      pastille(g, police, AXE, 520 - (1 - s.sauvee) * 16, s.texteSauvee.toLocaleUpperCase());
       g.globalAlpha = 1;
     }
     if (s.debug) debogage(s);
