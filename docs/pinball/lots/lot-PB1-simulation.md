@@ -32,6 +32,7 @@ Branche `claude/pinball-simulation-complete-z6aaam` (le nom du prompt, `claude/p
 ## Vérifié
 - `npx tsc -b` (jeux et paquets) ; tests du paquet (117 : règles — batteurs, lance-pierres, chaque module, couloirs et multiplicateur, lanceur, bille sauvée, fin de partie —, **absence de traversée** (1 500 tirs à 1 500 px/s sur les murs, 1 500 sur les batteurs qui bougent), déterminisme jeu = serveur, golden, rediffusion valide / trafiquée / trop longue, jours figés, **règle des thèmes sur 400 jours**, **absence de flottant**, pureté) ; serveur `apps/api/test/pinball.test.ts` (SQLite) ; fiche, portail, consignes, traductions.
 - E2E Chromium (`apps/pinball`) : `partie.spec.ts` (accueil, pause, partie entière, entrées clavier / souris / touche réassignée, `?jour=`, portrait), `classement.spec.ts` (le vrai serveur : classée, copie refusée, Amis), `determinisme.spec.ts` (golden rejoué dans le navigateur), `poids.spec.ts`, `ecrans-kit.spec.ts` (fin de partie : 15 minutes).
+- **Premier chargement : 42,54 Ko** (plafond `pinball.jsCss` 48 Ko ; la scène et la table sont à la demande) ; `zones-jeu` : 66 fichiers, tous dans les zones ; tests unitaires de `core`, `ui`, `kit`, `musique`, `profile`, du paquet, du portail, du jeu, de `apps/web` (2 548) et de tout `apps/api` (1 021, SQLite) verts en local.
 - Captures regardées (2 sur 5) : table « Fête foraine » en portrait 390 × 844, partie en cours avec `?debug` (`CAPTURES=1 DOSSIER=… npx playwright test captures-lot-pb1`).
 
 ## Non vérifié
