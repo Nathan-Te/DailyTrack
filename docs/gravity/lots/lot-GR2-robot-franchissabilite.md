@@ -23,16 +23,21 @@ Sur les 30 jours du lot (02/11 au 01/12/2026, première boucle et moitié de la 
 - **Milieu** : la plateforme finit assez tôt (`16 − descente − 1`) pour qu'on ait rejoint le sol ou le plafond avant le bout du morceau (13 colonnes de trou à 7 m/s, 8 à 12,5 m/s).
 - **Escalier montant** (arrivée du sol) : à plus de 10 m/s trois vols de 3, 5 et 5 colonnes ne tiennent pas dans 16 : il devient un trou ; l'escalier qui descend reste.
 - **Néon** : la seconde couleur est posée où le vol plafond → sol atterrit (`vol − 1` colonnes après la première), le vide la suit.
-- **Résultat** : TODO_RESULTAT
+- **Résultat** : **30/30 jours** (le test), puis **250/250** (2 280 m chacun) et 400/400 avec la vue précédente, jours du 02/11/2026 à fin 2027, sans un passage sans fenêtre. Fenêtres les plus étroites par motif (250 jours, en pas) : étages 10, escalier 12, milieu 12, îlots 15, inverseur 18, les autres ≥ 23. Pièces : le robot prend **90,5 %** de celles des morceaux traversés (162 932 sur 180 121) ; score moyen d'un jour 20 394 (14 880 à 27 290).
 
 ## Pour Nathan : tester en 2 clics (recette, jamais classé ; le jeu est `off`, l'aperçu de la PR le sert)
 TODO_LIENS
 
 ## Mesures (machine du lot : 4 cœurs, Node 22)
-TODO_MESURES
+- **Budget du robot** : la boucle des cinq thèmes (1 520 m) en **0,98 s en moyenne, 1,38 s au plus** sur 30 jours (Node 22, sandbox à 4 cœurs ; `npm run robot:gravity -w @cdj/gravity-sim -- --jours 30 --distance 1520`). Avec une vue de 160 pas (avant réglage) : 1,3 s en moyenne, 2,2 s au plus : elle a été ramenée à 120 pas, sans effet sur le score (≈ 1 %). La partie complète de 2 280 m demande de 1 à 2,7 s selon le jour.
+- **Coût** : ≈ 0,55 µs par pas simulé, ≈ 200 pas simulés par pas joué (la recherche est mémoïsée sur un graphe d'états en tableaux d'entiers). Sous Vitest il fallait poser les constantes des modules chauds dans des locales (import lu par un accesseur : ×3).
+- **Premier chargement** de `gravity.jsCss` : 45 403 o (plafond 48 Ko, +0,4 Ko : la lecture de `?robot` et `?morceau=` ; le robot est dans le morceau `niveau-`, à la demande).
+- **Tests unitaires** de `packages/gravity-sim` : ≈ 35 s (dont 30 s pour les 36 jours de franchissabilité).
 
 ## Vérifié / non vérifié
-TODO_VERIFIE
+**Vérifié** : `npm run typecheck` ; unitaires de `gravity-sim` (187 avec `apps/gravity` : contraintes d'humain, déterminisme, rediffusion rejouée par le serveur, franchissabilité 30 + 6 jours, seuils figés qui l'emportent sur le robot sans le lancer, golden, absence de flottant, copie de planification), `apps/api/test/gravity.test.ts` (SQLite) ; e2e Chromium de Gravity en local : 26 / 26 (`essais.spec.ts` nouveau) ; budgets ; `npm run fiches`, `traductions`, `consignes`. `npm run verifier` et la CI : voir la PR.
+**Non vérifié** : libSQL en local (CI) ; Firefox / WebKit hors `determinisme.spec.ts` ; **le calcul des seuils dans un navigateur sur téléphone** (non mesuré) ; la preuve ne vaut que pour les jours essayés (650 au total) : un jour futur peut échouer, la mise en production ne le sait pas (aucun test de la chaîne n'appelle le robot) — `npm run robot:gravity` sur la période à venir avant de figer ; le robot n'est pas un humain (il ne se trompe jamais de plus de ±4 pas ; la fenêtre le garantit par construction).
+**Écarts au prompt** : le robot n'utilise pas `Morceau.chemin` (dit ci-dessus) ; la fenêtre éprouvée est de 9 pas (±4) et non 8 ; les jours figés de la v2 du générateur ne se relisent plus (aucun n'existe) ; le test des 30 jours n'est pas en « Régression » (fichier partagé).
 
 ## Décisions et propositions pour Nathan (zones partagées : rien n'y est touché)
 - **`preparer`** (ci-dessus) avant la publication, et **garder les anciennes versions du générateur** dès qu'un jour est figé (`dailyGravity` n'accepte que la version courante : aucun fichier n'existe encore, le jeu est `off`) — comme `GENERATEURS` de Tower.
