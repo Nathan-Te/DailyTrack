@@ -32,7 +32,8 @@ declare global {
   }
 }
 
-export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
+/** L'adresse par défaut joue le rendu de secours (`qualite=basse`) : ces parcours (classement, Amis) ne regardent pas le rendu, et le WebGL logiciel des machines de test ralentit les images. La haute qualité est jouée par `partie.spec.ts` et `rendu.spec.ts`. */
+export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0&qualite=basse`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({ baseURL: "http://localhost:4189", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"] });
   const decalage = Date.UTC(2026, 10, 6, 12) - Date.now();
   await context.addInitScript(
