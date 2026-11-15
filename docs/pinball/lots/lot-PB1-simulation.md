@@ -50,7 +50,11 @@ Le jeu écrit dans le navigateur `pinball:records`, `pinball:reglages`, `pinball
 Aucune hors des exceptions tolérées : la fiche, ses sorties de `npm run fiches` (`fiches.generated.ts`, projections, musique), `docs/plateforme/traductions.md`. `zones` doit être vert.
 
 ## Pour tester en 2 clics (recette, le jeu est `off`, l'aperçu de la PR le sert)
-BASE_APERCU
+Base de l'aperçu de la PR n° 334 : `https://playdujour-recette--pr-334-0390ahi7.web.app` (les liens répondent 200 ; l'aperçu expire 7 jours après la dernière poussée).
+- **Partie normale** (classée sur la base de la recette, thème du 15/11 : Fête foraine) : `/pinball/`
+- **Trois autres tables, un thème chacune** (jamais classées) : `/pinball/?jour=2026-11-16` (Océan), `/pinball/?jour=2026-11-17` (Espace), `/pinball/?jour=2026-11-18` (Volcan)
+- **Les contours de collision** (compteur de pas, score de chaque contact) : `/pinball/?debug`
+- Ce que Nathan regarde : la bille ne traverse rien, les batteurs répondent tout de suite au toucher (une moitié d'écran chacun), le lanceur dose sa force (maintenir puis relâcher), et la partie se retrouve au classement de la recette. Le jeu étant `off`, la page de la recette peut dire « Bientôt » : la clé d'aperçu de la PR s'y pose d'elle-même.
 
 ## Attend les lots suivants
 PB2 : rendu three.js, `?debug&tune`, qualité · PB3 : éléments des thèmes et missions · PB4 : robot, validation des tables, vrais seuils, fantôme Diamant · PB5 : identité (Righteous, illustration, panneau « Aujourd'hui »), textes complets, mentions, publication.
