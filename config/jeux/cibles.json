@@ -61,6 +61,16 @@
     "sable",
     "ardoise"
   ],
+  "nomsThemes": {
+    "fr": {
+      "sable": "Sable",
+      "ardoise": "Ardoise"
+    },
+    "en": {
+      "sable": "Sand",
+      "ardoise": "Slate"
+    }
+  },
   "versions": {
     "sim": "packages/cibles-sim/src/constantes.ts:CIBLES_SIM_VERSION",
     "generateur": "packages/cibles-sim/src/constantes.ts:CIBLES_GENERATOR_VERSION"

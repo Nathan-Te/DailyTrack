@@ -348,6 +348,11 @@ export function docsLusParLesTests(g) {
   return out;
 }
 
+// Lot K7 : le test des consignes (taille, imports, liens) se découvre tous les `CLAUDE.md` du dépôt : il ne les cite plus un par un, donc le graphe ne le relie plus à eux. Règle explicite :
+// un `CLAUDE.md` changé (n'importe lequel, y compris celui d'un jeu neuf) lance ce test.
+export const TEST_DES_CONSIGNES = "apps/portail/test/consignes.test.ts";
+export const estClaudeMd = (f) => /(^|\/)CLAUDE\.md$/.test(f);
+
 const RACINE_TOUT = /^(package(-lock)?\.json|tsconfig(\.[\w-]+)?\.json|vitest\.config\.ts)$/;
 
 /**
@@ -364,7 +369,7 @@ export function testsPour(files, g, { complet = false, regression = [] } = {}) {
   const raisons = new Set();
   for (const f of f2) {
     if (RACINE_TOUT.test(f)) return { fichiers: [...g.tests], tous: true, docsSeuls: false, raisons: [`${f} : configuration racine, tout tourne`] };
-    const touches = g.tests.filter((t) => touche(g, t, f));
+    const touches = g.tests.filter((t) => touche(g, t, f) || (estClaudeMd(f) && t === TEST_DES_CONSIGNES));
     touches.forEach((t) => choix.add(t));
     if (touches.length) raisons.add(`${f} → ${touches.length} fichier(s) de tests`);
   }

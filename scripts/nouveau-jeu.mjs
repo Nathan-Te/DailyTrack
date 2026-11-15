@@ -255,6 +255,12 @@ export async function construireFiche(racine, c, classement, categorie = "jour")
   modele.medailles = { methode: modele.medailles.methode, bareme: [...v.bareme], ...(v.plafondDiamant !== undefined ? { plafondDiamant: v.plafondDiamant } : {}) };
   modele.temoin = false;
   modele.etatDepart = "off";
+  // Lot K7 : **les noms des thèmes sont dans la fiche** (`nomsThemes`, une entrée par code de `themes`, en français et en anglais) : le portail en fait ses clés `portail.theme.<code>.<thème>` à la construction, aucun
+  // catalogue partagé n'est à toucher. Exemple écrit ici : « Clair (à remplacer) » / « Light (to replace) » ; renommer ou ajouter un thème = changer `themes` et `nomsThemes` dans `config/jeux/<id>.json`, puis `npm run fiches`.
+  modele.nomsThemes = {
+    fr: Object.fromEntries(modele.themes.map((t) => [t, `${THEMES_FR[t]} (à remplacer)`])),
+    en: Object.fromEntries(modele.themes.map((t) => [t, `${THEMES_EN[t]} (to replace)`])),
+  };
   // Lot K5 : l'identité (police, motif, illustration) est à choisir d'après une maquette validée par Nathan ; tant qu'un champ vaut « à choisir », le jeu ne passe ni en `preview` ni en `on` (`etatPermis`, test des fiches, administration).
   modele.identite = { police: "à choisir", motif: "à choisir", illustration: "à choisir", aujourdhui: false };
   // Lot A3 : la catégorie se choisit à la création (`jour` par défaut) ; elle naît avec le jeu, sans `categorieDepuis`. Un jeu d'arcade a `classement.cumul: false` (déjà le cas de tout jeu neuf).
@@ -314,17 +320,16 @@ export function entreesMecaniques(racine, c) {
     editerLignes(racine, "packages/ui/src/catalogue.ts", c, (t) => cloner(t, (l) => l.includes('"jeu.cibles.nom"'), (run) => run.map(() => `  "jeu.${c.id}.nom": ${JSON.stringify(c.nom)},`))),
     editerLignes(racine, "packages/ui/src/catalogue.en.ts", c, (t) => cloner(t, (l) => l.includes('"jeu.cibles.nom"'), (run) => run.map(() => `  "jeu.${c.id}.nom": ${JSON.stringify(c.nom)},`))),
   );
-  // Le catalogue du portail réunit les deux langues dans un fichier : la 1ʳᵉ occurrence de chaque clé du modèle est le français, la 2ᵉ l'anglais.
+  // Le catalogue du portail réunit les deux langues dans un fichier : la 1ʳᵉ occurrence de chaque clé du modèle est le français, la 2ᵉ l'anglais. Lot K7 : seule l'accroche y est écrite (les noms des thèmes sont dans la fiche).
   const vus = {};
   ed.push(
     editerLignes(racine, "apps/portail/src/catalogue.ts", c, (t) =>
-      cloner(t, (l) => /"portail\.(cibles\.accroche|theme\.cibles\.[a-z]+)"/.test(l), (run) =>
+      cloner(t, (l) => /"portail\.cibles\.accroche"/.test(l), (run) =>
         run.map((l) => {
           const cle = /"(portail\.[^"]+)"/.exec(l)[1];
           const langue = (vus[cle] = (vus[cle] ?? 0) + 1) === 1 ? "fr" : "en";
           const nouvelle = renommer(cle, c);
-          const theme = cle.startsWith("portail.theme.") ? nouvelle.split(".").pop() : null;
-          const valeur = theme ? (langue === "fr" ? `${THEMES_FR[theme]} (à remplacer)` : `${THEMES_EN[theme]} (to replace)`) : langue === "fr" ? `À remplacer : l'accroche de ${c.nom}.` : `To replace: the tagline of ${c.nom}.`;
+          const valeur = langue === "fr" ? `À remplacer : l'accroche de ${c.nom}.` : `To replace: the tagline of ${c.nom}.`;
           return `  ${JSON.stringify(nouvelle)}: ${JSON.stringify(valeur)},`;
         }),
       ),
@@ -629,7 +634,7 @@ export async function principal(argv) {
     ecrire(plan);
     for (const [cmd, args] of plan.commandes) {
       sortie.push(`$ ${cmd} ${args.join(" ")}`);
-      const r = spawnSync(cmd, args, { cwd: opts.racine, encoding: "utf8", maxBuffer: 1 << 28 });
+      const r = spawnSync(cmd, args, { cwd: opts.racine, encoding: "utf8", maxBuffer: 1 << 28, shell: process.platform === "win32" });
       if (r.status !== 0) throw new Error(`${cmd} ${args.join(" ")} a échoué :\n${(r.stdout + r.stderr).split("\n").slice(-20).join("\n")}`);
     }
     sortie.push(`${relative(process.cwd(), join(opts.racine, "docs", c.id)) || `docs/${c.id}`} : seed.md (vide), consignes.md, passation.md`);

@@ -27,6 +27,7 @@ export const TESTS_DE_LA_PLATEFORME = [
   "packages/ui/test/fiches.test.ts",
   "packages/kit/test",
   "apps/portail/test/jeuxFiches.test.ts",
+  "apps/portail/test/consignes.test.ts", // lot K7 : découvre les CLAUDE.md du jeu généré (aucune liste à tenir)
   "apps/portail/test/budgets.test.ts",
   "apps/portail/test/mentions.test.ts",
   "apps/api/test/fiches.test.ts",
@@ -111,6 +112,45 @@ export function classer(avant, apres, racine, sauve, zonesParJeu) {
   return rapport;
 }
 
+/**
+ * Lot K7 — **un lot de jeu qui change ses thèmes et crée ses CLAUDE.md**, joué sur un jeu généré : un thème ajouté (`aube`), un thème renommé (le nom de `sombre`, dans les deux langues), les deux CLAUDE.md du jeu.
+ * Tout reste dans les zones du jeu (sa fiche, `apps/<id>/src`, ses CLAUDE.md) : les noms des thèmes sont dans la fiche, le catalogue du portail n'est pas touché. Rend la liste des fichiers créés ou réécrits.
+ */
+export function changerLesThemes(copie, id) {
+  const ecrire = (chemin, f) => {
+    const avant = readFileSync(join(copie, chemin), "utf8");
+    const apres = f(avant);
+    if (apres === avant) throw new Error(`${chemin} : rien à changer (le générateur a changé de forme ?)`);
+    writeFileSync(join(copie, chemin), apres);
+    return chemin;
+  };
+  const touches = [];
+  touches.push(
+    ecrire(`config/jeux/${id}.json`, (t) => {
+      const fiche = JSON.parse(t);
+      fiche.themes = [...fiche.themes, "aube"];
+      fiche.nomsThemes.fr = { ...fiche.nomsThemes.fr, sombre: "Nuit (à remplacer)", aube: "Aube (à remplacer)" };
+      fiche.nomsThemes.en = { ...fiche.nomsThemes.en, sombre: "Night (to replace)", aube: "Dawn (to replace)" };
+      fiche.musique = { ...fiche.musique, scenes: [...fiche.musique.scenes, "theme:aube"] };
+      return JSON.stringify(fiche, null, 2) + "\n";
+    }),
+    ecrire(`apps/${id}/src/fiche.ts`, (t) => t.replace('themes: ["clair", "sombre"]', 'themes: ["clair", "sombre", "aube"]')),
+  );
+  for (const [langue, nom, phrase] of [["fr", "Aube (à remplacer)", "À remplacer : une phrase d'accroche pour le thème « Aube »."], ["en", "Dawn (to replace)", "To replace: a tagline for the “Dawn” theme."]])
+    touches.push(
+      ecrire(`apps/${id}/src/catalogue.${langue}.ts`, (t) =>
+        t
+          .replace(/^([ \t]*)"theme\.sombre": .*(\r?\n)/m, (l, marge, fin) => `${l}${marge}"theme.aube": ${JSON.stringify(nom)},${fin}`)
+          .replace(/^([ \t]*)"accueil\.phrase\.sombre": .*(\r?\n)/m, (l, marge, fin) => `${l}${marge}"accueil.phrase.aube": ${JSON.stringify(phrase)},${fin}`),
+      ),
+    );
+  for (const [chemin, titre] of [[`apps/${id}/CLAUDE.md`, `# \`apps/${id}\` : consignes du jeu\n\nChargé quand on lit un fichier de \`apps/${id}\`. Jeu généré par \`npm run nouveau-jeu\` (preuve du kit).\n`], [`packages/${id}-sim/CLAUDE.md`, `# \`packages/${id}-sim\` : consignes\n\nSimulation du jeu \`${id}\`.\n`]]) {
+    writeFileSync(join(copie, chemin), titre);
+    touches.push(chemin);
+  }
+  return touches;
+}
+
 const duree = (t0) => `${((Date.now() - t0) / 1000).toFixed(0)} s`;
 const resume = process.env.GITHUB_STEP_SUMMARY;
 const etapes = [];
@@ -145,6 +185,17 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
     writeFileSync(join(sauve, c), readFileSync(join(copie, c)));
   }
   console.log(`copie : ${copie} (${duree(t0)})`);
+  const changerLesThemesEtRegenerer = (id) => {
+    try {
+      const touches = changerLesThemes(copie, id);
+      console.log(`  ${id} : thèmes changés, fichiers écrits : ${touches.join(", ")}`);
+    } catch (e) {
+      etapes.push({ nom: `${id} : thèmes changés et CLAUDE.md créés`, ok: false, duree: "0 s" });
+      console.log(`  ✗ ${e.message}`);
+      return false;
+    }
+    return lancer(`${id} : npm run fiches après le changement de thèmes`, "npm", ["run", "fiches"], copie) && lancer(`${id} : npm run traductions`, "npm", ["run", "traductions"], copie);
+  };
   let ok = true;
   const etape = (cond) => {
     ok = ok && cond;
@@ -162,6 +213,10 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
     etape(refuse);
   }
   if (ok) etape(lancer("passation remise à jour", "node", ["scripts/nouveau-jeu.mjs", "--id", JEUX[0].id, "--passation"], copie));
+  if (ok) {
+    // Lot K7 : le lot de chaque jeu change ses thèmes et crée ses CLAUDE.md ; la suite (typage, traductions, tests, hors zones) tourne sur ce résultat.
+    for (const j of JEUX) if (ok) etape(changerLesThemesEtRegenerer(j.id));
+  }
   if (ok) etape(lancer("typage", "npx", ["tsc", "-b"], copie));
   if (ok) etape(lancer("traductions à jour", "npm", ["run", "traductions", "--", "--verifier"], copie));
 

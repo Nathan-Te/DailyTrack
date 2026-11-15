@@ -10,29 +10,9 @@ import { SESSIONS, fichiersCharges, importsDe } from "../../../scripts/mesure-je
 // dossier (le racine : toujours) ; chaque ligne coûte des jetons à chaque fois. Les règles qui ne servent qu'à un sujet vivent dans docs/regles/<zone>/,
 // lues à la demande (docs/regles/deplacements.md dit où est chaque règle déplacée). Mesure : `npm run mesure-jetons` ; contrôle : `npm run consignes`.
 const RACINE = join(import.meta.dirname, "../../..");
-// Les CLAUDE.md sont cités ici un par un : une PR qui n'en change qu'un lance donc ce test (CI de PR courte, scripts/ci-zones.mjs : un test se lance pour
-// les documents qu'il cite). Un CLAUDE.md de plus s'ajoute à cette liste.
-const CLAUDE_MD = [
-  "CLAUDE.md",
-  "apps/api/CLAUDE.md",
-  "apps/blocks/CLAUDE.md",
-  "apps/gravity/CLAUDE.md",
-  "apps/jump/CLAUDE.md",
-  "apps/portail/CLAUDE.md",
-  "apps/rush/CLAUDE.md",
-  "apps/tower/CLAUDE.md",
-  "apps/web/CLAUDE.md",
-  "packages/core/CLAUDE.md",
-  "packages/gravity-sim/CLAUDE.md",
-  "packages/jump-sim/CLAUDE.md",
-  "packages/kit/CLAUDE.md",
-  "packages/musique/CLAUDE.md",
-  "packages/profile/CLAUDE.md",
-  "packages/sim/CLAUDE.md",
-  "packages/tower-sim/CLAUDE.md",
-  "packages/ui/CLAUDE.md",
-  "packages/visuels/CLAUDE.md",
-];
+// Lot K7 : les CLAUDE.md se découvrent tout seuls (tous ceux du dépôt, hors node_modules : `claudeMd()`), un jeu neuf n'ajoute plus rien à une liste. Ce test n'en cite donc aucun : c'est
+// `scripts/ci-zones.mjs` (`TEST_DES_CONSIGNES`) qui le lance dès qu'un CLAUDE.md change (apps/web/test/ciZones.test.ts le prouve).
+const CLAUDE_MD: string[] = claudeMd();
 const DOCUMENTS_DEPLACES = "docs/regles/deplacements.md";
 const REGLAGES = ".claude/settings.json";
 /** Plafond, en jetons estimés, de ce qu'une session charge toute seule (mesure du lot T1 + 25 %). */
@@ -42,8 +22,9 @@ const globVersRegExp = (glob: string) =>
   new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*\//g, "\u0001").replace(/\*\*/g, "\u0000").replace(/\*/g, "[^/]*").replace(/\u0001/g, "(?:.*/)?").replace(/\u0000/g, ".*")}$`);
 
 describe("les CLAUDE.md que Claude Code charge", () => {
-  it("la liste du test est celle du dépôt", () => {
-    expect([...claudeMd()].sort()).toEqual([...CLAUDE_MD].sort());
+  it("la liste est découverte dans le dépôt : le racine, les zones partagées et les jeux y sont, aucun fichier d'un node_modules", () => {
+    expect(CLAUDE_MD).toEqual(expect.arrayContaining(["CLAUDE.md", "apps/api/CLAUDE.md", "apps/portail/CLAUDE.md", "packages/core/CLAUDE.md", "packages/ui/CLAUDE.md"]));
+    expect(CLAUDE_MD.filter((f) => f.includes("node_modules"))).toEqual([]);
   });
   it("aucun ne dépasse sa taille (racine : 200 lignes, zone : 300), aucun n'importe un fichier (@…), ne renvoie à un README de lot, et tous leurs liens vivent", () => {
     expect(problemesDeLimites()).toEqual([]);

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CHEMINS_HERITES, JEUX_SANS_NOM_DE_THEME, PREFIXES_HERITES, TABLES_HERITEES, clesDeCatalogue, clesManquantes, lireFiche, prefixesDeZones, projectionCI, projectionJeu, projectionPortail, projectionServeur, validerEnsemble, validerFiche, type FicheJeu } from "../src/fiche";
+import { CHEMINS_HERITES, PREFIXES_HERITES, TABLES_HERITEES, clesDeCatalogue, clesManquantes, lireFiche, prefixesDeZones, projectionCI, projectionJeu, projectionPortail, projectionServeur, validerEnsemble, validerFiche, type FicheJeu } from "../src/fiche";
 import { DOSSIER_FICHES, sorties } from "../src/ficheSorties";
 
 // Lot K1 : la fiche d'un jeu (`config/jeux/<id>.json`) — la validation, TOUTES les fiches présentes, et les fichiers que `npm run fiches` en tire (à jour, comme `jetons.css`).
@@ -251,12 +251,12 @@ describe("Track (lot K1c) : sa fiche", () => {
 });
 
 describe("les projections", () => {
-  it("le portail ne reçoit que ce qu'il dessine (ni zones, ni tables, ni versions, ni thèmes : un octet de plus pèse sur son budget)", () => {
+  it("le portail ne reçoit que ce qu'il dessine (ni zones, ni tables, ni versions, ni codes de thèmes — seulement leurs noms, lot K7 : un octet de plus pèse sur son budget)", () => {
     const p = projectionPortail(fiches());
     // Seul ce qui s'écarte de l'usage est écrit (code ≠ id, titre, accrocheTheme, premierJour, cumul faux, format ≠ temps) : un octet de JSON pèse sur le budget du portail.
-    for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "categorie", "categorieDepuis", "code", "cumul", "format", "id", "illustration", "premierJour", "titre"].includes(k)), j.id).toBe(true);
-    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, categorie: "arcade", format: "hauteur", illustration: true }); // lot K5 : Tower a un fichier d\'illustration, posé sur sa carte du profil ; code = id, absent ; lot A3 : seule l'arcade est écrite (`jour` est l'usage)
-    expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16" }); // code = id, cumul vrai et format `temps` : les défauts, absents
+    for (const j of p.jeux) expect(Object.keys(j).every((k) => ["accroche", "accrocheTheme", "categorie", "categorieDepuis", "code", "cumul", "format", "id", "illustration", "nomsThemes", "premierJour", "titre"].includes(k)), j.id).toBe(true);
+    expect(p.jeux.find((j) => j.id === "tower")).toEqual({ id: "tower", accroche: "portail.tower.accroche", cumul: false, categorie: "arcade", format: "hauteur", illustration: true, nomsThemes: expect.any(Object) }); // lot K5 : Tower a un fichier d\'illustration, posé sur sa carte du profil ; code = id, absent ; lot A3 : seule l'arcade est écrite (`jour` est l'usage)
+    expect(p.jeux.find((j) => j.id === "jump")).toEqual({ id: "jump", accroche: "portail.jump.accroche", titre: "jeu.jump.titre", accrocheTheme: "jump.replique.", premierJour: "2026-10-16", nomsThemes: expect.any(Object) }); // code = id, cumul vrai et format `temps` : les défauts, absents
   });
   // Lot K4e : les trois jeux livrés (leurs listes historiques sont écrites en toutes lettres) ; les listes de TOUTES les fiches sont vérifiées juste après.
   const trois = () => ["track", "jump", "tower"].map((id) => lireFiche(brut(id), id));
@@ -351,16 +351,32 @@ describe("un jeu témoin (lot K4e)", () => {
 });
 
 describe("les clés de catalogue qu'une fiche exige (lot K4e)", () => {
-  it("le nom, l'accroche, le titre s'il y en a un, un nom par thème (sauf Track) et une réplique par thème pour une accroche par thème", () => {
+  // Lot K7 : les noms des thèmes ne sont plus des clés de catalogue : la fiche les porte (`nomsThemes`), le portail en fait ses clés.
+  it("le nom, l'accroche, le titre s'il y en a un et une réplique par thème pour une accroche par thème ; plus aucun nom de thème (il est dans la fiche)", () => {
     const tower = clesDeCatalogue(lireFiche(brut("tower"), "tower")).map((c) => c.cle);
-    expect(tower).toEqual(["jeu.tower.nom", "portail.tower.accroche", ...["port", "chantier", "canyon", "banquise", "jungle", "nuit"].map((t) => `portail.theme.tower.${t}`)]);
+    expect(tower).toEqual(["jeu.tower.nom", "portail.tower.accroche"]);
     const jump = clesDeCatalogue(lireFiche(brut("jump"), "jump")).map((c) => c.cle);
     expect(jump).toContain("jeu.jump.titre");
     expect(jump).toContain("jump.replique.foret");
-    expect(jump).toContain("portail.theme.jump.neon");
-    const track = clesDeCatalogue(lireFiche(brut("track"), "track")).map((c) => c.cle);
-    expect(track.some((k) => k.startsWith("portail.theme.track."))).toBe(false);
-    expect(JEUX_SANS_NOM_DE_THEME).toEqual(["track"]);
+    for (const id of ["track", "jump", "tower"]) expect(clesDeCatalogue(lireFiche(brut(id), id)).some((c) => c.cle.startsWith("portail.theme."))).toBe(false);
+  });
+  it("lot K7 : une fiche nomme chacun de ses thèmes en français et en anglais, ni plus ni moins", () => {
+    const sans = (modifie: (f: Record<string, any>) => void) => {
+      const f = brut("tower");
+      modifie(f);
+      return validerFiche(f, "tower").join(" | ");
+    };
+    expect(sans((f) => delete f.nomsThemes)).toContain("nomsThemes");
+    expect(sans((f) => delete f.nomsThemes.en.port)).toContain("nomsThemes.en.port");
+    expect(sans((f) => (f.nomsThemes.fr.nuit = " "))).toContain("nomsThemes.fr.nuit");
+    expect(sans((f) => (f.nomsThemes.fr.orphelin = "Orphelin"))).toContain("nomsThemes.fr.orphelin");
+    expect(sans((f) => f.themes.push("neige"))).toContain("nomsThemes.fr.neige");
+    expect(validerFiche(brut("tower"), "tower")).toEqual([]);
+  });
+  it("lot K7 : le portail reçoit les noms des thèmes de chaque jeu dans sa projection", () => {
+    const tower = lireFiche(brut("tower"), "tower");
+    expect(projectionPortail([tower]).jeux[0]!.nomsThemes).toEqual(tower.nomsThemes);
+    expect(Object.keys(tower.nomsThemes.fr)).toEqual(tower.themes);
   });
   it("une clé manquante donne une phrase qui nomme la fiche, la clé, le catalogue et la langue", () => {
     const f = lireFiche(brut("tower"), "tower");

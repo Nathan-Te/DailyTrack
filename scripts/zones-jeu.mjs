@@ -30,12 +30,28 @@ export const EXCEPTIONS = [
   "docs/plateforme/budgets.md",
   "packages/ui/test/applications.ts",
   "docs/plateforme/traductions.md",
+  // Lot K7 : **toutes** les sorties de `npm run fiches` (le test de packages/core/test/fiches.test.ts compare cette liste aux fichiers que la commande écrit, variantes de production comprises) : un jeu qui change
+  // sa fiche (ses thèmes, ses couleurs) ne sort jamais de ses zones pour ce que la commande en tire.
   "config/jeux/projections/**",
   "apps/api/src/fiches.generated.ts",
+  "apps/api/src/registre.generated.ts",
+  "apps/api/scripts/essais.generated.ts",
+  "apps/portail/src/jeux.generated.css",
+  "apps/portail/src/jeux.production.generated.css",
   "packages/core/src/fiches.generated.ts",
+  "packages/core/src/fiches.production.generated.ts",
   "packages/profile/src/fiches.generated.ts",
+  "packages/profile/src/fiches.production.generated.ts",
   "packages/ui/src/fiches.generated.ts",
+  "packages/ui/src/fiches.production.generated.ts",
+  "packages/ui/src/jeux.generated.css",
+  "packages/ui/src/jeux.production.generated.css",
+  "packages/ui/src/jeux.structure.generated.css",
+  "packages/ui/src/amis.generated.css",
+  "packages/ui/src/identites/*.generated.css",
   "packages/musique/src/fiches.generated.ts",
+  "packages/musique/src/fiches.production.generated.ts",
+  "scripts/catalogues-jeux.generated.ts",
 ];
 
 function globToRegExp(glob) {
@@ -66,6 +82,9 @@ export function jeuDeLaPr({ etiquettes = [], branche = "" } = {}) {
   if (parBranche.length === 1) return { jeu: parBranche[0], source: `branche « ${branche} »` };
   return { jeu: null, source: parBranche.length > 1 ? `branche « ${branche} » (deux jeux : plateforme)` : "aucune étiquette de jeu ni jeu dans le nom de branche" };
 }
+
+/** Ce chemin est-il une exception tolérée à toute PR de jeu (documents tenus à jour, sorties de `npm run fiches`) ? */
+export const estException = (chemin) => correspond(EXCEPTIONS, normaliser(chemin));
 
 /** Les fichiers changés qui sortent des zones de ce jeu (et de ses exceptions). */
 export function horsZones(jeu, fichiers) {

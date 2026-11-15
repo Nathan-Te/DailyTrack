@@ -57,6 +57,18 @@
     "carriere",
     "sousbois"
   ],
+  "nomsThemes": {
+    "fr": {
+      "prairie": "Prairie",
+      "carriere": "Carrière",
+      "sousbois": "Sous-bois"
+    },
+    "en": {
+      "prairie": "Meadow",
+      "carriere": "Quarry",
+      "sousbois": "Woods"
+    }
+  },
   "versions": {
     "sim": "packages/rush-sim/src/constantes.ts:RUSH_SIM_VERSION",
     "generateur": "packages/rush-sim/src/constantes.ts:RUSH_GENERATOR_VERSION"

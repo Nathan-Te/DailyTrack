@@ -1,8 +1,12 @@
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { categoriesOf } from "../../../scripts/ci-scope.mjs";
 import { FICHES_CI } from "../../../scripts/fiches-lecture.mjs";
-import { EXCEPTIONS, JEUX, ZONES, horsZones, jeuDeLaPr, verifierZones } from "../../../scripts/zones-jeu.mjs";
+import { EXCEPTIONS, JEUX, ZONES, estException, horsZones, jeuDeLaPr, verifierZones } from "../../../scripts/zones-jeu.mjs";
+import { lireFichesBrutes } from "../../../scripts/fiches-brutes.mjs";
+import { lireFiche } from "../../../packages/core/src/fiche";
+import { sorties } from "../../../packages/core/src/ficheSorties";
 
 // Retouche du lot I6 — « Lots en parallèle » (docs/orchestration.md) : une PR de jeu ne sort pas de ses zones.
 const racine = new URL("../../../", import.meta.url);
@@ -71,16 +75,31 @@ describe("les zones", () => {
   it("les exceptions tolérées, et rien d'autre", () => {
     for (const jeu of JEUX) expect(horsZones(jeu, EXCEPTIONS), jeu).toEqual([]);
     // Lot K1 : s'y ajoutent ce que `npm run fiches` écrit (projections et vues générées des paquets), qui change mécaniquement avec la fiche d'un jeu.
+    // Lot K7 : et toutes les sorties de `npm run fiches` (packages/core/test/fiches.test.ts compare la liste aux fichiers que la commande écrit).
     expect([...EXCEPTIONS].sort()).toEqual([
+      "apps/api/scripts/essais.generated.ts",
       "apps/api/src/fiches.generated.ts",
+      "apps/api/src/registre.generated.ts",
+      "apps/portail/src/jeux.generated.css",
+      "apps/portail/src/jeux.production.generated.css",
       "config/jeux/projections/**",
       "docs/plateforme/budgets.md",
       "docs/plateforme/traductions.md",
       "packages/core/src/fiches.generated.ts",
+      "packages/core/src/fiches.production.generated.ts",
       "packages/musique/src/fiches.generated.ts",
+      "packages/musique/src/fiches.production.generated.ts",
       "packages/profile/src/fiches.generated.ts",
+      "packages/profile/src/fiches.production.generated.ts",
+      "packages/ui/src/amis.generated.css",
       "packages/ui/src/fiches.generated.ts",
+      "packages/ui/src/fiches.production.generated.ts",
+      "packages/ui/src/identites/*.generated.css",
+      "packages/ui/src/jeux.generated.css",
+      "packages/ui/src/jeux.production.generated.css",
+      "packages/ui/src/jeux.structure.generated.css",
       "packages/ui/test/applications.ts",
+      "scripts/catalogues-jeux.generated.ts",
     ]);
   });
 
@@ -139,5 +158,20 @@ describe("cohérence avec la portée de la CI (scripts/ci-scope.mjs)", () => {
       const serveur: string[] = FICHES_CI.find((f) => f.id === jeu)?.zones.serveur ?? [];
       for (const g of ZONES[jeu].filter((g) => !g.startsWith("apps/api/"))) expect(categoriesOf(g.replace("**", "a/b.ts")), g).toEqual(serveur.includes(g) ? [jeu, "plateforme"] : [jeu]);
     }
+  });
+});
+
+// Lot K7 : un jeu qui change sa fiche reste dans ses zones. Les seules sorties mécaniques permises sont celles de `npm run fiches` : la liste des exceptions du job des zones (`scripts/zones-jeu.mjs`)
+// les couvre toutes (variantes de production comprises), et ne cite rien que la commande n'écrive plus.
+describe("les exceptions du job des zones et les sorties de `npm run fiches` (lot K7)", () => {
+  const fiches = lireFichesBrutes(fileURLToPath(racine)).map((x: { brut: unknown; id: string }) => lireFiche(x.brut, x.id));
+  const ecrites = Object.keys(sorties(fiches, () => true));
+  it("chaque fichier que `npm run fiches` écrit est une exception tolérée à une PR de jeu", () => {
+    expect(ecrites.filter((c) => !estException(c))).toEqual([]);
+  });
+  it("chaque exception qui désigne un fichier produit en désigne un que la commande écrit encore (sauf les documents tenus à jour à la main)", () => {
+    const produites = EXCEPTIONS.filter((e) => /generated|projections/.test(e));
+    expect(produites.length).toBeGreaterThan(10);
+    for (const e of produites) expect(ecrites.some((c) => estException(c) && (c === e || e.includes("*"))), e).toBe(true);
   });
 });

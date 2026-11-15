@@ -687,45 +687,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.accueil` | Bienvenue ! Un jeu par jour, le même pour tous : choisis ta première cartouche. | Welcome! One game a day, the same for everyone: pick your first cartridge. |
 | `portail.horsLigne` | Serveur injoignable : tes statuts reviendront dès qu'il répondra. | Can't reach the server: your progress will show up once it's back. |
 | `portail.delai` | Le serveur ne répond pas : tes statuts reviendront plus tard. | The server isn't answering: your progress will show up later. |
-| `portail.theme.cdj.stade` | Stade | Stadium |
-| `portail.theme.cdj.rallye` | Rallye | Rally |
-| `portail.theme.cdj.banquise` | Banquise | Ice floe |
-| `portail.theme.cdj.nuit` | Nuit | Night |
-| `portail.theme.cdj.campagne` | Campagne | Countryside |
-| `portail.theme.cdj.canyon` | Canyon | Canyon |
-| `portail.theme.cdj.col` | Col alpin | Mountain pass |
-| `portail.theme.cdj.ville` | Ville | City |
-| `portail.theme.jump.foret` | Forêt | Forest |
-| `portail.theme.jump.usine` | Usine | Factory |
-| `portail.theme.jump.glace` | Glace | Ice |
-| `portail.theme.jump.nuit` | Nuit | Night |
-| `portail.theme.jump.neon` | Néon | Neon |
-| `portail.theme.tower.port` | Port | Harbour |
-| `portail.theme.tower.chantier` | Chantier | Building site |
-| `portail.theme.tower.canyon` | Canyon | Canyon |
-| `portail.theme.tower.banquise` | Banquise | Ice floe |
-| `portail.theme.tower.jungle` | Jungle | Jungle |
-| `portail.theme.tower.nuit` | Nuit | Night |
-| `portail.theme.cibles.sable` | Sable | Sand |
-| `portail.theme.cibles.ardoise` | Ardoise | Slate |
-| `portail.theme.pinball.clair` | Clair (à remplacer) | Light (to replace) |
-| `portail.theme.pinball.sombre` | Sombre (à remplacer) | Dark (to replace) |
-| `portail.theme.gravity.foret` | Forêt | Forest |
-| `portail.theme.gravity.usine` | Usine | Factory |
-| `portail.theme.gravity.glace` | Glace | Ice |
-| `portail.theme.gravity.nuit` | Nuit | Night |
-| `portail.theme.gravity.neon` | Néon | Neon |
-| `portail.theme.vertige.clair` | Clair (à remplacer) | Light (to replace) |
-| `portail.theme.vertige.sombre` | Sombre (à remplacer) | Dark (to replace) |
-| `portail.theme.rush.prairie` | Prairie | Meadow |
-| `portail.theme.rush.carriere` | Carrière | Quarry |
-| `portail.theme.rush.sousbois` | Sous-bois | Woods |
-| `portail.theme.blocks.port` | Port | Harbour |
-| `portail.theme.blocks.chantier` | Chantier | Building site |
-| `portail.theme.blocks.canyon` | Canyon | Canyon |
-| `portail.theme.blocks.banquise` | Banquise | Ice floe |
-| `portail.theme.blocks.jungle` | Jungle | Jungle |
-| `portail.theme.blocks.nuit` | Nuit | Night |
 | `portail.journee` | Journée {numero} | Day {numero} |
 | `portail.classement.legende` | Classement du jour | Today's leaderboard |
 | `portail.classement.cumul` | {temps} cumulés | {temps} combined |
@@ -787,6 +748,45 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.groupe.ligne` | {membres} · {rang} | {membres} · {rang} |
 | `portail.groupe.voir` | Voir le groupe | View the group |
 | `portail.groupe.aucun` | Créer ou rejoindre un groupe › | Create or join a group › |
+| `portail.theme.cdj.stade` | Stade | Stadium |
+| `portail.theme.cdj.rallye` | Rallye | Rally |
+| `portail.theme.cdj.banquise` | Banquise | Ice floe |
+| `portail.theme.cdj.nuit` | Nuit | Night |
+| `portail.theme.cdj.campagne` | Campagne | Countryside |
+| `portail.theme.cdj.canyon` | Canyon | Canyon |
+| `portail.theme.cdj.col` | Col alpin | Mountain pass |
+| `portail.theme.cdj.ville` | Ville | City |
+| `portail.theme.jump.foret` | Forêt | Forest |
+| `portail.theme.jump.usine` | Usine | Factory |
+| `portail.theme.jump.glace` | Glace | Ice |
+| `portail.theme.jump.nuit` | Nuit | Night |
+| `portail.theme.jump.neon` | Néon | Neon |
+| `portail.theme.tower.port` | Port | Harbour |
+| `portail.theme.tower.chantier` | Chantier | Building site |
+| `portail.theme.tower.canyon` | Canyon | Canyon |
+| `portail.theme.tower.banquise` | Banquise | Ice floe |
+| `portail.theme.tower.jungle` | Jungle | Jungle |
+| `portail.theme.tower.nuit` | Nuit | Night |
+| `portail.theme.cibles.sable` | Sable | Sand |
+| `portail.theme.cibles.ardoise` | Ardoise | Slate |
+| `portail.theme.blocks.port` | Port | Harbour |
+| `portail.theme.blocks.chantier` | Chantier | Building site |
+| `portail.theme.blocks.canyon` | Canyon | Canyon |
+| `portail.theme.blocks.banquise` | Banquise | Ice floe |
+| `portail.theme.blocks.jungle` | Jungle | Jungle |
+| `portail.theme.blocks.nuit` | Nuit | Night |
+| `portail.theme.rush.prairie` | Prairie | Meadow |
+| `portail.theme.rush.carriere` | Carrière | Quarry |
+| `portail.theme.rush.sousbois` | Sous-bois | Woods |
+| `portail.theme.vertige.clair` | Clair (à remplacer) | Light (to replace) |
+| `portail.theme.vertige.sombre` | Sombre (à remplacer) | Dark (to replace) |
+| `portail.theme.gravity.foret` | Forêt | Forest |
+| `portail.theme.gravity.usine` | Usine | Factory |
+| `portail.theme.gravity.glace` | Glace | Ice |
+| `portail.theme.gravity.nuit` | Nuit | Night |
+| `portail.theme.gravity.neon` | Néon | Neon |
+| `portail.theme.pinball.clair` | Clair (à remplacer) | Light (to replace) |
+| `portail.theme.pinball.sombre` | Sombre (à remplacer) | Dark (to replace) |
 
 ### Profil (`profil.*`, `apps/portail/src/cataloguePages.ts`)
 

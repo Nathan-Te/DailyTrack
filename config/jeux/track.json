@@ -70,6 +70,28 @@
     "col",
     "ville"
   ],
+  "nomsThemes": {
+    "fr": {
+      "stade": "Stade",
+      "rallye": "Rallye",
+      "banquise": "Banquise",
+      "nuit": "Nuit",
+      "campagne": "Campagne",
+      "canyon": "Canyon",
+      "col": "Col alpin",
+      "ville": "Ville"
+    },
+    "en": {
+      "stade": "Stadium",
+      "rallye": "Rally",
+      "banquise": "Ice floe",
+      "nuit": "Night",
+      "campagne": "Countryside",
+      "canyon": "Canyon",
+      "col": "Mountain pass",
+      "ville": "City"
+    }
+  },
   "versions": {
     "sim": "packages/sim/src/constants.ts:SIM_VERSION",
     "generateur": "packages/sim/src/constants.ts:GENERATOR_VERSION"

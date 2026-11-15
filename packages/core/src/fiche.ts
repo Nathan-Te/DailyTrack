@@ -116,8 +116,13 @@ export interface FicheJeu {
   };
   medailles: { methode: MethodeMedailles; bareme: number[]; plafondDiamant?: number };
   partage: { extras: ("morts" | "vies" | "rang")[] };
-  /** Les codes des thèmes ; les textes sont `portail.theme.<id>.<code>` dans le catalogue du portail. */
+  /** Les codes des thèmes. */
   themes: string[];
+  /**
+   * Lot K7 : le nom de chaque thème, en français et en anglais (une entrée par code de `themes`, ni plus ni moins). `npm run fiches` les projette dans `portail.json` ; le portail en fait les clés
+   * `portail.theme.<code du jeu>.<thème>` de son catalogue. Un jeu qui ajoute, renomme ou retire un thème reste donc dans ses zones.
+   */
+  nomsThemes: { fr: Record<string, string>; en: Record<string, string> };
   /** `fichier:constante` des versions que la plateforme lit (lot K2) : un test vérifie que chacune existe. */
   versions: { sim: string; generateur: string; medailles?: string };
   jours: {
@@ -323,6 +328,18 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   if (!estObjet(f.partage) || !Array.isArray(f.partage.extras) || !f.partage.extras.every((x) => x === "morts" || x === "vies" || x === "rang")) ko("partage.extras", "une liste parmi morts, vies, rang");
 
   if (!Array.isArray(f.themes) || f.themes.length === 0 || !f.themes.every((x) => typeof x === "string" && /^[a-z][a-z0-9-]*$/.test(x)) || new Set(f.themes).size !== f.themes.length) ko("themes", "des codes uniques (a-z, chiffres, tirets), au moins un");
+  // Lot K7 : un nom par thème, dans les deux langues, et aucun nom pour un thème qui n'existe pas.
+  if (!estObjet(f.nomsThemes)) ko("nomsThemes", "{ fr, en } : un nom par thème, dans chaque langue");
+  else
+    for (const langue of ["fr", "en"] as const) {
+      const noms = (f.nomsThemes as Record<string, unknown>)[langue];
+      if (!estObjet(noms)) ko(`nomsThemes.${langue}`, "objet { code du thème: nom }");
+      else {
+        const codes = Array.isArray(f.themes) ? (f.themes as string[]) : [];
+        for (const t of codes) if (typeof noms[t] !== "string" || (noms[t] as string).trim() === "") ko(`nomsThemes.${langue}.${t}`, "le nom du thème (texte non vide)");
+        for (const k of Object.keys(noms)) if (!codes.includes(k)) ko(`nomsThemes.${langue}.${k}`, "ce thème n'est pas dans `themes` : retirer son nom");
+      }
+    }
 
   const v = f.versions;
   if (!estObjet(v) || typeof v.sim !== "string" || !FICHIER_VERSION.test(v.sim) || typeof v.generateur !== "string" || !FICHIER_VERSION.test(v.generateur) || (v.medailles !== undefined && (typeof v.medailles !== "string" || !FICHIER_VERSION.test(v.medailles)))) ko("versions", "{ sim, generateur, medailles? } au format fichier.ts:CONSTANTE");
@@ -517,6 +534,8 @@ export interface ProjectionPortail {
     titre?: string;
     /** Lot K1b : le préfixe des clés d'accroche par thème (Jump), absent sinon. */
     accrocheTheme?: string;
+    /** Lot K7 : le nom de chaque thème (fr, en) : le portail en fait `portail.theme.<code>.<thème>`. */
+    nomsThemes: FicheJeu["nomsThemes"];
     /** Lot K1b : le premier jour (`AAAA-MM-JJ`) d'un jeu public d'emblée (`etatDepart: on`), dont la cartouche affiche un numéro sans attendre le serveur ; absent : le serveur seul donne le numéro (un jeu `off` à l'arrivée). */
     premierJour?: string;
     /** Absent : vrai (un jeu au temps entre dans le cumul) ; `false` pour un jeu hors du cumul. */
@@ -539,6 +558,7 @@ export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortai
       accroche: f.accroche,
       ...(f.titre !== undefined ? { titre: f.titre } : {}),
       ...(f.accrocheTheme !== undefined ? { accrocheTheme: f.accrocheTheme } : {}),
+      nomsThemes: f.nomsThemes,
       ...(f.etatDepart === "on" ? { premierJour: f.premierJour } : {}),
       ...(f.classement.cumul ? {} : { cumul: false }),
       ...(f.categorie === "arcade" ? { categorie: "arcade" as const } : {}),
@@ -691,16 +711,13 @@ export function projectionJeu(fiches: readonly FicheJeu[]): ProjectionJeu {
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Lot K4e — les clés de catalogue qu'un jeu doit fournir
 
-/** Les jeux dont la cartouche du portail ne nomme pas les thèmes (exception nommée, avant la règle : Track n'a pas de `portail.theme.track.*`). */
-export const JEUX_SANS_NOM_DE_THEME: readonly string[] = ["track"];
-
 export interface CleDeCatalogue {
   /** Le catalogue qui la porte : le commun de `@cdj/ui`, celui du portail, ou l'un des deux (un titre de cartouche). */
   catalogue: "commun" | "portail" | "commun-ou-portail";
   cle: string;
 }
 /**
- * **Les clés de catalogue qu'une fiche exige** (fr ET en) : le nom du jeu (`jeu.<id>.nom`), son accroche, son titre s'il en a un, un nom par thème (`portail.theme.<id>.<code>`) et, pour une accroche par thème,
+ * **Les clés de catalogue qu'une fiche exige** (fr ET en) : le nom du jeu (`jeu.<id>.nom`), son accroche, son titre s'il en a un, et, pour une accroche par thème,
  * la réplique de chaque thème. Le générateur d'un jeu neuf les écrit ; `clesManquantes` les vérifie pour chaque fiche, en nommant la fiche et la clé.
  */
 export function clesDeCatalogue(f: Pick<FicheJeu, "id" | "accroche" | "titre" | "themes" | "accrocheTheme">): CleDeCatalogue[] {
@@ -708,7 +725,6 @@ export function clesDeCatalogue(f: Pick<FicheJeu, "id" | "accroche" | "titre" | 
     { catalogue: "commun", cle: `jeu.${f.id}.nom` },
     { catalogue: "portail", cle: f.accroche },
     ...(f.titre ? [{ catalogue: "commun-ou-portail" as const, cle: f.titre }] : []),
-    ...(JEUX_SANS_NOM_DE_THEME.includes(f.id) ? [] : f.themes.map((t) => ({ catalogue: "portail" as const, cle: `portail.theme.${f.id}.${t}` }))),
     ...(f.accrocheTheme ? f.themes.map((t) => ({ catalogue: "commun" as const, cle: `${f.accrocheTheme}${t}` })) : []),
   ];
 }

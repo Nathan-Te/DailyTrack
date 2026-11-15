@@ -70,6 +70,24 @@
     "jungle",
     "nuit"
   ],
+  "nomsThemes": {
+    "fr": {
+      "port": "Port",
+      "chantier": "Chantier",
+      "canyon": "Canyon",
+      "banquise": "Banquise",
+      "jungle": "Jungle",
+      "nuit": "Nuit"
+    },
+    "en": {
+      "port": "Harbour",
+      "chantier": "Building site",
+      "canyon": "Canyon",
+      "banquise": "Ice floe",
+      "jungle": "Jungle",
+      "nuit": "Night"
+    }
+  },
   "versions": {
     "sim": "packages/blocks-sim/src/constantes.ts:BLOCKS_SIM_VERSION",
     "generateur": "packages/blocks-sim/src/constantes.ts:BLOCKS_GENERATOR_VERSION",

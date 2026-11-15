@@ -264,6 +264,17 @@ describe("les tests unitaires d'une PR (graphe des imports)", () => {
     }
   });
 
+  // Lot K7 : le test des consignes découvre les CLAUDE.md tout seul ; c'est ci-zones qui sait qu'un CLAUDE.md changé le lance (règle explicite, plus une citation).
+  it("une PR qui ne change que le CLAUDE.md d'un jeu (ou celui d'un jeu neuf) lance le test des consignes", () => {
+    for (const f of ["apps/tower/CLAUDE.md", "packages/tower-sim/CLAUDE.md", "apps/jeu-neuf/CLAUDE.md", "packages/jeu-neuf-sim/CLAUDE.md", "CLAUDE.md"]) {
+      const r = testsPour([f], g);
+      expect(r.fichiers, f).toContain("apps/portail/test/consignes.test.ts");
+      expect(r.docsSeuls, f).toBe(true);
+    }
+    // et un document ordinaire ne le lance pas
+    expect(testsPour(["docs/plateforme/synthese.md"], g).fichiers).not.toContain("apps/portail/test/consignes.test.ts");
+  });
+
   it("un workflow lance les tests qui le lisent", () => {
     const r = testsPour([".github/workflows/ci.yml"], g).fichiers;
     expect(r).toEqual(expect.arrayContaining(["apps/web/test/e2eParts.test.ts", "apps/jump/test/ciE2e.test.ts", "apps/tower/test/ciE2e.test.ts", "apps/web/test/ciZones.test.ts"]));
