@@ -282,6 +282,36 @@
         "theme:nuit",
         "theme:neon"
       ]
+    },
+    {
+      "id": "pinball",
+      "code": "pinball",
+      "ordre": 10,
+      "nom": {
+        "fr": "Pinball",
+        "en": "Pinball"
+      },
+      "etiquette": {
+        "fond": "#C9B6F2",
+        "coque": "#5B3FA0",
+        "police": "\"Righteous\", \"Archivo\", sans-serif",
+        "dessin": "generique"
+      },
+      "etatDepart": "off",
+      "format": "entier",
+      "unite": "points",
+      "prefixe": "pinball:",
+      "messageOu": "pinball",
+      "zoneNouveautes": "pinball",
+      "themes": [
+        "clair",
+        "sombre"
+      ],
+      "scenes": [
+        "menu",
+        "theme:clair",
+        "theme:sombre"
+      ]
     }
   ],
   "publics": [
@@ -296,7 +326,8 @@
     "blocks:",
     "rush:",
     "vertige:",
-    "gravity:"
+    "gravity:",
+    "pinball:"
   ],
   "ou": [
     "portail",
@@ -307,7 +338,8 @@
     "blocks",
     "rush",
     "vertige",
-    "gravity"
+    "gravity",
+    "pinball"
   ],
   "zones": [
     "dujour",
@@ -318,7 +350,8 @@
     "blocks",
     "rush",
     "vertige",
-    "gravity"
+    "gravity",
+    "pinball"
   ],
   "nomsDeZones": {
     "dujour": "Du Jour",
@@ -329,6 +362,7 @@
     "blocks": "Blocks",
     "rush": "Rush",
     "vertige": "Vertige",
-    "gravity": "Gravity"
+    "gravity": "Gravity",
+    "pinball": "Pinball"
   }
 }

@@ -57,6 +57,13 @@
       "cumul": false,
       "categorie": "arcade",
       "format": "entier"
+    },
+    {
+      "id": "pinball",
+      "accroche": "portail.pinball.accroche",
+      "cumul": false,
+      "categorie": "arcade",
+      "format": "entier"
     }
   ]
 }

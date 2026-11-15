@@ -1,0 +1,199 @@
+{
+  "id": "pinball",
+  "code": "pinball",
+  "ordre": 10,
+  "nom": {
+    "fr": "Pinball",
+    "en": "Pinball"
+  },
+  "accroche": "portail.pinball.accroche",
+  "etiquette": {
+    "fond": "#C9B6F2",
+    "coque": "#5B3FA0",
+    "police": "\"Righteous\", \"Archivo\", sans-serif",
+    "dessin": "generique"
+  },
+  "identite": {
+    "police": "à choisir",
+    "motif": "losanges",
+    "illustration": "à choisir",
+    "aujourdhui": false
+  },
+  "etatDepart": "off",
+  "premierJour": "2026-11-02",
+  "categorie": "arcade",
+  "classement": {
+    "colonnes": [
+      {
+        "nom": "touches",
+        "sens": "desc"
+      },
+      {
+        "nom": "dernier",
+        "sens": "asc"
+      },
+      {
+        "nom": "submitted_at",
+        "sens": "asc"
+      },
+      {
+        "nom": "player_id",
+        "sens": "asc"
+      }
+    ],
+    "cumul": false,
+    "unite": "points",
+    "format": "entier"
+  },
+  "medailles": {
+    "methode": "pourcentage-diamant",
+    "bareme": [
+      50,
+      30,
+      15
+    ],
+    "plafondDiamant": 20
+  },
+  "partage": {
+    "extras": []
+  },
+  "themes": [
+    "clair",
+    "sombre"
+  ],
+  "versions": {
+    "sim": "packages/pinball-sim/src/constantes.ts:PINBALL_SIM_VERSION",
+    "generateur": "packages/pinball-sim/src/constantes.ts:PINBALL_GENERATOR_VERSION"
+  },
+  "jours": {
+    "mode": "fichier-par-jour",
+    "dossier": "apps/pinball/public/jours",
+    "preuveInterditeEnProd": true,
+    "fabrication": {
+      "empreinte": "apps/api/scripts/pinball-empreintes.ts",
+      "figer": {
+        "paquet": "@cdj/pinball-sim",
+        "script": "figer:pinball",
+        "forme": "jours-proteges"
+      }
+    }
+  },
+  "rejeu": {
+    "unitesServeur": 1,
+    "maxTicks": 900
+  },
+  "donnees": {
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "stockage": {
+      "prefixe": "pinball:",
+      "reglagesGardes": []
+    }
+  },
+  "message": {
+    "ou": "pinball"
+  },
+  "zoneNouveautes": "pinball",
+  "musique": {
+    "scenes": [
+      "menu",
+      "theme:clair",
+      "theme:sombre"
+    ]
+  },
+  "admin": {
+    "outils": false
+  },
+  "zones": {
+    "jeu": [
+      "apps/pinball/**",
+      "packages/pinball-sim/**",
+      "apps/api/src/pinball*.ts",
+      "apps/api/test/pinball*.test.ts",
+      "apps/api/scripts/pinball-*.ts",
+      "docs/pinball/**"
+    ],
+    "serveur": [
+      "apps/api/src/pinball*.ts",
+      "apps/api/test/pinball*.test.ts",
+      "apps/api/scripts/pinball-*.ts"
+    ]
+  },
+  "e2e": {
+    "dossier": "apps/pinball/e2e",
+    "suite": "pinball",
+    "fumee": [
+      "determinisme.spec.ts",
+      "partie.spec.ts",
+      "poids.spec.ts"
+    ],
+    "zones": {
+      "pinball-sim": {
+        "globs": [
+          "packages/pinball-sim/**"
+        ]
+      },
+      "pinball-jeu": {
+        "globs": [
+          "apps/pinball/index.html",
+          "apps/pinball/vite.config.ts",
+          "apps/pinball/verify.html",
+          "apps/pinball/src/*"
+        ]
+      },
+      "api-pinball": {
+        "globs": [
+          "apps/api/src/pinball*.ts",
+          "apps/api/scripts/pinball-*.ts"
+        ]
+      }
+    },
+    "specs": {
+      "determinisme.spec.ts": [
+        "pinball-sim",
+        "pinball-jeu",
+        "core-clock"
+      ],
+      "partie.spec.ts": [
+        "pinball-sim",
+        "pinball-jeu",
+        "ui"
+      ],
+      "classement.spec.ts": [
+        "pinball-sim",
+        "pinball-jeu",
+        "api-pinball",
+        "api-jeux"
+      ],
+      "poids.spec.ts": [
+        "pinball-jeu",
+        "ui"
+      ],
+      "ecrans-kit.spec.ts": [
+        "pinball-jeu",
+        "ui"
+      ]
+    },
+    "parts": {
+      "main": 1,
+      "complet": 1,
+      "nuit": 1
+    },
+    "regression": [
+      "ecrans-kit.spec.ts"
+    ]
+  },
+  "budget": {
+    "lignes": [
+      "pinball.jsCss"
+    ],
+    "aLaDemande": [
+      "partie-",
+      "classement-",
+      "reglages-",
+      "retours-",
+      "version-"
+    ]
+  },
+  "temoin": false
+}

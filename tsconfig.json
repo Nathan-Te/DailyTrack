@@ -20,6 +20,9 @@
       "path": "packages/cibles-sim"
     },
     {
+      "path": "packages/pinball-sim"
+    },
+    {
       "path": "packages/gravity-sim"
     },
     {
@@ -60,6 +63,9 @@
     },
     {
       "path": "apps/cibles"
+    },
+    {
+      "path": "apps/pinball"
     },
     {
       "path": "apps/gravity"

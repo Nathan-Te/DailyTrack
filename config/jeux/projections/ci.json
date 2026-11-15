@@ -1609,6 +1609,114 @@
         "rediffusion-"
       ],
       "outilsAdmin": false
+    },
+    {
+      "id": "pinball",
+      "zones": {
+        "jeu": [
+          "apps/pinball/**",
+          "packages/pinball-sim/**",
+          "apps/api/src/pinball*.ts",
+          "apps/api/test/pinball*.test.ts",
+          "apps/api/scripts/pinball-*.ts",
+          "docs/pinball/**"
+        ],
+        "serveur": [
+          "apps/api/src/pinball*.ts",
+          "apps/api/test/pinball*.test.ts",
+          "apps/api/scripts/pinball-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/pinball/e2e",
+        "suite": "pinball",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "pinball-sim": {
+            "globs": [
+              "packages/pinball-sim/**"
+            ]
+          },
+          "pinball-jeu": {
+            "globs": [
+              "apps/pinball/index.html",
+              "apps/pinball/vite.config.ts",
+              "apps/pinball/verify.html",
+              "apps/pinball/src/*"
+            ]
+          },
+          "api-pinball": {
+            "globs": [
+              "apps/api/src/pinball*.ts",
+              "apps/api/scripts/pinball-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "pinball-sim",
+            "pinball-jeu",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "pinball-sim",
+            "pinball-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "pinball-sim",
+            "pinball-jeu",
+            "api-pinball",
+            "api-jeux"
+          ],
+          "poids.spec.ts": [
+            "pinball-jeu",
+            "ui"
+          ],
+          "ecrans-kit.spec.ts": [
+            "pinball-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        },
+        "regression": [
+          "ecrans-kit.spec.ts"
+        ]
+      },
+      "app": "pinball",
+      "jours": {
+        "dossier": "apps/pinball/public/jours",
+        "registre": null,
+        "preuveInterditeEnProd": true,
+        "fabrication": {
+          "empreinte": "apps/api/scripts/pinball-empreintes.ts",
+          "figer": {
+            "paquet": "@cdj/pinball-sim",
+            "script": "figer:pinball",
+            "forme": "jours-proteges"
+          }
+        }
+      },
+      "sim": "pinball-sim",
+      "budget": [
+        "pinball.jsCss"
+      ],
+      "budgetALaDemande": [
+        "partie-",
+        "classement-",
+        "reglages-",
+        "retours-",
+        "version-"
+      ],
+      "outilsAdmin": false
     }
   ]
 }

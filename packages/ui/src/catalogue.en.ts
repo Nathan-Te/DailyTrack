@@ -13,6 +13,7 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "jeu.jump.titre": "JUMP",
   "jeu.tower.nom": "Tower",
   "jeu.cibles.nom": "Targets",
+  "jeu.pinball.nom": "Pinball",
   "jeu.gravity.nom": "Gravity",
   "jeu.vertige.nom": "Vertige",
   "jeu.rush.nom": "Rush",

@@ -1,0 +1,85 @@
+{
+  "_": "Golden de Pinball (lot K4f). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
+  "sim": 1,
+  "generateur": 1,
+  "jours": [
+    {
+      "date": "2026-11-02",
+      "empreinte": "7bc550a5"
+    },
+    {
+      "date": "2026-11-05",
+      "empreinte": "dfb7a5eb"
+    },
+    {
+      "date": "2026-11-08",
+      "empreinte": "ca9a9414"
+    },
+    {
+      "date": "2026-11-11",
+      "empreinte": "a1d665bf"
+    },
+    {
+      "date": "2026-11-14",
+      "empreinte": "7ff79ade"
+    },
+    {
+      "date": "2026-11-17",
+      "empreinte": "ff925cf8"
+    },
+    {
+      "date": "2026-11-20",
+      "empreinte": "76998343"
+    },
+    {
+      "date": "2026-11-23",
+      "empreinte": "a436dca2"
+    },
+    {
+      "date": "2026-11-26",
+      "empreinte": "f10d2b4e"
+    },
+    {
+      "date": "2026-11-29",
+      "empreinte": "14c4f96a"
+    }
+  ],
+  "rediffusions": [
+    {
+      "nom": "bot",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiASETLgcmHyoDKi0sFCcpLBYtACcfLCMqBicvLCMoFS4GJyApCSknLQQ",
+      "resultat": {
+        "touches": 20,
+        "dernier": 833,
+        "ratees": 0,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "joueur-lent",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiARoUCRMvBycfVi0tFBkqDylbABYgEh8tIz4ACi8tIykVVyAqCRooECc",
+      "resultat": {
+        "touches": 15,
+        "dernier": 797,
+        "ratees": 5,
+        "ticks": 900
+      }
+    },
+    {
+      "nom": "vide",
+      "date": "2026-11-02",
+      "g": 1,
+      "code": "AQEBAJeiAQ",
+      "resultat": {
+        "touches": 0,
+        "dernier": 900,
+        "ratees": 0,
+        "ticks": 900
+      }
+    }
+  ]
+}
