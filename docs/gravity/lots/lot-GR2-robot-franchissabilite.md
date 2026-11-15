@@ -26,7 +26,12 @@ Sur les 30 jours du lot (02/11 au 01/12/2026, première boucle et moitié de la 
 - **Résultat** : **30/30 jours** (le test), puis **250/250** (2 280 m chacun) et 400/400 avec la vue précédente, jours du 02/11/2026 à fin 2027, sans un passage sans fenêtre. Fenêtres les plus étroites par motif (250 jours, en pas) : étages 10, escalier 12, milieu 12, îlots 15, inverseur 18, les autres ≥ 23. Pièces : le robot prend **90,5 %** de celles des morceaux traversés (162 932 sur 180 121) ; score moyen d'un jour 20 394 (14 880 à 27 290).
 
 ## Pour Nathan : tester en 2 clics (recette, jamais classé ; le jeu est `off`, l'aperçu de la PR le sert)
-TODO_LIENS
+Base : `https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/` (l'aperçu expire 7 jours après la dernière poussée). Pour le **9 novembre 2026** :
+- **Le robot joue le niveau** : https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/?jour=2026-11-09&robot (la mention « Le robot joue » en scène ; le toucher ne change rien).
+- **Les cinq passages les plus serrés** (la partie commence 12 colonnes avant le morceau, dans l'état où le robot y arrive ; à jouer soi-même ; fenêtre du robot en pas) :
+  - étages, morceau 92 (16 pas) : https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/?jour=2026-11-09&morceau=92 · morceau 112 (16) : https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/?jour=2026-11-09&morceau=112 · morceau 131 (16) : https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/?jour=2026-11-09&morceau=131
+  - glace, morceau 40 (25) : https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/?jour=2026-11-09&morceau=40 · milieu, morceau 53 (25) : https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/?jour=2026-11-09&morceau=53
+- `?morceau=<n>` : n de 1 à 190 ; `?jour=AAAA-MM-JJ` choisit le jour ; `?robot&morceau=<n>` : on regarde le robot depuis ce morceau. Pour un autre jour : `npm run robot:gravity -w @cdj/gravity-sim -- --du AAAA-MM-JJ --jours 1 --serres 5 --liens https://playdujour-recette--pr-335-n68uufkc.web.app/gravity/`. Rien de tout cela n'existe en production.
 
 ## Mesures (machine du lot : 4 cœurs, Node 22)
 - **Budget du robot** : la boucle des cinq thèmes (1 520 m) en **0,98 s en moyenne, 1,38 s au plus** sur 30 jours (Node 22, sandbox à 4 cœurs ; `npm run robot:gravity -w @cdj/gravity-sim -- --jours 30 --distance 1520`). Avec une vue de 160 pas (avant réglage) : 1,3 s en moyenne, 2,2 s au plus : elle a été ramenée à 120 pas, sans effet sur le score (≈ 1 %). La partie complète de 2 280 m demande de 1 à 2,7 s selon le jour.
