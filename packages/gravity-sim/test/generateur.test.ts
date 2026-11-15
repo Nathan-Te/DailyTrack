@@ -32,7 +32,8 @@ describe("le générateur du jour", () => {
     expect(dailyGravity(JOUR)).toEqual(dailyGravity(JOUR));
     expect(empreinteContenu(dailyGravity(JOUR))).toBe(empreinteContenu(dailyGravity(JOUR)));
     const a = terrainDuJour(dailyGravity(JOUR)).morceau(40);
-    const b = genererMorceau(JOUR, 40, dailyGravity(JOUR).ordre, terrainDuJour(dailyGravity(JOUR)).morceau(39).sortie);
+    const avant = terrainDuJour(dailyGravity(JOUR)).morceau(39);
+    const b = genererMorceau(JOUR, 40, dailyGravity(JOUR).ordre, avant.sortie, avant.motif);
     expect(b).toEqual(a);
   });
   it("change d'un jour à l'autre (l'ordre, les morceaux, l'empreinte)", () => {
@@ -216,15 +217,35 @@ describe("les surfaces suivent la vitesse à laquelle le morceau est abordé (lo
     }
     return debuts.filter((c) => c >= 2);
   };
-  it("les îlots sont plus espacés, et moins nombreux, à 12,5 m/s qu'à 8 m/s", () => {
-    const lents = morceauxDe("ilots", 19, 30);
-    const rapides = morceauxDe("ilots", 80, 95);
-    expect(lents.length).toBeGreaterThan(3);
-    expect(rapides.length).toBeGreaterThan(3);
-    const ecart = (liste: Morceau[]): number => Math.max(...liste.map((mor) => { const d = debutsDesIlots(mor); return d.length > 1 ? d[1]! - d[0]! : 0; }));
-    expect(ecart(rapides)).toBeGreaterThan(ecart(lents));
-    const nombre = (liste: Morceau[]): number => Math.max(...liste.map((mor) => debutsDesIlots(mor).length));
-    expect(nombre(rapides)).toBeLessThanOrEqual(nombre(lents));
+  it("les îlots laissent la place de rejoindre le sol ou le plafond avant le bout du morceau : à partir de 8 m/s (leur premier morceau) il n'en reste qu'un par morceau", () => {
+    const morceaux = [...morceauxDe("ilots", 19, 30), ...morceauxDe("ilots", 80, 95)];
+    expect(morceaux.length).toBeGreaterThan(6);
+    for (const mor of morceaux) {
+      const debuts = debutsDesIlots(mor);
+      expect(debuts).toHaveLength(1);
+      const colonnes = [...Array(LARGEUR_MORCEAU).keys()].filter((c) => c >= 2 && (case_(mor, c, 3) === BLOC || case_(mor, c, 8) === BLOC));
+      expect(Math.max(...colonnes), `un îlot finit trop tard : ${colonnes.join()}`).toBeLessThanOrEqual(LARGEUR_MORCEAU - 4);
+    }
+  });
+  it("au-delà de 10 m/s : plus d'escalier montant (arrivée du sol), et plus d'îlots après des étages, un milieu ou un escalier", () => {
+    let escaliers = 0;
+    let ilots = 0;
+    for (let j = 0; j < 40; j++) {
+      const t = terrainDuJour(dailyGravity(JOUR + j));
+      for (let m = 76; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
+        const mor = t.morceau(m);
+        if (mor.motif === "escalier") {
+          escaliers++;
+          expect(mor.entree, `jour ${j}, morceau ${m}`).toBe(-1);
+        }
+        if (mor.motif === "ilots") {
+          ilots++;
+          expect(["etages", "milieu", "escalier"], `jour ${j}, morceau ${m}`).not.toContain(t.morceau(m - 1).motif);
+        }
+      }
+    }
+    expect(escaliers).toBeGreaterThan(10); // l'escalier qui descend reste
+    expect(ilots).toBeGreaterThan(10);
   });
   it("les étages finissent au plafond (le morceau suivant l'attend) et leur trou est plus large à grande vitesse", () => {
     const lents = morceauxDe("etages", 19, 40);

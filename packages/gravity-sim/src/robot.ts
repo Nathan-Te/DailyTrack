@@ -31,8 +31,8 @@ export const ROBOT_FENETRE_MIN = 8;
 export const ROBOT_MARGE = ROBOT_FENETRE_MIN / 2;
 /** Combien de morceaux au-delà de celui où il se trouve le robot garantit : jusqu'à la fin du morceau `k + 2`. */
 export const ROBOT_HORIZON = 2;
-/** La vue du robot quand il compare deux suites d'appuis : ce qu'elles ramassent pendant les 120 à 160 pas qui viennent (la fin de la vue avance par paquets de `PAQUET_VUE` pas, pour que les plans se partagent). */
-export const ROBOT_VUE_PAS = 160;
+/** La vue du robot quand il compare deux suites d'appuis : ce qu'elles ramassent pendant les 80 à 120 pas qui viennent (la fin de la vue avance par paquets de `PAQUET_VUE` pas, pour que les plans se partagent). */
+export const ROBOT_VUE_PAS = 120;
 /** Le robot ne passe jamais par le bouclier : toute copie qu'il essaie ignore les bonus (`Partie.ramasse` faux), donc un danger la tue. Vérifié par `test/robot.test.ts`. */
 export const ROBOT_SANS_BOUCLIER = true;
 /** Ce que vaut un bonus dans la comparaison des suites (une pièce vaut 10, une gemme 100, au multiplicateur ×1). */

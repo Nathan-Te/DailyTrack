@@ -7,7 +7,7 @@
  * **On monte la version, jamais une date** : un jour figé nomme la version qui l'a produit.
  */
 export const GRAVITY_SIM_VERSION = 2;
-/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. v3 (lot GR2) : les îlots, les étages et le néon suivent la vitesse du morceau, les étages finissent au plafond (le robot prouve le chemin sûr). */
+/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. v3 (lot GR2) : les îlots, les étages et le néon suivent la vitesse du morceau, les étages finissent au plafond, l'escalier montant et les îlots qui ne tiennent pas à grande vitesse deviennent des trous (le robot prouve le chemin sûr). */
 export const GRAVITY_GENERATOR_VERSION = 3;
 /** La version du calcul des SEUILS des médailles (et du robot qui les produit). v1 (lot GR1) : provisoire, « sur le papier ». v2 (lot GR2) : le robot (`robot.ts`), 60 % de son score aux points d'arrêt de `seuils.ts`. **Tout changement du robot, du pourcentage ou des points d'arrêt la monte.** Un jour figé garde les seuils de son fichier. */
 export const GRAVITY_BOT_VERSION = 2;
