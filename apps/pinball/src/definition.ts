@@ -1,44 +1,31 @@
-import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, dailyPinball, lireJourFige, medailleDe, numeroPinball, seuilsDe, themeDuJour, touchesDuBot, enregistrer, type Contenu } from "@cdj/pinball-sim";
-import { formatDay } from "@cdj/core";
-import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
+import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroPinball, themeDuJour, type Contenu } from "@cdj/pinball-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
-import { nouvellePartiePinball } from "./scene";
+import { ACTIONS } from "./commandes";
 
-// La définition de « Pinball » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Moins de 100 lignes de glue** : c'est la mesure du lot K4f.
-declare const __JOURS_FIGES__: readonly string[] | undefined;
-const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? [] : __JOURS_FIGES__;
-
-/** Le contenu d'un jour : le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit, sinon le générateur courant. */
-async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
-  const date = formatDay(jour);
-  if (dateDemandable(date, import.meta.env.VITE_PRODUCTION === "1", JOURS_FIGES)) {
-    try {
-      const lu = lireJourFige(await lireFichierDeJour("jours", date, base, 4000));
-      if (lu) return lu;
-    } catch {
-      /* absent ou abîmé : le générateur */
-    }
-  }
-  return dailyPinball(jour, PINBALL_GENERATOR_VERSION);
-}
+// La définition de « Pinball » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **La table (générateur, seuils) et la scène sont chargées à la demande** : le premier chargement est
+// l'accueil seul (ligne de budget `pinball.jsCss`). Le kit demande le contenu du jour dès l'accueil dessiné : c'est là que la scène se charge, bien avant le clic sur JOUER.
+type Scene = typeof import("./scene");
+let scene: Scene | null = null;
 
 export const DEFINITION: DefinitionJeu<Contenu> = {
   ticksParSeconde: TICKS_PAR_SECONDE,
   versions: { simVersion: PINBALL_SIM_VERSION, generatorVersion: PINBALL_GENERATOR_VERSION },
-  actions: [
-    { id: "gauche", clavier: ["ArrowLeft", "KeyA"], manette: null },
-    { id: "droite", clavier: ["ArrowRight", "KeyD"], manette: null },
-    { id: "haut", clavier: ["ArrowUp", "KeyW"], manette: null },
-    { id: "bas", clavier: ["ArrowDown", "KeyS"], manette: null },
-    { id: "toucher", clavier: ["Space", "KeyX"], manette: "b0" },
-  ],
+  // Trois commandes TENUES (le kit n'en signale que l'appui : la scène relit les touches pour le relâchement, `scene.ts`).
+  actions: ACTIONS,
   themeDuJour,
   numero: numeroPinball,
-  contenuDuJour,
-  seuils: (c) => seuilsDe(c),
-  medaille: (score, s) => medailleDe(score, s),
-  nouvellePartie: nouvellePartiePinball,
-  rediffusionDiamant: (c) => enregistrer(c, touchesDuBot(c)),
+  contenuDuJour: async (jour, base, theme) => {
+    const [niveau, s] = await Promise.all([import("./niveau"), import("./scene")]);
+    scene = s;
+    return niveau.contenuDuJour(jour, base, theme);
+  },
+  // Les seuils sont écrits dans le contenu quand il est lu (`niveau.ts`) : ceux du fichier de jour figé, sinon le calcul provisoire.
+  seuils: (c) => c.seuilsFiges!,
+  medaille: (score, s) => VARIANTE.medaille(score, s),
+  nouvellePartie: (contenu, hote, options) => scene!.nouvellePartiePinball(contenu, hote, options),
+  // Pas de fantôme ni de Diamant au PB1 : le robot du jour arrive au lot PB4.
+  sansFantome: true,
+  rediffusionDiamant: () => "",
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),
   aide: ["aide.point1", "aide.point2", "aide.point3"],

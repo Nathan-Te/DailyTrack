@@ -1,22 +1,28 @@
-import { mixSeed, Rng } from "@cdj/core";
-import { dailyPinball, enregistrer, jouer, scoreParColonnes, VARIANTE } from "@cdj/pinball-sim";
+import { dailyPinball, enregistrer, jouer, piloter, scoreParColonnes, type Contenu, type Evenement } from "@cdj/pinball-sim";
 import type { ModuleEssais } from "./essais";
 
-// Le module d'essais de « Pinball » (voir `essais.ts`). La variante 0 touche tout, 13 ticks après l'apparition (le bot, lui, touche à 12 : ce n'est pas sa copie) ; une variante n > 0 réagit au hasard (graine = n) en
-// 13 à 13 + min(n, 11) ticks et laisse filer des pinball de plus en plus nombreuses. Un entier quelconque donne une partie différente (le smoke tire le sien : la recette garde les parties des passages d'avant).
+// Le module d'essais de « Pinball » (voir `essais.ts`). Une partie d'essai est celle du **pilote d'essai** de la simulation (le robot de la maquette : il lance, puis frappe quand la bille arrive sur un batteur)
+// arrêtée plus ou moins tôt — la variante 0 le laisse jouer 6 000 pas (10 secondes), la variante n le laisse jouer 6 000 + 4 000 n pas, jusqu'à 12 variantes — et qui lance sa première bille un peu plus tard à chaque
+// variante : chacune a donc ses propres événements (le serveur refuse une copie : deux joueurs ne peuvent pas envoyer les mêmes). Pur : aucune base, aucun réseau ; le serveur rejoue la rediffusion pour de vrai.
+const memoire = new Map<string, Evenement[]>();
+function evenementsDe(contenu: Contenu, pas: number, retard: number): Evenement[] {
+  const cle = `${contenu.jour}:${contenu.g}:${pas}:${retard}`;
+  let e = memoire.get(cle);
+  if (!e) {
+    e = piloter(contenu, pas, retard).evenements;
+    if (memoire.size > 64) memoire.clear();
+    memoire.set(cle, e);
+  }
+  return e;
+}
+
 export const ESSAIS_PINBALL: ModuleEssais = {
   variantes: 12,
   partie(jour, versions, variante) {
     const contenu = dailyPinball(jour, versions.generatorVersion);
-    const rng = new Rng(mixSeed(variante, 0xe55a1));
-    const lenteur = Math.min(variante, 11);
-    // Le joueur scripté de la variante : il laisse filer (`score`) ou hésite (`temps`) une cible de temps en temps ; le hasard de l'essai décide, dans un ordre fixe (la cible ratée, puis son délai).
-    const touches = VARIANTE.joueur(
-      contenu,
-      () => 13 + (variante > 0 ? rng.int(1 + lenteur) : 0),
-      () => variante > 0 && rng.chance(Math.min(60, 4 * variante)),
-    );
-    const r = jouer(contenu, touches);
-    return { rediffusion: enregistrer(contenu, touches), attendu: scoreParColonnes(r) };
+    // Un entier quelconque est permis (`recette:seed` en tire de grands) : la variante est ramenée à 0-999 ; seules les douze premières allongent la partie.
+    const v = ((Math.trunc(variante) % 1000) + 1000) % 1000;
+    const evenements = evenementsDe(contenu, 6000 + 4000 * Math.min(v, 11), 3 + v);
+    return { rediffusion: enregistrer(contenu, evenements), attendu: scoreParColonnes(jouer(contenu, evenements)) };
   },
 };

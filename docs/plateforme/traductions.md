@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2839 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2861 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -785,8 +785,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.gravity.glace` | Glace | Ice |
 | `portail.theme.gravity.nuit` | Nuit | Night |
 | `portail.theme.gravity.neon` | Néon | Neon |
-| `portail.theme.pinball.clair` | Clair (à remplacer) | Light (to replace) |
-| `portail.theme.pinball.sombre` | Sombre (à remplacer) | Dark (to replace) |
+| `portail.theme.pinball.foire` | Fête foraine | Funfair |
+| `portail.theme.pinball.ocean` | Océan | Ocean |
+| `portail.theme.pinball.espace` | Espace | Space |
+| `portail.theme.pinball.volcan` | Volcan | Volcano |
 
 ### Profil (`profil.*`, `apps/portail/src/cataloguePages.ts`)
 
@@ -3648,26 +3650,26 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `accueil.phrase.clair` | À remplacer : une phrase d'accroche pour le thème « Clair ». | To replace: a tagline for the “Light” theme. |
-| `accueil.phrase.sombre` | À remplacer : une phrase d'accroche pour le thème « Sombre ». | To replace: a tagline for the “Dark” theme. |
+| `accueil.phrase.foire` | Pommes d'amour et chamboule-tout : tout ce qui sonne rapporte. | Candy apples and tin cans: everything that rings scores. |
+| `accueil.phrase.ocean` | Les bulles rebondissent doucement : vise les coquillages. | Bubbles bounce softly: aim for the shells. |
+| `accueil.phrase.espace` | Entre planètes et satellites, la bille flotte presque. | Between planets and satellites, the ball almost floats. |
+| `accueil.phrase.volcan` | Les braises brûlent, les rochers tiennent bon : frappe fort. | Embers burn, rocks hold firm: hit hard. |
 
 ### Commandes (`commandes.*`, `apps/pinball/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `commandes.action.gauche` | Curseur à gauche | Cursor left |
-| `commandes.action.droite` | Curseur à droite | Cursor right |
-| `commandes.action.haut` | Curseur en haut | Cursor up |
-| `commandes.action.bas` | Curseur en bas | Cursor down |
-| `commandes.action.toucher` | Toucher la case | Hit the square |
+| `commandes.action.gauche` | Batteur gauche | Left flipper |
+| `commandes.action.droite` | Batteur droit | Right flipper |
+| `commandes.action.lanceur` | Lanceur | Launcher |
 
 ### Comment jouer (`aide.*`, `apps/pinball/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `aide.point1` | À remplacer : le but du jeu en une phrase. | To replace: the goal of the game in one sentence. |
-| `aide.point2` | À remplacer : ce que fait le joueur, en une phrase. | To replace: what the player does, in one sentence. |
-| `aide.point3` | À remplacer : comment les égalités se départagent. | To replace: how ties are broken. |
+| `aide.point1` | Une table de flipper par jour, la même pour tous. Trois billes : fais le plus de points possible. | One pinball table a day, the same for everyone. Three balls: score as many points as you can. |
+| `aide.point2` | Batteur gauche : {gauche} ; batteur droit : {droite} (ou la moitié gauche ou droite de l'écran). Pour lancer, maintiens {lanceur} (ou touche l'écran) puis relâche : plus tu tiens, plus la bille part fort. | Left flipper: {gauche}; right flipper: {droite} (or touch the left or right half of the screen). To launch, hold {lanceur} (or touch the screen) then let go: the longer you hold, the harder the ball goes. |
+| `aide.point3` | À remplacer : le multiplicateur, la bille sauvée et les missions (texte complet à venir). | To replace: the multiplier, the ball save and the missions (full text coming). |
 
 ### kit (`kit.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3766,21 +3768,51 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
 | `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
 
+### module (`module.*`, `apps/pinball/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `module.bumpers.foire` | Pommes d'amour | Candy apples |
+| `module.cibles.foire` | Chamboule-tout | Tin-can toss |
+| `module.spinner.foire` | Grande roue | Big wheel |
+| `module.trou.foire` | Stand de tir | Shooting gallery |
+| `module.bumpers.ocean` | Bulles | Bubbles |
+| `module.cibles.ocean` | Coquillages | Shells |
+| `module.spinner.ocean` | Hélice | Propeller |
+| `module.trou.ocean` | Pieuvre | Octopus |
+| `module.bumpers.espace` | Planètes | Planets |
+| `module.cibles.espace` | Satellites | Satellites |
+| `module.spinner.espace` | Radar | Radar |
+| `module.trou.espace` | Sonde | Probe |
+| `module.bumpers.volcan` | Braises | Embers |
+| `module.cibles.volcan` | Rochers | Rocks |
+| `module.spinner.volcan` | Moulin | Mill |
+| `module.trou.volcan` | Cratère | Crater |
+
 ### Page (titre, chargement) (`page.*`, `apps/pinball/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
 | `page.titre` | Pinball — Du Jour | Pinball — Du Jour |
 
+### Partie (surimpressions) (`hud.*`, `apps/pinball/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.detail` | ×{mult} · Billes : {billes} | ×{mult} · Balls: {billes} |
+
 ### scene (`scene.*`, `apps/pinball/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | Plateau de jeu (texte à remplacer) | Game board (text to replace) |
+| `scene.aria` | La table de flipper du jour : deux batteurs en bas, trois billes | Today's pinball table: two flippers at the bottom, three balls |
+| `scene.sauvee` | Bille sauvée ! | Ball saved! |
 
 ### Thèmes (`theme.*`, `apps/pinball/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `theme.clair` | Clair (à remplacer) | Light (to replace) |
-| `theme.sombre` | Sombre (à remplacer) | Dark (to replace) |
+| `theme.foire` | Fête foraine | Funfair |
+| `theme.ocean` | Océan | Ocean |
+| `theme.espace` | Espace | Space |
+| `theme.volcan` | Volcan | Volcano |

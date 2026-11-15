@@ -14,7 +14,15 @@ import { CATALOGUE_FR } from "./catalogue.fr";
 import { DEFINITION } from "./definition";
 import { FICHE } from "./fiche";
 
-// « Pinball » (lot K4f) : tout le jeu tient dans `brancherJeu` — la fiche, la définition (simulation, rendu, aide) et les catalogues. Les écrans, l'interrupteur, le serveur, les records, les amis… sont le kit.
+// « Pinball » : tout le jeu tient dans `brancherJeu` — la fiche, la définition (simulation, rendu, aide) et les catalogues. Les écrans, l'interrupteur, le serveur, les records, les amis… sont le kit.
+// Essais (hors production, jamais classés) : `?jour=AAAA-MM-JJ` joue la table de ce jour (c'est le `?seed=` du kit : une archive), `?theme=<id>` en prend les couleurs, `?debug` montre les contours de collision, le
+// compteur de pas et le score de chaque contact (`scene.ts`).
+const adresse = new URLSearchParams(location.search);
+if (adresse.has("jour") && !adresse.has("seed")) {
+  adresse.set("seed", adresse.get("jour")!);
+  adresse.delete("jour");
+  history.replaceState(null, "", `${location.pathname}?${adresse.toString()}${location.hash}`);
+}
 void brancherJeu(FICHE, DEFINITION, {
   catalogues: { fr: CATALOGUE_FR, chargerEn: () => import("./catalogue.en").then((m) => ({ jeu: m.CATALOGUE_EN, commun: m.CATALOGUE_COMMUN_EN })) },
   musique: brancherMusique("pinball", gameStorage),
