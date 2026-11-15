@@ -10,6 +10,7 @@ Commande : `npm run nouveau-jeu -- --id pinball --nom "Pinball" --classement sco
 ## À savoir
 - **Righteous n'est pas encore hébergée** (`packages/ui/polices/`) : le test `identite.test.ts` refuse `identite.police: "Righteous"` tant qu'elle ne l'est pas, et l'héberger sort des zones de Pinball. `identite.police` reste donc « à choisir » ; le premier lot du jeu héberge la police (procédure K5) et remplit l'illustration. `preview` est refusé d'ici là.
 - **Thèmes** : K7 n'est pas fusionné ; la fiche garde ce que le générateur écrit (`clair`, `sombre`). Les quatre thèmes (`foire`, `ocean`, `espace`, `volcan`, noms FR et EN du prompt) sont à poser quand K7 sera là, ou par le premier lot. Le sac de thèmes commun exige au moins cinq thèmes (`themes.ts` du squelette).
+- **`ordre` 10** (le générateur avait écrit 9) : `scripts/jeu-fictif.mjs` (zone partagée) fixe `ordre: 9` en dur pour son jeu `essai`, et deux fiches ne peuvent pas avoir le même ordre (job « jeu fictif » rouge au premier essai). Le prochain jeu devra lui aussi sauter ce 9, ou ce script prendre un ordre calculé : à décider côté plateforme.
 - **Premier jour** : `2026-11-02` (valeur du générateur), à fixer par Nathan avant `preview`. **Plafond de budget** : `pinball.jsCss` garde les 48 Ko du modèle.
 
 **Vérifié** : `fiches`, `traductions`, `consignes`, `typecheck`, tests de `core`, `ui`, `portail`, du jeu et de son serveur : verts en local. CI : voir la PR.
