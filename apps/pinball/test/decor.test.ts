@@ -67,9 +67,11 @@ describe("les bandes lumineuses et les lampes du décor (lot PBV1)", () => {
       }
   });
 
-  it("les étiquettes de l'Océan sont des plaques de bois, les autres des pastilles d'encre", () => {
+  it("les étiquettes : pastilles d'encre (Fête foraine), plaques de bois (Océan), de métal rivetées (Espace), de pierre gravée (Volcan)", () => {
+    expect(styleEtiquette("foire")).toBe("encre");
     expect(styleEtiquette("ocean")).toBe("bois");
-    for (const t of ["foire", "espace", "volcan"] as const) expect(styleEtiquette(t)).toBe("encre");
+    expect(styleEtiquette("espace")).toBe("metal");
+    expect(styleEtiquette("volcan")).toBe("pierre");
   });
 });
 
