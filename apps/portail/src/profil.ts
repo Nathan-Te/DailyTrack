@@ -7,6 +7,8 @@ import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
 import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
+// Lot PB5b : la découpe « profil » de Barlow Condensed (exigée par la fiche d'un jeu à illustration) est déclarée AVANT la feuille complète — celle-ci, déclarée après, l'emporte : le portail charge la police entière, la découpe n'est là que pour que le profil et la fiche disent la même chose.
+import "@cdj/ui/src/polices-profil/barlow-condensed-400.css";
 import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 // Lot GR4 : la découpe « profil » de Lilita One (exigée par la fiche d'un jeu à illustration) est déclarée AVANT la feuille complète — celle-ci, déclarée après, l'emporte : le portail charge la même police qu'avant (Jump), la découpe ne coûte aucun octet.
 import "@cdj/ui/src/polices-profil/lilita-one-400.css";
