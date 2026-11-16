@@ -116,7 +116,10 @@ export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
  */
 export const JEUX_A_MESURE_PROPRE = ["track", "jump", "tower"];
 export const A_LA_DEMANDE_PAR_DEFAUT = ["catalogue.en-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "amisClassement-", "retoursJeu-", "message-", "suite-", "tune-", "verify-", "admin-"];
-/** Les lignes de budget qu'un jeu neuf obtient d'office (les autres demandent leur propre mesure). */
+/**
+ * Les lignes de budget qu'un jeu neuf obtient d'office (les autres demandent leur propre mesure). Lot K8 : **sa fiche peut en déclarer d'autres, « à la demande »** (`budget.demande` : `{ nom, prefixes }`,
+ * la ligne `<id>.<nom>` = la somme gzip des fichiers JS et CSS dont le nom commence par l'un des préfixes) : aucune retouche de ce script pour un jeu qui charge un gros morceau à la demande.
+ */
 export const LIGNES_DE_JEU_NEUF = ["jsCss", "anglais", "polices"];
 export function mesureJeuNeuf(fiche, dist = join(ROOT, "apps", fiche.app, "dist/assets")) {
   if (!existsSync(join(dist, "../index.html"))) return null; // pas construit : aucune mesure
@@ -126,7 +129,8 @@ export function mesureJeuNeuf(fiche, dist = join(ROOT, "apps", fiche.app, "dist/
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
   const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
-  return { jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
+  const demande = Object.fromEntries((fiche.budgetDemande ?? []).map(({ nom, prefixes }) => [nom, readdirSync(dist).filter((f) => /\.(js|css)$/.test(f) && prefixes.some((p) => f.startsWith(p))).reduce((n, f) => n + gz(join(dist, f)), 0)]));
+  return { jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist), ...demande };
 }
 /** Les jeux des fiches qui se mesurent par `mesureJeuNeuf`. */
 export const jeuxNeufs = () => FICHES_CI.filter((f) => !JEUX_A_MESURE_PROPRE.includes(f.id));
@@ -135,7 +139,8 @@ export function lignesDesJeuxNeufs() {
   return jeuxNeufs().flatMap((f) =>
     f.budget.map((ligne) => {
       const nom = ligne.slice(f.id.length + 1);
-      if (!LIGNES_DE_JEU_NEUF.includes(nom)) throw new Error(`fiche « ${f.id} » : la ligne de budget « ${ligne} » n'a pas de mesure (un jeu neuf obtient d'office ${LIGNES_DE_JEU_NEUF.map((n) => `${f.id}.${n}`).join(", ")}) : ajoute sa mesure à scripts/budgets.mjs`);
+      const declarees = (f.budgetDemande ?? []).map((d) => d.nom);
+      if (!LIGNES_DE_JEU_NEUF.includes(nom) && !declarees.includes(nom)) throw new Error(`fiche « ${f.id} » : la ligne de budget « ${ligne} » n'a pas de mesure (un jeu neuf obtient d'office ${LIGNES_DE_JEU_NEUF.map((n) => `${f.id}.${n}`).join(", ")} ; une ligne à la demande se déclare dans \`budget.demande\` de sa fiche : { nom, prefixes })`);
       return ligne;
     }),
   );
