@@ -15,9 +15,9 @@
   },
   "identite": {
     "police": "Lilita One",
-    "motif": "à choisir",
-    "illustration": "à choisir",
-    "aujourdhui": false
+    "motif": "lignes",
+    "illustration": "apps/gravity/public/illustration.svg",
+    "aujourdhui": true
   },
   "etatDepart": "off",
   "premierJour": "2026-11-02",

@@ -1,8 +1,10 @@
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
 
-// Le catalogue français de « Gravity » : le vocabulaire des écrans (le kit) et ce qui est propre au jeu. Les textes COMPLETS (accueil, aide détaillée, causes de mort illustrées) viennent au lot GR4 : ceux d'ici sont courts.
-// **« À remplacer » reste dans `aide.point3` à dessein** : tant qu'il y est, le test des mentions légales (`apps/portail/test/mentions.test.ts`) traite le jeu comme un squelette. La mise à jour des mentions (les clés du
-// navigateur du jeu) est un lot de la plateforme, à faire avant la publication (README du lot GR1) ; ce marqueur part avec elle.
+// Le catalogue français de « Gravity » : le vocabulaire des écrans (le kit) et ce qui est propre au jeu (lot GR4 : les textes complets). **Les clés se rangent par famille** : `page.*` et `scene.*` (la page), `theme.<id>` et `.meca`
+// (les cinq thèmes), `accueil.phrase.<thème>` (la réplique du thème du jour : une seule par écran), `aide.*` (« Comment jouer »), `aujourdhui.*` (le panneau de l'accueil), `hud.*` (le HUD de la partie), `bilan.*` et `mort.*`
+// (la mort : sa cause et son bilan), `commandes.action.*` (le nom d'une commande), `essai.*` (les essais de recette). Le ton : tutoiement, court, un peu cruel ; une réplique par écran au plus.
+// **« À remplacer » reste ici à dessein** : tant qu'il est dans ce fichier, le test des mentions légales (`apps/portail/test/mentions.test.ts`) traite le jeu comme un squelette. Les mentions de Gravity (les clés de son
+// navigateur) sont un lot de la plateforme, à faire avant la publication (README du lot GR1) ; ce marqueur part avec elles. Aucun texte visible n'est plus à remplacer (lot GR4).
 export const CATALOGUE_FR = {
   ...CATALOGUE_KIT_FR,
   "page.titre": "Gravity — Du Jour",
@@ -18,13 +20,26 @@ export const CATALOGUE_FR = {
   "theme.nuit.meca": "Blocs clignotants",
   "theme.neon.meca": "Blocs alternés",
   "accueil.phrase.foret": "Le sol, le plafond : même combat. Tant que tu touches quelque chose.",
-  "accueil.phrase.usine": "Les tapis poussent plus vite : inverse avant qu'ils s'arrêtent.",
-  "accueil.phrase.glace": "Impossible de s'appuyer sur la glace : inverse avant, ou après.",
+  "accueil.phrase.usine": "Sur les tapis, tout va plus vite. Toi aussi, que ça te plaise ou non.",
+  "accueil.phrase.glace": "Impossible de prendre appui sur la glace : inverse avant, ou après.",
   "accueil.phrase.nuit": "Les blocs s'allument et s'éteignent : traverse en rythme.",
   "accueil.phrase.neon": "Deux couleurs, une seule solide à la fois : suis le battement.",
-  "aide.point1": "Un coureur sans fin : il court tout seul vers la droite. Le but : aller le plus loin possible, en ramassant pièces et gemmes.",
-  "aide.point2": "Touche l'écran (ou Espace, A à la manette) : la gravité s'inverse, mais seulement quand tu touches une surface : sol, plafond ou plateforme. Pas d'inversion en l'air ni sur la glace.",
-  "aide.point3": "À remplacer : les pièces, le multiplicateur et les bonus (texte complet au lot GR4).",
+  "aide.point1": "Tu cours tout seul, vers la droite. Le chemin est le même pour tout le monde aujourd'hui.",
+  "aide.point2": "Touche l'écran, clique ou appuie sur Espace : la gravité s'inverse. Seulement quand tu touches une surface : sol, plafond ou plateforme.",
+  "aide.point3": "Le rouge tue, le vide aussi, et le bord gauche de l'écran. Ramasse les pièces (10 points) et les gemmes (100).",
+  "aide.bloc.usine": "Usine, tapis roulants : ils te poussent plus vite.",
+  "aide.bloc.glace": "Glace : trop glissante pour prendre appui. Pas d'inversion dessus.",
+  "aide.bloc.nuit": "Nuit : des blocs s'allument et s'éteignent en rythme, et clignotent avant de s'éteindre.",
+  "aide.bloc.neon": "Néon : deux couleurs, une seule est solide à la fois.",
+  "aide.bloc.foret": "Forêt, courants d'air : ils te portent vers le haut.",
+  "aide.bloc.inverseur": "Partout, l'inverseur : il change ta gravité dès que tu le touches.",
+  "aide.bouclier": "Bouclier : il te sauve une fois (un pique, une chute, le bord de l'écran). Il est au même endroit pour tout le monde.",
+  "aide.aimant": "Aimant : pendant 8 secondes, les pièces proches viennent à toi.",
+  "aide.mult": "Multiplicateur : +1 toutes les 10 pièces d'affilée, jusqu'à ×5. Une pièce ratée, et il retombe à ×1.",
+  "aujourdhui.ordre": "L'ordre des thèmes, le même pour tous",
+  "aujourdhui.boucle": "Un thème tous les {m} m, puis la boucle reprend, plus vite.",
+  "aujourdhui.seuils": "Médailles du jour",
+  "aujourdhui.seuils.calcul": "Médailles du jour : calcul en cours…",
   "commandes.action.toucher": "Inverser la gravité",
   "hud.detail": "{m} m · ×{mult}",
   "hud.pieces.une": "{n} pièce",
@@ -34,6 +49,12 @@ export const CATALOGUE_FR = {
   "hud.bouclier": "Bouclier",
   "hud.aimant": "Aimant · {s} s",
   "essai.robot": "Le robot joue",
+  "bilan.distance": "Distance",
+  "bilan.metres": "{m} m",
+  "bilan.pieces": "Pièces × 10",
+  "bilan.gemmes": "Gemmes × 100",
+  "bilan.theme": "Thème atteint",
+  "bilan.mult": "Multiplicateur max",
   "mort.vide": "Tombé dans le vide",
   "mort.pique": "Touché par un pique",
   "mort.bord": "Rattrapé par le bord de l'écran",

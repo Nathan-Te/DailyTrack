@@ -227,8 +227,12 @@
   position: absolute;
   top: 46%;
   left: 50%;
-  max-width: 88vw;
-  padding: 6px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  max-width: min(92vw, 420px);
+  padding: var(--dj-espace-3) var(--dj-espace-7);
   transform: translate(-50%, -50%) rotate(-2deg);
   background: var(--dj-papier);
   color: var(--dj-encre);
@@ -237,6 +241,42 @@
   box-shadow: var(--dj-ombre-cartouche, 4px 4px 0 var(--dj-encre));
   font-size: clamp(18px, 5vmin, 26px);
   text-align: center;
+}
+.g-mort__cause {
+  font-weight: 400;
+}
+/* le bilan (lot GR4) : cinq lignes, le nom à gauche et la valeur à droite (l'ordre du DOM est « valeur, nom » : on lit la valeur d'abord, on l'affiche à droite) */
+.g-bilan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+  width: min(78vw, 300px);
+  margin: 0;
+}
+.g-bilan__case {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--dj-espace-4);
+  padding: var(--dj-espace-1) var(--dj-espace-3);
+  background: var(--dj-creme-2);
+  border: var(--dj-trait, 2px) solid var(--dj-encre);
+  border-radius: 4px;
+}
+.g-bilan__valeur {
+  font-size: clamp(16px, 4.2vmin, 20px);
+  font-weight: 400;
+  line-height: 1.1;
+}
+.g-bilan__nom {
+  font-family: var(--dj-police-texte, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+  text-align: left;
 }
 
 /* petit téléphone : tout se resserre ; mouvement réduit : rien ne bouge */
