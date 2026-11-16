@@ -76,8 +76,18 @@ export interface Vue {
   bloom: number;
   /** Lot PBV1 : la lueur des bandes lumineuses et des lampes du décor, en %. */
   bandes: number;
+  /** Lot PBV3 : l'exposition du tone mapping, en % (100 : la recette ; **0 : sans tone mapping ni étalonnage**, le rendu d'avant le lot, pour mesurer leur coût). */
+  exposition: number;
+  /** Lot PBV3 : la chaleur de l'étalonnage (ombres ambrées, hautes lumières dorées), en % (0 : neutre). */
+  chaleur: number;
+  /** Lot PBV3 : la saturation de l'étalonnage, en % (100 : la recette ; 0 : noir et blanc). */
+  saturation: number;
+  /** Lot PBV3 : la force de l'occlusion cuite dans le sol (l'ombre de contact autour de ce qui est posé), en %. */
+  occlusion: number;
+  /** Lot PBV3 : la force du vignettage dans la table (les bords et le haut de l'arc plus sombres), en %. */
+  vignettage: number;
 }
-export const VUE_DEFAUT: Vue = { angle: 66, distance: 100, champ: 20, lumiere: 100, etiquettes: 140, soleil: 100, azimut: -28, hauteur: 36, bloom: 100, bandes: 100 };
+export const VUE_DEFAUT: Vue = { angle: 66, distance: 100, champ: 20, lumiere: 100, etiquettes: 140, soleil: 100, azimut: -28, hauteur: 36, bloom: 100, bandes: 100, exposition: 100, chaleur: 100, saturation: 100, occlusion: 100, vignettage: 100 };
 export const BORNES_VUE: Readonly<Record<keyof Vue, readonly [number, number]>> = {
   angle: [35, 85],
   distance: [70, 140],
@@ -89,6 +99,11 @@ export const BORNES_VUE: Readonly<Record<keyof Vue, readonly [number, number]>> 
   hauteur: [12, 85],
   bloom: [0, 300],
   bandes: [0, 300],
+  exposition: [0, 250],
+  chaleur: [0, 300],
+  saturation: [0, 250],
+  occlusion: [0, 200],
+  vignettage: [0, 200],
 };
 
 const borne = (v: unknown, [min, max]: readonly [number, number]): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : null);
