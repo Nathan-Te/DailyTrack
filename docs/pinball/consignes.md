@@ -2,6 +2,9 @@
 
 Chargé par lecture des fichiers du jeu (zone `docs/pinball/**`). Réponses et docs en français. **Créé par `npm run nouveau-jeu -- --id pinball --classement score`** (lot K4g) à partir du jeu témoin « Cibles » ; vision : `docs/pinball/seed.md` (**ne pas modifier**, c'est Nathan qui le fait) ; à coller dans une conversation d'orchestration : `docs/pinball/passation.md`.
 
+## Lot PBV3 (la lumière et les couleurs des images cibles)
+- **Le sol éclairé** (plus d'émissif), l'occlusion et le vignettage cuits dans le sol, **le tone mapping et l'étalonnage chaud en une seule fonction de couleur** (sans passe de plus ; cuit dans le sol du rendu de secours), les palettes et le décor des sols (bois miel, eau turquoise profond et marges garnies, Espace et Volcan plus contrastés), le meuble (cadre épais, laiton, liseré sombre), des bandes et des lampes plus présentes, des étiquettes plus grandes et des flèches franches ; **un outil qui mesure les couleurs** d'une capture contre sa cible. Règles : `apps/pinball/CLAUDE.md` (« La lumière et les couleurs ») ; mesures et écarts : `docs/pinball/lots/lot-PBV3-lumiere.md`. **La simulation n'a pas changé.**
+
 ## Lot PBV1 (la passe visuelle, Fête foraine et Océan)
 - **La recette visuelle commune** (lumière chaude de fin d'après-midi, pièce et parquet, meuble verni, matériaux, bandes lumineuses et lampes, bloom en haute qualité seulement) et **le sol riche de la Fête foraine et de l'Océan**, dans les deux rendus. Règles : `apps/pinball/CLAUDE.md` (« La recette visuelle », « Règle de lisibilité ») ; détail et écarts qui restent : `docs/pinball/lots/lot-PBV1-visuel.md`. **La simulation n'a pas changé.** Espace et Volcan : recette commune seulement (leur décor : PBV2).
 
