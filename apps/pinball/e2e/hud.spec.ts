@@ -210,7 +210,7 @@ test.describe("Pinball : le HUD en surimpression", () => {
     });
     await expect(verrou).toHaveAttribute("data-etat", "plein");
     await expect(verrou.locator(".pinball-verrou__billes i[data-plein='1']")).toHaveCount(1);
-    await expect(verrou.locator(".pinball-verrou__texte")).toHaveText("Niv. 1");
+    await expect(verrou.locator(".pinball-verrou__texte")).toHaveText("Niveau 1");
     // la multibille : la bande du bas
     await page.evaluate(() => {
       window.__pinball!.partie().lancerLaMultibille();
@@ -229,7 +229,7 @@ test.describe("Pinball : le HUD en surimpression", () => {
       window.__jeu.avancer(2);
     });
     await expect(mission).not.toHaveAttribute("data-etat", "multibille");
-    await expect(verrou.locator(".pinball-verrou__texte")).toHaveText("Niv. 2");
+    await expect(verrou.locator(".pinball-verrou__texte")).toHaveText("Niveau 2");
     await context.close();
   });
 });

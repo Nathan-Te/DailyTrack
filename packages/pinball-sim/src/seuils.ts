@@ -82,13 +82,13 @@ const MEMOIRE = new Map<string, Seuils>();
 const MEMOIRE_MAX = 16;
 
 /** Les parties du robot (en tranches), avec le suivi des modules si on le donne. */
-function* partiesDuRobot(contenu: Contenu, suivi?: SuiviModules, reglages: Reglages = REGLAGES): Generator<void, AnalyseTable, undefined> {
+function* partiesDuRobot(contenu: Contenu, suivi?: SuiviModules, reglages: Reglages = REGLAGES, duree: number = DUREE_PARTIE_ROBOT): Generator<void, AnalyseTable, undefined> {
   const scores: number[] = [];
   const ticks: number[] = [];
   const missions: boolean[] = [];
   let pasSimules = 0;
   for (let k = 0; k < PARTIES_DU_ROBOT; k++) {
-    const r = yield* jouerRobotEnTranches(contenu, graineDuRobot(k), { maxTicks: DUREE_PARTIE_ROBOT, reglages, ...(suivi ? { surPas: (p) => suivi.pas(p) } : {}) });
+    const r = yield* jouerRobotEnTranches(contenu, graineDuRobot(k), { maxTicks: duree, reglages, ...(suivi ? { surPas: (p) => suivi.pas(p) } : {}) });
     scores.push(r.partie.score);
     ticks.push(r.partie.tick);
     missions.push(r.partie.missionFaite || r.partie.niveau > 1);
@@ -123,11 +123,11 @@ export function seuilsDuRobot(contenu: Contenu): Seuils {
  * **L'analyse complète d'une table** (la validation, `validation.ts`, et les seuils) : la grille des billes lâchées, les parties du robot (avec le suivi des modules touchés) et 119 lancers dispersés. Une table est
  * valide quand aucune bille n'est coincée, que chaque module est touché au moins une fois (par le robot ou un lancer) et que la mission est réussie au moins une fois (par le robot). En tranches comme le reste (l'outil et les tests la lancent d'un trait).
  */
-export function* analyserTableEnTranches(contenu: Contenu, reglages: Reglages = REGLAGES): Generator<void, AnalyseTable, undefined> {
+export function* analyserTableEnTranches(contenu: Contenu, reglages: Reglages = REGLAGES, duree: number = DUREE_PARTIE_ROBOT): Generator<void, AnalyseTable, undefined> {
   const billes = billesCoincees(contenu, reglages);
   yield;
   const suivi = new SuiviModules(new Partie(contenu, reglages).table);
-  const a = yield* partiesDuRobot(contenu, suivi, reglages);
+  const a = yield* partiesDuRobot(contenu, suivi, reglages, duree);
   const missionRobot = suivi.mission;
   tirsDisperses(contenu, suivi, reglages);
   const manquants = suivi.manquants();
@@ -139,8 +139,9 @@ export function* analyserTableEnTranches(contenu: Contenu, reglages: Reglages = 
 }
 
 /** `analyserTableEnTranches` d'un trait. */
-export function analyserTable(contenu: Contenu, reglages: Reglages = REGLAGES): AnalyseTable {
-  const g = analyserTableEnTranches(contenu, reglages);
+/** `duree` : la durée de chaque partie du robot (pas) ; la validation des 500 tables et les seuils jouent `DUREE_PARTIE_ROBOT`, les tests longs de 30 jours une partie plus courte (lot PBG2 : leur coût ne monte pas avec la durée des seuils). */
+export function analyserTable(contenu: Contenu, reglages: Reglages = REGLAGES, duree: number = DUREE_PARTIE_ROBOT): AnalyseTable {
+  const g = analyserTableEnTranches(contenu, reglages, duree);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
