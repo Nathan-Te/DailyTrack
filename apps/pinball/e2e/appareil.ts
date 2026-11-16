@@ -20,6 +20,10 @@ export interface PorteScene {
   regler(c: number, enfonce: boolean): void;
   tick(): number;
   evenements(): Evenement[];
+  /** Le rendu qui est à l'écran, ce que dessine le rendu three.js (appels, triangles, ms de fil principal par image, où tombent les points du terrain à l'écran : tout est à l'image si |x| ≤ 1 et −1 ≤ y ≤ 1), les vibrations demandées. */
+  qualite(): "haute" | "basse";
+  trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } } | null;
+  vibrations(): number;
 }
 declare global {
   interface Window {
@@ -28,7 +32,8 @@ declare global {
   }
 }
 
-export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
+/** L'adresse par défaut joue le rendu de secours (`qualite=basse`) : ces parcours (classement, Amis) ne regardent pas le rendu, et le WebGL logiciel des machines de test ralentit les images. La haute qualité est jouée par `partie.spec.ts` et `rendu.spec.ts`. */
+export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0&qualite=basse`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({ baseURL: "http://localhost:4189", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"] });
   const decalage = Date.UTC(2026, 10, 6, 12) - Date.now();
   await context.addInitScript(
