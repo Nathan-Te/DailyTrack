@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinball — illustration</title>
+<style>
+@font-face{font-family:"Archivo";font-weight:400;src:url(../../../packages/ui/polices/archivo-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:600;src:url(../../../packages/ui/polices/archivo-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:700;src:url(../../../packages/ui/polices/archivo-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo Black";font-weight:400;src:url(../../../packages/ui/polices/archivo-black-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:500;src:url(../../../packages/ui/polices/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:700;src:url(../../../packages/ui/polices/jetbrains-mono-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Rubik Mono One";font-weight:400;src:url(../../../packages/ui/polices/rubik-mono-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Lilita One";font-weight:400;src:url(../../../packages/ui/polices/lilita-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Bungee";font-weight:400;src:url(../../../packages/ui/polices/bungee-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:800;font-style:italic;src:url(../../../packages/ui/polices/barlow-condensed-latin-800-italic.woff2) format("woff2")}
+@font-face{font-family:"Righteous";font-weight:400;src:url(polices/righteous-latin-400-normal.woff2) format("woff2")}
+:root{
+  /* Valeurs des jetons de @cdj/ui (packages/ui/src/jetons.css), recopiées pour que la page soit autonome. */
+  --dj-creme:#EDE3CF;--dj-creme-2:#E3D6BC;--dj-papier:#FFF6E0;--dj-encre:#2A1E16;--dj-encre-douce:#6B5847;--dj-terre:#C2401F;--dj-terre-texte:#FFF4E0;--dj-moutarde:#E8B23A;
+  --dj-ecran:#3A2C20;--dj-ambre:#F2B544;--dj-ecran-texte:#E9DCC2;--dj-ecran-ombre:#261D15;--dj-ecran-reflet:#4A3D32;--dj-salle:#33251B;--dj-salle-ombre:#120C08;
+  --dj-diamant:#4FC3DC;--dj-diamant-texte:#0B2530;--dj-or:#D9A21B;--dj-argent:#A7A9AC;--dj-bronze:#C07A42;
+  --track-asphalte:#1E1B19;--track-coque:#4A4440;--track-texte:#F4EFE6;--track-texte-doux:#CFC6BA;--track-livree:#E8552D;--jump-jaune:#FFD23F;
+  --dj-police-marque:"Archivo Black","Archivo",sans-serif;--dj-police-texte:"Archivo",sans-serif;--dj-police-chiffres:"JetBrains Mono",monospace;
+  --dj-rayon-bouton:3px;--dj-rayon-tuile:4px;--dj-rayon-afficheur:6px;--dj-rayon-coque:12px 12px 3px 3px;--dj-trait:2px;--dj-trait-fort:3px;
+  --dj-ombre-cartouche:4px 4px 0 var(--dj-encre);--dj-ombre-bouton:2px 2px 0 var(--dj-encre);--dj-ombre-titre:4px 4px 0 var(--dj-papier);
+  --dj-ombre-afficheur:inset 0 3px 0 var(--dj-ecran-ombre),inset 0 -2px 0 var(--dj-ecran-reflet);
+  --dj-voile:repeating-linear-gradient(115deg,#1E1B19D9 0 5px,#1E1B19B3 5px 10px);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--dj-creme);color:var(--dj-encre);font-family:var(--dj-police-texte)}
+h1{font:400 24px/1.1 var(--dj-police-marque);margin:0 0 6px}
+.sous{font-size:14px;color:var(--dj-encre-douce);margin:0 0 20px;line-height:1.45}
+.rang{display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:center;padding:16px 0;border-top:2px solid var(--dj-encre)}
+.grand{width:260px;height:260px;display:flex;align-items:center;justify-content:center;background:var(--dj-papier);border:3px solid var(--dj-encre);border-radius:4px}
+.grand img{width:210px;height:210px}
+.txt b{font:400 21px var(--dj-police-marque)} .txt p{font-size:15px;line-height:1.45;margin:6px 0 12px}
+.tailles{display:flex;gap:14px;align-items:flex-end}
+.art{width:96px;height:96px;display:flex;align-items:center;justify-content:center;border:2px solid var(--dj-encre);border-radius:3px}
+.vert .art{width:210px;height:104px;justify-content:flex-end;align-items:flex-end;padding:8px 12px 0}
+.hex{font:500 12px/1.45 var(--dj-police-chiffres)!important;color:var(--dj-encre-douce)}
+.autres{display:flex;gap:18px;align-items:flex-end;padding:14px;background:var(--dj-papier);border:2px solid var(--dj-encre);border-radius:4px}
+.autre{display:flex;flex-direction:column;align-items:center;gap:6px;font:700 12px var(--dj-police-texte)} .autre img{height:76px}
+</style>
+</head>
+<body>
+<div style="padding:24px 24px 32px;width:1000px">
+<h1>Pinball — l’illustration : « la bille entre deux batteurs »</h1>
+<p class="sous">Trois propositions, dans le trait des autres jeux : aplats, contour encre de 3 px, petits yeux pour ce qui est vivant, couleurs de la charte (encre, papier, terre cuite, moutarde, bronze pour le bois) et l’acier de la bille (#C9D2DE, celui de l’armure de Rush). Fichiers prêts à copier dans <code>apps/pinball/public/illustration.svg</code> : <code>illustration-1-le-tir.svg</code>, <code>-2-la-bille.svg</code>, <code>-3-la-table.svg</code>.</p>
+<div class="rang"><div class="grand"><img src="illustration-1-le-tir.svg" alt=""></div><div class="txt"><b>1 — Le tir</b><p>La bille vient de partir du batteur droit, levé ; trajet en pointillés, deux éclats moutarde au point de frappe. Le geste du jeu, lisible à 70 px.</p>
+<div class="tailles"><div class="art" style="background:linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 0 0/24px 24px,linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 12px 12px/24px 24px,#c9b6f2"><img src="illustration-1-le-tir.svg" alt="" style="height:70px"></div><div class="art" style="background:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px)"><img src="illustration-1-le-tir.svg" alt="" style="height:70px"></div><div class="art" style="background:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c"><img src="illustration-1-le-tir.svg" alt="" style="height:70px"></div><div class="vert"><div class="art" style="background:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c"><img src="illustration-1-le-tir.svg" alt="" style="height:84px"></div></div></div><p class="hex">À la taille du portail : cartouche du téléphone (70 px de haut) sur A, B et C ; cartouche de l’ordinateur (84 px) sur C.</p></div></div><div class="rang"><div class="grand"><img src="illustration-2-la-bille.svg" alt=""></div><div class="txt"><b>2 — La bille inquiète</b><p>La bille a des yeux (comme les bumpers du jeu et les pièces de Tower), sourcils relevés, regard vers le trou entre les deux batteurs : le moment où tout se joue.</p>
+<div class="tailles"><div class="art" style="background:linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 0 0/24px 24px,linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 12px 12px/24px 24px,#c9b6f2"><img src="illustration-2-la-bille.svg" alt="" style="height:70px"></div><div class="art" style="background:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px)"><img src="illustration-2-la-bille.svg" alt="" style="height:70px"></div><div class="art" style="background:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c"><img src="illustration-2-la-bille.svg" alt="" style="height:70px"></div><div class="vert"><div class="art" style="background:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c"><img src="illustration-2-la-bille.svg" alt="" style="height:84px"></div></div></div><p class="hex">À la taille du portail : cartouche du téléphone (70 px de haut) sur A, B et C ; cartouche de l’ordinateur (84 px) sur C.</p></div></div><div class="rang"><div class="grand"><img src="illustration-3-la-table.svg" alt=""></div><div class="txt"><b>3 — La table</b><p>Un petit meuble en arche, un bumper à yeux, la bille et les deux batteurs : la table entière, en plus petit. Le cadre se lit de loin, les batteurs moins.</p>
+<div class="tailles"><div class="art" style="background:linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 0 0/24px 24px,linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 12px 12px/24px 24px,#c9b6f2"><img src="illustration-3-la-table.svg" alt="" style="height:70px"></div><div class="art" style="background:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px)"><img src="illustration-3-la-table.svg" alt="" style="height:70px"></div><div class="art" style="background:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c"><img src="illustration-3-la-table.svg" alt="" style="height:70px"></div><div class="vert"><div class="art" style="background:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c"><img src="illustration-3-la-table.svg" alt="" style="height:84px"></div></div></div><p class="hex">À la taille du portail : cartouche du téléphone (70 px de haut) sur A, B et C ; cartouche de l’ordinateur (84 px) sur C.</p></div></div>
+<div style="border-top:2px solid var(--dj-encre);padding-top:16px"><b style="font:400 18px var(--dj-police-marque)">Les illustrations des autres jeux, pour comparer le trait</b><div class="autres" style="margin-top:10px"><div class="autre"><img src="../../../apps/tower/public/illustration.svg" alt=""><span>Tower</span></div><div class="autre"><img src="../../../apps/rush/public/illustration.svg" alt=""><span>Rush</span></div><div class="autre"><img src="../../../apps/blocks/public/illustration.svg" alt=""><span>Blocks</span></div><div class="autre"><img src="../../../apps/gravity/public/illustration.svg" alt=""><span>Gravity</span></div><div class="autre"><img src="../../../apps/vertige/public/illustration.svg" alt=""><span>Vertige</span></div><div class="autre"><img src="../../../apps/cibles/public/illustration.svg" alt=""><span>Cibles</span></div></div></div>
+</div>
+</body>
+</html>

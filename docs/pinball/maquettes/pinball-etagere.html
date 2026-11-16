@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinball — étiquette sur l’étagère</title>
+<style>
+@font-face{font-family:"Archivo";font-weight:400;src:url(../../../packages/ui/polices/archivo-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:600;src:url(../../../packages/ui/polices/archivo-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:700;src:url(../../../packages/ui/polices/archivo-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo Black";font-weight:400;src:url(../../../packages/ui/polices/archivo-black-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:500;src:url(../../../packages/ui/polices/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:700;src:url(../../../packages/ui/polices/jetbrains-mono-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Rubik Mono One";font-weight:400;src:url(../../../packages/ui/polices/rubik-mono-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Lilita One";font-weight:400;src:url(../../../packages/ui/polices/lilita-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Bungee";font-weight:400;src:url(../../../packages/ui/polices/bungee-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:800;font-style:italic;src:url(../../../packages/ui/polices/barlow-condensed-latin-800-italic.woff2) format("woff2")}
+@font-face{font-family:"Righteous";font-weight:400;src:url(polices/righteous-latin-400-normal.woff2) format("woff2")}
+:root{
+  /* Valeurs des jetons de @cdj/ui (packages/ui/src/jetons.css), recopiées pour que la page soit autonome. */
+  --dj-creme:#EDE3CF;--dj-creme-2:#E3D6BC;--dj-papier:#FFF6E0;--dj-encre:#2A1E16;--dj-encre-douce:#6B5847;--dj-terre:#C2401F;--dj-terre-texte:#FFF4E0;--dj-moutarde:#E8B23A;
+  --dj-ecran:#3A2C20;--dj-ambre:#F2B544;--dj-ecran-texte:#E9DCC2;--dj-ecran-ombre:#261D15;--dj-ecran-reflet:#4A3D32;--dj-salle:#33251B;--dj-salle-ombre:#120C08;
+  --dj-diamant:#4FC3DC;--dj-diamant-texte:#0B2530;--dj-or:#D9A21B;--dj-argent:#A7A9AC;--dj-bronze:#C07A42;
+  --track-asphalte:#1E1B19;--track-coque:#4A4440;--track-texte:#F4EFE6;--track-texte-doux:#CFC6BA;--track-livree:#E8552D;--jump-jaune:#FFD23F;
+  --dj-police-marque:"Archivo Black","Archivo",sans-serif;--dj-police-texte:"Archivo",sans-serif;--dj-police-chiffres:"JetBrains Mono",monospace;
+  --dj-rayon-bouton:3px;--dj-rayon-tuile:4px;--dj-rayon-afficheur:6px;--dj-rayon-coque:12px 12px 3px 3px;--dj-trait:2px;--dj-trait-fort:3px;
+  --dj-ombre-cartouche:4px 4px 0 var(--dj-encre);--dj-ombre-bouton:2px 2px 0 var(--dj-encre);--dj-ombre-titre:4px 4px 0 var(--dj-papier);
+  --dj-ombre-afficheur:inset 0 3px 0 var(--dj-ecran-ombre),inset 0 -2px 0 var(--dj-ecran-reflet);
+  --dj-voile:repeating-linear-gradient(115deg,#1E1B19D9 0 5px,#1E1B19B3 5px 10px);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--dj-creme);color:var(--dj-encre);font-family:var(--dj-police-texte)}
+.page{padding:28px 28px 36px;width:1290px}
+h1{font:400 24px/1.1 var(--dj-police-marque);margin:0 0 6px}
+.sous{font-size:14px;color:var(--dj-encre-douce);margin:0 0 22px;max-width:1220px;line-height:1.45}
+.rangee{display:grid;grid-template-columns:repeat(3,390px);gap:28px;align-items:start}
+.tete{display:flex;gap:12px;align-items:center;margin-bottom:12px;font-size:15px;line-height:1.35}
+.lettre{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:var(--dj-encre);color:var(--dj-creme);font:400 21px var(--dj-police-marque);border-radius:3px;box-shadow:3px 3px 0 var(--dj-terre);flex:none}
+.hex{font:500 12px/1.45 var(--dj-police-chiffres);color:var(--dj-encre-douce)}
+.tel{width:390px;background:var(--dj-creme);border:3px solid var(--dj-encre);border-radius:6px;padding:0 16px 18px;overflow:hidden}
+.barre{display:flex;align-items:center;justify-content:space-between;height:56px}
+.logo{display:inline-flex;padding:6px 9px 5px;background:var(--dj-encre);color:var(--dj-creme);border-radius:3px;box-shadow:3px 3px 0 var(--dj-terre);font:400 17px/1 var(--dj-police-marque)}
+.date{font:700 12px var(--dj-police-chiffres)}
+.zone{font:400 18px var(--dj-police-marque);margin:4px 0 12px}
+.jour{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cart{display:flex;flex-direction:column;gap:8px;padding:0 9px 9px;border:3px solid var(--dj-encre);border-radius:var(--dj-rayon-coque);box-shadow:var(--dj-ombre-cartouche);background:var(--jeu-coque)}
+.stries{height:12px;margin:0 30px;background:repeating-linear-gradient(90deg,var(--dj-encre) 0 3px,transparent 3px 8px)}
+.etiq{border:2px solid var(--dj-encre);border-radius:3px;display:flex;flex-direction:column;gap:6px;padding:10px;min-height:150px}
+.track{background:var(--track-asphalte);color:var(--track-texte);background-image:repeating-linear-gradient(115deg,transparent 0 9px,var(--track-livree) 9px 19px,transparent 19px 28px);background-size:26px 100%;background-repeat:no-repeat;background-position:right top}
+.tnom{font:italic 800 30px/1 "Barlow Condensed",sans-serif}
+.jump{background:var(--jump-jaune)}
+.jnom{font:400 30px/1 "Lilita One",sans-serif;text-shadow:3px 3px 0 var(--dj-papier)}
+.num{font:700 12px var(--dj-police-chiffres)}
+.clair{color:var(--track-texte-doux)}
+.statut{font-size:13px;font-weight:600;min-height:34px}
+.btn{margin-top:auto;height:46px;display:flex;align-items:center;justify-content:center;background:var(--dj-terre);color:var(--dj-terre-texte);border:2px solid var(--dj-encre);border-radius:3px;font:400 16px var(--dj-police-marque);letter-spacing:1px;text-decoration:none}
+.arcade{margin:26px -16px 0;padding:18px 16px 16px;background:repeating-linear-gradient(135deg,var(--dj-encre) 0 16px,var(--dj-salle) 16px 32px);border-block:3px solid var(--dj-encre)}
+.arcade-titre{margin:0;color:var(--dj-moutarde);font:400 28px/1 var(--dj-police-marque);letter-spacing:2px;text-shadow:3px 3px 0 var(--dj-terre)}
+.arcade-texte{margin:6px 0 20px;color:var(--dj-ecran-texte);font-size:14px}
+.etagere{display:grid;gap:16px;padding-bottom:12px;border-bottom:6px solid var(--dj-moutarde)}
+.arcade .cart{box-shadow:5px 5px 0 var(--dj-salle-ombre)}
+.cart.h{padding:7px} .cart.h .stries{display:none}
+.cart.h .etiq,.cart.v .etiq{padding:0;gap:0;overflow:hidden;background:var(--jeu-fond);min-height:0}
+.cart.h .etiq{flex-direction:row}
+.art{display:flex;align-items:center;justify-content:center;background:var(--jeu-motif)}
+.cart.h .art{width:96px;flex:none;padding:8px;border-right:2px solid var(--dj-encre)}
+.cart.h .art img{height:70px;max-width:100%}
+.info{display:flex;flex:1;flex-direction:column;gap:7px;padding:10px 12px 12px;min-width:0}
+.nom{margin:0;font-family:var(--jeu-police);font-weight:400;line-height:1}
+.info .statut{min-height:0}
+.fiche{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.ligne{display:flex;gap:8px;align-items:center}
+.pastille{width:44px;height:44px;border:2px solid var(--dj-encre);border-radius:3px}
+.accueil{position:relative;display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px;border:3px solid var(--dj-encre);border-radius:3px;background:var(--jeu-motif);outline:10px solid var(--jeu-coque);margin:10px;box-shadow:14px 14px 0 var(--dj-encre)}
+.grand{font-size:46px;line-height:.95;text-shadow:var(--dj-ombre-titre)}
+.petit{font:700 13px var(--dj-police-chiffres);letter-spacing:.5px}
+.jouer{margin-top:8px;height:58px;display:flex;align-items:center;justify-content:center;background:var(--dj-encre);color:var(--jeu-fond);border-radius:3px;font-size:26px;text-decoration:none;box-shadow:0 5px 0 var(--jeu-coque)}
+.bureau{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px;background:repeating-linear-gradient(135deg,var(--dj-encre) 0 16px,var(--dj-salle) 16px 32px);border:3px solid var(--dj-encre);border-radius:6px}
+.bureau .cart{box-shadow:5px 5px 0 var(--dj-salle-ombre)}
+.cart.v .art{height:104px;justify-content:flex-end;align-items:flex-end;padding:8px 12px 0;border-bottom:2px solid var(--dj-encre);position:relative}
+.cart.v .art img{height:84px}
+.cart.v .etiq{position:relative}
+.cart.v .nom{position:absolute;top:10px;left:10px;text-shadow:3px 3px 0 var(--dj-papier)}
+.cart.v .info{padding:8px 10px 10px}
+.cart.v .btn{height:44px;font-size:14px}
+.cout{font-size:14px;line-height:1.45;margin:4px 0 0}
+</style>
+</head>
+<body>
+<div class="page">
+ <h1>Pinball — l’étiquette : trois propositions dans la salle d’arcade</h1>
+ <p class="sous">Chaque colonne est l’accueil du portail sur téléphone (390 px) : les jeux du jour, puis la salle d’arcade avec Tower, Rush et Pinball (cartouches horizontales du téléphone). Dessous : les trois tons, le titre de l’accueil du jeu dans sa police, et la cartouche verticale de l’ordinateur à côté de Rush. Même illustration partout (« le tir ») pour ne comparer que l’étiquette. Les motifs suivent la formule du code (deux tons : la teinte, et la teinte avec 7 % d’encre). Étoiles « Mes jeux » omises.</p>
+ <div class="rangee"><div class="col">
+<div class="tete"><span class="lettre">A</span><div><b>A — Lilas (actuelle)</b><br><span class="hex">fond #C9B6F2 · coque #5B3FA0 · Righteous · losanges</span></div></div>
+<div class="tel">
+ <div class="barre"><span class="logo">DU JOUR</span><span class="date">Lun. 16 nov. · Journée n° 25</span></div>
+ <h2 class="zone">Les jeux du jour</h2>
+ <div class="jour">
+  <article class="cart" style="background:var(--track-coque)"><div class="stries"></div><div class="etiq track"><span class="tnom">TRACK</span><span class="num clair">n° 25 · Nuit</span><span class="statut clair">Meilleur : 31,402 s</span><a class="btn" href="#">JOUER</a></div></article>
+  <article class="cart" style="background:var(--dj-moutarde)"><div class="stries"></div><div class="etiq jump"><span class="jnom">JUMP</span><span class="num">n° 25 · Usine</span><span class="statut">Pas encore joué</span><a class="btn" href="#">JOUER</a></div></article>
+ </div>
+ <section class="arcade"><h2 class="arcade-titre">ARCADE</h2><p class="arcade-texte">Hors de la journée : rejoue autant que tu veux.</p>
+  <div class="etagere"><article class="cart h" style="--jeu-fond:#9ED9BE;--jeu-motif:#9ed9be;--jeu-police:'Rubik Mono One','Archivo',sans-serif;--jeu-coque:#2F7D62"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/tower/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:18px;">TOWER</h3><span class="num">n° 25 · Port</span><span class="statut">Ton record : 41 m</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart h" style="--jeu-fond:#D9C4F0;--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0;--jeu-police:'Bungee','Archivo',sans-serif;--jeu-coque:#4B2E83"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/rush/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">RUSH</h3><span class="num">n° 12 · Crypte</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart h" style="--jeu-fond:#C9B6F2;--jeu-motif:linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 0 0/24px 24px,linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 12px 12px/24px 24px,#c9b6f2;--jeu-police:'Righteous','Archivo',sans-serif;--jeu-coque:#5B3FA0"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="illustration-1-le-tir.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">PINBALL</h3><span class="num">n° 1 · Fête foraine</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article></div>
+ </section>
+</div>
+<div class="fiche">
+ <div class="ligne"><span class="pastille" style="background:#C9B6F2"></span><span class="pastille" style="background:#BEABE3"></span><span class="pastille" style="background:#5B3FA0"></span><span class="hex">fond · 2ᵉ ton du motif #BEABE3 · coque</span></div>
+ <div class="accueil" style="--jeu-fond:#C9B6F2;--jeu-motif:linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 0 0/24px 24px,linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 12px 12px/24px 24px,#c9b6f2;--jeu-coque:#5B3FA0"><span class="grand" style="font-family:'Righteous','Archivo',sans-serif;">PINBALL</span><span class="petit">Partie n° 1 · Fête foraine</span><a class="jouer" href="#" style="font-family:'Righteous','Archivo',sans-serif;">JOUER</a></div>
+ <p class="hex">Le titre de l'accueil et le bouton JOUER du jeu, dans sa police (épaisseur du bouton : la coque).</p>
+ <div class="bureau"><article class="cart v" style="--jeu-fond:#D9C4F0;--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0;--jeu-police:'Bungee','Archivo',sans-serif;--jeu-coque:#4B2E83"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/rush/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">RUSH</h3><span class="num">n° 12 · Crypte</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart v" style="--jeu-fond:#C9B6F2;--jeu-motif:linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 0 0/24px 24px,linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 12px 12px/24px 24px,#c9b6f2;--jeu-police:'Righteous','Archivo',sans-serif;--jeu-coque:#5B3FA0"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="illustration-1-le-tir.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:26px;">PINBALL</h3><span class="num">n° 1 · Fête foraine</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article></div>
+ <p class="hex">Sur ordinateur : la cartouche d'arcade verticale, à côté de celle de Rush.</p>
+ <p class="cout"><b>Ce qu'elle coûte :</b> une police à héberger (Righteous, 12,8 Ko en woff2 latin, plus un sous-ensemble « profil » et son import au portail) : un lot de plateforme.</p>
+</div></div><div class="col">
+<div class="tete"><span class="lettre">B</span><div><b>B — Néon</b><br><span class="hex">fond #F6A2D8 · coque #962170 · Barlow Condensed 800 italique · rayures</span></div></div>
+<div class="tel">
+ <div class="barre"><span class="logo">DU JOUR</span><span class="date">Lun. 16 nov. · Journée n° 25</span></div>
+ <h2 class="zone">Les jeux du jour</h2>
+ <div class="jour">
+  <article class="cart" style="background:var(--track-coque)"><div class="stries"></div><div class="etiq track"><span class="tnom">TRACK</span><span class="num clair">n° 25 · Nuit</span><span class="statut clair">Meilleur : 31,402 s</span><a class="btn" href="#">JOUER</a></div></article>
+  <article class="cart" style="background:var(--dj-moutarde)"><div class="stries"></div><div class="etiq jump"><span class="jnom">JUMP</span><span class="num">n° 25 · Usine</span><span class="statut">Pas encore joué</span><a class="btn" href="#">JOUER</a></div></article>
+ </div>
+ <section class="arcade"><h2 class="arcade-titre">ARCADE</h2><p class="arcade-texte">Hors de la journée : rejoue autant que tu veux.</p>
+  <div class="etagere"><article class="cart h" style="--jeu-fond:#9ED9BE;--jeu-motif:#9ed9be;--jeu-police:'Rubik Mono One','Archivo',sans-serif;--jeu-coque:#2F7D62"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/tower/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:18px;">TOWER</h3><span class="num">n° 25 · Port</span><span class="statut">Ton record : 41 m</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart h" style="--jeu-fond:#D9C4F0;--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0;--jeu-police:'Bungee','Archivo',sans-serif;--jeu-coque:#4B2E83"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/rush/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">RUSH</h3><span class="num">n° 12 · Crypte</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart h" style="--jeu-fond:#F6A2D8;--jeu-motif:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px);--jeu-police:'Barlow Condensed','Archivo',sans-serif;--jeu-coque:#962170"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="illustration-1-le-tir.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:24px;font-style:italic;font-weight:800;">PINBALL</h3><span class="num">n° 1 · Fête foraine</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article></div>
+ </section>
+</div>
+<div class="fiche">
+ <div class="ligne"><span class="pastille" style="background:#F6A2D8"></span><span class="pastille" style="background:#E899CA"></span><span class="pastille" style="background:#962170"></span><span class="hex">fond · 2ᵉ ton du motif #E899CA · coque</span></div>
+ <div class="accueil" style="--jeu-fond:#F6A2D8;--jeu-motif:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px);--jeu-coque:#962170"><span class="grand" style="font-family:'Barlow Condensed','Archivo',sans-serif;font-style:italic;font-weight:800;">PINBALL</span><span class="petit">Partie n° 1 · Fête foraine</span><a class="jouer" href="#" style="font-family:'Barlow Condensed','Archivo',sans-serif;font-style:italic;font-weight:800;">JOUER</a></div>
+ <p class="hex">Le titre de l'accueil et le bouton JOUER du jeu, dans sa police (épaisseur du bouton : la coque).</p>
+ <div class="bureau"><article class="cart v" style="--jeu-fond:#D9C4F0;--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0;--jeu-police:'Bungee','Archivo',sans-serif;--jeu-coque:#4B2E83"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/rush/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">RUSH</h3><span class="num">n° 12 · Crypte</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart v" style="--jeu-fond:#F6A2D8;--jeu-motif:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px);--jeu-police:'Barlow Condensed','Archivo',sans-serif;--jeu-coque:#962170"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="illustration-1-le-tir.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:26px;font-style:italic;font-weight:800;">PINBALL</h3><span class="num">n° 1 · Fête foraine</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article></div>
+ <p class="hex">Sur ordinateur : la cartouche d'arcade verticale, à côté de celle de Rush.</p>
+ <p class="cout"><b>Ce qu'elle coûte :</b> rien : police déjà hébergée et déjà chargée par le portail, motif existant.</p>
+</div></div><div class="col">
+<div class="tete"><span class="lettre">C</span><div><b>C — Lampes</b><br><span class="hex">fond #D3E77C · coque #4E6B14 · Lilita One · pastilles</span></div></div>
+<div class="tel">
+ <div class="barre"><span class="logo">DU JOUR</span><span class="date">Lun. 16 nov. · Journée n° 25</span></div>
+ <h2 class="zone">Les jeux du jour</h2>
+ <div class="jour">
+  <article class="cart" style="background:var(--track-coque)"><div class="stries"></div><div class="etiq track"><span class="tnom">TRACK</span><span class="num clair">n° 25 · Nuit</span><span class="statut clair">Meilleur : 31,402 s</span><a class="btn" href="#">JOUER</a></div></article>
+  <article class="cart" style="background:var(--dj-moutarde)"><div class="stries"></div><div class="etiq jump"><span class="jnom">JUMP</span><span class="num">n° 25 · Usine</span><span class="statut">Pas encore joué</span><a class="btn" href="#">JOUER</a></div></article>
+ </div>
+ <section class="arcade"><h2 class="arcade-titre">ARCADE</h2><p class="arcade-texte">Hors de la journée : rejoue autant que tu veux.</p>
+  <div class="etagere"><article class="cart h" style="--jeu-fond:#9ED9BE;--jeu-motif:#9ed9be;--jeu-police:'Rubik Mono One','Archivo',sans-serif;--jeu-coque:#2F7D62"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/tower/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:18px;">TOWER</h3><span class="num">n° 25 · Port</span><span class="statut">Ton record : 41 m</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart h" style="--jeu-fond:#D9C4F0;--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0;--jeu-police:'Bungee','Archivo',sans-serif;--jeu-coque:#4B2E83"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/rush/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">RUSH</h3><span class="num">n° 12 · Crypte</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart h" style="--jeu-fond:#D3E77C;--jeu-motif:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c;--jeu-police:'Lilita One','Archivo',sans-serif;--jeu-coque:#4E6B14"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="illustration-1-le-tir.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">PINBALL</h3><span class="num">n° 1 · Fête foraine</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article></div>
+ </section>
+</div>
+<div class="fiche">
+ <div class="ligne"><span class="pastille" style="background:#D3E77C"></span><span class="pastille" style="background:#C7D975"></span><span class="pastille" style="background:#4E6B14"></span><span class="hex">fond · 2ᵉ ton du motif #C7D975 · coque</span></div>
+ <div class="accueil" style="--jeu-fond:#D3E77C;--jeu-motif:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c;--jeu-coque:#4E6B14"><span class="grand" style="font-family:'Lilita One','Archivo',sans-serif;">PINBALL</span><span class="petit">Partie n° 1 · Fête foraine</span><a class="jouer" href="#" style="font-family:'Lilita One','Archivo',sans-serif;">JOUER</a></div>
+ <p class="hex">Le titre de l'accueil et le bouton JOUER du jeu, dans sa police (épaisseur du bouton : la coque).</p>
+ <div class="bureau"><article class="cart v" style="--jeu-fond:#D9C4F0;--jeu-motif:linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 0 0/24px 24px,linear-gradient(45deg,#cdb8e1 25%,transparent 25% 75%,#cdb8e1 75%) 12px 12px/24px 24px,#d9c4f0;--jeu-police:'Bungee','Archivo',sans-serif;--jeu-coque:#4B2E83"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="../../../apps/rush/public/illustration.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:22px;">RUSH</h3><span class="num">n° 12 · Crypte</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article><article class="cart v" style="--jeu-fond:#D3E77C;--jeu-motif:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c;--jeu-police:'Lilita One','Archivo',sans-serif;--jeu-coque:#4E6B14"><div class="stries"></div><div class="etiq">
+<div class="art"><img src="illustration-1-le-tir.svg" alt=""></div>
+<div class="info"><h3 class="nom" style="font-size:26px;">PINBALL</h3><span class="num">n° 1 · Fête foraine</span><span class="statut">Pas encore joué aujourd'hui</span><a class="btn" href="#">JOUER</a></div></div></article></div>
+ <p class="hex">Sur ordinateur : la cartouche d'arcade verticale, à côté de celle de Rush.</p>
+ <p class="cout"><b>Ce qu'elle coûte :</b> un motif neuf (« pastilles ») : une ligne dans MOTIFS et fondDuMotif, et le test des fiches, par un petit lot de plateforme ; police déjà hébergée et déjà chargée par le portail.</p>
+</div></div></div>
+</div>
+</body>
+</html>
