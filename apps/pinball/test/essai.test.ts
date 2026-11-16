@@ -15,8 +15,13 @@ describe("les options d'essai de l'adresse", () => {
     expect(lireEssai("?essai=autre", false)).toMatchObject({ mission: false, essai: false });
     expect(lireEssai("", false)).toMatchObject({ mission: false, essai: false });
   });
+  it("`?debug&sons` ouvre la table des sons (lot PBS1) : il faut `debug`, et elle ne change pas la partie (classable)", () => {
+    expect(lireEssai("?debug&sons", false)).toMatchObject({ sons: true, essai: false });
+    expect(lireEssai("?sons", false)).toMatchObject({ sons: false });
+    expect(lireEssai("?debug", false)).toMatchObject({ sons: false });
+  });
   it("sur la production (`restreint`), aucune option n'existe : `?essai=mission` ne fait rien", () => {
-    expect(lireEssai("?essai=mission&debug&tune&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, qualite: null, reglages: null, mission: false, robot: null, plan: null, essai: false });
+    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, robot: null, plan: null, essai: false });
   });
 });
 

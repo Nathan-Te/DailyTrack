@@ -120,6 +120,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/tower/src/tune.ts": "outil de réglage de la sensation (`?debug&tune`, lot T1) : outil interne de Nathan, en français",
   // Lot PB2 : le panneau d'essai de Pinball (`?debug&tune`) : outil interne de Nathan, fermé en production ; ses textes sont écrits en français et en anglais dans le panneau (à la demande, rien dans les catalogues).
   "apps/pinball/src/tune.ts": "outil de réglage de la sensation et de la vue (`?debug&tune`, lot PB2) : outil interne de Nathan, fermé en production, textes fr + en dans le panneau",
+  "apps/pinball/src/tune-sons.ts": "table des sons (`?debug&sons`, lot PBS1) : outil interne de Nathan, fermé en production, textes fr + en dans le panneau ; déclarée au lot PBG1 (le lot PBS1 l'avait oubliée : le test échouait sur `main`)",
   "apps/tower/src/curseurs.ts": "les curseurs de `?debug&tune` (lot T5) : noms, unités et bloc JSON de l'outil de Nathan, en français, fermé en production",
   "apps/tower/src/debug.ts": "ligne d'état de `?debug` (lot T1) : outil interne de Nathan, en français, fermé en production",
   "apps/tower/src/verify.ts": "page de vérification des moteurs de physique (`verify.html`, tests de navigateur) : aucun texte d'interface",
