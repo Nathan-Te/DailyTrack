@@ -1,10 +1,10 @@
 # Lot PB5a — maquettes de l'identité, du HUD et de l'accueil de Pinball
 
-**État : identité choisie par Nathan le 16/11/2026 — étiquette B (« Néon ») et illustration 3 (« la table »).** Le HUD, le panneau « Aujourd'hui » et l'écran de fin attendent encore sa réponse (questions en bas). Ce lot n'écrit que dans `docs/pinball/maquettes/` : aucun code de jeu ni d'interface. « Pour les joueurs » : `rien`.
+**État : tout est validé par Nathan le 16/11/2026** — étiquette B (« Néon »), illustration 3 (« la table »), HUD (avec **le plein écran en vue en portrait aussi**), panneau « Aujourd'hui » activé, écran de fin. Ce lot n'écrit que dans `docs/pinball/maquettes/` : aucun code de jeu ni d'interface. « Pour les joueurs » : `rien`.
 
 ## Le choix, à reporter dans la fiche au PB5b
 - `etiquette` : `fond` `#F6A2D8`, `coque` `#962170`, `police` `"Barlow Condensed", "Archivo", sans-serif` (titres et boutons du jeu en 800 italique, comme Track).
-- `identite` : `police` `Barlow Condensed`, `motif` `rayures`, `illustration` `apps/pinball/public/illustration.svg` (copie de `illustration-3-la-table.svg`), `aujourdhui` `true` (proposé, à confirmer).
+- `identite` : `police` `Barlow Condensed`, `motif` `rayures`, `illustration` `apps/pinball/public/illustration.svg` (copie de `illustration-3-la-table.svg`), `aujourdhui` `true`.
 - Coût : rien hors des zones du jeu (police hébergée et déjà chargée par le portail, motif existant). L'accueil et la fin (`pinball-accueil.*`, `pinball-fin.*`) sont redessinés avec ce choix.
 
 ## À regarder, dans cet ordre (les PNG s'ouvrent sur le téléphone)
@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 1 | **Étagère** : 3 étiquettes dans la salle d'arcade, à côté de Tower et Rush | `pinball-etagere.png` | `pinball-etagere.html` |
 | 2 | **Illustration** : 3 propositions, en grand et à la taille du portail | `pinball-illustration.png` | `pinball-illustration.html` |
-| 3 | **HUD portrait** 390 × 844, 3 états sur la vraie table | `pinball-hud-portrait.png` (les 3) ; `pinball-hud-portrait-1-avant.png`, `-2-en-cours.png`, `-3-mission-reussie.png` | `pinball-hud-portrait.html` |
+| 3 | **HUD portrait** 390 × 844, 3 états sur la vraie table, plein écran compris | `pinball-hud-portrait.png` (les 3) ; `pinball-hud-portrait-1-avant.png`, `-2-en-cours.png`, `-3-mission-reussie.png` | `pinball-hud-portrait.html` |
 | 4 | HUD paysage 844 × 390 et bureau 1440 × 900, en cours | `pinball-hud-paysage.png`, `pinball-hud-bureau.png` | `.html` du même nom |
 | 5 | Accueil et panneau « Aujourd'hui » (téléphone et ordinateur) | `pinball-accueil.png` | `pinball-accueil.html` |
 | 6 | Écran de fin | `pinball-fin.png` | `pinball-fin.html` |
@@ -35,7 +35,7 @@ Pages autonomes (CSS et jetons de `@cdj/ui` recopiés, polices du dépôt ; Righ
 **1 « Le tir »** (la bille part du batteur droit) · **2 « La bille inquiète »** (la bille a des yeux, elle regarde le trou entre les batteurs) · **3 « La table »** (meuble en arche, bumper à yeux, bille, batteurs). Couleurs : encre, papier, terre cuite, moutarde, bronze (le bois) et l'acier `#C9D2DE` (déjà dans l'illustration de Rush). Fichiers SVG prêts à copier en `apps/pinball/public/illustration.svg`.
 
 ## 3. Le HUD
-- **Portrait** : la caméra cadre déjà toute la table ; le meuble laisse une bande libre en haut et en bas. **Tout le HUD y tient, rien ne touche le plateau** : en haut, pause (44 px) · score dans **l'afficheur encastré** de la charte (fond `--dj-ecran`, chiffres ambre JetBrains Mono : l'afficheur d'un flipper) · multiplicateur (papier à ×1, **moutarde dès ×2**) · billes (rondes en acier, une perdue = rond en pointillés) ; en bas, **la mission** (nom, jauge à cases, « 3/5 »).
+- **Portrait** : la caméra cadre déjà toute la table ; le meuble laisse une bande libre en haut et en bas. **Tout le HUD y tient, rien ne touche le plateau** : en haut, pause et **plein écran** (44 px chacun) · score dans **l'afficheur encastré** de la charte (fond `--dj-ecran`, chiffres ambre JetBrains Mono : l'afficheur d'un flipper) · multiplicateur (papier à ×1, **moutarde dès ×2**) ; en bas, **la mission** (nom, jauge à cases, « 3/5 ») et les billes (rondes en acier, une perdue = rond en pointillés), plaques qui ne prennent aucun toucher (le doigt y joue les batteurs).
 - **Avant le lancer** : une aide d'une ligne sur le haut du meuble, qui part au premier lancer. **Mission réussie** : l'afficheur montre « +10 000 » deux secondes, la plaque de la mission passe en moutarde (et le reste), le multiplicateur monte.
 - **Paysage et bureau** : tout dans la marge de gauche (et la mission à droite sur bureau) ; plein écran en haut à droite ; sur bureau, l'aide du clavier en bas à gauche à la première partie.
 
@@ -54,14 +54,18 @@ Score de la partie, ce qu'il vaut (« Nouveau record » / « Pas mieux que ton r
 **Vérifié** : les sept pages se rendent sans erreur ni ressource manquante, toutes les polices chargées ; captures regardées (étagère, illustrations, HUD portrait, paysage, bureau, accueil, fin) ; tous les liens et boutons font au moins 44 × 44 (mesuré dans la page) ; aucun émoji, aucune ombre floue, aucun dégradé (motifs et voile seulement, arrêts francs) ; couleurs : jetons recopiés de `@cdj/ui`, plus les teintes proposées et l'acier de la bille ; contrastes ci-dessus, et encre-douce sur crème-2 4,7:1, ambre sur l'afficheur 7,3:1, encre sur bronze 4,7:1.
 **Non vérifié** : le rendu sur un vrai téléphone et les marges de sécurité (encoche, barre d'accueil de l'iPhone) ; les animations (images fixes) ; l'anglais.
 
-## Ce que le PB5b devra faire (à savoir avant de choisir)
+## Le plein écran en portrait (demande de Nathan du 16/11 : Pinball, Tower et Blocks)
+- **Pinball** : bouton en vue en portrait (maquette ci-dessus), en paysage et sur bureau.
+- **Tower** : il est **déjà** en vue en portrait (`apps/tower/src/hud.ts`, deuxième rangée à gauche, charte § 9).
+- **Blocks et tout jeu du kit** : il n'est que dans la pause et la barre de l'accueil (`packages/kit/src/jeu/partie.ts`), pas dans le HUD de la partie. À ajouter **dans le kit** (zone partagée).
+- **Défaut commun** : `basculerPleinEcran` (`packages/ui/src/pleinEcran.ts`) **verrouille l'écran en paysage** à l'entrée (« les deux jeux s'y jouent », écrit pour Track et Jump). Sur Android, un appui en portrait fait donc tourner Pinball, Tower ou Blocks en paysage. Il faut verrouiller l'orientation du moment, ou laisser chaque jeu la choisir. Sur iPhone, rien ne change : pas de plein écran de page, le bouton ouvre l'astuce « Sur l'écran d'accueil ».
+- **Proposition : un lot de plateforme** (`packages/ui` et `packages/kit`, hors des zones de Pinball) pour ces deux points, avant le PB5b ou avec lui. Ce lot ne les fait pas.
+
+## Ce que le PB5b devra faire
 - **Le HUD passe en surimpression** (`DefinitionJeu.hud: "surimpression"` du kit, lot PG1) au lieu de la barre crème actuelle, et **la caméra cadre la table entre les deux bandes**, marges de sécurité comprises (avec l'encoche d'un iPhone, la bande du haut descend d'environ 47 px : la table doit lui laisser cette place).
 - **L'aperçu de la table** se dessine avec le rendu à plat (`dessin.ts`) dans un petit canvas, **chargé à la demande** après l'accueil : jamais three.js ni le rendu au premier chargement. Son poids est à mesurer (`pinball.jsCss`).
 - **Textes à ajouter** au catalogue du jeu, fr et en : `aujourdhui.mission`, `aujourdhui.table`, `aujourdhui.medailles`, `hud.aide.lancer` (« Maintiens, puis relâche pour lancer »), `hud.mission.reussie`, `fin.meilleure` (« Ta meilleure partie du jour »), `fin.meilleure.compte` (« c'est elle qui compte »), et les noms lus (`hud.score.aria`, `hud.mult.aria`, `hud.billes.aria`).
 - Rappel (déjà au `docs/pinball/consignes.md`) : les mentions légales doivent nommer les clés `pinball:*` avant que le catalogue perde son dernier « À remplacer » — un lot de plateforme.
 
-## Questions pour Nathan
-1. ~~Étiquette~~ : **B** (16/11). ~~Illustration~~ : **3** (16/11).
-2. Le panneau « Aujourd'hui » activé, et l'écran de fin : d'accord ?
-3. Le HUD portrait te va-t-il ? En particulier : **la mission en bas** (loin du score) ; **les billes en ronds** plutôt qu'un chiffre « Billes : 2 ».
-4. Le plein écran : en paysage et sur bureau seulement (comme proposé), ou aussi en portrait ?
+## Décisions de Nathan (16/11/2026)
+Étiquette **B** · illustration **3** · HUD portrait validé, **avec le plein écran en vue en portrait** (aussi voulu pour Tower et Blocks : voir plus haut) · panneau « Aujourd'hui » activé · écran de fin validé.
