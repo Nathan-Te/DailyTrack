@@ -1,4 +1,4 @@
-import { BackSide, BoxGeometry, DoubleSide, FrontSide, Color, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3, type BufferGeometry, type Group, type Material } from "three";
+import { type Texture, BackSide, BoxGeometry, DoubleSide, FrontSide, Color, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3, type BufferGeometry, type Group, type Material } from "three";
 import { HAUTEUR, LARGEUR, UNITE, type Partie, type ThemePinball } from "@cdj/pinball-sim";
 import { MODELES } from "./index";
 import { coque, OUTILS } from "./outils";
@@ -53,7 +53,8 @@ export interface Modules {
   detruire(): void;
 }
 
-export function creerModules(theme: ThemePinball, partie: Partie, groupe: Group): Modules {
+/** `env` : les reflets de la pièce (lot PBV3 : l'environnement est donné matériau par matériau, jamais par la scène). */
+export function creerModules(theme: ThemePinball, partie: Partie, groupe: Group, env?: Texture): Modules {
   const t = partie.table;
   const P = placements(t);
   const lum = MODELES[theme].lumieres;
@@ -61,7 +62,7 @@ export function creerModules(theme: ThemePinball, partie: Partie, groupe: Group)
   const encre = new MeshBasicMaterial({ color: ENCRE, side: BackSide });
   aLiberer.push(encre);
   const materiau = (m: Matiere, blanc: boolean): Material => {
-    const x = new MeshStandardMaterial({ color: blanc ? "#ffffff" : m.c, roughness: m.rug ?? 0.45, metalness: m.met ?? 0, envMapIntensity: m.env ?? 0.5, emissive: m.em ?? "#000000", transparent: (m.op ?? 1) < 1, opacity: m.op ?? 1, depthWrite: (m.op ?? 1) >= 1, side: m.deux ? DoubleSide : FrontSide });
+    const x = new MeshStandardMaterial({ color: blanc ? "#ffffff" : m.c, roughness: m.rug ?? 0.45, metalness: m.met ?? 0, envMapIntensity: m.env ?? 0.5, emissive: m.em ?? "#000000", envMap: env ?? null, transparent: (m.op ?? 1) < 1, opacity: m.op ?? 1, depthWrite: (m.op ?? 1) >= 1, side: m.deux ? DoubleSide : FrontSide });
     aLiberer.push(x);
     return x;
   };

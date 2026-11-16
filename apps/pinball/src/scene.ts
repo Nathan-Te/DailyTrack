@@ -51,7 +51,7 @@ function commandes(): Commandes {
 declare global {
   interface Window {
     /** Hors production, avec `?debug` : les essais e2e dictent leurs changements de commandes (`c` : 0 gauche, 1 droite, 2 lanceur). */
-    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } } | null; vibrations(): number; contours(oui: boolean): void };
+    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] } | null; vibrations(): number; contours(oui: boolean): void };
   }
 }
 

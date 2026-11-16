@@ -24,7 +24,7 @@ export interface PorteScene {
   evenements(): Evenement[];
   /** Le rendu qui est à l'écran, ce que dessine le rendu three.js (appels, triangles, ms de fil principal par image, où tombent les points du terrain à l'écran : tout est à l'image si |x| ≤ 1 et −1 ≤ y ≤ 1), les vibrations demandées. */
   qualite(): "haute" | "basse";
-  trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } } | null;
+  trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] } | null;
   vibrations(): number;
   /** Lot PBV1 : allume ou éteint les contours de collision, le compteur de pas et les gains (les captures les éteignent). */
   contours(oui: boolean): void;
