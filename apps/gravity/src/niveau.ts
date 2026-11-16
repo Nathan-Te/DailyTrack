@@ -18,7 +18,7 @@ const DEPART_MS = 400;
  * lui, l'écran de fin termine le calcul d'un trait (c'est le même, la recherche est pure). Un objet à getters, lu comme des seuils ordinaires par le kit. **En production les jours servis auront leur fichier** (`figer` et
  * `preparer` de la fiche) : ce calcul ne sert qu'aux jours d'essai, d'archive et de recette (README du lot GR2).
  */
-function seuilsEnArrierePlan(contenu: Contenu): Seuils {
+function seuilsEnArrierePlan(contenu: Contenu): { seuils: Seuils; pret: () => Seuils | null } {
   const g = seuilsEnTranches(contenu);
   let fini: Seuils | null = null;
   const avancer = (jusquA: number): void => {
@@ -36,12 +36,14 @@ function seuilsEnArrierePlan(contenu: Contenu): Seuils {
     avancer(Infinity);
     return fini!;
   };
-  return Object.defineProperties({} as Seuils, {
+  const seuils = Object.defineProperties({} as Seuils, {
     bronze: { get: () => lire().bronze, enumerable: true },
     silver: { get: () => lire().silver, enumerable: true },
     gold: { get: () => lire().gold, enumerable: true },
     author: { get: () => lire().author, enumerable: true },
   });
+  // `pret` (lot GR3) : les seuils s'ils sont calculés, **sans jamais forcer le calcul** (le HUD les lit à chaque image : lire `seuils` le terminerait d'un trait et gèlerait la partie).
+  return { seuils, pret: () => fini };
 }
 
 /** Le contenu d'un jour : le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit (avec ses seuils figés), sinon le générateur courant. `theme` : le thème effectif ; s'il n'est pas celui du jour (`?theme=`, essai hors production, jamais classé), l'ordre est tourné pour le mettre en tête. */
@@ -58,7 +60,8 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   }
   contenu ??= dailyGravity(jour, GRAVITY_GENERATOR_VERSION);
   if (theme !== contenu.ordre[0] && (THEMES_GRAVITY as readonly string[]).includes(theme)) contenu = { ...contenu, ordre: ordreCommencantPar(contenu.ordre, theme as ThemeGravity), seuilsFiges: undefined };
-  const rendu: Contenu & { essai?: EssaiRecette } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? seuilsEnArrierePlan(contenu) };
+  const calcul = contenu.seuilsFiges ? null : seuilsEnArrierePlan(contenu);
+  const rendu: Contenu & { essai?: EssaiRecette; pretSeuils: () => Seuils | null } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? calcul!.seuils, pretSeuils: calcul ? calcul.pret : () => contenu.seuilsFiges ?? null };
   // Les essais de recette (`?robot`, `?morceau=<n>`, hors production) : le robot joue ici, avant la partie (une à deux secondes), et la scène rejoue ses appuis.
   const essais = lireEssais(typeof location === "undefined" ? "" : location.search, production);
   if (essais.robot || essais.morceau !== null) {
