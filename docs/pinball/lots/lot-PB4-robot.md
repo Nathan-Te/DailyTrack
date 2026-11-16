@@ -33,6 +33,10 @@ Branche `claude/pinball-robot-validation-medals-rpos3i` (le nom du prompt, `clau
 **Non vérifié** : si le robot « joue comme un bon joueur, pas comme une machine » à l'œil (une capture seulement) ; le robot sur un vrai téléphone ; l'effet de `preparer` dans « Mettre en production » (jamais lancé : le bouton est à Nathan) ; libSQL en local (CI) ; Firefox et WebKit.
 
 ## Pour Nathan : tester en 2 clics (recette, jamais classé)
-À compléter avec la base de l'aperçu de la PR.
+Base de l'aperçu de la PR (expire 7 jours après la dernière poussée) : `https://playdujour-recette--pr-344-l7sf47th.web.app/pinball/`
+- **Le robot joue la table du jour** : https://playdujour-recette--pr-344-l7sf47th.web.app/pinball/?robot (mention « Le robot joue » ; le toucher ne change rien ; la partie dure 2 minutes de jeu, celle des seuils).
+- **Le robot sur la table de chaque thème** (sa première partie, d'après le rapport) : foire https://playdujour-recette--pr-344-l7sf47th.web.app/pinball/?jour=2026-11-05&robot · océan https://playdujour-recette--pr-344-l7sf47th.web.app/pinball/?jour=2026-11-06&robot · espace https://playdujour-recette--pr-344-l7sf47th.web.app/pinball/?jour=2026-11-02&robot · volcan https://playdujour-recette--pr-344-l7sf47th.web.app/pinball/?jour=2026-11-03&robot (`?robot=2` : une autre de ses parties).
+- **Une partie normale** : https://playdujour-recette--pr-344-l7sf47th.web.app/pinball/ — comparer son score aux médailles du jour, affichées à la fin (sans fichier de jour, elles sont calculées en arrière-plan par le navigateur : quelques secondes de plus à l'écran de fin sur un téléphone, jamais en production une fois `preparer` lancé).
+- Ce que Nathan regarde : le robot joue comme un bon joueur, pas comme une machine ; Bronze facile, Or avec de l'application, Diamant pour les meilleurs (sinon : `POURCENT_*`, `DUREE_PARTIE_ROBOT`, `PARTIES_DU_ROBOT` de `seuils.ts`, qui montent `PINBALL_BOT_VERSION`).
 
 **Pour les joueurs : rien**
