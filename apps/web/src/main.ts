@@ -696,7 +696,7 @@ function renderObjective() {
   // Lot I7 : la caméra (celle de la touche C et de la pause, même fonction) et le plein écran restent en vue, à droite de la pause.
   bouton("btn-camera", icone("camera", { taille: 20 }), "course.camera.proche", () => cycleCamera(), false);
   $("btn-camera").removeAttribute("data-t-aria-label"); // son nom lu porte la caméra courante : `syncCameraButton`
-  menu.append(boutonPleinEcran({ t, id: "btn-fullscreen", classe: ["plaque", "plaque--bouton"], avantAide: () => setPaused(true) })); // lot 53 : sur iPhone il ouvre l'aide : la course se met en pause
+  menu.append(boutonPleinEcran({ t, id: "btn-fullscreen", classe: ["plaque", "plaque--bouton"], avantAide: () => setPaused(true), orientation: "paysage" })); // lot 53 : sur iPhone il ouvre l'aide : la course se met en pause
   appliquerTextes(menu);
 })();
 onLangue(majPleinEcran);
@@ -1022,7 +1022,7 @@ $("pause-ghost").addEventListener("click", () => {
 });
 $("pause-sound").addEventListener("click", () => gameAudio.mute());
 // Lot I7 : le plein écran de la pause est le bouton du socle, en texte (même logique que celui du HUD et de l'accueil).
-$("pause-fullscreen").replaceWith(boutonPleinEcran({ t, id: "pause-fullscreen", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true }));
+$("pause-fullscreen").replaceWith(boutonPleinEcran({ t, id: "pause-fullscreen", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true, orientation: "paysage" }));
 $("pause-respawn").addEventListener("click", () => {
   setPaused(false);
   controls.requestRespawn();

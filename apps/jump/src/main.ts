@@ -2812,7 +2812,7 @@ function syncMessage(): void {
 }
 const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
 // Lot I7 : le plein écran reste en vue, juste après la pause (la plaque du HUD) ; caché s'il n'est pas possible. Même logique que l'accueil et la pause (socle).
-pauseButton.after(boutonPleinEcran({ t, id: "fullscreenbtn", classe: ["plaque", "plaque--bouton"], avantAide: () => setMenu(true) })); // lot 53 : sur iPhone il ouvre l'aide : la partie se met en pause
+pauseButton.after(boutonPleinEcran({ t, id: "fullscreenbtn", classe: ["plaque", "plaque--bouton"], avantAide: () => setMenu(true), orientation: "paysage" })); // lot 53 : sur iPhone il ouvre l'aide : la partie se met en pause
 onLangue(majPleinEcran);
 // Lot 27 (comme DailyTrack, à la même place : en haut à gauche, à côté de la pause, aux doigts seulement) : la plaque « dernier point de passage » (le drapeau) et la plaque
 // « recommencer à zéro ». Elles font ce que font R et Entrée ; le drapeau n'existe que dans un niveau de la version 11 (les anciens ne savent pas enregistrer une reprise).
