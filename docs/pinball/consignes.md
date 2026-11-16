@@ -2,6 +2,9 @@
 
 Chargé par lecture des fichiers du jeu (zone `docs/pinball/**`). Réponses et docs en français. **Créé par `npm run nouveau-jeu -- --id pinball --classement score`** (lot K4g) à partir du jeu témoin « Cibles » ; vision : `docs/pinball/seed.md` (**ne pas modifier**, c'est Nathan qui le fait) ; à coller dans une conversation d'orchestration : `docs/pinball/passation.md`.
 
+## Lot PBV4 (un vrai modèle par module et par thème)
+- **Les modules communs deviennent l'objet que leur nom annonce**, en volume et à plat, un fichier par thème (`apps/pinball/src/modeles/`) ; les yeux des bumpers s'en vont (décision de Nathan) ; le retour au contact est le même dans tous les thèmes ; les modèles sont partagés et instanciés. Règles (emprise, retour au contact, ajouter un thème) : `apps/pinball/CLAUDE.md` (« Les modèles des modules communs ») ; détail, mesures et écarts : `docs/pinball/lots/lot-PBV4-elements.md`. **La simulation n'a pas changé.**
+
 ## Lot PBV1 (la passe visuelle, Fête foraine et Océan)
 - **La recette visuelle commune** (lumière chaude de fin d'après-midi, pièce et parquet, meuble verni, matériaux, bandes lumineuses et lampes, bloom en haute qualité seulement) et **le sol riche de la Fête foraine et de l'Océan**, dans les deux rendus. Règles : `apps/pinball/CLAUDE.md` (« La recette visuelle », « Règle de lisibilité ») ; détail et écarts qui restent : `docs/pinball/lots/lot-PBV1-visuel.md`. **La simulation n'a pas changé.** Espace et Volcan : recette commune seulement (leur décor : PBV2).
 
