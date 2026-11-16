@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
-import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, dailyPinball, empreinteContenu, rejouer, seuilsSurLePapier } from "../src/index";
+import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, Partie, dailyPinball, decoderRediffusion, empreinteContenu, rejouer, seuilsSurLePapier } from "../src/index";
 
 // Le golden : produit par `npm run golden:pinball` (jamais écrit à la main), rejoué ici par Node et dans Chromium, Firefox et WebKit par `apps/pinball/e2e/determinisme.spec.ts`.
 const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-pinball.json", import.meta.url), "utf8")) as {
@@ -30,5 +30,23 @@ describe("golden de Pinball", () => {
     expect(tenus!.ticks).toBeGreaterThan(900);
     expect(court!.score).toBeGreaterThan(5000);
     expect(long!.score).toBeGreaterThan(court!.score);
+  });
+  it("lot PB3 : les rediffusions du pilote jouent les quatre thèmes, leurs éléments et leurs missions", () => {
+    const refs = golden.rediffusions.filter((r) => r.nom.startsWith("pilote-"));
+    const themes = refs.map((r) => dailyPinball(parseDay(r.date)!, r.g).theme).sort();
+    expect(themes).toEqual(["espace", "foire", "ocean", "volcan"]);
+    for (const r of refs) expect(r.resultat.score, r.nom).toBeGreaterThan(2000);
+    const missions = refs.filter((r) => {
+      const c = dailyPinball(parseDay(r.date)!, r.g);
+      const p = new Partie(c);
+      const ev = decoderRediffusion(r.code).evenements;
+      let k = 0;
+      while (!p.finie) {
+        while (k < ev.length && ev[k]!.tick === p.tick) p.regler(ev[k]!.c, ev[k++]!.enfonce);
+        p.avancer();
+      }
+      return p.missionFaite;
+    });
+    expect(missions.length, "la mission est réussie par le pilote sur au moins trois tables").toBeGreaterThanOrEqual(3);
   });
 });

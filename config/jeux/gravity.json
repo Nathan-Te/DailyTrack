@@ -191,6 +191,10 @@
       "ecrans-kit.spec.ts": [
         "gravity-jeu",
         "ui"
+      ],
+      "essais.spec.ts": [
+        "gravity-sim",
+        "gravity-jeu"
       ]
     },
     "parts": {

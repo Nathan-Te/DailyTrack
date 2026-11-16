@@ -6,13 +6,15 @@
     "classement.spec.ts": 9,
     "poids.spec.ts": 1,
     "ecrans-kit.spec.ts": 18,
-    "rendu.spec.ts": 30
+    "rendu.spec.ts": 30,
+    "themes.spec.ts": 6
   },
   "essentiel": {
     "determinisme.spec.ts": 1,
     "partie.spec.ts": 5,
     "classement.spec.ts": 9,
     "poids.spec.ts": 1,
-    "rendu.spec.ts": 30
+    "rendu.spec.ts": 30,
+    "themes.spec.ts": 6
   }
 }

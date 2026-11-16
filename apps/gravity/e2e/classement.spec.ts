@@ -23,7 +23,9 @@ async function joueurDeLApi(nom: string, variante: number): Promise<void> {
 }
 
 async function choisirPseudo(page: Page, pseudo: string): Promise<void> {
-  await expect(page.locator("#jeu-pseudo-form")).toBeVisible();
+  // Le jour d'essai n'a pas de fichier figé : à l'écran de fin le jeu termine d'un trait le calcul des seuils (le robot, 2 à 3 s sous Chromium quand la partie scriptée ne laisse aucun temps libre au calcul en
+  // arrière-plan) — d'où un délai plus large que les 5 s par défaut. En production le jour a son fichier.
+  await expect(page.locator("#jeu-pseudo-form")).toBeVisible({ timeout: 20_000 });
   await page.locator("#jeu-pseudo").fill(pseudo);
   await page.locator("#jeu-pseudo-ok").click();
 }

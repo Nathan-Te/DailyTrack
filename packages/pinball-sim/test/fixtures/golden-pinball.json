@@ -1,20 +1,20 @@
 {
   "_": "Golden de Pinball (lot PB1). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
-  "sim": 2,
-  "generateur": 2,
+  "sim": 3,
+  "generateur": 3,
   "jours": [
     {
       "date": "2026-11-02",
       "theme": "espace",
       "modules": [
         "spinner",
+        "asteroide",
+        "portailB",
+        "portailA",
         "mini",
-        "cibles",
-        "spinner",
-        "mini",
-        "bumpers"
+        "trouNoir"
       ],
-      "empreinte": "8dabe595",
+      "empreinte": "0d1b0e3a",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -31,9 +31,9 @@
         "cibles",
         "cibles",
         "trou",
-        "cibles"
+        "manege"
       ],
-      "empreinte": "bad563d0",
+      "empreinte": "3a470a14",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -50,9 +50,9 @@
         "cibles",
         "trou",
         "trou",
-        "mini"
+        "tourbillon"
       ],
-      "empreinte": "0de7836f",
+      "empreinte": "d84ba56b",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -69,9 +69,9 @@
         "cibles",
         "trou",
         "mini",
-        "mini"
+        "manege"
       ],
-      "empreinte": "928e12ed",
+      "empreinte": "3fd58d1c",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -87,10 +87,10 @@
         "bumpers",
         "mini",
         "cibles",
-        "mini",
-        "mini"
+        "trou",
+        "tourbillon"
       ],
-      "empreinte": "d0464210",
+      "empreinte": "7dd01999",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -103,13 +103,13 @@
       "theme": "espace",
       "modules": [
         "cibles",
-        "bumpers",
-        "spinner",
-        "cibles",
+        "asteroide",
+        "portailB",
+        "portailA",
         "trou",
-        "trou"
+        "trouNoir"
       ],
-      "empreinte": "7000a087",
+      "empreinte": "96def6f9",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -124,11 +124,11 @@
         "mini",
         "bumpers",
         "spinner",
-        "spinner",
+        "geyser",
         "mini",
-        "trou"
+        "coulee"
       ],
-      "empreinte": "28222aa4",
+      "empreinte": "cf429f9d",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -141,13 +141,13 @@
       "theme": "espace",
       "modules": [
         "bumpers",
-        "bumpers",
-        "cibles",
-        "spinner",
+        "asteroide",
+        "portailB",
+        "portailA",
         "trou",
-        "bumpers"
+        "trouNoir"
       ],
-      "empreinte": "7f0536c1",
+      "empreinte": "c4c511b9",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -162,11 +162,11 @@
         "mini",
         "bumpers",
         "spinner",
+        "geyser",
         "trou",
-        "trou",
-        "spinner"
+        "coulee"
       ],
-      "empreinte": "7c7a41bb",
+      "empreinte": "c18fb2da",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -181,11 +181,11 @@
         "spinner",
         "bumpers",
         "cibles",
-        "spinner",
+        "geyser",
         "trou",
-        "cibles"
+        "coulee"
       ],
-      "empreinte": "2b797909",
+      "empreinte": "37276826",
       "seuils": {
         "bronze": 10000,
         "silver": 30000,
@@ -198,8 +198,8 @@
     {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 2,
-      "code": "AQICAJeiAQ",
+      "g": 3,
+      "code": "AQMDAJeiAQ",
       "resultat": {
         "score": 0,
         "ticks": 540000,
@@ -210,10 +210,10 @@
     {
       "nom": "batteurs-tenus",
       "date": "2026-11-02",
-      "g": 2,
-      "code": "AQICAJeiAUDRDZAcPu1FAw",
+      "g": 3,
+      "code": "AQMDAJeiAUDRDZAcPu1FAw",
       "resultat": {
-        "score": 250,
+        "score": 400,
         "ticks": 540000,
         "billes": 2,
         "multMax": 1
@@ -221,23 +221,47 @@
     },
     {
       "nom": "pilote-2-minutes",
-      "date": "2026-11-05",
-      "g": 2,
-      "code": "AQICAJqiAQT7E6g0gwWsQboLoQjpA_gC-xOoNIMFiiizBZ4ZhgzXCfUCkAP7E6g0gwWKKLMF0LYBwQS4Kb8F7DatBawM2QXQG-EEvDrDBNwbqQW-IcMEgj6zBd6jAdkErhSpBdgUqQW6IoMF3iyhBvwLwwS0GrUFyiHDBOIVtQXWL7MFnhmGDNcJ9QI",
+      "date": "2026-11-20",
+      "g": 3,
+      "code": "AQMDAKmiAQT7E6g0gwWSfsEE4EnnBPJP2wSWHw7xBEWaGrkFnCLZBPghvwWeIcEEpjPhBLpDwQSEWLMFzBM46wQ51GmnBcA3pwWWI80F1AfDBJwd4QTqTvsTqDSDBZJ-wQTgSecE8k_bBJYfDvEERZoauQWcItkE-CG_BZ4hwQSmM-EEukPBBIRYswXMEzjrBDnUaacFwDenBZYjzQXUB8MEnB3hBOpO-xOoNIMFkn7BBOBJ5wTyT9sElh8O8QRFmhq5BZwi2QT4Ib8FniHBBKYz4QS6Q8EEhFizBcwTOOsEOdRppwX2IfsTqDSDBQ",
       "resultat": {
-        "score": 16210,
-        "ticks": 32920,
-        "billes": 0,
-        "multMax": 1
+        "score": 40760,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
       }
     },
     {
       "nom": "pilote-8-minutes",
-      "date": "2026-11-14",
-      "g": 2,
-      "code": "AQICAKOiAQT7E6g0gwXaGKEF5C7HBIharwWKLoMFgCfHBPxKuwWkD5UFqjfDBN5V2QT4DKcFulvNBJgn8QTWSvEEmg6tBagXrwXAQMEE1DTbBIaGAfsTqDSDBdoYoQXkLscEiFqvBYougwWAJ8cE_Eq7BZAcvwXoDrkF4AnxBKC0AYEc2AvDBM42pwWQdscE1n3ZBOANqQXcCPUF1AbHBN4ivwXeFv0EmFjHBfhXxwSITY8F5BOJBfAfxQWMPN8EjhiFBcQzwwSyEY8FjGq7BZAiuAatBfkHihHDBKZlxwTecbUF7EXBBOoi8QT4QMME-jsa_QRFrCaJBc4KtQXWCALPBHm8EsEEwEHrBYwTwwTUN68FrAuDBZ4txwTQNb8F2g2pBdIu3QX6JsEEiiLxBIAZyQS6I8ME1jmhBtILwwT2NcUG8gfDBOoOuwXoIcMErhBizQQDzAvDBPAx_QSmIMUFrlLNBMIPmwWMP8EEyB7ZBOgYrwWEI8MEjjsC3wRpxj2zBaAJrwXeMbkFznb_BPRWmwXOEKkFliKDBZAWoQXiCK0FzAu1BaZEwQSuULsFrFnBBPgSlQXuHcEEriOXBaocqQWYNMkE-Cn7E6g0gwXaGKEF5C7HBIharwWKLoMFgCfHBPxKuwWkD5UFqjfDBN5V2QT4DKcFzJEBxwSQSb8F4BXBBMAixQWSDMEEzhaRBbo7wwTcPvEEsjbBBbQivwWUD7UFhBfhBIQk-xOoNIMF2hihBeQuxwSIWq8Fii6DBYAnxwT8SrsFpA-VBao3wwTeVdkE-AynBcyRAccEkEm_BeAVwQTAIsUFkgzBBM4WkQW6O8ME3D7xBLI2wQW0Ir8FzBG1Bc4fwwTuIcMEslG1BQ6VG8wLwwTidMEEqiKRBb4vpwXuVsEEzkWzBeBLwQT4Nq0FtjACuQUDhkvHBJItiQXyD6UGvAbHBKA0-xOoNIMF2hihBeQuxwSIWq8Fii6DBYAnxwT8SrsFpA-VBao3wwTeVdkE-AynBcyRAccEkEm_BeAVwQTAIsUFkgzBBM4WkQW6O8ME3D7xBLI2wQW0Ir8FzBG1Bc4fwwTuIcMEslG1BQ6VG8wLwwTidMEEqiKRBb4vpwXuVsEEzkWzBeBLwQT4Nq0FtjACuQUDhkvHBJItiQXyD6UGvAbHBKA0-xOoNIMF2hihBeQuxwSIWq8Fii6DBYAnxwT8SrsFpA-VBao3wwTeVdkE-AynBcyRAccEkEm_BeAVwQTAIsUFkgzBBM4WkQW6O8ME3D7xBLI2wQW0Ir8FzBG1Bc4fwwTuIcMEslG1BQ6VG8wLwwTidMEEqiKRBb4vpwXuVsEEzkWzBeBLwQT4Nq0FtjACuQUDhkvHBJIt",
+      "date": "2026-11-17",
+      "g": 3,
+      "code": "AQMDAKaiAQT7E6g0gwWkJLMFgAzBBOQsqQWGKoMFgDTeBKUBkQeCGsEEjDytBcAatQWQIv0E3jXNBeABogGvBR-eJfMEtEHDBNg12wSKI_kEzBThBOAE2wSAUd8EpiOtBbRAAt8EV9hPgwWiHe0EnAvBBeAcwwTKNsME1h7PBPQX_QTkIsEEpjUC4QRhxggM2wSjBPwXzwTUGKcF6iH7E6g0gwWkJLMFgAzBBOQsqQWGKoMFgDTeBKUBkQeCGsEEjDytBcAatQWQIv0E3jXNBeABogGvBR-eJfMEtEHDBNg12wSKI_kEzBThBOAE2wSAUd8EpiOtBbRAAt8EV9hPgwXIhAHBBNo0rwXoIIMF4D_BBKgoAvEEV9pJqQXkIv0EnCWDBcYuoQXYGoUF2hKnBdgHjwXuIvsTqDSDBaQkswWADMEE5CypBYYqgwWANN4EpQGRB4IawQSMPK0FwBq1BZAi_QTeNc0F4AGiAa8FH54l8wS0QcME2DXbBIoj-QTMFOEE4ATbBIBR3wSmI60FtEAC3wRX2E-DBfRIwwTOHoMFlEezBfIj-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMF",
       "resultat": {
-        "score": 88030,
+        "score": 76460,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "pilote-foire",
+      "date": "2026-11-11",
+      "g": 3,
+      "code": "AQMDAKCiAQT7E6g0gwWqJwK5BQOKF8MEnDT9BKImyQSmETjrBAPUEIsFyDy_BbYj-xOoNIMFujdK6wRLsC2VBbIp4wX2K8EEtivtBMwyrwX4MwKlBhBjmxOoNIMFqicCuQUDihfDBJw0_QSiJskEphE46wQD1BCLBcg8vwW2I_sTqDSDBbo3SusES7AtlQWyKeMF9ivBBLYr7QTMMq8F-DMCpQYQY5sTqDSDBaonArkFA4oXwwScNP0EoibJBKYROOsEA9QQiwXIPL8FtiP7E6g0gwW6N0rrBEuwLZUFsinjBfYrwQS2K-0EzDKvBfgzAqUG",
+      "resultat": {
+        "score": 37660,
+        "ticks": 53919,
+        "billes": 0,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "pilote-ocean",
+      "date": "2026-11-08",
+      "g": 3,
+      "code": "AQMDAJ2iAQT7E6g0gwWmEqkFvCqDBYwW1QTMF-cEziP7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBQ",
+      "resultat": {
+        "score": 2500,
         "ticks": 540000,
         "billes": 3,
         "multMax": 1

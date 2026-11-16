@@ -3,6 +3,9 @@ import {
   CanvasTexture,
   CircleGeometry,
   Color,
+  DoubleSide,
+  RepeatWrapping,
+  ShapeGeometry,
   CylinderGeometry,
   DirectionalLight,
   EdgesGeometry,
@@ -38,8 +41,8 @@ import {
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { AXE, HAUTEUR, LARGEUR, MULT_MAX, RAYON, TOUR, type Partie, type ThemePinball } from "@cdj/pinball-sim";
-import { ENCRE, PALETTES, PAPIER, MOUTARDE, dessinerSol, pastille, placeDuNom, px, type Palette, type Rendu, type Surimpression } from "./dessin";
+import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, type Partie, type ThemePinball } from "@cdj/pinball-sim";
+import { COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, lampesMission, pastille, placeDuNom, px, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
@@ -64,6 +67,8 @@ export interface OptionsCorps {
   titre: string;
   police: string;
   vue: Vue;
+  /** Le joueur préfère moins de mouvement : pas de secousse de caméra à la mission réussie. */
+  reduit: boolean;
   /** Un écran tactile : moins de pixels (1,5 au plus). */
   tactile: boolean;
   /** `?debug&fps` : les images par seconde, la durée d'une image, les appels de dessin. */
@@ -226,7 +231,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   }
 
   // --- Les bumpers : jupe, corps, chapeau, deux yeux qui suivent la bille
-  const bumpers = t.bumpers.map((b) => {
+  const bumpers = t.bumpers.map((b) => {  // (lot PB3 : `g` suit l'astéroïde, qui se déplace)
     const r = px(b.r);
     const g = new Group();
     g.position.set(X(px(b.x)), 0, Z(px(b.y)));
@@ -234,7 +239,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     jupe.position.y = 2.5;
     const haut = new Group();
     haut.position.y = 2;
-    const corps = cylindre(r, 20, P.bumper, { emissive: MOUTARDE, unique: true });
+    const corps = cylindre(r, 20, b.mobile ? "#9AA3B5" : P.bumper, { emissive: MOUTARDE, unique: true }); // l'astéroïde est gris
     corps.position.y = 10;
     (corps.material as MeshStandardMaterial).emissiveIntensity = 0;
     corps.add(contour(corps.geometry));
@@ -253,7 +258,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     }
     g.add(jupe, haut);
     groupe.add(g);
-    return { b, r, haut, corps, pupilles, x: px(b.x), y: px(b.y) };
+    return { b, g, r, haut, corps, pupilles, x: px(b.x), y: px(b.y) };
   });
 
   // --- Les cibles : des blocs qui tombent (et leur trace pointillée au sol)
@@ -303,6 +308,235 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     fond.position.set(X(px(tr.x)), 0.6, Z(px(tr.y)));
     groupe.add(anneau, fond);
   }
+
+  // --- Lot PB3 : les éléments des thèmes, animés en fonction du seul pas ; chaque mise à jour reçoit le pas (et la part de pas écoulée) et rien d'autre
+  const C = COULEURS_ELEMENTS;
+  const maj: ((tick: number, sec: number, dt: number) => void)[] = [];
+  const plat = (g: BufferGeometry, y: number, m: Material | Material[]): Mesh => {
+    const d = new Mesh(g, m);
+    d.rotation.x = -Math.PI / 2;
+    d.position.y = y;
+    return d;
+  };
+  const disque = (r: number, y: number, tex: Texture, transparent = true): Mesh => {
+    const m = new MeshBasicMaterial({ map: tex, transparent, depthWrite: false });
+    aLiberer.push(m);
+    return plat(geo(new CircleGeometry(r, 64)), y, m);
+  };
+  // le manège : un plateau de huit parts qui tourne contre les aiguilles, un moyeu, quatre chevaux
+  for (const z of t.plateaux) {
+    const r = px(z.r);
+    const g = new Group();
+    g.position.set(X(px(z.x)), 0, Z(px(z.y)));
+    const socle = cylindre(r, 6, MOUTARDE);
+    socle.position.y = 3;
+    socle.add(contour(socle.geometry));
+    const tourne = new Group();
+    const parts = toile(512, 512, (c) => {
+      c.translate(256, 256);
+      c.scale(256 / (r - 7), 256 / (r - 7));
+      for (let k = 0; k < 8; k++) {
+        c.fillStyle = k % 2 ? C.manegeA : PAPIER;
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.arc(0, 0, r - 7, (k * Math.PI) / 4, ((k + 1) * Math.PI) / 4);
+        c.closePath();
+        c.fill();
+      }
+    });
+    tourne.add(disque(r - 7, 6.2, parts, false));
+    const hub = cylindre(10, 24, C.manegeHub);
+    hub.position.y = 12;
+    tourne.add(hub);
+    for (let k = 0; k < 4; k++) {
+      const a = (k * Math.PI) / 2;
+      const poteau = cylindre(1.6, 20, ENCRE);
+      poteau.position.set(Math.cos(a) * r * 0.58, 16, Math.sin(a) * r * 0.58);
+      const cheval = ombrageur(new Mesh(geo(new SphereGeometry(5.5, 16, 12)), mat(k % 2 ? MOUTARDE : PAPIER)));
+      cheval.position.set(Math.cos(a) * r * 0.58, 28, Math.sin(a) * r * 0.58);
+      tourne.add(poteau, cheval);
+    }
+    g.add(socle, tourne);
+    groupe.add(g);
+    maj.push((_, sec) => (tourne.rotation.y = sec * 1.6));
+  }
+  // le tourbillon : trois bras en spirale qui tournent, un cœur sombre
+  for (const z of t.tourbillons) {
+    const r = px(z.r);
+    const g = new Group();
+    g.position.set(X(px(z.x)), 0, Z(px(z.y)));
+    const spirale = toile(512, 512, (c) => {
+      c.fillStyle = C.tourbillon;
+      c.beginPath();
+      c.arc(256, 256, 256, 0, TAU);
+      c.fill();
+      c.translate(256, 256);
+      c.strokeStyle = C.tourbillonBras;
+      c.lineWidth = 18;
+      c.lineCap = "round";
+      for (let k = 0; k < 3; k++) {
+        c.rotate(2.094);
+        c.beginPath();
+        for (let a = 0; a < 5; a += 0.1) c.lineTo(Math.cos(a) * (240 - a * 40), Math.sin(a) * (240 - a * 40));
+        c.stroke();
+      }
+    });
+    const tourne = new Group();
+    tourne.add(disque(r, 0.8, spirale));
+    const coeur = ombrageur(new Mesh(geo(new CylinderGeometry(9, 9, 2, 24)), mat(C.tourbillonCentre)), false);
+    coeur.position.y = 1.4;
+    g.add(tourne, coeur);
+    groupe.add(g);
+    maj.push((_, sec) => (tourne.rotation.y = -sec * 4.8));
+  }
+  // le trou noir : un cœur sombre, un anneau d'or incliné, des anneaux en pointillés qui tournent
+  for (const z of t.trousNoirs) {
+    const g = new Group();
+    g.position.set(X(px(z.x)), 0, Z(px(z.y)));
+    const ondes = toile(512, 512, (c) => {
+      c.translate(256, 256);
+      for (let k = 4; k >= 1; k--) {
+        c.beginPath();
+        c.arc(0, 0, (250 * k) / 4, 0, TAU);
+        c.strokeStyle = `rgba(${C.noirOnde},${0.3 + (4 - k) * 0.15})`;
+        c.lineWidth = 6;
+        c.setLineDash([22, 22]);
+        c.stroke();
+      }
+    });
+    const tourne = new Group();
+    tourne.add(disque(px(z.r), 0.9, ondes));
+    const noyau = ombrageur(new Mesh(geo(new SphereGeometry(15, 24, 16)), mat(C.noirCentre, { roughness: 0.2 })), false);
+    noyau.position.y = 5;
+    const anneau = ombrageur(new Mesh(geo(new TorusGeometry(26, 2.6, 10, 48)), mat(C.noirAnneau, { emissive: C.noirAnneau })), false);
+    (anneau.material as MeshStandardMaterial).emissiveIntensity = 0.4;
+    anneau.position.y = 11;
+    anneau.rotation.set(Math.PI / 2 - 0.35, 0.2, 0);
+    g.add(tourne, noyau, anneau);
+    groupe.add(g);
+    maj.push((_, sec) => {
+      tourne.rotation.y = sec * 0.5;
+      anneau.rotation.z = sec * 0.8;
+    });
+  }
+  // les portails : trois anneaux qui battent, un fond sombre, la lettre
+  for (const p of t.portails) {
+    const g = new Group();
+    g.position.set(X(px(p.x)), 0, Z(px(p.y)));
+    const r = px(p.r);
+    const anneaux = [0, 1, 2].map((k) => {
+      const a = ombrageur(new Mesh(geo(new TorusGeometry(r + 5 + k * 5, 1.8, 8, 40)), mat(k % 2 ? C.portailB : C.portailA, { emissive: k % 2 ? C.portailB : C.portailA })), false);
+      (a.material as MeshStandardMaterial).emissiveIntensity = 0.5;
+      a.rotation.x = Math.PI / 2;
+      a.position.y = 2.5;
+      g.add(a);
+      return a;
+    });
+    const lettre = toile(64, 64, (c) => {
+      c.fillStyle = C.portailFond;
+      c.beginPath();
+      c.arc(32, 32, 32, 0, TAU);
+      c.fill();
+      c.fillStyle = PAPIER;
+      c.font = `700 36px ${o.police}`;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillText(p.id === 0 ? "A" : "B", 32, 35);
+    });
+    g.add(disque(r, 1, lettre));
+    groupe.add(g);
+    maj.push((_, sec) => anneaux.forEach((a, k) => a.scale.setScalar(1 + Math.sin(sec * 4 + k) * 0.045)));
+  }
+  // le geyser : un cratère, de la lave qui rougit quand il est prêt, un jet de bulles qui monte quand il part
+  t.geysers.forEach((z, i) => {
+    const r = px(z.r);
+    const g = new Group();
+    g.position.set(X(px(z.x)), 0, Z(px(z.y)));
+    const crat = cylindre(r, 8, C.geyser);
+    crat.position.y = 4;
+    crat.add(contour(crat.geometry));
+    const lave = ombrageur(new Mesh(geo(new CircleGeometry(r - 7, 32)), mat(C.lave, { emissive: C.lave, unique: true })), false);
+    lave.rotation.x = -Math.PI / 2;
+    lave.position.y = 8.3;
+    const jet = new Group();
+    const bulles = [0, 1, 2, 3, 4, 5].map((k) => {
+      const b = ombrageur(new Mesh(geo(new SphereGeometry(7 - k * 0.8, 12, 8)), mat(PAPIER)), false);
+      jet.add(b);
+      return b;
+    });
+    g.add(crat, lave, jet);
+    groupe.add(g);
+    maj.push((_, sec) => {
+      const j = partie.geyserJet[i]! / JET_GEYSER;
+      (lave.material as MeshStandardMaterial).emissiveIntensity = partie.geyserAttente[i]! > 0 ? 0.1 : 0.9;
+      bulles.forEach((b, k) => {
+        b.visible = j > 0;
+        b.position.set(Math.sin(sec * 20 + k) * 6, 12 + k * 16 * (1 - j * 0.5), 0);
+      });
+    });
+  });
+  // la coulée : un couloir de lave dont les chevrons montent
+  for (const z of t.coulees) {
+    const tex = toile(128, 256, (c) => {
+      c.fillStyle = C.lave;
+      c.fillRect(0, 0, 128, 256);
+      c.strokeStyle = C.chevron;
+      c.lineWidth = 10;
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      for (let k = 0; k < 4; k++) {
+        const y = 24 + k * 64;
+        c.beginPath();
+        c.moveTo(24, y + 28);
+        c.lineTo(64, y);
+        c.lineTo(104, y + 28);
+        c.stroke();
+      }
+    });
+    tex.wrapT = RepeatWrapping;
+    const m = new MeshStandardMaterial({ map: tex, emissive: C.lave, emissiveIntensity: 0.35, roughness: 0.6 });
+    aLiberer.push(m);
+    const coul = plat(geo(new PlaneGeometry(px(z.l) * 2, px(z.h) * 2)), 0.7, m);
+    coul.position.x = X(px(z.x));
+    coul.position.z = Z(px(z.y));
+    groupe.add(coul);
+    maj.push((_, sec) => (tex.offset.y = -((sec * 0.8) % 1)));
+  }
+  // les lampes de la mission, autour de l'élément du thème : une allumée par pas de réussi
+  const lampesM = lampesMission(t, o.theme, partie.but).map((l) => {
+    const m = new MeshStandardMaterial({ color: PAPIER, emissive: MOUTARDE, emissiveIntensity: 0, roughness: 0.4 });
+    aLiberer.push(m);
+    const s = ombrageur(new Mesh(geo(new SphereGeometry(5.5, 16, 12)), m), false);
+    s.position.set(X(l.x), 6, Z(l.y));
+    groupe.add(s);
+    return m;
+  });
+  // les flèches qui clignotent : celles des modules qui comptent pour la mission, tant qu'elle n'est pas réussie
+  const forme = new Shape([new Vector2(13, 0), new Vector2(-7, -11), new Vector2(-3, 0), new Vector2(-7, 11)]);
+  const flechesM = t.poses
+    .filter((m) => comptePourLaMission(o.theme, m.type))
+    .map((m) => {
+      const f = flecheDe(m);
+      const g = new Group();
+      g.position.set(X(f.x), 0, Z(f.y));
+      g.rotation.y = -f.a;
+      const trait2 = new MeshBasicMaterial({ color: ENCRE, side: DoubleSide });
+      const plein = new MeshBasicMaterial({ color: couleurModule(P, o.theme, m.type), side: DoubleSide });
+      aLiberer.push(trait2, plein);
+      const geoForme = geo(new ShapeGeometry(forme));
+      geoForme.rotateX(Math.PI / 2);
+      const dessous = new Mesh(geoForme, trait2);
+      dessous.scale.setScalar(1.28);
+      dessous.position.y = 0.95;
+      dessous.renderOrder = 2;
+      const dessus = new Mesh(geoForme, plein);
+      dessus.position.y = 1.05;
+      dessus.renderOrder = 3;
+      g.add(dessous, dessus);
+      g.visible = false;
+      groupe.add(g);
+      return g;
+    });
 
   // --- Les lampes : les trois couloirs du haut et les multiplicateurs (allumées quand la partie les allume)
   const lueur = (): MeshStandardMaterial => mat(MOUTARDE, { emissive: MOUTARDE, unique: true });
@@ -436,6 +670,10 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     }
     return { x, y0, y1 };
   };
+  /** Où la caméra se tient et ce qu'elle vise : la secousse de la mission réussie s'en écarte un instant, puis y revient. */
+  const base = new Vector3();
+  const cible = new Vector3();
+  let secouee = false;
   const cadrer = (): void => {
     const el = rad(vue.angle);
     camera.fov = vue.champ;
@@ -458,6 +696,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     camera.position.set(0, d * Math.sin(el), tz + d * Math.cos(el));
     camera.lookAt(0, 0, tz);
     camera.updateMatrixWorld(true);
+    base.copy(camera.position);
+    cible.set(0, 0, tz);
     majEtiquettes();
   };
   function majEtiquettes(): void {
@@ -507,9 +747,19 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     ressort.scale.z = long;
     ressort.position.set(X(360.5), 3, Z((haut + 718) / 2));
     tete.position.set(X(360.5), 7, Z(haut - 5));
+    // les éléments des thèmes, la mission : tout est fonction du pas ; l'astéroïde se déplace (son bumper suit la table)
+    const sec = (s.tick + a) / TICKS_PAR_SECONDE;
+    for (const f of maj) f(s.tick, sec, dt);
+    lampesM.forEach((m, i) => (m.emissiveIntensity = i < partie.compteur ? 1.4 : 0));
+    const clignotante = !partie.missionFaite && clignote(s.tick);
+    for (const f of flechesM) f.visible = clignotante;
     // les bumpers : ils s'enfoncent, s'allument et leurs yeux suivent la bille
-    t.bumpers.forEach((_, i) => {
+    t.bumpers.forEach((b, i) => {
       const d = bumpers[i]!;
+      if (b.mobile) {
+        d.x = px(b.x);
+        d.g.position.x = X(d.x);
+      }
       const e = partie.choc[i]! / 40;
       d.haut.scale.set(1 + e * 0.12, 1 - e * 0.28, 1 + e * 0.12);
       (d.corps.material as MeshStandardMaterial).emissiveIntensity = e * 1.4;
@@ -548,17 +798,35 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     }
     if (debogage) debogage.groupe.visible = s.debug;
 
+    // la mission réussie : une brève secousse de la caméra, qui s'éteint avec l'éclat (jamais si le joueur préfère moins de mouvement)
+    if (s.eclat > 0.35 && !o.reduit) {
+      const e = (s.eclat - 0.35) / 0.65;
+      camera.position.set(base.x + Math.sin(s.tick * 0.9) * 3 * e * e, base.y + Math.cos(s.tick * 1.3) * 2 * e * e, base.z);
+      camera.lookAt(cible);
+      camera.updateMatrixWorld(true);
+      secouee = true;
+    } else if (secouee) {
+      camera.position.copy(base);
+      camera.lookAt(cible);
+      camera.updateMatrixWorld(true);
+      secouee = false;
+    }
     renderer.info.reset();
     renderer.render(scene, camera);
     msImage += (performance.now() - debut - msImage) * 0.05;
 
     // la surcouche : « Bille sauvée ! », et pour `?debug` le compteur de pas et les gains
-    const dessus = s.sauvee > 0 || s.debug || o.fps;
+    const dessus = s.sauvee > 0 || s.eclat > 0 || s.debug || o.fps;
     if (dessus || !surcoucheVide) {
       const dpr = Math.min(2, devicePixelRatio || 1);
       sc.setTransform(dpr, 0, 0, dpr, 0, 0);
       sc.clearRect(0, 0, L, H);
       surcoucheVide = !dessus;
+      if (s.eclat > 0) {
+        // l'éclat doré de la mission réussie, sur tout l'écran
+        sc.fillStyle = `rgba(232,178,58,${s.eclat * 0.38})`;
+        sc.fillRect(0, 0, L, H);
+      }
       if (s.sauvee > 0) {
         const c = ecranDe(AXE, 520);
         sc.globalAlpha = Math.min(1, s.sauvee * 2);

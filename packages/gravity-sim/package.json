@@ -11,6 +11,7 @@
   },
   "scripts": {
     "figer:gravity": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
+    "robot:gravity": "esbuild tools/rapport.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/rapport.mjs --log-level=warning && node dist/rapport.mjs",
     "golden:gravity": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs"
   },
   "exports": {

@@ -1579,6 +1579,10 @@
           "ecrans-kit.spec.ts": [
             "gravity-jeu",
             "ui"
+          ],
+          "essais.spec.ts": [
+            "gravity-sim",
+            "gravity-jeu"
           ]
         },
         "parts": {
@@ -1691,6 +1695,10 @@
             "ui"
           ],
           "rendu.spec.ts": [
+            "pinball-sim",
+            "pinball-jeu"
+          ],
+          "themes.spec.ts": [
             "pinball-sim",
             "pinball-jeu"
           ]

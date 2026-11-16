@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, DUREE_MAX_TICKS, MAX_APPUIS, dailyGravity, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsSurLePapier, terrainDuJour, themeDuJour } from "@cdj/gravity-sim";
+import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, DUREE_MAX_TICKS, MAX_APPUIS, dailyGravity, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsDuRobot, terrainDuJour, themeDuJour } from "@cdj/gravity-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_GRAVITY } from "../scripts/gravity-essais";
 import { contenuDeGravity } from "../src/gravity";
@@ -35,7 +35,7 @@ describe("Gravity sur le serveur", () => {
     const jour = await t.call("GET", `/api/gravity/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.medals).toEqual(seuilsDe(c));
-    expect(jour.body.medals).toEqual(seuilsSurLePapier(c)); // sans fichier de jour : le calcul provisoire
+    expect(jour.body.medals).toEqual(seuilsDuRobot(c)); // sans fichier de jour : le robot
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/gravity/day/2026-11-11")).status).toBe(404);

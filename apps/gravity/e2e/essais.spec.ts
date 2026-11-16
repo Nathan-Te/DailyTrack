@@ -1,0 +1,38 @@
+import { expect, test } from "@playwright/test";
+import { appareil, lancer } from "./appareil";
+
+// Les essais de recette du lot GR2 (hors production, jamais classés) : `?robot` — on regarde le robot jouer le niveau du jour — et `?morceau=<n>` — la partie commence juste avant le morceau n, dans l'état où le robot
+// y arrive. La logique (lecture de l'adresse, rien en production) est testée en unitaire (`test/essai.test.ts`) ; ici, seulement ce que le joueur voit.
+test.describe("Gravity : les essais de recette", () => {
+  test("?robot : le robot joue seul (la distance monte sans un appui), le toucher ne change rien, la partie n'est jamais classée", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&robot");
+    await lancer(page);
+    await expect(page.locator("#jeu-hud-temps")).toHaveText("0 m · ×1");
+    await page.evaluate(() => {
+      window.__jeu.avancer(1500);
+      window.__jeu.action("toucher"); // un humain qui touche pendant que le robot joue : sans effet
+    });
+    const texte = (await page.locator("#jeu-hud-temps").textContent()) ?? "";
+    expect(Number(texte.split(" m")[0])).toBeGreaterThan(60); // 1 500 pas à 7 m/s : 88 m
+    expect(Number((await page.locator("#jeu-hud-score").textContent())?.replace(/\D/g, ""))).toBeGreaterThan(100);
+    // Le robot passe plusieurs minutes de jeu : la partie finit un jour, non classée.
+    await page.evaluate(() => window.__jeu.avancer(100000));
+    await expect(page.locator("#jeu-fin")).toBeVisible();
+    await expect(page.locator("#jeu-fin-rang")).toContainText("essai"); // « Partie d'essai : non classée »
+    await context.close();
+  });
+
+  test("?morceau=30 : la partie commence juste avant le morceau 30, avec le score et le multiplicateur du robot ; jamais classée", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&morceau=30");
+    await lancer(page);
+    const texte = (await page.locator("#jeu-hud-temps").textContent()) ?? "";
+    const distance = Number(texte.split(" m")[0]);
+    expect(distance).toBeGreaterThan(30 * 16 - 3 - 14); // douze colonnes avant le morceau (480 m)
+    expect(distance).toBeLessThan(30 * 16);
+    expect(Number((await page.locator("#jeu-hud-score").textContent())?.replace(/\D/g, ""))).toBeGreaterThan(distance);
+    await page.evaluate(() => window.__jeu.avancer(100000));
+    await expect(page.locator("#jeu-fin")).toBeVisible();
+    await expect(page.locator("#jeu-fin-rang")).toContainText("essai");
+    await context.close();
+  });
+});

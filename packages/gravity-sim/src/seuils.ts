@@ -1,46 +1,69 @@
-import { CASE, LARGEUR_MORCEAU, MORCEAUX_PAR_THEME, MULT_MAX, NB_THEMES, PIECES_PAR_PALIER, POINTS_GEMME, POINTS_PIECE } from "./constantes";
+import { LARGEUR_MORCEAU, MORCEAUX_PAR_THEME, NB_THEMES } from "./constantes";
 import { terrainDuJour, type Contenu } from "./generateur";
+import { jouerRobotEnTranches } from "./robot";
 import type { Seuils } from "./types";
 
-// Les seuils des médailles, **provisoires** (lot GR1) : calculés « sur le papier », comme `seuilsDuJour()` de la maquette — un robot qui prendrait toutes les pièces et toutes les gemmes de ce qu'il traverse, sans
-// jamais en rater une, et qui irait jusqu'à la fin du 1er, du 2e et du 3e thème, puis de la boucle des cinq thèmes. **Chaque seuil vaut 60 % de la distance plus de tout ce qui se ramasse jusque-là** (arrondi à 10 près).
-// Le lot GR2 remplace ce calcul par le vrai robot (qui suit le chemin sûr de chaque morceau) : `GRAVITY_BOT_VERSION` passera à 2. **Un jour figé garde les seuils de son fichier** (`jours.ts`), jamais ceux du calcul.
+// Les seuils des médailles (lot GR2, définitifs) : **60 % du score du robot** (`robot.ts`, qui joue le niveau du jour comme un humain en prenant tout ce que le chemin sûr porte) à la fin du 1er thème (bronze), du 2e
+// (argent), du 3e (or), puis de la boucle des cinq thèmes (Diamant), arrondis à 10 près. Ils **remplacent** les seuils « sur le papier » du lot GR1 et font partie du niveau : **figés avec lui** (`jours.ts`), puis lus
+// par `seuilsDuJour` avant tout calcul — changer le robot (`GRAVITY_BOT_VERSION`) ne change donc jamais un jour figé.
+//
+// **Qui calcule, et quand.** Le robot met environ une seconde à jouer la boucle des cinq thèmes : il ne tourne **jamais à chaque partie**. (1) `npm run figer:gravity` (le job `figer` de « Mettre en production », avec le
+// code alors en production) écrit les seuils dans le fichier de chaque jour protégé : le serveur et le jeu les y lisent. (2) Un jour sans fichier est calculé **une fois** : par le serveur (le module des jeux garde le
+// niveau d'un jour en mémoire, `niveauDuJour`) et, côté jeu, **à la fin de la première partie** seulement (`apps/gravity/src/niveau.ts`) — pas en production une fois la fiche munie de `preparer` (voir le README du lot GR2).
 
-/** Le pourcentage du score du robot que vaut un seuil (seed : « 60 % »). Il se règle par Nathan. */
+/** Le pourcentage du score du robot que vaut un seuil (seed : « 60 % »). **Il se règle par Nathan** (lot GR4). */
 export const POURCENT_DU_ROBOT = 60;
-/** Les fins de l'étape de chaque médaille, en nombre de thèmes parcourus : bronze 1, argent 2, or 3, Diamant la boucle des cinq. */
-const THEMES_PAR_MEDAILLE = { bronze: 1, silver: 2, gold: 3, author: 5 } as const;
+/**
+ * Les points d'arrêt, en nombre de thèmes parcourus : bronze au bout du 1er thème, argent du 2e, or du 3e, Diamant de la boucle des cinq. **Nathan les règle aussi** (lot GR4) ; la distance de chacun en mètres est
+ * `thèmes × MORCEAUX_PAR_THEME × LARGEUR_MORCEAU` (304, 608, 912 et 1 520).
+ */
+export const THEMES_D_ARRET = { bronze: 1, silver: 2, gold: 3, author: NB_THEMES } as const;
+/** Les distances d'arrêt (mètres) : celles de `THEMES_D_ARRET`. */
+export const DISTANCES_D_ARRET = {
+  bronze: THEMES_D_ARRET.bronze * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU,
+  silver: THEMES_D_ARRET.silver * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU,
+  gold: THEMES_D_ARRET.gold * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU,
+  author: THEMES_D_ARRET.author * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU,
+} as const;
 
-/** Le score d'un robot parfait arrêté à `distance` cases du départ : la distance plus pièces et gemmes dans l'ordre où elles se croisent, avec le multiplicateur. */
-function scoreDuRobot(contenu: Contenu, distance: number): number {
-  const terrain = terrainDuJour(contenu);
-  const objets: { x: number; gemme: boolean }[] = [];
-  const morceaux = Math.trunc((distance + LARGEUR_MORCEAU - 1) / LARGEUR_MORCEAU);
-  for (let k = 0; k < morceaux; k++) {
-    const m = terrain.morceau(k);
-    for (const p of m.pieces) objets.push({ x: p.x, gemme: false });
-    for (const g of m.gemmes) objets.push({ x: g.x, gemme: true });
+const MEMOIRE = new Map<string, Seuils>();
+
+/** Le pourcentage d'un score, arrondi à 10 près (comme au lot GR1). */
+const pourcentDe = (score: number): number => Math.trunc((score * POURCENT_DU_ROBOT + 500) / 1000) * 10;
+
+/**
+ * Les seuils d'un jour d'après le robot, **en tranches** (`yield` après chaque plan du robot : un navigateur le fait tourner en arrière-plan) : il joue jusqu'au dernier point d'arrêt (diagnostic permis : un passage sans
+ * fenêtre ne l'arrête pas ; un jour où il meurt avant un point garde le score qu'il avait), on lit son score à chaque point, **60 %** de chacun. Strictement croissants (un score égal à celui d'avant est relevé de 10).
+ * Gardé en mémoire (huit jours) : un jour n'est joué qu'une fois par processus.
+ */
+export function* seuilsEnTranches(contenu: Contenu): Generator<void, Seuils, undefined> {
+  const cle = `${contenu.jour}:${contenu.g}:${contenu.ordre.join(",")}`;
+  const connu = MEMOIRE.get(cle);
+  if (connu) return { ...connu };
+  const noms = ["bronze", "silver", "gold", "author"] as const;
+  const scores: number[] = [];
+  const jeu = jouerRobotEnTranches(terrainDuJour(contenu), { strict: false, maxDistance: DISTANCES_D_ARRET.author, arrets: noms.map((n) => DISTANCES_D_ARRET[n]), surPoint: (_d, p) => void scores.push(p.score) });
+  let r = jeu.next();
+  while (!r.done) {
+    yield;
+    r = jeu.next();
   }
-  objets.sort((a, b) => a.x - b.x);
-  let chaine = 0;
-  let mult = 1;
-  let points = 0;
-  for (const o of objets) {
-    if (o.x >= distance * CASE) break;
-    if (o.gemme) points += POINTS_GEMME * mult;
-    else {
-      chaine++;
-      mult = Math.min(MULT_MAX, 1 + Math.trunc(chaine / PIECES_PAR_PALIER));
-      points += POINTS_PIECE * mult;
-    }
-  }
-  return distance + points;
+  while (scores.length < noms.length) scores.push(r.value.partie.score);
+  const valeurs = scores.map(pourcentDe);
+  for (let i = 0; i < valeurs.length; i++) valeurs[i] = Math.max(valeurs[i]!, i === 0 ? 10 : valeurs[i - 1]! + 10);
+  const s: Seuils = { bronze: valeurs[0]!, silver: valeurs[1]!, gold: valeurs[2]!, author: valeurs[3]! };
+  if (MEMOIRE.size >= 8) MEMOIRE.delete(MEMOIRE.keys().next().value!);
+  MEMOIRE.set(cle, s);
+  return { ...s };
 }
 
-/** Les seuils provisoires d'un jour (jamais ceux du fichier de jour : voir `seuilsDuJour`). */
-export function seuilsSurLePapier(contenu: Contenu): Seuils {
-  const seuil = (themes: number): number => Math.trunc((scoreDuRobot(contenu, themes * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU) * POURCENT_DU_ROBOT + 500) / 1000) * 10;
-  return { bronze: seuil(THEMES_PAR_MEDAILLE.bronze), silver: seuil(THEMES_PAR_MEDAILLE.silver), gold: seuil(THEMES_PAR_MEDAILLE.gold), author: seuil(NB_THEMES) };
+/** Les seuils d'un jour d'après le robot, d'un trait (voir `seuilsEnTranches`). */
+export function seuilsDuRobot(contenu: Contenu): Seuils {
+  const g = seuilsEnTranches(contenu);
+  for (;;) {
+    const r = g.next();
+    if (r.done) return r.value;
+  }
 }
 
 /** Des seuils valides : quatre entiers positifs, strictement croissants. */
@@ -52,7 +75,7 @@ export const seuilsValides = (s: unknown): s is Seuils => {
 };
 
 /**
- * **Les seuils d'un jour tel qu'on le sert** : ceux figés avec le jour s'il vient d'un fichier de jour (`Contenu.seuilsFiges`), sinon le calcul provisoire. Le serveur et le jeu passent par cette seule fonction :
- * changer le calcul ne change jamais un jour déjà figé.
+ * **Les seuils d'un jour tel qu'on le sert** : ceux figés avec le jour s'il vient d'un fichier de jour (`Contenu.seuilsFiges`), sinon le robot. Le serveur et le jeu passent par cette seule fonction : changer le
+ * robot ne change jamais un jour déjà figé. `calcul` : ce qui remplace le robot quand rien n'est figé (les tests).
  */
-export const seuilsDuJour = (contenu: Contenu): Seuils => contenu.seuilsFiges ?? seuilsSurLePapier(contenu);
+export const seuilsDuJour = (contenu: Contenu, calcul: (c: Contenu) => Seuils = seuilsDuRobot): Seuils => contenu.seuilsFiges ?? calcul(contenu);
