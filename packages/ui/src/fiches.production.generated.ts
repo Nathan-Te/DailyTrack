@@ -24,9 +24,9 @@ export const ETIQUETTE_VERTIGE_POLICE = "\"Rubik Mono One\", \"Archivo\", sans-s
 export const ETIQUETTE_GRAVITY_FOND = "#FFB892";
 export const ETIQUETTE_GRAVITY_COQUE = "#C9622E";
 export const ETIQUETTE_GRAVITY_POLICE = "\"Lilita One\", \"Archivo\", sans-serif";
-export const ETIQUETTE_PINBALL_FOND = "#C9B6F2";
-export const ETIQUETTE_PINBALL_COQUE = "#5B3FA0";
-export const ETIQUETTE_PINBALL_POLICE = "\"Righteous\", \"Archivo\", sans-serif";
+export const ETIQUETTE_PINBALL_FOND = "#F6A2D8";
+export const ETIQUETTE_PINBALL_COQUE = "#962170";
+export const ETIQUETTE_PINBALL_POLICE = "\"Barlow Condensed\", \"Archivo\", sans-serif";
 // Lot K4e : y a-t-il un jeu à étiquette générique ? Tant que non, le dessin générique de `composants.ts` est du code mort que l'empaqueteur retire (aucun octet de plus dans les applications).
 export const A_DES_JEUX_GENERIQUES = true;
 export const ETIQUETTES_FICHES = { "track": { fond: ETIQUETTE_TRACK_FOND, coque: ETIQUETTE_TRACK_COQUE, police: ETIQUETTE_TRACK_POLICE, dessin: "propre" }, "jump": { fond: ETIQUETTE_JUMP_FOND, coque: ETIQUETTE_JUMP_COQUE, police: ETIQUETTE_JUMP_POLICE, dessin: "propre" }, "tower": { fond: ETIQUETTE_TOWER_FOND, coque: ETIQUETTE_TOWER_COQUE, police: ETIQUETTE_TOWER_POLICE, dessin: "propre" }, "blocks": { fond: ETIQUETTE_BLOCKS_FOND, coque: ETIQUETTE_BLOCKS_COQUE, police: ETIQUETTE_BLOCKS_POLICE, dessin: "generique" }, "rush": { fond: ETIQUETTE_RUSH_FOND, coque: ETIQUETTE_RUSH_COQUE, police: ETIQUETTE_RUSH_POLICE, dessin: "generique" }, "vertige": { fond: ETIQUETTE_VERTIGE_FOND, coque: ETIQUETTE_VERTIGE_COQUE, police: ETIQUETTE_VERTIGE_POLICE, dessin: "generique" }, "gravity": { fond: ETIQUETTE_GRAVITY_FOND, coque: ETIQUETTE_GRAVITY_COQUE, police: ETIQUETTE_GRAVITY_POLICE, dessin: "generique" }, "pinball": { fond: ETIQUETTE_PINBALL_FOND, coque: ETIQUETTE_PINBALL_COQUE, police: ETIQUETTE_PINBALL_POLICE, dessin: "generique" } } as const;

@@ -1,3 +1,3 @@
 /* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → ui, identité) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
 @import "../jeux.structure.generated.css";
-.jeu-etiquette--pinball{--jeu-fond:#C9B6F2;--jeu-coque:#5B3FA0;--jeu-police:"Righteous", "Archivo", sans-serif;--jeu-motif:linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 0 0/24px 24px,linear-gradient(45deg,#beabe3 25%,transparent 25% 75%,#beabe3 75%) 12px 12px/24px 24px,#c9b6f2}
+.jeu-etiquette--pinball{--jeu-fond:#F6A2D8;--jeu-coque:#962170;--jeu-police:"Barlow Condensed", "Archivo", sans-serif;--jeu-motif:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px)}

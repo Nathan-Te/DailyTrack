@@ -1727,6 +1727,14 @@
           "essais.spec.ts": [
             "pinball-sim",
             "pinball-jeu"
+          ],
+          "hud.spec.ts": [
+            "pinball-sim",
+            "pinball-jeu"
+          ],
+          "hud-cadrage.spec.ts": [
+            "pinball-sim",
+            "pinball-jeu"
           ]
         },
         "parts": {
@@ -1735,7 +1743,8 @@
           "nuit": 1
         },
         "regression": [
-          "ecrans-kit.spec.ts"
+          "ecrans-kit.spec.ts",
+          "hud-cadrage.spec.ts"
         ]
       },
       "app": "pinball",
@@ -1774,6 +1783,7 @@
         "scene-",
         "corps-",
         "dessin-",
+        "panneau-",
         "rediffusion-"
       ],
       "budgetDemande": [

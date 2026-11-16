@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { A_CHOISIR, MOTIFS, etatPermis, fichierIllustration, identiteAChoisir, identiteComplete, lireFiche, projectionServeur, validerFiche, type FicheJeu } from "../src/fiche";
@@ -107,7 +107,9 @@ describe("l'identité de chaque jeu", () => {
     for (const f of fiches()) {
       if (f.identite.police === A_CHOISIR) continue;
       const slug = slugDePolice(f.identite.police);
-      if (f.etiquette.dessin === "generique") expect(existsSync(join(RACINE, `packages/ui/src/polices/${slug}-400.css`)), `${f.id} : packages/ui/src/polices/${slug}-400.css`).toBe(true);
+      // Lot PB5b : la feuille complète du kit est `<police>-400.css` — ou, pour une famille dont la face n'est pas la 400 (Barlow Condensed : 800 italique, déjà servie par `barlow-condensed-800-italique.css` ; `polices.test.ts` veut chaque woff2 déclaré une seule fois), la feuille qui déclare cette famille.
+      const feuilles = readdirSync(join(RACINE, "packages/ui/src/polices")).filter((n) => n.endsWith(".css") && readFileSync(join(RACINE, "packages/ui/src/polices", n), "utf8").includes(`font-family: "${f.identite.police}";`));
+      if (f.etiquette.dessin === "generique") expect(existsSync(join(RACINE, `packages/ui/src/polices/${slug}-400.css`)) || feuilles.length > 0, `${f.id} : packages/ui/src/polices/${slug}-400.css (ou une feuille de la famille « ${f.identite.police} »)`).toBe(true);
       if (fichierIllustration(f)) {
         expect(existsSync(join(RACINE, `packages/ui/src/polices-profil/${slug}-400.css`)), `${f.id} : packages/ui/src/polices-profil/${slug}-400.css (découpe « profil », node scripts/polices/decouper.mjs)`).toBe(true);
         expect(profil, `${f.id} : profil.ts importe la découpe « profil »`).toContain(`@cdj/ui/src/polices-profil/${slug}-400.css`);

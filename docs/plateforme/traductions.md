@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2906 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2920 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3696,6 +3696,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `accueil.phrase.espace` | Entre planètes et satellites, la bille flotte presque. | Between planets and satellites, the ball almost floats. |
 | `accueil.phrase.volcan` | Les braises brûlent, les rochers tiennent bon : frappe fort. | Embers burn, rocks hold firm: hit hard. |
 
+### aujourdhui (`aujourdhui.*`, `apps/pinball/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `aujourdhui.mission` | Mission | Mission |
+| `aujourdhui.mission.gain` | +{points} et un cran de multiplicateur, une fois par partie | +{points} and one step of multiplier, once per game |
+| `aujourdhui.table` | Sur la table | On the table |
+| `aujourdhui.medailles` | Médailles du jour | Today's medals |
+| `aujourdhui.apercu` | Aperçu de la table du jour : {theme} | Preview of today's table: {theme} |
+| `aujourdhui.seuils.calcul` | Seuils en calcul… | Thresholds being calculated… |
+
 ### Commandes (`commandes.*`, `apps/pinball/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -3708,9 +3719,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `aide.point1` | Une table de flipper par jour, la même pour tous. Trois billes : fais le plus de points possible. | One pinball table a day, the same for everyone. Three balls: score as many points as you can. |
+| `aide.point1` | Une table de flipper par jour, la même pour tous. Trois billes, quinze minutes au plus : fais le plus de points possible. | One pinball table a day, the same for everyone. Three balls, fifteen minutes at most: score as many points as you can. |
 | `aide.point2` | Batteur gauche : {gauche} ; batteur droit : {droite} (ou la moitié gauche ou droite de l'écran). Pour lancer, maintiens {lanceur} (ou touche l'écran) puis relâche : plus tu tiens, plus la bille part fort. | Left flipper: {gauche}; right flipper: {droite} (or touch the left or right half of the screen). To launch, hold {lanceur} (or touch the screen) then let go: the longer you hold, the harder the ball goes. |
-| `aide.point3` | À remplacer : le multiplicateur, la bille sauvée et les missions (texte complet à venir). | To replace: the multiplier, the ball save and the missions (full text coming). |
+| `aide.point3` | Ton score du jour est celui de ta meilleure partie : rejoue autant que tu veux, seule la meilleure compte au classement. | Your score for the day is your best game: play as often as you like, only the best one counts on the leaderboard. |
+| `aide.point4` | La mission du jour change avec la table : tours de manège, plongées dans le tourbillon, passages par les portails ou geysers déclenchés. Réussis-la, une fois par partie : elle rapporte des points et un cran de multiplicateur. | Today's mission changes with the table: carousel laps, whirlpool dives, trips through the portals or geysers set off. Complete it, once per game: it earns points and one step of multiplier. |
+| `aide.point5` | Le multiplicateur va de ×1 à ×6 et multiplie chaque point que tu marques. Il monte d'un cran quand tu réussis la mission et quand tu allumes les trois lampes du haut de la table. | The multiplier goes from ×1 to ×6 and multiplies every point you score. It goes up one step when you complete the mission and when you light the three lamps at the top of the table. |
+| `aide.point6` | Bille sauvée : une bille perdue juste après son lancer revient au lanceur, une fois par bille. Les batteurs, eux, ne pardonnent rien : à toi de viser. | Ball save: a ball lost just after launch comes back to the launcher, once per ball. The flippers forgive nothing, though: aim well. |
 
 ### kit (`kit.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3817,12 +3831,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `mission.texte.tourbillon` | Plonge {but} fois dans le tourbillon | Dive into the whirlpool {but} times |
 | `mission.texte.portail` | Passe {but} fois par le portail | Go through the portal {but} times |
 | `mission.texte.geyser` | Déclenche {but} geysers | Set off {but} geysers |
-| `mission.hud.manege` | Manège {n} / {but} | Carousel {n} / {but} |
-| `mission.hud.tourbillon` | Tourbillon {n} / {but} | Whirlpool {n} / {but} |
-| `mission.hud.portail` | Portail {n} / {but} | Portal {n} / {but} |
-| `mission.hud.geyser` | Geysers {n} / {but} | Geysers {n} / {but} |
-| `mission.hud.reussie` | Mission réussie | Mission complete |
-| `mission.reussie` | Mission réussie ! ×{mult} | Mission complete! ×{mult} |
 
 ### module (`module.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3864,6 +3872,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `hud.detail` | ×{mult} · Billes : {billes} | ×{mult} · Balls: {billes} |
+| `hud.aide.lancer` | Maintiens, puis relâche pour lancer | Hold, then release to launch |
+| `hud.clavier.lancer` | Maintiens, relâche : lancer | Hold, release: launch |
+| `hud.score.aria` | Score : {score} | Score: {score} |
+| `hud.mult.aria` | Multiplicateur ×{mult} | Multiplier ×{mult} |
+| `hud.billes.aria` | Billes : {n} sur {total} | Balls: {n} of {total} |
+| `hud.mission.nom.manege` | Manège | Carousel |
+| `hud.mission.nom.tourbillon` | Tourbillon | Whirlpool |
+| `hud.mission.nom.portail` | Portails | Portals |
+| `hud.mission.nom.geyser` | Geysers | Geysers |
+| `hud.mission.reussie` | Réussie | Complete |
+| `hud.mission.gain` | +{points} | +{points} |
 
 ### robot (`robot.*`, `apps/pinball/src/catalogue.*.ts`)
 

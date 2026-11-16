@@ -33,10 +33,10 @@
   background: #C9622E;
 }
 .jeu-etiquette--pinball {
-  --jeu-fond: #C9B6F2;
-  --jeu-coque: #5B3FA0;
-  --jeu-police: "Righteous", "Archivo", sans-serif;
+  --jeu-fond: #F6A2D8;
+  --jeu-coque: #962170;
+  --jeu-police: "Barlow Condensed", "Archivo", sans-serif;
 }
 .dj-cartouche--pinball {
-  background: #5B3FA0;
+  background: #962170;
 }

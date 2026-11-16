@@ -19,12 +19,15 @@ export interface RobotDuJour {
   fin: number;
 }
 
+/** Lot PB5b : ce que `niveau.ts` joint au contenu pour le panneau « Aujourd'hui » : les seuils s'ils sont prêts (un jour figé : tout de suite), sans jamais forcer le calcul du robot. */
+export type PretSeuils = { pretSeuils: () => Seuils | null };
+
 /**
  * Les seuils d'un jour qui n'est pas figé : le robot (`seuils.ts`) joue quatre parties, de 3 à 6 secondes de calcul sur un ordinateur, plus sur un téléphone ; **il ne gèle jamais le jeu** — il tourne par tranches
  * pendant que le joueur est sur l'accueil puis joue (`setTimeout`), et si la partie finit avant lui, l'écran de fin termine le calcul d'un trait (c'est le même, la recherche est pure). Un objet à getters, lu comme
  * des seuils ordinaires par le kit. **En production les jours servis ont leur fichier** (`figer` et `preparer` de la fiche) : ce calcul ne sert qu'aux jours d'essai, d'archive et de recette (README du lot PB4).
  */
-function seuilsEnArrierePlan(contenu: Contenu): Seuils {
+function seuilsEnArrierePlan(contenu: Contenu): { seuils: Seuils; pret: () => Seuils | null } {
   const g = seuilsEnTranches(contenu);
   let fini: Seuils | null = null;
   const avancer = (jusquA: number): void => {
@@ -42,16 +45,18 @@ function seuilsEnArrierePlan(contenu: Contenu): Seuils {
     avancer(Infinity);
     return fini!;
   };
-  return Object.defineProperties({} as Seuils, {
+  const seuils = Object.defineProperties({} as Seuils, {
     bronze: { get: () => lire().bronze, enumerable: true },
     silver: { get: () => lire().silver, enumerable: true },
     gold: { get: () => lire().gold, enumerable: true },
     author: { get: () => lire().author, enumerable: true },
   });
+  // Lot PB5b : `pret` rend les seuils s'ils sont calculés, **sans jamais forcer le calcul** — le panneau « Aujourd'hui » de l'accueil les attend ainsi sans geler la page.
+  return { seuils, pret: () => fini };
 }
 
 /** Le contenu d'un jour : le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit (avec ses seuils figés), sinon le générateur courant. `theme` : le thème effectif ; s'il n'est pas celui du jour (`?theme=`, essai hors production, jamais classé), la table prend ses couleurs. */
-export async function contenuDuJour(jour: number, base: string, theme: string): Promise<Contenu & { robot?: RobotDuJour }> {
+export async function contenuDuJour(jour: number, base: string, theme: string): Promise<Contenu & PretSeuils & { robot?: RobotDuJour }> {
   const date = formatDay(jour);
   const production = import.meta.env.VITE_PRODUCTION === "1";
   let contenu: Contenu | null = null;
@@ -65,7 +70,8 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   contenu ??= dailyPinball(jour, PINBALL_GENERATOR_VERSION);
   // Un autre thème (`?theme=`, essai) : la table de ce thème ce jour-là, avec ses éléments et sa mission (lot PB3), jamais celle du jour avec d'autres couleurs.
   if (theme !== contenu.theme && (THEMES_PINBALL as readonly string[]).includes(theme)) contenu = dailyPinball(jour, PINBALL_GENERATOR_VERSION, theme as ThemePinball);
-  const rendu: Contenu & { robot?: RobotDuJour } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? seuilsEnArrierePlan(contenu) };
+  const calcul = contenu.seuilsFiges ? null : seuilsEnArrierePlan(contenu);
+  const rendu: Contenu & PretSeuils & { robot?: RobotDuJour } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? calcul!.seuils, pretSeuils: calcul ? calcul.pret : () => contenu.seuilsFiges ?? null };
   // L'essai de recette `?robot` (hors production) : le robot joue ici, avant la partie (quelques secondes), et la scène rejoue ses appuis. C'est l'une des parties qui donnent les seuils (la première, ou `?robot=<n>`).
   const essai = lireEssai(typeof location === "undefined" ? "" : location.search, production);
   if (essai.robot !== null) {

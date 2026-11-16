@@ -1,0 +1,146 @@
+/* Le panneau « Aujourd'hui » de l'accueil de « Pinball » (lot PB5b ; maquette `pinball-accueil.html`) : l'aperçu de la table, la mission, les modules, les cases des médailles. Couleurs, traits et espaces : les jetons de la charte
+   (`--dj-*`). Chargé avec le panneau, jamais au premier chargement. */
+.p-aujourdhui {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "apercu mission"
+    "apercu table"
+    "seuils seuils";
+  gap: var(--dj-espace-3) var(--dj-espace-3);
+  align-items: start;
+}
+.p-legende {
+  margin: 0 0 var(--dj-espace-2);
+  font-family: var(--dj-police-texte, sans-serif);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.p-apercu {
+  grid-area: apercu;
+  display: block;
+  width: 96px;
+  height: 195px;
+  background: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.p-mission {
+  grid-area: mission;
+  min-width: 0;
+  padding: var(--dj-espace-3);
+  background: var(--dj-creme-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.p-mission__texte {
+  margin: 0 0 var(--dj-espace-2);
+  font-family: var(--dj-police-texte, sans-serif);
+  font-size: var(--dj-taille-15);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--dj-encre);
+}
+.p-mission__jauge {
+  display: flex;
+  gap: 3px;
+  margin-bottom: var(--dj-espace-2);
+}
+.p-mission__jauge i {
+  width: 16px;
+  height: 12px;
+  box-sizing: border-box;
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--dj-papier);
+}
+.p-mission__gain {
+  margin: 0;
+  font-size: var(--dj-taille-12);
+  line-height: 1.3;
+  color: var(--dj-encre-douce);
+}
+.p-table {
+  grid-area: table;
+  min-width: 0;
+}
+.p-table .p-legende {
+  margin-bottom: var(--dj-espace-1);
+}
+.p-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-module {
+  padding: var(--dj-espace-1) var(--dj-espace-2);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font-family: var(--dj-police-texte, sans-serif);
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.p-module[data-mission="1"] {
+  background: var(--dj-moutarde);
+}
+.p-seuils {
+  grid-area: seuils;
+  margin-top: var(--dj-espace-2);
+}
+.p-seuils:empty {
+  display: none;
+}
+.p-seuils__attente {
+  margin: 0;
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.p-seuils__liste {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--dj-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-seuils__case {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+  min-width: 0;
+  padding: var(--dj-espace-2);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.p-seuils__case--bronze {
+  background: var(--dj-bronze);
+}
+.p-seuils__case--argent {
+  background: var(--dj-argent);
+}
+.p-seuils__case--or {
+  background: var(--dj-or);
+}
+.p-seuils__case--diamant {
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
+}
+.p-seuils__nom {
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.p-seuils__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}

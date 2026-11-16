@@ -9,14 +9,16 @@
 // ce que la rediffusion exige. Hors production, `?debug` montre les contours de collision, le compteur de pas et le score de chaque contact, et pose `window.__pinball` (les essais e2e y dictent leurs appuis) ;
 // `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`). **Lot PB4 : `?robot`** — le robot de
 // la simulation joue sa partie (calculée par `niveau.ts`), la scène en rejoue les événements à leur pas ; la mention « Le robot joue » le dit, le toucher et le clavier ne changent rien.
-import { EV_LANCE, EV_MISSION, EV_SAUVEE, MAX_EVENEMENTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
+import { EV_LANCE, EV_MISSION, EV_SAUVEE, MAX_EVENEMENTS, NB_BILLES, POINTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
 import { DetecteurBridage } from "@cdj/core/bridage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { Commandes, cleCommandes, liaisonTenue } from "@cdj/ui/src/commandes";
 import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
 import { ACTIONS } from "./commandes";
+import { nomDuModule } from "./noms";
 import { creerRendu, type Rendu } from "./dessin";
+import { creerHud } from "./hud";
 import { reglagesDe, vueDe, type Vue } from "./bornes";
 import { lireEssai, type Qualite } from "./essai";
 import type { RenduTrois } from "./corps";
@@ -34,6 +36,8 @@ const PAUSE_VIBRATION_MS = 140;
 /** Le rendu de secours a pris le relais dans cette session (appareil lent, pas de WebGL) : la prochaine partie ne recharge pas la version haute. */
 let secours = false;
 export const rendFaible = (): boolean => secours;
+/** Lot PB5b : l'aide du clavier (ordinateur) se montre à la première partie de la page seulement : aucune clé de stockage de plus (règle de fidélité des mentions légales). */
+let clavierMontre = false;
 
 let cache: { brut: string | null; commandes: Commandes } | null = null;
 /** Les touches choisies par le joueur, relues quand elles changent (réglage d'une partie en pause). */
@@ -84,10 +88,20 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const vivante = new Proxy({} as Partie, { get: (_, cle) => Reflect.get(partie, cle, partie) });
   const police = getComputedStyle(hote).getPropertyValue("--jeu-police").trim() || "sans-serif";
   // Le nom d'un module sur la table, dans le vocabulaire du thème (lot PB3) : les modules communs ont un nom par thème, les éléments des thèmes un nom à eux.
-  const nom = (module: string): string | null =>
-    module === "mini" ? o.t(`module.bumpers.${contenu.theme}`) : ["bumpers", "cibles", "spinner", "trou"].includes(module) ? o.t(`module.${module}.${contenu.theme}`) : ["manege", "tourbillon", "trouNoir", "portailA", "portailB", "asteroide", "geyser", "coulee"].includes(module) ? o.t(`module.${module}`) : null;
+  const nom = (module: string): string | null => nomDuModule((cle) => o.t(cle), contenu.theme, module);
   const titre = o.t(`theme.${contenu.theme}`);
 
+  // --- Le HUD en surimpression (lot PB5b, `hud.ts`) : la pause et le plein écran, le score, le multiplicateur, la mission et les billes. Il remplace la pastille de la mission du PB3 et la barre du kit. Tout le texte vient du catalogue.
+  const sansClavier = o.tactile || clavierMontre; // pas d'aide du clavier sur un écran tactile, ni après la première partie de la page
+  clavierMontre = true;
+  const cmd = commandes();
+  const hud = creerHud({
+    t: (cle, params) => o.t(cle, params),
+    billes: NB_BILLES,
+    clavier: sansClavier ? null : { gauche: cmd.nomsTouches("gauche", o.langue).slice(0, 2), droite: cmd.nomsTouches("droite", o.langue).slice(0, 2), lanceur: cmd.nomsTouches("lanceur", o.langue).slice(0, 1) },
+    pause: () => document.getElementById("jeu-hud-pause")?.click(), // la pause est celle du kit : son bouton, que la barre cachée garde
+  });
+  hote.append(hud.racine);
   // --- Le rendu : haute (three.js) ou basse (à plat), sur un canvas à lui (un canvas WebGL ne devient jamais 2D)
   let canvas: HTMLCanvasElement | null = null;
   let rendu: Rendu;
@@ -99,7 +113,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   let derniereImage = performance.now();
   const taille = (): void => {
     const r = hote.getBoundingClientRect();
-    rendu.redimensionner(r.width, r.height);
+    rendu.redimensionner(r.width, r.height, hud.libre(hote)); // lot PB5b : la table tient entre les bandes du HUD
   };
   const monterRendu = (voulue: Qualite): void => {
     rendu?.detruire?.();
@@ -162,21 +176,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     });
   }
 
-  // --- La mission (lot PB3) : une pastille compacte en haut de la table (« Manège 3 / 5 » et sa jauge ; avant le premier lancer, la phrase de la mission), et le message du moment fort. Tout le texte vient du catalogue ;
-  // les rendus ne dessinent que l'éclat. Les noeuds ne sont écrits que quand ce qu'ils disent change.
-  const pastille = document.createElement("div");
-  pastille.className = "pinball-mission";
-  pastille.setAttribute("role", "status");
-  const pastilleTexte = document.createElement("span");
-  pastilleTexte.className = "pinball-mission-texte";
-  const jauge = document.createElement("span");
-  jauge.className = "pinball-mission-jauge";
-  pastille.append(pastilleTexte, jauge);
-  const message = document.createElement("div");
-  message.className = "pinball-mission-reussie";
-  message.setAttribute("role", "status");
-  hote.append(pastille, message);
-  // La mention du robot (`?robot`) : un bandeau sous la pastille de la mission.
+  // La mention du robot (`?robot`) : un bandeau sous la bande du haut du HUD.
   const mentionRobot = robot ? document.createElement("div") : null;
   if (mentionRobot) {
     mentionRobot.className = "pinball-robot";
@@ -186,21 +186,10 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   }
   let lancee = false;
   let tEclat = -1e9;
-  let cleMission = "";
-  let delaiMessage = 0;
-  /** Met la pastille à jour si l'état de la mission a changé (compteur, réussite, premier lancer). */
-  const majMission = (): void => {
-    const cle = `${partie.mission}|${partie.compteur}|${partie.but}|${partie.missionFaite ? 1 : 0}|${lancee ? 1 : 0}`;
-    if (cle === cleMission) return;
-    cleMission = cle;
-    pastille.dataset.etat = partie.missionFaite ? "reussie" : lancee ? "en-cours" : "debut";
-    pastilleTexte.textContent = partie.missionFaite ? o.t("mission.hud.reussie") : lancee ? o.t(`mission.hud.${partie.mission}`, { n: partie.compteur, but: partie.but }) : o.t(`mission.texte.${partie.mission}`, { but: partie.but });
-    while (jauge.childElementCount > partie.but) jauge.lastElementChild!.remove();
-    while (jauge.childElementCount < partie.but) jauge.append(document.createElement("i"));
-    [...jauge.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < partie.compteur ? "1" : "0"));
-    jauge.hidden = !lancee && !partie.missionFaite;
-  };
-  majMission();
+  /** Le HUD relit la partie à chaque image (il n'écrit un nœud que si ce qu'il dit change). */
+  const majHud = (): void =>
+    hud.maj({ score: grouper(partie.score, o.langue), mult: partie.mult, billes: partie.billes, mission: o.t(`hud.mission.nom.${partie.mission}`), compteur: partie.compteur, but: partie.but, faite: partie.missionFaite, lancee });
+  majHud();
 
   // --- Les entrées : des changements d'état datés au pas ---
   /** Ce que le joueur veut (après la file), ce que chaque commande tient (les sources : une touche, un doigt, la manette) et la file des changements pas encore appliqués. */
@@ -308,7 +297,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     journal.length = 0;
     lancee = false;
     tEclat = -1e9;
-    majMission();
+    majHud();
     file.length = 0;
     voulu.fill(false);
     for (const s of sources) s.clear();
@@ -366,6 +355,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         }
       } else appliquer();
       const [vx, vy] = [partie.vx, partie.vy];
+      const multAvant = partie.mult;
       partie.avancer();
       tDernierPas = performance.now();
       if (tDernierPas - tVibration > PAUSE_VIBRATION_MS && batteurFrappe(vx, vy)) {
@@ -376,20 +366,18 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       if (partie.ev & EV_SAUVEE) tSauvee = tDernierPas;
       if (partie.ev & EV_LANCE) lancee = true;
       if (partie.ev & EV_MISSION) {
-        // le moment fort : un éclat sur la table, un message court, une vibration plus longue
+        // le moment fort : un éclat sur la table, « +10 000 » deux secondes dans l'afficheur (la plaque de la mission passe en moutarde), une vibration plus longue
         tEclat = tDernierPas;
-        message.textContent = o.t("mission.reussie", { mult: partie.mult });
-        message.dataset.visible = "1";
-        clearTimeout(delaiMessage);
-        delaiMessage = window.setTimeout(() => (message.dataset.visible = "0"), 2600);
+        hud.gain(o.t("hud.mission.gain", { points: grouper(POINTS.mission * multAvant, o.langue) }));
         o.vibrer(120);
       }
-      majMission();
+      majHud();
       if (debug) for (const g of partie.gains) gains.push({ x: g.x, y: g.y, points: g.points, fin: partie.tick + TICKS_PAR_SECONDE });
       if (arretee()) tFin = tDernierPas;
     },
     dessiner(): void {
       const maintenant = performance.now();
+      majHud();
       while (gains.length > 0 && gains[0]!.fin < partie.tick) gains.shift();
       const avant = performance.now();
       rendu.dessiner({
@@ -411,9 +399,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     fantome: () => undefined,
     detruire(): void {
       detruite = true;
-      clearTimeout(delaiMessage);
-      pastille.remove();
-      message.remove();
+      hud.detruire();
       mentionRobot?.remove();
       tune?.detruire();
       rendu.detruire?.();
