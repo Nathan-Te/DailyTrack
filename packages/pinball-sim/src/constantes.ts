@@ -2,9 +2,9 @@
 // 1/60 s) sont portés tels quels ; ce fichier ne garde que ce qui ne se règle jamais à la main. Les constantes de SENSATION (pente, rebonds, force des batteurs et du lanceur) sont dans `reglages.ts`, en un seul objet.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée (une règle, un réglage par défaut, la géométrie). */
-export const PINBALL_SIM_VERSION = 2;
+export const PINBALL_SIM_VERSION = 3;
 /** La version du générateur de la table du jour. Elle monte à tout changement de ce que `dailyPinball` produit. Jamais une date. */
-export const PINBALL_GENERATOR_VERSION = 2;
+export const PINBALL_GENERATOR_VERSION = 3;
 /** La version du calcul des seuils des médailles (provisoires au PB1 : le robot du PB4 les remplace). */
 export const PINBALL_BOT_VERSION = 1;
 
@@ -51,9 +51,16 @@ export const EV_LANCE = 256;
 export const EV_PERDUE = 512;
 export const EV_SAUVEE = 1024;
 export const EV_FIN = 2048;
+/** Lot PB3 : les éléments des thèmes et la mission. */
+export const EV_MANEGE = 4096;
+export const EV_TOURBILLON = 8192;
+export const EV_PORTAIL = 16384;
+export const EV_GEYSER = 32768;
+export const EV_COULEE = 65536;
+export const EV_MISSION = 131072;
 
-/** Les points de la maquette et du seed. */
-export const POINTS = { sling: 10, spinner: 50, bumper: 100, voie: 100, cible: 250, trouVoies: 1000, trou: 1500, banque: 2000 } as const;
+/** Les points de la maquette et du seed (lot PB3 : les éléments des thèmes et la mission). */
+export const POINTS = { sling: 10, spinner: 50, bumper: 100, voie: 100, cible: 250, trouVoies: 1000, trou: 1500, banque: 2000, manege: 500, coulee: 300, geyser: 750, portail: 800, tourbillon: 2000, mission: 10000 } as const;
 
 export type Controle = 0 | 1 | 2;
 /** Les trois commandes : le batteur gauche, le batteur droit, le lanceur. */

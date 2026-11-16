@@ -61,6 +61,27 @@ describe("Pinball sur le serveur", () => {
     expect(board.body.me).toMatchObject({ name: "Joueur3" });
   });
 
+  it("lot PB3 : le module d'essais joue les quatre thèmes (éléments, missions) et le serveur retrouve les mêmes scores", async () => {
+    const t = await monter();
+    const themes = new Set<string>();
+    let n = 20;
+    // les jours qui suivent : on avance l'horloge du serveur d'un jour à chaque fois (un jour n'est ouvert qu'à son jour de Paris)
+    for (let i = 0; themes.size < 4 || i < 8; i++) {
+      const jour = JOUR + i;
+      t.clock.now = jour * DAY_MS + 12 * 3_600_000;
+      themes.add(themeDuJour(jour));
+      const date = formatDay(jour);
+      for (const variante of [0, 3]) {
+        const essai = ESSAIS_PINBALL.partie(jour, VERSIONS, variante);
+        const r = await t.call("POST", "/api/pinball/submit", { replay: essai.rediffusion, name: `Joueur${n}` }, { headers: entete(n) });
+        n++;
+        expect(r.status, `${date} (${themeDuJour(jour)}) : ${JSON.stringify(r.body)}`).toBe(200);
+        expect(r.body.score, `${date} (${themeDuJour(jour)})`).toEqual(essai.attendu);
+      }
+    }
+    expect([...themes].sort()).toEqual(["espace", "foire", "ocean", "volcan"]);
+  });
+
   it("range la durée de la partie (en pas) comme départage, à côté du score (cle1 = −score, cle2 = pas)", async () => {
     const t = await monter();
     expect((await envoyer(t, 1, 3)).status).toBe(200);

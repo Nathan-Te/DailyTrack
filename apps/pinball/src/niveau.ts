@@ -19,6 +19,7 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
     }
   }
   contenu ??= dailyPinball(jour, PINBALL_GENERATOR_VERSION);
-  if (theme !== contenu.theme && (THEMES_PINBALL as readonly string[]).includes(theme)) contenu = { ...contenu, theme: theme as ThemePinball, seuilsFiges: undefined };
+  // Un autre thème (`?theme=`, essai) : la table de ce thème ce jour-là, avec ses éléments et sa mission (lot PB3), jamais celle du jour avec d'autres couleurs.
+  if (theme !== contenu.theme && (THEMES_PINBALL as readonly string[]).includes(theme)) contenu = dailyPinball(jour, PINBALL_GENERATOR_VERSION, theme as ThemePinball);
   return { ...contenu, seuilsFiges: contenu.seuilsFiges ?? seuilsDe(contenu) };
 }

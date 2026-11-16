@@ -27,8 +27,10 @@ interface Curseur {
   section: string;
   fr: string;
   en: string;
+  /** Le pas du curseur (1 par défaut ; plus grand pour une plage très large). */
+  pas?: number;
 }
-const sim = (cle: keyof Reglages, section: string, fr: string, en: string): Curseur => ({ cle, groupe: "sim", section, fr, en });
+const sim = (cle: keyof Reglages, section: string, fr: string, en: string, pas = 1): Curseur => ({ cle, groupe: "sim", section, fr, en, pas });
 const CURSEURS: readonly Curseur[] = [
   sim("pente", "Table", "Pente (px/s²)", "Slope (px/s²)"),
   sim("vitesseMax", "Table", "Vitesse maximale de la bille (px/s)", "Ball top speed (px/s)"),
@@ -58,13 +60,33 @@ const CURSEURS: readonly Curseur[] = [
   sim("sauvee", "Bille sauvée", "Délai (pas, 0 = supprimée)", "Window (steps, 0 = off)"),
   sim("banqueRelevee", "Cibles et couloirs", "Banque relevée après (pas)", "Bank resets after (steps)"),
   sim("voiesRelevees", "Cibles et couloirs", "Lampes éteintes après (pas)", "Lamps off after (steps)"),
+  // lot PB3 : les éléments des thèmes, puis les buts des missions
+  sim("kickBulles", "Océan", "Coup des Bulles : le trio (px/s)", "Bubbles kick: trio (px/s)"),
+  sim("kickMiniBulles", "Océan", "Coup des Bulles : la paire (px/s)", "Bubbles kick: pair (px/s)"),
+  sim("tourbillonForce", "Océan", "Tourbillon : attraction (px/s²)", "Whirlpool: pull (px/s²)", 10),
+  sim("tourbillonSpirale", "Océan", "Tourbillon : spirale (px/s²)", "Whirlpool: swirl (px/s²)", 10),
+  sim("tourbillonGarde", "Océan", "Tourbillon : garde la bille (pas)", "Whirlpool: holds the ball (steps)"),
+  sim("tourbillonPause", "Océan", "Tourbillon : pause avant de reprendre (pas)", "Whirlpool: pause before catching again (steps)"),
+  sim("tourbillonVitesse", "Océan", "Tourbillon : vitesse de sortie (px/s)", "Whirlpool: release speed (px/s)"),
+  sim("manegeVitesse", "Fête foraine", "Manège : vitesse (6 = la maquette)", "Carousel: speed (6 = the mockup)"),
+  sim("trouNoirForce", "Espace", "Trou noir : force (attraction = force / distance², au plus 1 400 px/s²)", "Black hole: strength (pull = strength / distance², up to 1,400 px/s²)", 1000),
+  sim("portailPause", "Espace", "Portails : pause après un passage (pas)", "Portals: pause after a pass (steps)"),
+  sim("geyserVitesse", "Volcan", "Geyser : poussée vers le haut (px/s)", "Geyser: upward push (px/s)"),
+  sim("geyserPause", "Volcan", "Geyser : pause entre deux jets (pas)", "Geyser: pause between jets (steps)"),
+  sim("geyserDevie", "Volcan", "Geyser : poussée de côté (px/s)", "Geyser: sideways push (px/s)"),
+  sim("geyserParBille", "Volcan", "Geyser : jets au plus par bille", "Geyser: most jets per ball"),
+  sim("couleeForce", "Volcan", "Coulée : accélération (px/s²)", "Lava flow: acceleration (px/s²)", 10),
+  sim("butManege", "Missions (buts)", "Fête foraine : tours de manège", "Funfair: carousel laps"),
+  sim("butTourbillon", "Missions (buts)", "Océan : plongées dans le tourbillon", "Ocean: whirlpool dives"),
+  sim("butPortail", "Missions (buts)", "Espace : passages par un portail", "Space: portal passes"),
+  sim("butGeyser", "Missions (buts)", "Volcan : geysers déclenchés", "Volcano: geysers set off"),
   { cle: "angle", groupe: "vue", section: "Vue", fr: "Caméra : angle (°)", en: "Camera: angle (°)" },
   { cle: "distance", groupe: "vue", section: "Vue", fr: "Caméra : distance (% du cadrage)", en: "Camera: distance (% of framing)" },
   { cle: "champ", groupe: "vue", section: "Vue", fr: "Caméra : champ (°)", en: "Camera: field of view (°)" },
   { cle: "lumiere", groupe: "vue", section: "Vue", fr: "Lumière (%)", en: "Light (%)" },
   { cle: "etiquettes", groupe: "vue", section: "Vue", fr: "Étiquettes : taille (%)", en: "Labels: size (%)" },
 ];
-const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", Vue: "View" };
+const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", Vue: "View" };
 const TEXTES = {
   fr: { ouvrir: "Réglages d'essai", titre: "Réglages d'essai", note: "Un curseur de la simulation relance la partie (non classée) ; ceux de la vue agissent en direct (rendu haute qualité).", exporter: "Exporter", copie: "Copié", lien: "Copier le lien", retablir: "Rétablir", fermer: "Fermer", json: "Les réglages, en JSON", sansTrois: "Le rendu de secours est affiché : la vue n'a pas d'effet." },
   en: { ouvrir: "Tuning", titre: "Tuning", note: "A simulation slider restarts the game (not ranked); the view sliders apply live (high quality render).", exporter: "Export", copie: "Copied", lien: "Copy link", retablir: "Reset", fermer: "Close", json: "The settings, as JSON", sansTrois: "The fallback render is showing: the view has no effect." },
@@ -131,7 +153,7 @@ export function monterTune(hote: HTMLElement, e: EtatTune): Tune {
     r.type = "range";
     r.min = String(min);
     r.max = String(max);
-    r.step = "1";
+    r.step = String(c.pas ?? 1);
     r.value = String(lire(c));
     r.style.gridColumn = "1 / 3";
     v.textContent = r.value;

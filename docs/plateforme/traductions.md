@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2861 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2879 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3768,6 +3768,21 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
 | `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
 
+### mission (`mission.*`, `apps/pinball/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `mission.texte.manege` | Fais {but} tours de manège | Ride the carousel {but} times |
+| `mission.texte.tourbillon` | Plonge {but} fois dans le tourbillon | Dive into the whirlpool {but} times |
+| `mission.texte.portail` | Passe {but} fois par le portail | Go through the portal {but} times |
+| `mission.texte.geyser` | Déclenche {but} geysers | Set off {but} geysers |
+| `mission.hud.manege` | Manège {n} / {but} | Carousel {n} / {but} |
+| `mission.hud.tourbillon` | Tourbillon {n} / {but} | Whirlpool {n} / {but} |
+| `mission.hud.portail` | Portail {n} / {but} | Portal {n} / {but} |
+| `mission.hud.geyser` | Geysers {n} / {but} | Geysers {n} / {but} |
+| `mission.hud.reussie` | Mission réussie | Mission complete |
+| `mission.reussie` | Mission réussie ! ×{mult} | Mission complete! ×{mult} |
+
 ### module (`module.*`, `apps/pinball/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -3788,6 +3803,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `module.cibles.volcan` | Rochers | Rocks |
 | `module.spinner.volcan` | Moulin | Mill |
 | `module.trou.volcan` | Cratère | Crater |
+| `module.manege` | Manège | Carousel |
+| `module.tourbillon` | Tourbillon | Whirlpool |
+| `module.trouNoir` | Trou noir | Black hole |
+| `module.portailA` | Portail A | Portal A |
+| `module.portailB` | Portail B | Portal B |
+| `module.asteroide` | Astéroïde | Asteroid |
+| `module.geyser` | Geyser | Geyser |
+| `module.coulee` | Coulée | Lava flow |
 
 ### Page (titre, chargement) (`page.*`, `apps/pinball/src/catalogue.*.ts`)
 

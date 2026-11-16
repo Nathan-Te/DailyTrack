@@ -2,7 +2,8 @@
 //   · `?debug&tune` : le panneau des réglages (la simulation, la vue) ; `&reglages=<JSON>` : des réglages collés (ceux que « Exporter » écrit) ;
 //   · `?qualite=haute|basse` : le niveau de rendu (haute : three.js ; basse : le rendu à plat de secours, sans three.js). Sans le paramètre : haute, avec un passage automatique en basse si l'appareil est lent (jamais s'il est
 //     seulement bridé à 30 images par seconde : `@cdj/core/bridage`) ;
-//   · `?debug&fps` : l'affichage des images par seconde et de la durée d'une image.
+//   · `?debug&fps` : l'affichage des images par seconde et de la durée d'une image ;
+//   · `?essai=mission` (lot PB3) : la partie commence au but de la mission moins un, pour voir tout de suite le moment fort (jamais classée).
 // Ce fichier est dans le premier chargement (la définition y lit `classable`) : **il ne fait que lire l'adresse**, tout le reste (bornes, validation, panneau) est à la demande.
 export type Qualite = "haute" | "basse";
 
@@ -13,12 +14,14 @@ export interface Essai {
   qualite: Qualite | null;
   /** Les réglages collés dans l'adresse (le JSON lu, non vérifié : `bornes.ts` le fait, à la demande), ou `null`. */
   reglages: unknown;
+  /** `?essai=mission` : la mission commence au but moins un. */
+  mission: boolean;
   /** Vrai dès qu'une option change la partie : elle n'est alors pas classable. */
   essai: boolean;
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { tune: false, fps: false, qualite: null, reglages: null, essai: false };
+  const vide: Essai = { tune: false, fps: false, qualite: null, reglages: null, mission: false, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const debug = q.has("debug");
@@ -33,5 +36,6 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   }
   const niveau = q.get("qualite");
   const tune = debug && q.has("tune");
-  return { tune, fps: debug && q.has("fps"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, essai: tune || reglages !== null };
+  const mission = q.get("essai") === "mission";
+  return { tune, fps: debug && q.has("fps"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, essai: tune || reglages !== null || mission };
 }

@@ -8,7 +8,7 @@
 // l'écran tactile et la manette**, et ignore `action()`. Un changement est mis en file et appliqué au début du pas suivant, un par commande et par pas : la même commande ne change jamais deux fois au même pas,
 // ce que la rediffusion exige. Hors production, `?debug` montre les contours de collision, le compteur de pas et le score de chaque contact, et pose `window.__pinball` (les essais e2e y dictent leurs appuis) ;
 // `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`).
-import { EV_SAUVEE, MAX_EVENEMENTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
+import { EV_LANCE, EV_MISSION, EV_SAUVEE, MAX_EVENEMENTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
 import { DetecteurBridage } from "@cdj/core/bridage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -60,7 +60,13 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   let reglages: Reglages = essai.reglages !== null ? reglagesDe(essai.reglages) : REGLAGES;
   let vue: Vue = vueDe(essai.reglages);
-  let partie = new Partie(contenu, reglages);
+  /** Une partie neuve ; `?essai=mission` la met au but moins un (la mission se réussit au prochain pas : le moment fort tout de suite, jamais classé). */
+  const neuve = (): Partie => {
+    const p = new Partie(contenu, reglages);
+    if (essai.mission) p.compteur = Math.max(0, p.but - 1);
+    return p;
+  };
+  let partie = neuve();
   const journal: Evenement[] = [];
   hote.style.touchAction = "none";
   hote.style.padding = "0"; // la table occupe tout le cadre sous le HUD du kit
@@ -68,7 +74,9 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   // Les rendus lisent la partie COURANTE à chaque image : une relance (le panneau des réglages) en met une neuve sans reconstruire le rendu (la table fixe est la même, seuls les coups et les rebonds changent).
   const vivante = new Proxy({} as Partie, { get: (_, cle) => Reflect.get(partie, cle, partie) });
   const police = getComputedStyle(hote).getPropertyValue("--jeu-police").trim() || "sans-serif";
-  const nom = (module: string): string | null => (module === "mini" ? o.t(`module.bumpers.${contenu.theme}`) : ["bumpers", "cibles", "spinner", "trou"].includes(module) ? o.t(`module.${module}.${contenu.theme}`) : null);
+  // Le nom d'un module sur la table, dans le vocabulaire du thème (lot PB3) : les modules communs ont un nom par thème, les éléments des thèmes un nom à eux.
+  const nom = (module: string): string | null =>
+    module === "mini" ? o.t(`module.bumpers.${contenu.theme}`) : ["bumpers", "cibles", "spinner", "trou"].includes(module) ? o.t(`module.${module}.${contenu.theme}`) : ["manege", "tourbillon", "trouNoir", "portailA", "portailB", "asteroide", "geyser", "coulee"].includes(module) ? o.t(`module.${module}`) : null;
   const titre = o.t(`theme.${contenu.theme}`);
 
   // --- Le rendu : haute (three.js) ou basse (à plat), sur un canvas à lui (un canvas WebGL ne devient jamais 2D)
@@ -100,7 +108,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     qualite = "basse";
     if (voulue === "haute" && corps) {
       try {
-        trois = corps.creerCorps(canvas, vivante, { theme: contenu.theme, nom, titre, police, vue, tactile: o.tactile, fps: essai.fps, surPerte: () => passerEnBasse() });
+        trois = corps.creerCorps(canvas, vivante, { theme: contenu.theme, nom, titre, police, vue, reduit: o.reduit, tactile: o.tactile, fps: essai.fps, surPerte: () => passerEnBasse() });
         rendu = trois;
         qualite = "haute";
       } catch {
@@ -144,6 +152,38 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       });
     });
   }
+
+  // --- La mission (lot PB3) : une pastille compacte en haut de la table (« Manège 3 / 5 » et sa jauge ; avant le premier lancer, la phrase de la mission), et le message du moment fort. Tout le texte vient du catalogue ;
+  // les rendus ne dessinent que l'éclat. Les noeuds ne sont écrits que quand ce qu'ils disent change.
+  const pastille = document.createElement("div");
+  pastille.className = "pinball-mission";
+  pastille.setAttribute("role", "status");
+  const pastilleTexte = document.createElement("span");
+  pastilleTexte.className = "pinball-mission-texte";
+  const jauge = document.createElement("span");
+  jauge.className = "pinball-mission-jauge";
+  pastille.append(pastilleTexte, jauge);
+  const message = document.createElement("div");
+  message.className = "pinball-mission-reussie";
+  message.setAttribute("role", "status");
+  hote.append(pastille, message);
+  let lancee = false;
+  let tEclat = -1e9;
+  let cleMission = "";
+  let delaiMessage = 0;
+  /** Met la pastille à jour si l'état de la mission a changé (compteur, réussite, premier lancer). */
+  const majMission = (): void => {
+    const cle = `${partie.mission}|${partie.compteur}|${partie.but}|${partie.missionFaite ? 1 : 0}|${lancee ? 1 : 0}`;
+    if (cle === cleMission) return;
+    cleMission = cle;
+    pastille.dataset.etat = partie.missionFaite ? "reussie" : lancee ? "en-cours" : "debut";
+    pastilleTexte.textContent = partie.missionFaite ? o.t("mission.hud.reussie") : lancee ? o.t(`mission.hud.${partie.mission}`, { n: partie.compteur, but: partie.but }) : o.t(`mission.texte.${partie.mission}`, { but: partie.but });
+    while (jauge.childElementCount > partie.but) jauge.lastElementChild!.remove();
+    while (jauge.childElementCount < partie.but) jauge.append(document.createElement("i"));
+    [...jauge.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < partie.compteur ? "1" : "0"));
+    jauge.hidden = !lancee && !partie.missionFaite;
+  };
+  majMission();
 
   // --- Les entrées : des changements d'état datés au pas ---
   /** Ce que le joueur veut (après la file), ce que chaque commande tient (les sources : une touche, un doigt, la manette) et la file des changements pas encore appliqués. */
@@ -247,8 +287,11 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
 
   /** Une partie neuve avec les réglages d'essai du panneau (jamais classée) : même table, autres sensations ; les rendus la lisent par `vivante`. */
   const relancer = (): void => {
-    partie = new Partie(contenu, reglages);
+    partie = neuve();
     journal.length = 0;
+    lancee = false;
+    tEclat = -1e9;
+    majMission();
     file.length = 0;
     voulu.fill(false);
     for (const s of sources) s.clear();
@@ -304,6 +347,17 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         o.vibrer(VIBRATION_MS);
       }
       if (partie.ev & EV_SAUVEE) tSauvee = tDernierPas;
+      if (partie.ev & EV_LANCE) lancee = true;
+      if (partie.ev & EV_MISSION) {
+        // le moment fort : un éclat sur la table, un message court, une vibration plus longue
+        tEclat = tDernierPas;
+        message.textContent = o.t("mission.reussie", { mult: partie.mult });
+        message.dataset.visible = "1";
+        clearTimeout(delaiMessage);
+        delaiMessage = window.setTimeout(() => (message.dataset.visible = "0"), 2600);
+        o.vibrer(120);
+      }
+      majMission();
       if (debug) for (const g of partie.gains) gains.push({ x: g.x, y: g.y, points: g.points, fin: partie.tick + TICKS_PAR_SECONDE });
       if (partie.finie) tFin = tDernierPas;
     },
@@ -316,6 +370,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         debug,
         alpha: Math.min(1, Math.max(0, (maintenant - tDernierPas) / (1000 / TICKS_PAR_SECONDE))),
         sauvee: Math.max(0, 1 - (maintenant - tSauvee) / 1600),
+        eclat: Math.max(0, 1 - (maintenant - tEclat) / 1100),
         texteSauvee: o.t("scene.sauvee"),
         gains: gains.map((g) => ({ x: g.x, y: g.y, points: g.points, vie: (g.fin - partie.tick) / TICKS_PAR_SECONDE })),
       });
@@ -329,6 +384,9 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     fantome: () => undefined,
     detruire(): void {
       detruite = true;
+      clearTimeout(delaiMessage);
+      pastille.remove();
+      message.remove();
       tune?.detruire();
       rendu.detruire?.();
       observateur.disconnect();
