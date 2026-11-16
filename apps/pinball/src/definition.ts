@@ -1,11 +1,17 @@
 import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroPinball, themeDuJour, type Contenu } from "@cdj/pinball-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
+import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { ACTIONS } from "./commandes";
+import { lireEssai } from "./essai";
 
 // La définition de « Pinball » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **La table (générateur, seuils) et la scène sont chargées à la demande** : le premier chargement est
 // l'accueil seul (ligne de budget `pinball.jsCss`). Le kit demande le contenu du jour dès l'accueil dessiné : c'est là que la scène se charge, bien avant le clic sur JOUER.
+// **Lot PB2 : le rendu three.js (`corps.ts`, avec three.js) est lui aussi à la demande**, chargé au même moment que la scène — sauf si l'adresse impose la basse qualité (`?qualite=basse`) ou si le rendu de secours
+// a déjà pris le relais dans cette session : le rendu à plat ne charge pas three.js. Un chargement qui échoue (réseau) laisse le rendu de secours.
 type Scene = typeof import("./scene");
+type Corps = typeof import("./corps");
 let scene: Scene | null = null;
+let corps: Corps | null = null;
 
 export const DEFINITION: DefinitionJeu<Contenu> = {
   ticksParSeconde: TICKS_PAR_SECONDE,
@@ -15,14 +21,20 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   themeDuJour,
   numero: numeroPinball,
   contenuDuJour: async (jour, base, theme) => {
-    const [niveau, s] = await Promise.all([import("./niveau"), import("./scene")]);
+    const basse = lireEssai(location.search, BUILD_RESTRICTED).qualite === "basse";
+    const [niveau, s, c] = await Promise.all([import("./niveau"), import("./scene"), basse ? null : import("./corps").catch(() => null)]);
     scene = s;
+    corps = c;
     return niveau.contenuDuJour(jour, base, theme);
   },
   // Les seuils sont écrits dans le contenu quand il est lu (`niveau.ts`) : ceux du fichier de jour figé, sinon le calcul provisoire.
   seuils: (c) => c.seuilsFiges!,
   medaille: (score, s) => VARIANTE.medaille(score, s),
-  nouvellePartie: (contenu, hote, options) => scene!.nouvellePartiePinball(contenu, hote, options),
+  nouvellePartie: (contenu, hote, options) => scene!.nouvellePartiePinball(contenu, hote, options, scene!.rendFaible() ? null : corps),
+  // Une partie d'essai (`?debug&tune`, `&reglages=`) n'est jamais classée ; en production ces options n'existent pas.
+  classable: (adresse) => !lireEssai(adresse, BUILD_RESTRICTED).essai,
+  // Lot PB2 : une vibration courte quand un batteur frappe la bille (le réglage « Vibration » du kit apparaît dans les Réglages).
+  vibration: true,
   // Pas de fantôme ni de Diamant au PB1 : le robot du jour arrive au lot PB4.
   sansFantome: true,
   rediffusionDiamant: () => "",
