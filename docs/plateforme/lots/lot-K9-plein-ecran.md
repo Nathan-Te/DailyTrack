@@ -16,6 +16,9 @@ Demande de Nathan (16/11/2026) : le bouton plein écran en vue portrait pour Pin
 - `apps/blocks/e2e/plein-ecran.spec.ts` (déclaré dans la fiche de Blocks, `e2e.specs` **et `e2e.regression`** : même à 1 s il dépassait les 900 s de l'Essentiel d'une PR large, `ciZones.test.ts` ; comme les specs de Cibles, il tourne quand la PR le modifie — ici —, sur `main` et la nuit — et `durees.json`) : bouton visible dans le HUD à 390 × 844, 360 × 640 et 844 × 390, 44 px, dans la fenêtre, sans recouvrir la pause ni le fantôme ; le clic demande le plein écran et le verrou `portrait` (portrait) / `landscape` (paysage) ; bouton absent quand le plein écran n'est pas possible.
 - `npm run consignes` vert. Aucun golden, aucune version de simulation, aucun fichier de `apps/pinball`, `packages/pinball-sim` ou `apps/api/src/pinball*.ts` touché.
 
+## CI : un échec dans le Kit de bout en bout
+Au premier run, `surimpression.spec.ts` (jeu généré, 390 × 844) a lu `#jeu-hud-score` vide : la barre n'était remplie qu'à la première image. **Non reproduit en local** (32 exécutions sur 32 vertes avant la correction) : la cause est une course probable, antérieure au lot, pas démontrée. Correction dans le kit (`partie.ts`) : le texte de la barre est écrit dès la création de la partie.
+
 ## Non vérifié
 - **Le vrai verrouillage d'orientation ne se teste que sur un téléphone Android.** Le spec remplace `requestFullscreen`, `screen.orientation.lock` et `.type` par des témoins : il prouve ce que le bouton **demande**, pas ce que l'appareil en fait. Sur iPhone il n'y a pas de plein écran de page (l'astuce, inchangée).
 - Aucun essai sur un vrai téléphone dans ce lot ; Track et Jump n'ont pas de spec nouveau (leur appel n'a changé que par un argument explicite : specs existants et `npm run verifier`).

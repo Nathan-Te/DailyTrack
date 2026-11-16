@@ -105,6 +105,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     principal.textContent = h.principal;
     secondaire.textContent = h.secondaire;
   };
+  majHud(); // lot K9 : le texte de la barre est là dès la création de la partie, pas à la première image (un essai ou un lecteur d'écran ne lit jamais une barre vide)
   function image(now: number): void {
     requestAnimationFrame(image);
     lirePad();
