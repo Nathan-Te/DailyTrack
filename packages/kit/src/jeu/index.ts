@@ -115,7 +115,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   const cadre = creerCadre({
     id: IDS.accueil,
     etiquette: "jeu-ecran jeu-ecran--accueil",
-    barre: () => barreJeu(communs(i18n), { href: "../", jour, ...(tour >= 1 ? { numero: tour } : {}), pleinEcran: true }),
+    barre: () => barreJeu(communs(i18n), { href: "../", jour, ...(tour >= 1 ? { numero: tour } : {}), pleinEcran: true, ...(def.orientation ? { orientation: def.orientation } : {}) }),
     aria: () => t("kit.accueil.aria"),
   });
   // Lot K5 — l'accueil aux proportions de celui de Tower (charte § 9, planche 1 de `jeux-du-kit-au-niveau.html`) : deux colonnes équilibrées dans l'étiquette. À gauche l'identité : le titre dans la police du jeu, « Partie n° N · Thème »,

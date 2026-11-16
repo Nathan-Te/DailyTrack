@@ -5,7 +5,7 @@ import { formatDateCourte, formatNumeroJour, majuscule } from "./formats";
 import { LANGUES, type Langue, type Traducteur } from "./i18n";
 import { avatar } from "./avatar";
 import { icone, iconeEtoile } from "./icones";
-import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranBoutonVisible, pleinEcranParEcranAccueil, reglagesAideIphone, surChangementPleinEcran } from "./pleinEcran";
+import { astuceIphoneAPropos, basculerPleinEcran, type OrientationPleinEcran, pleinEcranActif, pleinEcranBoutonVisible, pleinEcranParEcranAccueil, reglagesAideIphone, surChangementPleinEcran } from "./pleinEcran";
 
 // Les composants de base de la charte « Cartouches » (lot I1) : des fonctions qui construisent des éléments du DOM portant les classes de
 // `composants.css` (états : survol, appui qui s'enfonce, focus, désactivé). Aucune couleur, police ni chaîne d'interface en dur : les styles
@@ -275,6 +275,8 @@ export interface OptionsBarreJeu {
   retour?: { texte: string; ariaLabel: string; onClick?: () => void };
   /** Lot I7 : le bouton plein écran, à droite à côté de la date (l'accueil de chaque jeu : on se met en plein écran avant de jouer). Caché si le plein écran n'est pas possible. */
   pleinEcran?: boolean;
+  /** Lot K9 : l'orientation que le bouton plein écran verrouille (défaut : celle du moment). */
+  orientation?: OrientationPleinEcran;
 }
 
 /** La barre des jeux : « ‹ DU JOUR » (lien vers le portail, 44 px) et, à droite en mono, la date et le numéro du jour. */
@@ -289,7 +291,7 @@ export function barreJeu(t: TraducteurCommun, o: OptionsBarreJeu): HTMLElement {
   if (o.retour?.onClick) retour.addEventListener("click", o.retour.onClick);
   const jour = el("span", { classe: "dj-barre-jeu__jour", texte });
   if (!o.pleinEcran) return el("header", { classe: "dj-barre-jeu" }, retour, jour);
-  const plein = boutonPleinEcran({ t: (cle) => t.t(cle), classe: "dj-plein-ecran--barre" });
+  const plein = boutonPleinEcran({ t: (cle) => t.t(cle), classe: "dj-plein-ecran--barre", ...(o.orientation ? { orientation: o.orientation } : {}) });
   return el("header", { classe: "dj-barre-jeu" }, retour, el("span", { classe: "dj-barre-jeu__droite" }, jour, plein));
 }
 
@@ -324,6 +326,8 @@ export interface OptionsBoutonPleinEcran {
   /** Lot 53 : sur iPhone le bouton ouvre l'aide (pas de plein écran de page) ; appelé juste avant (en partie : le jeu se met en pause), `onFermer` à la fermeture de l'aide. */
   avantAide?: () => void;
   onFermerAide?: () => void;
+  /** Lot K9 : l'orientation verrouillée à l'entrée en plein écran — `"paysage"` (Track, Jump), `"portrait"` ou `"actuelle"` (défaut : celle du moment). */
+  orientation?: OrientationPleinEcran;
 }
 
 /**
@@ -365,7 +369,7 @@ export function boutonPleinEcran(o: OptionsBoutonPleinEcran): HTMLButtonElement 
       })();
       return;
     }
-    void basculerPleinEcran();
+    void basculerPleinEcran(o.orientation);
   });
   suivre(b, maj);
   return b;
