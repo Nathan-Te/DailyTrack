@@ -12,7 +12,6 @@ import { ajouterPique, dessinBloc, dessinBonus, dessinChevrons, dessinFleche, de
 
 /** Colonnes de contexte lues de chaque côté d'un morceau pour que ses bords se raccordent à ses voisins (tuiles, ombres de profondeur). */
 const MARGE = 4;
-const COLONNES_PAR_BANDE = MORCEAUX_PAR_THEME * LARGEUR_MORCEAU;
 const VARIANTES: readonly VarianteBloc[] = ["plein", "alerte", "absent", "retour"];
 const TYPES_BLOC: readonly TypeBloc[] = [CLIGNOTANT, ALTERNE_A, ALTERNE_B];
 
@@ -132,12 +131,18 @@ export class Monde {
   private readonly geoFleche: BufferGeometry;
   private readonly geoBloc = new Map<string, BufferGeometry>();
 
+  /** Lot GR5 : la longueur d'un thème (un essai peut la régler : `?longueur=`) vient des règles du terrain, plus d'une constante. */
+  private readonly morceauxParTheme: number;
+  private readonly colonnesParBande: number;
+
   constructor(
     private readonly terrain: Terrain,
     private readonly jour: number,
     private readonly c: CouleursGravity,
     private readonly reduit: boolean,
   ) {
+    this.morceauxParTheme = terrain.regles?.morceauxParTheme ?? MORCEAUX_PAR_THEME;
+    this.colonnesParBande = this.morceauxParTheme * LARGEUR_MORCEAU;
     const garder = (a: Art): BufferGeometry => {
       const g = artGeometry(a);
       this.partagees.push(g);
@@ -285,9 +290,9 @@ export class Monde {
 
   // ——— Les fonds : un thème par bande, coupé net à sa frontière ———
   private construireBande(b: number): BandeVue {
-    const debut = b * COLONNES_PAR_BANDE;
-    const fin = debut + COLONNES_PAR_BANDE;
-    const theme = this.themeDe(b * MORCEAUX_PAR_THEME);
+    const debut = b * this.colonnesParBande;
+    const fin = debut + this.colonnesParBande;
+    const theme = this.themeDe(b * this.morceauxParTheme);
     const materiau = new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, clippingPlanes: [new Plane(new Vector3(1, 0, 0), -debut), new Plane(new Vector3(-1, 0, 0), fin)] });
     const groupe = new Group();
     const geometries: BufferGeometry[] = [];
@@ -297,7 +302,7 @@ export class Monde {
     geometries.push(gc);
     groupe.add(new Mesh(gc, materiau));
     const plans: BandeVue["plans"] = [];
-    const couches = buildParallax(theme, COLONNES_PAR_BANDE, `${this.jour}:${b}`);
+    const couches = buildParallax(theme, this.colonnesParBande, `${this.jour}:${b}`);
     // mouvement réduit : tous les plans restent, mais collés à l'écran (`layerOffset`, mouvement 0) — rien ne défile
     const n = visibleLayers(couches.length, false);
     for (let i = 0; i < n; i++) {
@@ -326,8 +331,8 @@ export class Monde {
       this.morceaux.set(k, vu);
       this.groupe.add(vu.groupe);
     }
-    const b0 = Math.floor(k0 / MORCEAUX_PAR_THEME);
-    const b1 = Math.floor(k1 / MORCEAUX_PAR_THEME);
+    const b0 = Math.floor(k0 / this.morceauxParTheme);
+    const b1 = Math.floor(k1 / this.morceauxParTheme);
     for (const [b, bande] of this.bandes) {
       if (b < b0 || b > b1) {
         this.groupe.remove(bande.groupe);

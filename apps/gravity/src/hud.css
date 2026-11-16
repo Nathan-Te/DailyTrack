@@ -206,6 +206,20 @@
   font-weight: 700;
   font-size: 13px;
 }
+.g-reglage {
+  position: absolute;
+  left: max(10px, env(safe-area-inset-left));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  max-width: calc(100% - 20px);
+  padding: 2px 9px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border-radius: 14px;
+  font-family: var(--dj-police-chiffres, sans-serif);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.3;
+}
 .g-mort {
   position: absolute;
   top: 46%;

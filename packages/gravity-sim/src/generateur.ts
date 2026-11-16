@@ -30,7 +30,7 @@ export interface Contenu {
   /** Lot GR5 : la version de la simulation sous laquelle ce jour se joue (celle de son fichier figé ; absente : la courante). */
   sim?: number;
   /** Lot GR5 : les réglages d'essai (`?vitesse=`… hors production) : un contenu qui en porte est un **essai**, jamais classé. */
-  essai?: ReglagesEssai;
+  reglages?: ReglagesEssai;
 }
 
 /**
@@ -49,10 +49,10 @@ export const GENERATEURS: Record<number, Generateur> = {};
 export const versionsGenerateur = (): number[] => Object.keys(GENERATEURS).map(Number);
 
 /** Les règles d'un contenu : sa version de la simulation, la longueur de thème de son générateur, ses réglages d'essai. */
-export function reglesDuContenu(c: Pick<Contenu, "g" | "sim" | "essai">): Regles {
+export function reglesDuContenu(c: Pick<Contenu, "g" | "sim" | "reglages">): Regles {
   const gen = GENERATEURS[c.g];
   if (!gen) throw new ErreurGenerateur(`version de générateur inconnue : ${c.g}`);
-  return reglesDe(c.sim ?? GRAVITY_SIM_VERSION, gen.morceauxParTheme, c.essai);
+  return reglesDe(c.sim ?? GRAVITY_SIM_VERSION, gen.morceauxParTheme, c.reglages);
 }
 
 /** Sel de la graine des morceaux (propre au jeu). */
@@ -66,7 +66,7 @@ export function dailyGravity(jour: number, version: number = GRAVITY_GENERATOR_V
   const gen = GENERATEURS[version];
   if (!gen) throw new ErreurGenerateur(`version de générateur inconnue : ${version}`);
   if (!versionsSimJouablesConnues(sim)) throw new ErreurGenerateur(`version de simulation inconnue : ${sim}`);
-  return { jour, g: version, ordre: gen.ordre(jour), sim, ...(essai && Object.keys(essai).length > 0 ? { essai } : {}) };
+  return { jour, g: version, ordre: gen.ordre(jour), sim, ...(essai && Object.keys(essai).length > 0 ? { reglages: essai } : {}) };
 }
 const versionsSimJouablesConnues = (sim: number): boolean => {
   try {
@@ -395,7 +395,7 @@ const rangeeDeLEtape = (chemin: readonly Etape[], c: number): number => (chemin.
 const GARDES = new Map<string, Terrain>();
 
 /** Le terrain d'un contenu : ses morceaux, tirés à la demande puis gardés, **par le générateur de sa version et sous les règles de sa simulation** (lot GR5). */
-export function terrainDuJour(contenu: Pick<Contenu, "jour" | "ordre" | "g" | "sim" | "essai">): Terrain {
+export function terrainDuJour(contenu: Pick<Contenu, "jour" | "ordre" | "g" | "sim" | "reglages">): Terrain {
   const regles = reglesDuContenu(contenu);
   const cle = `${contenu.jour}:${contenu.g}:${cleDesRegles(regles)}:${contenu.ordre.join(",")}`;
   const garde = GARDES.get(cle);

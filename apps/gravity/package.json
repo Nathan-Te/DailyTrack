@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "analyser": "esbuild ../api/scripts/gravity-analyse.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/analyse.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && node dist/analyse.mjs"
   },
   "dependencies": {
     "@cdj/clock": "*",

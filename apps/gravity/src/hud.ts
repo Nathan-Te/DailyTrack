@@ -26,6 +26,8 @@ export interface EtatHud {
   /** Le bilan de la partie, montré avec la cause pendant que la mort se voit (lot GR4) : le kit n'a pas d'emplacement pour un bilan sur son écran de fin (README du lot). Null tant qu'on joue. */
   bilan: { distance: number; pieces: number; gemmes: number; theme: string; mult: number } | null;
   robot: boolean;
+  /** Lot GR5 : la mention des réglages d'essai (« Réglage d'essai · départ 8 m/s »), ou null : une partie normale n'en montre pas. */
+  reglage: string | null;
 }
 
 const MEDAILLES = [
@@ -71,6 +73,7 @@ export class Hud {
   private readonly themeMeca = el("small", "g-theme__meca");
   private readonly theme = el("div", "g-theme", this.themeNom, this.themeMeca);
   private readonly robot = el("div", "g-robot");
+  private readonly reglage = el("div", "g-reglage");
   private readonly mortCause = el("b", "g-mort__cause");
   private readonly bilanValeurs = [0, 1, 2, 3, 4].map(() => el("b", "g-bilan__valeur"));
   private readonly mort = el("div", "g-mort", this.mortCause);
@@ -94,6 +97,7 @@ export class Hud {
     this.bonus.append(this.puceBouclier, this.puceAimant);
     this.robot.textContent = o.t("essai.robot");
     this.robot.hidden = true;
+    this.reglage.hidden = true;
     this.mort.hidden = true;
     // Le bilan : cinq cases (valeur au-dessus, nom dessous), dans l'ordre de l'écran de fin de la maquette — distance, pièces, gemmes, thème atteint, multiplicateur maximal.
     const noms = ["bilan.distance", "bilan.pieces", "bilan.gemmes", "bilan.theme", "bilan.mult"] as const;
@@ -103,7 +107,7 @@ export class Hud {
     zones.hautDroite.append(this.medaille);
     zones.hautGauche.append(this.bonus);
     zones.annonce.append(this.theme);
-    this.racine.append(this.robot, this.mort);
+    this.racine.append(this.robot, this.reglage, this.mort);
     this.mult.addEventListener("animationend", () => this.mult.classList.remove("g-mult--chute"));
     hote.append(this.racine);
   }
@@ -172,6 +176,10 @@ export class Hud {
       this.theme.classList.toggle("g-theme--vu", vu);
     }
     this.robot.hidden = !e.robot;
+    if (e.reglage !== (this.reglage.hidden ? null : this.reglage.textContent)) {
+      this.reglage.hidden = e.reglage === null;
+      this.reglage.textContent = e.reglage ?? "";
+    }
     if (e.mort !== d.mort) {
       d.mort = e.mort ?? "";
       this.mort.hidden = e.mort === null;

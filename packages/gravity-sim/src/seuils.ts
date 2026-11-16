@@ -48,7 +48,7 @@ const pourcentDe = (score: number, pourcent: number): number => Math.trunc((scor
 export function* seuilsEnTranches(contenu: Contenu): Generator<void, Seuils, undefined> {
   const terrain = terrainDuJour(contenu);
   const distances = distancesDArret(terrain.regles!);
-  const pourcent = contenu.essai?.pourcent ?? POURCENT_DU_ROBOT;
+  const pourcent = contenu.reglages?.pourcent ?? POURCENT_DU_ROBOT;
   const cle = `${contenu.jour}:${contenu.g}:${cleDesRegles(terrain.regles!)}:${pourcent}:${contenu.ordre.join(",")}`;
   const connu = MEMOIRE.get(cle);
   if (connu) return { ...connu };

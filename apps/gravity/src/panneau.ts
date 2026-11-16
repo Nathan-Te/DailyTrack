@@ -3,7 +3,7 @@
 // figé les calcule en arrière-plan (`niveau.ts`), le panneau les attend en lisant `pretSeuils()` toutes les demi-secondes, avec une mention discrète. Un jour figé les a d'emblée.
 // Lot GR5 : il a son propre morceau (`panneau-`, chargé par `definition.ts` quand le kit l'appelle, le contenu du jour lu) — la scène, elle, n'est plus demandée qu'à JOUER (`chargerPartie`) : rien de plus au premier chargement. Textes : catalogues du jeu ; couleurs : jetons de la charte et couleurs
 // des thèmes de `@cdj/visuels/plateformes` ; jamais de HTML injecté (tout se pose en `textContent`).
-import { MORCEAUX_PAR_THEME, LARGEUR_MORCEAU, grouper, type Contenu, type Seuils } from "@cdj/gravity-sim";
+import { MORCEAUX_PAR_THEME, LARGEUR_MORCEAU, grouper, reglesDuContenu, type Contenu, type Seuils } from "@cdj/gravity-sim";
 import type { ContexteAujourdhui } from "@cdj/kit/jeu/types";
 import { THEMES } from "@cdj/visuels/plateformes";
 import { enCss } from "./couleurs";
@@ -18,6 +18,8 @@ export const MEDAILLES_DU_PANNEAU = [
 ] as const;
 /** La longueur d'un thème en mètres, arrondie à la centaine (19 morceaux de 16 colonnes : 304 m) — le chiffre que dit le panneau. */
 export const METRES_PAR_THEME = Math.round((MORCEAUX_PAR_THEME * LARGEUR_MORCEAU) / 100) * 100;
+/** La longueur d'un thème que dit le panneau pour ce contenu (celle de son générateur, ou celle d'un essai : `?longueur=`). */
+const metresParTheme = (c: Contenu): number => Math.round((reglesDuContenu(c).morceauxParTheme * LARGEUR_MORCEAU) / 100) * 100;
 /** Le rythme de lecture des seuils en attente, et le nombre de lectures après lequel le panneau abandonne (une minute). */
 const LECTURE_MS = 500;
 const LECTURES_MAX = 120;
@@ -47,7 +49,7 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
   );
   const seuils = el("div", "g-seuils");
   seuils.setAttribute("role", "status");
-  hote.replaceChildren(el("p", "g-aujourdhui__legende", t("aujourdhui.ordre")), tuiles, el("p", "g-aujourdhui__boucle", t("aujourdhui.boucle", { m: METRES_PAR_THEME })), seuils);
+  hote.replaceChildren(el("p", "g-aujourdhui__legende", t("aujourdhui.ordre")), tuiles, el("p", "g-aujourdhui__boucle", t("aujourdhui.boucle", { m: metresParTheme(contenu) })), seuils);
 
   const attente = el("p", "g-aujourdhui__attente", t("aujourdhui.seuils.calcul"));
   const montrer = (s: Seuils): void => {
