@@ -1,34 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Rng } from "@cdj/core";
 import { AXE, DROITE, EV_PERDUE, EV_SAUVEE, GAUCHE, UNITE, Partie, pointeDuBatteur, racine, REGLAGES } from "../src/index";
-import { contenuDe, enJeu, pleine } from "./aide";
+import { PX, contenuDe, dansLaTable, distanceSegment, enJeu, pleine } from "./aide";
 
 // **La bille ne traverse jamais un mur ni un batteur, même à sa vitesse maximale** (règle du lot PB1). À 600 pas par seconde et 1 500 px/s, la bille avance de 2,5 px par pas ; son rayon est de 9 px, la capsule d'un batteur
 // a au moins 5 px de rayon et sa pointe avance de 2,4 px par pas : il faudrait une avance de plus de 14 px en un pas pour sauter une paroi. Ici on le prouve sur des milliers de tirs au hasard (graine fixe) : la bille est
 // lancée à 1 500 px/s dans toutes les directions, depuis tout le plateau, pendant que les batteurs montent et descendent au hasard, et à chaque pas on vérifie qu'elle est du bon côté de chaque paroi.
 
 const VMAX = REGLAGES.vitesseMax;
-const PX = (u: number): number => u / UNITE;
-
-/** La distance (px) du centre de la bille à un segment (coordonnées en unités). */
-function distanceSegment(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
-  const ex = bx - ax;
-  const ey = by - ay;
-  const l2 = ex * ex + ey * ey;
-  let u = l2 === 0 ? 0 : ((x - ax) * ex + (y - ay) * ey) / l2;
-  u = Math.max(0, Math.min(1, u));
-  return PX(Math.hypot(x - (ax + ex * u), y - (ay + ey * u)));
-}
-
-/** Le centre de la bille est-il dans la table (mur gauche, arc du haut, mur droit) ? Tolérance en px. */
-function dansLaTable(x: number, y: number, marge: number): boolean {
-  const X = PX(x);
-  const Y = PX(y);
-  if (X < 20 + marge || X > 372.5 - marge) return false;
-  if (Y < 205) return Math.hypot(X - 196.25, Y - 205) <= 176.25 - marge;
-  return true;
-}
-
 function tir(graine: number, i: number): { p: Partie; vx: number; vy: number } {
   const rng = new Rng(graine + i);
   const p = new Partie(contenuDe(rng.int(3) === 0 ? pleine("bumpers") : undefined));

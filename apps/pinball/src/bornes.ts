@@ -32,6 +32,26 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   sauvee: [0, 12000],
   banqueRelevee: [120, 3000],
   voiesRelevees: [60, 1200],
+  // lot PB3 : les éléments des thèmes et les buts des missions
+  kickBulles: [0, 900],
+  kickMiniBulles: [0, 900],
+  manegeVitesse: [0, 20],
+  tourbillonForce: [0, 2500],
+  tourbillonSpirale: [0, 2500],
+  tourbillonGarde: [60, 1200],
+  tourbillonPause: [100, 2400],
+  tourbillonVitesse: [200, 900],
+  trouNoirForce: [0, 800000],
+  portailPause: [60, 2400],
+  geyserVitesse: [300, 1500],
+  geyserPause: [60, 2400],
+  geyserDevie: [0, 300],
+  geyserParBille: [1, 30],
+  couleeForce: [0, 3000],
+  butManege: [1, 20],
+  butTourbillon: [1, 20],
+  butPortail: [1, 20],
+  butGeyser: [1, 20],
 };
 
 /** Ce que le joueur d'essai règle sur la vue (rien de cela n'entre dans la simulation). */

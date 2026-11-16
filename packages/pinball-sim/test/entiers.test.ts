@@ -30,8 +30,8 @@ describe("aucun flottant dans le code de la simulation", () => {
 });
 
 describe("tout l'état d'une partie est entier", () => {
-  it("après une vraie partie (le pilote d'essai, 20 000 pas, tous les champs)", () => {
-    const { partie } = piloter(dailyPinball(daysFromCivil(2026, 11, 9)), 20000);
+  it.each(["foire", "ocean", "espace", "volcan"] as const)("après une vraie partie sur la table du thème %s (le pilote d'essai, 20 000 pas, tous les champs, éléments des thèmes compris)", (theme) => {
+    const { partie } = piloter(dailyPinball(daysFromCivil(2026, 11, 9), undefined, theme), 20000);
     const nombres: [string, unknown][] = [];
     const visiter = (nom: string, v: unknown): void => {
       if (typeof v === "number") nombres.push([nom, v]);

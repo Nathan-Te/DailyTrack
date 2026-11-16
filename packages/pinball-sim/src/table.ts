@@ -1,6 +1,7 @@
 import { AXE, NORME, UNITE } from "./constantes";
 import { racine, unitaire, div } from "./entiers";
 import type { Contenu } from "./generateur";
+import type { ThemePinball } from "./themes";
 import { EMPLACEMENTS } from "./generateur";
 import type { Reglages } from "./reglages";
 
@@ -32,6 +33,9 @@ export interface Cercle {
   y: number;
   r: number;
   kick: number;
+  /** Lot PB3 : un bumper qui se déplace (l'astéroïde de l'espace) va et vient de `amp` unités autour de `x0`, en fonction du seul numéro de pas ; `vx` est sa vitesse (unités/s) à ce pas. */
+  mobile?: { x0: number; amp: number };
+  vx?: number;
 }
 export interface Spinner {
   x: number;
@@ -48,6 +52,23 @@ export interface Voie {
   x: number;
   y: number;
 }
+/** Un disque (lot PB3) : le manège, le tourbillon, le trou noir (son rayon d'attraction) ou le geyser. */
+export interface Zone {
+  x: number;
+  y: number;
+  r: number;
+}
+/** Un portail : `id` 0 (A) ou 1 (B) ; on entre dans l'un et on sort de l'autre. */
+export interface Portail extends Zone {
+  id: 0 | 1;
+}
+/** Le couloir de la coulée : la bille qui y monte (`|x − x0| < l`, `|y − y0| < h`) est accélérée vers le haut. */
+export interface Coulee {
+  x: number;
+  y: number;
+  l: number;
+  h: number;
+}
 export interface Poser {
   type: string;
   emplacement: number;
@@ -61,6 +82,13 @@ export interface Table {
   spinners: Spinner[];
   trous: Trou[];
   voies: Voie[];
+  /** Lot PB3 : les éléments des thèmes. */
+  plateaux: Zone[];
+  tourbillons: Zone[];
+  trousNoirs: Zone[];
+  portails: Portail[];
+  geysers: Zone[];
+  coulees: Coulee[];
   /** Le nombre de banques de cibles et, pour chacune, les rangs de ses cibles dans `murs`. */
   banques: number[][];
   /** Ce qui est posé à chaque emplacement (rendu, essais). */
@@ -85,7 +113,7 @@ function segment(ax: number, ay: number, bx: number, by: number, e: number, kick
 
 /** La table du jour : le châssis, puis les six emplacements. */
 export function construireTable(contenu: Contenu, r: Reglages): Table {
-  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], banques: [], poses: [] };
+  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [] };
   const mur = (ax: number, ay: number, bx: number, by: number, e: number, kick = 0, type: 0 | 1 = 0): void => void t.murs.push(segment(ax, ay, bx, by, e, kick, type));
   // --- le châssis
   mur(px(20), px(560), px(20), px(205), r.rebondMur);
@@ -105,19 +133,19 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
   for (const x of [132, 172, 212, 252]) t.poteaux.push({ x: px(x), y: px(100), r: px(5), kick: 0 });
   for (const x of [152, 192, 232]) t.voies.push({ x: px(x), y: px(104) });
   // --- le haut : un module par emplacement
-  contenu.modules.forEach((m, i) => poser(t, r, m, i, px(EMPLACEMENTS[i]!.x), px(EMPLACEMENTS[i]!.y)));
+  contenu.modules.forEach((m, i) => poser(t, r, contenu.theme, m, i, px(EMPLACEMENTS[i]!.x), px(EMPLACEMENTS[i]!.y)));
   return t;
 }
 
-function poser(t: Table, r: Reglages, module: string, emplacement: number, cx: number, cy: number): void {
+function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, emplacement: number, cx: number, cy: number): void {
   t.poses.push({ type: module, emplacement, x: cx, y: cy });
   const mur = (ax: number, ay: number, bx: number, by: number, e: number): void => void t.murs.push(segment(ax, ay, bx, by, e));
   switch (module) {
     case "bumpers":
-      for (const [dx, dy] of [[0, -26], [-27, 17], [27, 17]] as const) t.bumpers.push({ x: cx + px(dx), y: cy + px(dy), r: px(17), kick: r.kickBumper * UNITE });
+      for (const [dx, dy] of [[0, -26], [-27, 17], [27, 17]] as const) t.bumpers.push({ x: cx + px(dx), y: cy + px(dy), r: px(17), kick: (theme === "ocean" ? r.kickBulles : r.kickBumper) * UNITE }); // les Bulles de l'océan sont plus douces
       break;
     case "mini":
-      for (const dx of [-24, 24]) t.bumpers.push({ x: cx + px(dx), y: cy, r: px(12), kick: r.kickMini * UNITE });
+      for (const dx of [-24, 24]) t.bumpers.push({ x: cx + px(dx), y: cy, r: px(12), kick: (theme === "ocean" ? r.kickMiniBulles : r.kickMini) * UNITE });
       break;
     case "cibles": {
       // trois cibles posées en travers, face aux batteurs, devant un mur de fond
@@ -156,6 +184,33 @@ function poser(t: Table, r: Reglages, module: string, emplacement: number, cx: n
       break;
     case "trou":
       t.trous.push({ x: cx, y: cy, r: px(13) });
+      break;
+    // --- lot PB3 : les éléments des thèmes (rayons et formes de la maquette)
+    case "manege":
+      t.plateaux.push({ x: cx, y: cy, r: px(50) });
+      break;
+    case "tourbillon":
+      t.tourbillons.push({ x: cx, y: cy, r: px(56) });
+      break;
+    case "trouNoir":
+      t.trousNoirs.push({ x: cx, y: cy, r: px(95) });
+      break;
+    case "portailA":
+    case "portailB":
+      t.portails.push({ x: cx, y: cy, r: px(14), id: module === "portailA" ? 0 : 1 });
+      break;
+    case "asteroide":
+      // le bumper qui se déplace (amplitude 46 px) et, près de lui, un petit bumper qui ne bouge pas
+      t.bumpers.push({ x: cx, y: cy, r: px(16), kick: r.kickBumper * UNITE, mobile: { x0: cx, amp: px(46) }, vx: 0 });
+      t.bumpers.push({ x: cx - px(30), y: cy + px(34), r: px(12), kick: r.kickMini * UNITE });
+      break;
+    case "geyser":
+      t.geysers.push({ x: cx, y: cy, r: px(22) });
+      break;
+    case "coulee":
+      mur(cx - px(20), cy - px(50), cx - px(20), cy + px(40), 400);
+      mur(cx + px(20), cy - px(50), cx + px(20), cy + px(40), 400);
+      t.coulees.push({ x: cx, y: cy, l: px(18), h: px(45) });
       break;
     default:
       throw new Error(`module inconnu : ${module}`);
