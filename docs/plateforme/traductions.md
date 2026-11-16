@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2886 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2905 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3485,11 +3485,31 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `accueil.phrase.foret` | Le sol, le plafond : même combat. Tant que tu touches quelque chose. | Floor, ceiling: same fight. As long as you're touching something. |
-| `accueil.phrase.usine` | Les tapis poussent plus vite : inverse avant qu'ils s'arrêtent. | The belts push faster: flip before they run out. |
-| `accueil.phrase.glace` | Impossible de s'appuyer sur la glace : inverse avant, ou après. | You can't push off ice: flip before it, or after. |
-| `accueil.phrase.nuit` | Les blocs s'allument et s'éteignent : traverse en rythme. | The blocks switch on and off: cross in rhythm. |
-| `accueil.phrase.neon` | Deux couleurs, une seule solide à la fois : suis le battement. | Two colours, only one solid at a time: follow the beat. |
+| `accueil.phrase.foret` | Le sol, le plafond : même combat. Tant que tu touches quelque chose. | Floor or ceiling, same deal. As long as you're touching something. |
+| `accueil.phrase.usine` | Sur les tapis, tout va plus vite. Toi aussi, que ça te plaise ou non. | On the belts, everything goes faster. So do you, like it or not. |
+| `accueil.phrase.glace` | Impossible de prendre appui sur la glace : inverse avant, ou après. | You can't push off ice: flip before it, or after. |
+| `accueil.phrase.nuit` | Les blocs s'allument et s'éteignent : traverse en rythme. | Blocks switch on and off: cross on the beat. |
+| `accueil.phrase.neon` | Deux couleurs, une seule solide à la fois : suis le battement. | Two colors, only one solid at a time: follow the beat. |
+
+### aujourdhui (`aujourdhui.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `aujourdhui.ordre` | L'ordre des thèmes, le même pour tous | Today's theme order, the same for everyone |
+| `aujourdhui.boucle` | Un thème tous les {m} m, puis la boucle reprend, plus vite. | A new theme every {m} m, then the loop starts over, faster. |
+| `aujourdhui.seuils` | Médailles du jour | Today's medals |
+| `aujourdhui.seuils.calcul` | Médailles du jour : calcul en cours… | Today's medals: working them out… |
+
+### bilan (`bilan.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `bilan.distance` | Distance | Distance |
+| `bilan.metres` | {m} m | {m} m |
+| `bilan.pieces` | Pièces × 10 | Coins × 10 |
+| `bilan.gemmes` | Gemmes × 100 | Gems × 100 |
+| `bilan.theme` | Thème atteint | Theme reached |
+| `bilan.mult` | Multiplicateur max | Max multiplier |
 
 ### Commandes (`commandes.*`, `apps/gravity/src/catalogue.*.ts`)
 
@@ -3501,9 +3521,18 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `aide.point1` | Un coureur sans fin : il court tout seul vers la droite. Le but : aller le plus loin possible, en ramassant pièces et gemmes. | An endless runner: it runs right by itself. The goal: get as far as you can, collecting coins and gems. |
-| `aide.point2` | Touche l'écran (ou Espace, A à la manette) : la gravité s'inverse, mais seulement quand tu touches une surface : sol, plafond ou plateforme. Pas d'inversion en l'air ni sur la glace. | Touch the screen (or Space, A on a controller): gravity flips, but only while you touch a surface: floor, ceiling or platform. No flipping in mid-air or on ice. |
-| `aide.point3` | À remplacer : les pièces, le multiplicateur et les bonus (texte complet au lot GR4). | To replace: coins, the multiplier and power-ups (full text in lot GR4). |
+| `aide.point1` | Tu cours tout seul, vers la droite. Le chemin est le même pour tout le monde aujourd'hui. | You run on your own, to the right. Everyone gets the same path today. |
+| `aide.point2` | Touche l'écran, clique ou appuie sur Espace : la gravité s'inverse. Seulement quand tu touches une surface : sol, plafond ou plateforme. | Touch the screen, click or press Space: gravity flips. Only while you're touching a surface: floor, ceiling or platform. |
+| `aide.point3` | Le rouge tue, le vide aussi, et le bord gauche de l'écran. Ramasse les pièces (10 points) et les gemmes (100). | Red kills. So do the void and the left edge of the screen. Grab coins (10 points) and gems (100). |
+| `aide.bloc.usine` | Usine, tapis roulants : ils te poussent plus vite. | Factory: conveyor belts push you along faster. |
+| `aide.bloc.glace` | Glace : trop glissante pour prendre appui. Pas d'inversion dessus. | Ice: too slippery to push off. No flipping on it. |
+| `aide.bloc.nuit` | Nuit : des blocs s'allument et s'éteignent en rythme, et clignotent avant de s'éteindre. | Night: blocks switch on and off in rhythm, and blink before they go out. |
+| `aide.bloc.neon` | Néon : deux couleurs, une seule est solide à la fois. | Neon: two colors, and only one is solid at a time. |
+| `aide.bloc.foret` | Forêt, courants d'air : ils te portent vers le haut. | Forest: air currents lift you up. |
+| `aide.bloc.inverseur` | Partout, l'inverseur : il change ta gravité dès que tu le touches. | Any theme: the gravity switch flips your gravity the moment you touch it. |
+| `aide.bouclier` | Bouclier : il te sauve une fois (un pique, une chute, le bord de l'écran). Il est au même endroit pour tout le monde. | Shield: saves you once (a spike, a fall, the screen edge). It sits in the same spot for everyone. |
+| `aide.aimant` | Aimant : pendant 8 secondes, les pièces proches viennent à toi. | Magnet: for 8 seconds, nearby coins fly to you. |
+| `aide.mult` | Multiplicateur : +1 toutes les 10 pièces d'affilée, jusqu'à ×5. Une pièce ratée, et il retombe à ×1. | Multiplier: +1 every 10 coins in a row, up to ×5. Miss a coin and it drops back to ×1. |
 
 ### essai (`essai.*`, `apps/gravity/src/catalogue.*.ts`)
 

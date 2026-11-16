@@ -22,6 +22,8 @@ export interface EtatHud {
   theme: { id: string; nom: string; meca: string; couleur: string; age: number } | null;
   /** La cause de la mort (clé `mort.<cause>`), ou null. */
   mort: string | null;
+  /** Le bilan de la partie, montré avec la cause pendant que la mort se voit (lot GR4) : le kit n'a pas d'emplacement pour un bilan sur son écran de fin (README du lot). Null tant qu'on joue. */
+  bilan: { distance: number; pieces: number; gemmes: number; theme: string; mult: number } | null;
   robot: boolean;
 }
 
@@ -67,7 +69,9 @@ export class Hud {
   private readonly themeMeca = el("small", "g-theme__meca");
   private readonly theme = el("div", "g-theme", this.themeNom, this.themeMeca);
   private readonly robot = el("div", "g-robot");
-  private readonly mort = el("div", "g-mort");
+  private readonly mortCause = el("b", "g-mort__cause");
+  private readonly bilanValeurs = [0, 1, 2, 3, 4].map(() => el("b", "g-bilan__valeur"));
+  private readonly mort = el("div", "g-mort", this.mortCause);
   private dernier = { ligne: "", mult: 1, med: "", bouclier: false, aimant: -1, themeId: "", mort: "", score: -1, vuTheme: false };
 
   constructor(
@@ -83,6 +87,9 @@ export class Hud {
     this.robot.textContent = o.t("essai.robot");
     this.robot.hidden = true;
     this.mort.hidden = true;
+    // Le bilan : cinq cases (valeur au-dessus, nom dessous), dans l'ordre de l'écran de fin de la maquette — distance, pièces, gemmes, thème atteint, multiplicateur maximal.
+    const noms = ["bilan.distance", "bilan.pieces", "bilan.gemmes", "bilan.theme", "bilan.mult"] as const;
+    this.mort.append(el("div", "g-bilan", ...noms.map((n, i) => el("div", "g-bilan__case", this.bilanValeurs[i]!, el("span", "g-bilan__nom", o.t(n))))));
     this.medaille.hidden = true;
     this.racine.append(el("div", "g-score", this.score, this.ligne, this.mult), this.medaille, this.bonus, this.theme, this.robot, this.mort);
     this.mult.addEventListener("animationend", () => this.mult.classList.remove("g-mult--chute"));
@@ -156,7 +163,14 @@ export class Hud {
     if (e.mort !== d.mort) {
       d.mort = e.mort ?? "";
       this.mort.hidden = e.mort === null;
-      if (e.mort) this.mort.textContent = t(`mort.${e.mort}`);
+      if (e.mort) this.mortCause.textContent = t(`mort.${e.mort}`);
+    }
+    if (e.bilan) {
+      const b = e.bilan;
+      const v = [t("bilan.metres", { m: this.nombre(b.distance) }), this.nombre(b.pieces), this.nombre(b.gemmes), b.theme, `×${b.mult}`];
+      v.forEach((x, i) => {
+        if (this.bilanValeurs[i]!.textContent !== x) this.bilanValeurs[i]!.textContent = x;
+      });
     }
   }
 

@@ -8,11 +8,10 @@ import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/kit/jeu.css";
 import "./gravity.css";
 import { brancherJeu } from "@cdj/kit/jeu";
-import { gameStorage } from "@cdj/kit/stockage";
-import { brancherMusique } from "@cdj/musique/branche";
 import { CATALOGUE_FR } from "./catalogue.fr";
-import { DEFINITION } from "./definition";
+import { DEFINITION, aujourdhui } from "./definition";
 import { FICHE } from "./fiche";
+import { musique } from "./musiqueDuJeu";
 
 // « Gravity » : tout le jeu tient dans `brancherJeu` — la fiche, la définition (simulation, rendu, aide) et les catalogues. Les écrans, l'interrupteur, le serveur, les records, les amis… sont le kit.
 // Essais (hors production, jamais classés) : `?jour=AAAA-MM-JJ` joue ce jour (c'est le `?seed=` du kit : une archive), `?theme=<id>` commence sur ce thème, la touche T saute au thème suivant (`scene.ts`).
@@ -24,6 +23,7 @@ if (adresse.has("jour") && !adresse.has("seed")) {
 }
 void brancherJeu(FICHE, DEFINITION, {
   catalogues: { fr: CATALOGUE_FR, chargerEn: () => import("./catalogue.en").then((m) => ({ jeu: m.CATALOGUE_EN, commun: m.CATALOGUE_COMMUN_EN })) },
-  musique: brancherMusique("gravity", gameStorage),
+  aujourdhui,
+  musique,
   racine: document.getElementById("app")!,
 });
