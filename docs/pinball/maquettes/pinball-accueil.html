@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinball — accueil et panneau Aujourd’hui</title>
+<style>
+@font-face{font-family:"Archivo";font-weight:400;src:url(../../../packages/ui/polices/archivo-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:600;src:url(../../../packages/ui/polices/archivo-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo";font-weight:700;src:url(../../../packages/ui/polices/archivo-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Archivo Black";font-weight:400;src:url(../../../packages/ui/polices/archivo-black-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:500;src:url(../../../packages/ui/polices/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:700;src:url(../../../packages/ui/polices/jetbrains-mono-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Rubik Mono One";font-weight:400;src:url(../../../packages/ui/polices/rubik-mono-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Lilita One";font-weight:400;src:url(../../../packages/ui/polices/lilita-one-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Bungee";font-weight:400;src:url(../../../packages/ui/polices/bungee-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:800;font-style:italic;src:url(../../../packages/ui/polices/barlow-condensed-latin-800-italic.woff2) format("woff2")}
+@font-face{font-family:"Righteous";font-weight:400;src:url(polices/righteous-latin-400-normal.woff2) format("woff2")}
+:root{
+  /* Valeurs des jetons de @cdj/ui (packages/ui/src/jetons.css), recopiées pour que la page soit autonome. */
+  --dj-creme:#EDE3CF;--dj-creme-2:#E3D6BC;--dj-papier:#FFF6E0;--dj-encre:#2A1E16;--dj-encre-douce:#6B5847;--dj-terre:#C2401F;--dj-terre-texte:#FFF4E0;--dj-moutarde:#E8B23A;
+  --dj-ecran:#3A2C20;--dj-ambre:#F2B544;--dj-ecran-texte:#E9DCC2;--dj-ecran-ombre:#261D15;--dj-ecran-reflet:#4A3D32;--dj-salle:#33251B;--dj-salle-ombre:#120C08;
+  --dj-diamant:#4FC3DC;--dj-diamant-texte:#0B2530;--dj-or:#D9A21B;--dj-argent:#A7A9AC;--dj-bronze:#C07A42;
+  --track-asphalte:#1E1B19;--track-coque:#4A4440;--track-texte:#F4EFE6;--track-texte-doux:#CFC6BA;--track-livree:#E8552D;--jump-jaune:#FFD23F;
+  --dj-police-marque:"Archivo Black","Archivo",sans-serif;--dj-police-texte:"Archivo",sans-serif;--dj-police-chiffres:"JetBrains Mono",monospace;
+  --dj-rayon-bouton:3px;--dj-rayon-tuile:4px;--dj-rayon-afficheur:6px;--dj-rayon-coque:12px 12px 3px 3px;--dj-trait:2px;--dj-trait-fort:3px;
+  --dj-ombre-cartouche:4px 4px 0 var(--dj-encre);--dj-ombre-bouton:2px 2px 0 var(--dj-encre);--dj-ombre-titre:4px 4px 0 var(--dj-papier);
+  --dj-ombre-afficheur:inset 0 3px 0 var(--dj-ecran-ombre),inset 0 -2px 0 var(--dj-ecran-reflet);
+  --dj-voile:repeating-linear-gradient(115deg,#1E1B19D9 0 5px,#1E1B19B3 5px 10px);
+  --jeu-fond:#D3E77C;--jeu-coque:#4E6B14;--jeu-police:'Lilita One','Archivo',sans-serif;--jeu-motif:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--dj-creme);color:var(--dj-encre);font-family:var(--dj-police-texte)}
+h1{font:400 24px/1.1 var(--dj-police-marque);margin:0 0 6px}
+.sous{font-size:14px;color:var(--dj-encre-douce);margin:0 0 20px;line-height:1.45}
+.ecran{position:relative;overflow:hidden;border:3px solid var(--dj-encre);background:url(fonds/portrait-avant.jpg) center/cover}
+.ecran::before{content:"";position:absolute;inset:0;background:var(--dj-voile)}
+.ecran>*{position:relative}
+.barrejeu{display:flex;align-items:center;justify-content:space-between;height:44px;margin:12px 12px 0;padding:0 6px 0 4px;background:var(--dj-creme);border:2px solid var(--dj-encre);border-radius:3px}
+.retour{display:flex;align-items:center;gap:6px;height:44px;padding:0 8px;font:400 14px var(--dj-police-marque);color:var(--dj-encre);text-decoration:none}
+.date{font:700 12px var(--dj-police-chiffres)}
+.coque{margin:14px 12px 16px;padding:0 10px 10px;background:var(--jeu-coque);border:3px solid var(--dj-encre);border-radius:var(--dj-rayon-coque);box-shadow:var(--dj-ombre-cartouche)}
+.stries{height:12px;margin:0 40px;background:repeating-linear-gradient(90deg,var(--dj-encre) 0 3px,transparent 3px 8px)}
+.etiq{margin-top:8px;padding:16px;background:var(--jeu-motif);border:3px solid var(--dj-encre);border-radius:3px;display:grid;gap:12px}
+.deux{grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px}
+.titre{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.titre h2{margin:0;font:400 38px/.95 var(--jeu-police);text-shadow:var(--dj-ombre-titre)}
+.titre img{height:76px}
+.num{display:block;margin-top:8px;font:700 13px var(--dj-police-chiffres)}
+.replique{margin:0;font-weight:700;font-size:15px;line-height:1.35}
+.tuiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tuile{padding:8px 10px;background:var(--dj-papier);border:2px solid var(--dj-encre);border-radius:4px}
+.tuile.sombre{background:var(--dj-encre);color:var(--dj-papier)}
+.leg{display:block;font:700 11px var(--dj-police-texte);letter-spacing:.6px;text-transform:uppercase}
+.val{display:block;margin-top:4px;font:700 21px var(--dj-police-chiffres)}
+.jouer{height:58px;display:flex;align-items:center;justify-content:center;background:var(--dj-encre);color:var(--jeu-fond);border-radius:3px;font:400 28px var(--jeu-police);letter-spacing:1px;text-decoration:none;box-shadow:0 5px 0 var(--jeu-coque);margin-bottom:5px}
+.trois{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sec{min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;background:var(--dj-papier);border:2px solid var(--dj-encre);border-radius:3px;font:700 14px/1.15 var(--dj-police-texte);color:var(--dj-encre);text-decoration:none}
+.panneau{padding:12px;background:var(--dj-papier);border:2px solid var(--dj-encre);border-radius:4px;display:flex;flex-direction:column;gap:10px}
+.auj{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start}
+.apercu{width:96px;height:200px;object-fit:cover;border:2px solid var(--dj-encre);border-radius:3px;display:block}
+.mission{padding:8px 10px;background:var(--dj-creme-2);border:2px solid var(--dj-encre);border-radius:3px}
+.mission b{display:block;font-size:15px;line-height:1.25;margin-top:3px}
+.mission small{display:block;margin-top:4px;font-size:13px;color:var(--dj-encre-douce);font-weight:600}
+.jauge{display:flex;gap:3px;margin-top:6px} .jauge i{width:16px;height:12px;border:2px solid var(--dj-encre);background:var(--dj-papier)}
+.puces{display:flex;flex-wrap:wrap;gap:6px} .puce{padding:3px 8px;border:2px solid var(--dj-encre);border-radius:3px;font:700 12px var(--dj-police-texte);background:var(--dj-papier)}
+.puce.theme{background:var(--dj-moutarde)}
+.medailles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.med{padding:5px 4px;border:2px solid var(--dj-encre);border-radius:3px;text-align:center;font:700 11px/1.2 var(--dj-police-texte)}
+.med span{display:block;font:700 12px var(--dj-police-chiffres);margin-top:2px}
+.bronze{background:var(--dj-bronze)} .argent{background:var(--dj-argent)} .or{background:var(--dj-or)} .diamant{background:var(--dj-diamant);color:var(--dj-diamant-texte)}
+.rang{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:8px;min-height:44px;padding:0 10px;border:2px solid var(--dj-encre);border-radius:3px;background:var(--dj-papier);font-size:14px;font-weight:600}
+.rang b{font:700 13px var(--dj-police-chiffres)} .rang span:last-child{font:700 14px var(--dj-police-chiffres)}
+.rang.moi{background:var(--dj-moutarde);border-width:3px;box-shadow:var(--dj-ombre-bouton)}
+.etc{text-align:center;font-weight:700}
+.pied{font-size:14px;display:flex;flex-direction:column;gap:6px} .pied a{color:var(--dj-encre);font-weight:700;min-height:44px;display:inline-flex;align-items:center;align-self:flex-start}
+.mono{font:700 14px var(--dj-police-chiffres)}
+.note{font:600 13px/1.4 var(--dj-police-texte);margin:10px 0 0}
+</style>
+</head>
+<body>
+<div style="padding:24px 24px 32px;width:1590px">
+<h1>Pinball — l’accueil du jeu et son panneau « Aujourd’hui »</h1>
+<p class="sous">Étiquette C (« Lampes ») et illustration 1 (« le tir »), à remplacer par celles que tu choisiras : seules la teinte, la police et le motif changent. Plan de Tower (charte § 9) : l’identité à gauche, à droite le panneau « Aujourd’hui » propre au jeu (aperçu de la table du jour, sa mission, les modules du thème, les médailles du jour), le classement du jour avec ta ligne, le pied. Sous 760 px, les deux colonnes s’empilent (à gauche, le téléphone). Fond : la scène du jeu sous le voile à rayures.</p>
+<div style="display:grid;grid-template-columns:396px 1100px;gap:40px;align-items:start">
+<div><div class="ecran" style="width:390px"><div class="barrejeu"><a class="retour" href="#">‹ DU JOUR</a><span class="date">Lun. 16 nov. · n° 1</span></div>
+<div class="coque"><div class="stries"></div><div class="etiq"><div class="col">
+<div class="titre"><div><h2>PINBALL</h2><span class="num">Partie n° 1 · Fête foraine</span></div><img src="illustration-1-le-tir.svg" alt=""></div>
+<p class="replique">Pommes d’amour et chamboule-tout : tout ce qui sonne rapporte.</p>
+<div class="tuiles"><div class="tuile"><span class="leg">Ton record</span><span class="val">61 750</span></div><div class="tuile sombre"><span class="leg">Ta série</span><span class="val">4 jours</span></div></div>
+<a class="jouer" href="#">JOUER</a>
+<div class="trois"><a class="sec" href="#">Comment jouer</a><a class="sec" href="#">Archives</a><a class="sec" href="#">Réglages</a></div>
+</div><section class="panneau" aria-labelledby="auj"><span class="leg" id="auj">Aujourd’hui · Fête foraine</span>
+<div class="auj"><img class="apercu" src="fonds/apercu-foire.jpg" alt="La table du jour : le manège au centre, cinq pommes d’amour, trois grandes roues">
+<div class="col" style="gap:8px">
+ <div class="mission"><span class="leg">Mission</span><b>Fais 5 tours de manège</b><span class="jauge"><i></i><i></i><i></i><i></i><i></i></span><small>+10 000 et un cran de multiplicateur, une fois par partie.</small></div>
+ <span class="leg">Sur la table</span>
+ <div class="puces"><span class="puce theme">Manège</span><span class="puce">Pommes d’amour</span><span class="puce">Grande roue</span></div>
+</div></div>
+<span class="leg">Médailles du jour</span>
+<div class="medailles"><div class="med bronze">Bronze<span>12 000</span></div><div class="med argent">Argent<span>30 000</span></div><div class="med or">Or<span>60 000</span></div><div class="med diamant">Diamant<span>95 000</span></div></div>
+</section><section class="panneau"><span class="leg">Classement du jour</span>
+<div class="rang"><b>1</b><span>Mila</span><span>142 300</span></div>
+<div class="rang"><b>2</b><span>Théo</span><span>118 050</span></div>
+<div class="rang"><b>3</b><span>Inès</span><span>97 600</span></div>
+<div class="etc">…</div>
+<div class="rang moi"><b>14</b><span>Toi</span><span>61 750</span></div>
+<a href="#" style="color:var(--dj-encre);font-weight:700;min-height:44px;display:flex;align-items:center">Tout le classement ›</a>
+</section>
+<div class="pied"><span>Prochaine table dans <span class="mono">07:42:10</span></span><a href="#">Mon profil Du Jour ›</a></div></div></div></div><p class="note">Téléphone, 390 px (page entière, à faire défiler).</p></div>
+<div><div class="ecran" style="width:1100px;background-image:url(fonds/bureau.jpg)"><div class="barrejeu" style="margin:16px 24px 0"><a class="retour" href="#">‹ DU JOUR</a><span class="date">Lun. 16 nov. · n° 1</span></div>
+<div class="coque" style="margin:18px 24px 24px"><div class="stries"></div><div class="etiq deux"><div class="col">
+<div class="titre"><div><h2>PINBALL</h2><span class="num">Partie n° 1 · Fête foraine</span></div><img src="illustration-1-le-tir.svg" alt=""></div>
+<p class="replique">Pommes d’amour et chamboule-tout : tout ce qui sonne rapporte.</p>
+<div class="tuiles"><div class="tuile"><span class="leg">Ton record</span><span class="val">61 750</span></div><div class="tuile sombre"><span class="leg">Ta série</span><span class="val">4 jours</span></div></div>
+<a class="jouer" href="#">JOUER</a>
+<div class="trois"><a class="sec" href="#">Comment jouer</a><a class="sec" href="#">Archives</a><a class="sec" href="#">Réglages</a></div>
+</div><div class="col"><section class="panneau" aria-labelledby="auj"><span class="leg" id="auj">Aujourd’hui · Fête foraine</span>
+<div class="auj"><img class="apercu" src="fonds/apercu-foire.jpg" alt="La table du jour : le manège au centre, cinq pommes d’amour, trois grandes roues">
+<div class="col" style="gap:8px">
+ <div class="mission"><span class="leg">Mission</span><b>Fais 5 tours de manège</b><span class="jauge"><i></i><i></i><i></i><i></i><i></i></span><small>+10 000 et un cran de multiplicateur, une fois par partie.</small></div>
+ <span class="leg">Sur la table</span>
+ <div class="puces"><span class="puce theme">Manège</span><span class="puce">Pommes d’amour</span><span class="puce">Grande roue</span></div>
+</div></div>
+<span class="leg">Médailles du jour</span>
+<div class="medailles"><div class="med bronze">Bronze<span>12 000</span></div><div class="med argent">Argent<span>30 000</span></div><div class="med or">Or<span>60 000</span></div><div class="med diamant">Diamant<span>95 000</span></div></div>
+</section><section class="panneau"><span class="leg">Classement du jour</span>
+<div class="rang"><b>1</b><span>Mila</span><span>142 300</span></div>
+<div class="rang"><b>2</b><span>Théo</span><span>118 050</span></div>
+<div class="rang"><b>3</b><span>Inès</span><span>97 600</span></div>
+<div class="etc">…</div>
+<div class="rang moi"><b>14</b><span>Toi</span><span>61 750</span></div>
+<a href="#" style="color:var(--dj-encre);font-weight:700;min-height:44px;display:flex;align-items:center">Tout le classement ›</a>
+</section>
+<div class="pied"><span>Prochaine table dans <span class="mono">07:42:10</span></span><a href="#">Mon profil Du Jour ›</a></div></div></div></div></div><p class="note">Ordinateur : deux colonnes équilibrées.</p></div>
+</div>
+</div>
+</body>
+</html>
