@@ -207,7 +207,8 @@
   },
   "budget": {
     "lignes": [
-      "rush.jsCss"
+      "rush.jsCss",
+      "rush.rendu"
     ],
     "aLaDemande": [
       "corps-",
@@ -217,6 +218,14 @@
       "reglages-",
       "retours-",
       "version-"
+    ],
+    "demande": [
+      {
+        "nom": "rendu",
+        "prefixes": [
+          "corps-"
+        ]
+      }
     ]
   },
   "temoin": false

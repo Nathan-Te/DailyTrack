@@ -31,11 +31,26 @@ const part = option("--part"); // « 2/3 »
 if (part !== undefined && !/^[1-9]\d*\/[1-9]\d*$/.test(part)) throw new Error(`--part attend « i/n » (reçu « ${part} »)`);
 const premierePart = part === undefined || part.startsWith("1/");
 
+/**
+ * Lot K8 : **l'ordre du jeu fictif est calculé** — le plus grand `ordre` des fiches de l'arbre de sources, plus un —, jamais écrit en dur : deux fiches ne peuvent pas avoir le même ordre, et un 9 écrit en dur
+ * a déjà dû être contourné (PB0 a pris 10 pour Pinball). Un jeu créé par `npm run nouveau-jeu` prend le suivant (`max + 1`, même règle) sans que le banc ne le sache. Sans dossier de fiches (un arbre ancien
+ * passé à `--source`), l'ordre reste 9.
+ */
+export function ordreSuivant(racine) {
+  const dossier = join(racine, "config/jeux");
+  if (!existsSync(dossier)) return 9;
+  const ordres = readdirSync(dossier)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => JSON.parse(readFileSync(join(dossier, f), "utf8")).ordre)
+    .filter((o) => Number.isInteger(o));
+  return ordres.length ? Math.max(...ordres) + 1 : 9;
+}
+
 /** La fiche du jeu fictif. Les noms suivent la règle (`apps/essai`, `packages/essai-sim`, `essai:`) : rien n'est « hérité ». */
 export const FICHE_ESSAI = {
   id: "essai",
   code: "essai",
-  ordre: 9,
+  ordre: ordreSuivant(source),
   nom: { fr: "Essai", en: "Trial" },
   accroche: "portail.essai.accroche",
   etiquette: { fond: "#C9B6F2", coque: "#5B3FA3", police: '"Rubik Mono One", "Archivo", sans-serif', dessin: "generique" },

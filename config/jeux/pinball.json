@@ -204,7 +204,8 @@
   },
   "budget": {
     "lignes": [
-      "pinball.jsCss"
+      "pinball.jsCss",
+      "pinball.rendu"
     ],
     "aLaDemande": [
       "partie-",
@@ -217,6 +218,15 @@
       "corps-",
       "dessin-",
       "rediffusion-"
+    ],
+    "demande": [
+      {
+        "nom": "rendu",
+        "prefixes": [
+          "corps-",
+          "dessin-"
+        ]
+      }
     ]
   },
   "temoin": false

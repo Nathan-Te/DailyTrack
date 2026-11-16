@@ -1,10 +1,11 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { POIDS_MAX } from "../../../scripts/images-partage.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { CLES_MESUREES, LIGNES_JUMP, LIGNES_TOWER, LIGNES_TRACK } from "../../../scripts/budgets.mjs";
+import { CLES_MESUREES, LIGNES_JUMP, LIGNES_TOWER, LIGNES_TRACK, lignesDesJeuxNeufs, mesureJeuNeuf } from "../../../scripts/budgets.mjs";
 import { FAMILLES, HORS_JOB, KO, lireLignes, lirePlafonds, lireReleves, plafondKo } from "../../../scripts/budgets-controle.mjs";
 import { lireFichesBrutes } from "../../../scripts/fiches-brutes.mjs";
 
@@ -78,6 +79,53 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
     }
     expect(lire("packages/musique/test/poids.test.ts")).not.toContain("BUDGET_LECTEUR");
     expect(lire("apps/portail/test/construction.test.ts")).not.toContain("BUDGET_PREMIER_CHARGEMENT");
+  });
+
+  it("lot K8 : `budget.demande` — une ligne à la demande mesurée se déclare dans la fiche, sans toucher à scripts/budgets.mjs", () => {
+    // Pinball et Rush : la ligne `rendu`, famille « à la demande », dans les lignes de leur fiche, au tableau et dans les mesures du job.
+    for (const id of ["pinball", "rush"]) {
+      const fiche = (lireFichesBrutes(ROOT) as { id: string; brut: { budget: { lignes: string[]; aLaDemande: string[]; demande?: { nom: string; prefixes: string[] }[] } } }[]).find((f) => f.id === id)!;
+      expect(fiche.brut.budget.demande?.map((d) => d.nom), id).toEqual(["rendu"]);
+      expect(fiche.brut.budget.lignes, id).toContain(`${id}.rendu`);
+      expect(lignes[`${id}.rendu`]?.famille, `${id}.rendu`).toBe("demande");
+      expect(CLES_MESUREES, id).toContain(`${id}.rendu`);
+      // Un morceau à la demande ne compte jamais dans le premier chargement : ses préfixes sont aussi dans `aLaDemande`.
+      for (const p of fiche.brut.budget.demande![0]!.prefixes) expect(fiche.brut.budget.aLaDemande, `${id} : ${p}`).toContain(p);
+    }
+    // Pour toute fiche : chaque ligne déclarée par `demande` est aussi dans `lignes` (et inversement, toute ligne au-delà des trois d'office est déclarée).
+    for (const f of lireFichesBrutes(ROOT) as { id: string; brut: { budget: { lignes: string[]; demande?: { nom: string }[] } } }[]) {
+      if (["track", "jump", "tower"].includes(f.id)) continue;
+      const declarees = (f.brut.budget.demande ?? []).map((d) => `${f.id}.${d.nom}`);
+      for (const cle of declarees) expect(f.brut.budget.lignes, f.id).toContain(cle);
+      for (const cle of f.brut.budget.lignes) if (!["jsCss", "anglais", "polices"].includes(cle.slice(f.id.length + 1))) expect(declarees, `${cle} : une ligne au-delà des trois d'office se déclare dans budget.demande`).toContain(cle);
+    }
+    expect(lignesDesJeuxNeufs()).toContain("pinball.rendu");
+  });
+
+  it("lot K8 : `mesureJeuNeuf` mesure une ligne déclarée (somme gzip des JS et CSS aux préfixes), et le premier chargement ne la compte pas", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "budgets-k8-"));
+    try {
+      const dist = join(tmp, "dist/assets");
+      mkdirSync(dist, { recursive: true });
+      writeFileSync(join(tmp, "dist/index.html"), "<html></html>");
+      const gros = "x".repeat(5000) + "abcdefghij".repeat(200);
+      writeFileSync(join(dist, "main-aaaa.js"), "console.log(1);");
+      writeFileSync(join(dist, "corps-aaaa.js"), gros);
+      writeFileSync(join(dist, "corps-bbbb.css"), gros);
+      writeFileSync(join(dist, "dessin-cccc.js"), gros);
+      writeFileSync(join(dist, "autre-dddd.js"), gros);
+      const fiche = { id: "fictif", app: "fictif", budgetALaDemande: ["corps-", "dessin-"], budgetDemande: [{ nom: "rendu", prefixes: ["corps-", "dessin-"] }, { nom: "vide", prefixes: ["rien-"] }] };
+      const m = mesureJeuNeuf(fiche, dist);
+      const sans = mesureJeuNeuf({ id: "fictif", app: "fictif", budgetALaDemande: ["corps-", "dessin-"] }, dist);
+      expect(m.rendu).toBeGreaterThan(0);
+      expect(m.vide).toBe(0);
+      expect(m.jsCss).toBe(sans.jsCss); // la ligne mesurée ne change rien au premier chargement
+      expect(sans.rendu).toBeUndefined();
+      // `corps-` seul vaut moins que `corps-` + `dessin-` : la somme suit les préfixes.
+      expect(mesureJeuNeuf({ ...fiche, budgetDemande: [{ nom: "rendu", prefixes: ["corps-"] }] }, dist).rendu).toBeLessThan(m.rendu);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it("la CI : le job « Budgets » contrôle le tableau, et la fusion en dépend (verdict `test`)", () => {

@@ -114,6 +114,25 @@ describe("la validation refuse ce qui sortirait du jeu", () => {
     refuse((f) => (f.zoneNouveautes = "track"), "zoneNouveautes");
     refuse((f) => (f.budget.lignes = ["track.jsCss"]), "budget.lignes");
   });
+  it("lot K8 : `budget.demande` déclare des lignes à la demande mesurées ; un nom ou un préfixe mal formé, un doublon, une ligne d'office ou une ligne absente de `lignes` : refusés", () => {
+    const avec = (f: Record<string, any>, d: unknown) => {
+      f.budget.demande = d;
+      f.budget.lignes = [...new Set([...f.budget.lignes, `${f.id}.rendu`])] as string[];
+    };
+    const f = structuredClone(brut("tower"));
+    avec(f, [{ nom: "rendu", prefixes: ["corps-", "dessin-"] }]);
+    expect(validerFiche(f, "tower")).toEqual([]);
+    refuse((g) => avec(g, [{ nom: "rendu", prefixes: ["corps"] }]), "budget.demande");
+    refuse((g) => avec(g, [{ nom: "rendu", prefixes: [] }]), "budget.demande");
+    refuse((g) => avec(g, [{ nom: "re ndu", prefixes: ["corps-"] }]), "budget.demande");
+    refuse((g) => avec(g, [{ nom: "rendu", prefixes: ["corps-"] }, { nom: "rendu", prefixes: ["dessin-"] }]), "pas deux fois le même");
+    refuse((g) => avec(g, [{ nom: "jsCss", prefixes: ["corps-"] }]), "ligne d'office");
+    refuse((g) => {
+      avec(g, [{ nom: "rendu", prefixes: ["corps-"] }]);
+      g.budget.lignes = g.budget.lignes.filter((l: string) => l !== `${g.id}.rendu`);
+    }, "budget.lignes");
+    refuse((g) => avec(g, "corps-"), "budget.demande");
+  });
   it("un jeu à la hauteur n'entre pas dans le cumul au temps", () => {
     refuse((f) => (f.classement.cumul = true), "seul un jeu au temps entre dans le cumul");
   });

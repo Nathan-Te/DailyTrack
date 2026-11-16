@@ -185,3 +185,21 @@ describe("le contrôle des fichiers hors zones du job de bout en bout", () => {
     expect(r.horsDesZones.sort()).toEqual(["README.md", "scripts/fiches.ts"].sort());
   });
 });
+
+describe("lot K8 : l'ordre du jeu fictif est calculé, comme celui d'un jeu créé par `nouveau-jeu`", () => {
+  it("`ordreSuivant` = le plus grand ordre des fiches + 1 : aucun jeu du dépôt ne le porte, et `nouveau-jeu` prendrait le même", async () => {
+    // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
+    const { FICHE_ESSAI, ordreSuivant } = (await import("../../../scripts/jeu-fictif.mjs")) as { FICHE_ESSAI: { ordre: number }; ordreSuivant: (racine: string) => number };
+    const ordres = fichesExistantes(RACINE).map((f: { ordre: number }) => f.ordre);
+    expect(ordres.length).toBeGreaterThan(8);
+    expect(ordreSuivant(RACINE)).toBe(Math.max(...ordres) + 1);
+    expect(ordres).not.toContain(ordreSuivant(RACINE));
+    expect(FICHE_ESSAI.ordre).toBe(ordreSuivant(RACINE)); // le banc lit la copie du dépôt courant (`--source` absent)
+    expect(readFileSync(join(RACINE, "scripts/jeu-fictif.mjs"), "utf8")).not.toMatch(/^\s*ordre: \d+,/m); // plus de nombre écrit en dur
+  });
+  it("sans dossier de fiches (un arbre ancien passé à `--source`), l'ordre reste 9", async () => {
+    // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
+    const { ordreSuivant } = (await import("../../../scripts/jeu-fictif.mjs")) as { ordreSuivant: (racine: string) => number };
+    expect(ordreSuivant(join(RACINE, "docs/inexistant"))).toBe(9);
+  });
+});

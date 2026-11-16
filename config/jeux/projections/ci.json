@@ -1362,7 +1362,8 @@
       },
       "sim": "rush-sim",
       "budget": [
-        "rush.jsCss"
+        "rush.jsCss",
+        "rush.rendu"
       ],
       "budgetALaDemande": [
         "corps-",
@@ -1372,6 +1373,14 @@
         "reglages-",
         "retours-",
         "version-"
+      ],
+      "budgetDemande": [
+        {
+          "nom": "rendu",
+          "prefixes": [
+            "corps-"
+          ]
+        }
       ],
       "outilsAdmin": false
     },
@@ -1711,7 +1720,8 @@
       },
       "sim": "pinball-sim",
       "budget": [
-        "pinball.jsCss"
+        "pinball.jsCss",
+        "pinball.rendu"
       ],
       "budgetALaDemande": [
         "partie-",
@@ -1724,6 +1734,15 @@
         "corps-",
         "dessin-",
         "rediffusion-"
+      ],
+      "budgetDemande": [
+        {
+          "nom": "rendu",
+          "prefixes": [
+            "corps-",
+            "dessin-"
+          ]
+        }
       ],
       "outilsAdmin": false
     }

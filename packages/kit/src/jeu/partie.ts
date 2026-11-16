@@ -7,6 +7,7 @@ import { suivantDisponible } from "../fantome";
 import { ligneParDefaut, textePartage, adresseDePartage } from "../partage";
 import { commandesDuJeu } from "./commandes";
 import { creerFondFin } from "./fondFin";
+import { creerTenues } from "./tenues";
 import { creerVibreur, creerVolumeEffets, lireReglages } from "./reglagesJoueur";
 import type { CodeMedaille, ContextePartie, PartieDuJeu } from "./types";
 
@@ -25,6 +26,8 @@ export interface PorteDeTest {
   manuel(oui?: boolean): void;
   avancer(n: number): void;
   action(id: string): void;
+  /** Lot K8 : le relâchement d'une action tenue (comme `PartieDuJeu.actionRelachee`), s'il y en a une. */
+  relacher(id: string): void;
   phase(): "jeu" | "pause" | "fin";
   envoi(): { statut: string; code: string; rang: number | null };
   score(): number[] | null;
@@ -113,13 +116,19 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
 
   // --- Les entrées : clavier et manette, par les actions (règle M2) ---
   const ids = new Set(def.actions.map((a) => a.id));
-  function declencher(id: string): void {
+  // Lot K8 : les actions TENUES. Le kit dit au jeu quand la touche (ou le bouton de manette) d'une action est relâchée — `partie.actionRelachee?.(id)`, facultatif —, avec les touches du joueur ; un jeu qui ne
+  // la définit pas ne change pas. Tout est relâché quand la partie s'arrête d'entendre le joueur : pause, fin, fenêtre qui perd le focus.
+  const enfonce = creerTenues((id) => partie.actionRelachee?.(id));
+  function declencher(id: string, source = "direct"): void {
     if (phase === "fin") return void (id === "recommencer" && recommencer());
     if (id === "pause") return phase === "pause" ? fermerPause() : ouvrirPause();
     if (phase === "pause") return;
     if (id === "recommencer") return recommencer();
     if (id === "fantome") return changerFantome();
-    if (ids.has(id)) partie.action(id);
+    if (ids.has(id)) {
+      partie.action(id);
+      enfonce.presser(id, source);
+    }
   }
   const surTouche = (e: KeyboardEvent): void => {
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -128,10 +137,13 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     const id = commandes.actionDeTouche(e.code);
     if (id) {
       e.preventDefault();
-      declencher(id);
+      declencher(id, `clavier:${e.code}`);
     }
   };
   addEventListener("keydown", surTouche);
+  // Le relâchement ne dépend ni des modificateurs ni de l'élément ciblé : il lève ce que cette touche a pressé (rien si elle n'a rien pressé).
+  addEventListener("keyup", (e: KeyboardEvent) => enfonce.relacherSource(`clavier:${e.code}`));
+  addEventListener("blur", () => enfonce.toutRelacher());
   let tenues = new Set<string>();
   let startTenu = false;
   function lirePad(): void {
@@ -149,7 +161,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
       const dirs: [string, boolean][] = [["gauche", (pad.axes[0] ?? 0) < -0.5 || !!pad.buttons[14]?.pressed], ["droite", (pad.axes[0] ?? 0) > 0.5 || !!pad.buttons[15]?.pressed], ["haut", (pad.axes[1] ?? 0) < -0.5 || !!pad.buttons[12]?.pressed], ["bas", (pad.axes[1] ?? 0) > 0.5 || !!pad.buttons[13]?.pressed]];
       for (const [id, tenue] of dirs) if (tenue && ids.has(id)) maintenant.add(id);
     }
-    for (const id of maintenant) if (!tenues.has(id)) declencher(id);
+    for (const id of maintenant) if (!tenues.has(id)) declencher(id, `manette:${id}`);
+    for (const id of tenues) if (!maintenant.has(id)) enfonce.relacherSource(`manette:${id}`);
     tenues = maintenant;
   }
   const surVisibilite = (): void => {
@@ -198,6 +211,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   void (d.base ? import("../message").then((m) => m.monterMessageEnDirect({ base: d.base!, stockage: d.stockage, ou: fiche.id as OuAnnonce, hotes: { accueil: el("div"), arrivee: el("div"), pause: hoteMessagePause }, langue: () => c.i18n.langue, traducteur: () => c.i18n.socle() }).montrer("pause")) : undefined);
   function ouvrirPause(): void {
     if (phase !== "jeu") return;
+    enfonce.toutRelacher(); // la simulation s'arrête : aucune action ne reste tenue
     phase = "pause";
     etatPause.textContent = t("kit.pause.etat", { score: partie.hud().principal });
     pauseCadre.majBarre();
@@ -225,6 +239,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   finCadre.racine.hidden = true;
   let desabonner: (() => void) | null = null;
   function terminer(): void {
+    enfonce.toutRelacher();
     phase = "fin";
     resultat = partie.resultat();
     fondFin.remonter();
@@ -344,6 +359,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   function recommencer(): void {
     desabonner?.();
     desabonner = null;
+    enfonce.vider(); // la partie va être détruite : rien à lui relâcher
     partie.detruire();
     finCadre.racine.hidden = true;
     pauseCadre.racine.hidden = true;
@@ -356,6 +372,11 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     c.musique.baisser(0.6);
   }
 
+  // Les essais : `action(id)` presse l'action sans condition de phase (comme avant) et la tient jusqu'à `relacher(id)`.
+  const declencherEssai = (id: string): void => {
+    partie.action(id);
+    enfonce.presser(id, `essai:${id}`);
+  };
   if (c.options.debug) {
     const porte: PorteDeTest = {
       manuel: (oui = true) => void (manuel = oui),
@@ -365,7 +386,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
         majHud();
         if (phase === "jeu" && partie.finie()) terminer();
       },
-      action: (id) => partie.action(id),
+      action: (id) => declencherEssai(id),
+      relacher: (id) => enfonce.relacherSource(`essai:${id}`),
       phase: () => phase,
       envoi: () => ({ statut: d.envoi.state.statut, code: d.envoi.state.code, rang: d.envoi.resultats.get(c.date)?.rank ?? null }),
       score: () => resultat?.score ?? null,

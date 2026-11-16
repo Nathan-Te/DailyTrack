@@ -71,6 +71,12 @@ export interface PartieDuJeu {
   finEnCours?(): boolean;
   /** Une action discrète : une des actions du jeu (clavier, manette) — l'identifiant est celui de `DefinitionJeu.actions`. */
   action(id: string): void;
+  /**
+   * Facultatif (lot K8) : une action **tenue** est relâchée — la touche, le bouton de manette (ou, un jour, la commande à l'écran) choisis pour `id` sont levés, **avec les touches remappées du joueur** — ou la
+   * partie s'arrête d'entendre le joueur (pause, fin, fenêtre qui perd le focus : tout ce qui était tenu est alors relâché). Appelée une fois par appui ; si deux sources tiennent la même action, après la dernière
+   * seulement. **Un jeu qui ne la définit pas ne change pas** (les actions discrètes restent des `action` seules). La date du relâchement est celle du pas en cours : c'est au jeu de la dater pour sa rediffusion.
+   */
+  actionRelachee?(id: string): void;
   /** Ce que le HUD compact montre : le score et le temps restant, déjà formatés. */
   hud(): { principal: string; secondaire: string };
   /** Le résultat : les colonnes de classement (dans l'ordre de la fiche) et la rediffusion à envoyer. */

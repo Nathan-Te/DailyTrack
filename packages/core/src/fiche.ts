@@ -187,6 +187,12 @@ export interface FicheJeu {
      * `scripts/budgets.mjs`) : ils ne comptent pas dans son premier chargement. Absent : seulement les briques du kit. Les trois jeux livrés ont leur mesure propre et ne le lisent pas.
      */
     aLaDemande?: string[];
+    /**
+     * Lot K8 : **des lignes « à la demande » mesurées** pour un jeu neuf — `{ nom, prefixes }` : la ligne `<id>.<nom>` (à déclarer aussi dans `lignes` et à poser dans `budgets.md`, famille `demande`) vaut
+     * la somme gzip des fichiers JS et CSS dont le nom commence par l'un des préfixes (`corps-` et `dessin-` pour le rendu three.js de Pinball). Les préfixes se déclarent aussi dans `aLaDemande` (ils ne
+     * comptent pas dans le premier chargement). Absent : aucune ligne de plus que `jsCss`, `anglais` et `polices`. Sans effet sur Track, Jump et Tower (mesure propre).
+     */
+    demande?: { nom: string; prefixes: string[] }[];
   };
   /**
    * Lot K4e : un **jeu témoin** n'est jamais mis en production. Il existe en local et sur la recette (registre du serveur, site de la recette, tests) ; il est absent de `site.mjs --production`, du registre
@@ -468,6 +474,16 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   const b = f.budget;
   if (!estObjet(b) || !listeDeTextes(b.lignes) || b.lignes.length === 0 || !b.lignes.every((l) => LIGNE_BUDGET.test(l) && l.startsWith(`${id}.`))) ko("budget.lignes", `des lignes de budgets.md qui commencent par « ${id}. »`);
   else if (b.aLaDemande !== undefined && (!listeDeTextes(b.aLaDemande) || !b.aLaDemande.every((p) => /^[A-Za-z0-9.]+-$/.test(p)))) ko("budget.aLaDemande", "des préfixes de fichiers qui finissent par un tiret (`essai-`), ou absent");
+  if (estObjet(b) && b.demande !== undefined) {
+    const d = b.demande;
+    const noms = Array.isArray(d) ? d.map((x) => (estObjet(x) ? x.nom : undefined)) : [];
+    if (!Array.isArray(d) || !d.every((x) => estObjet(x) && typeof x.nom === "string" && /^[A-Za-z][A-Za-z0-9]*$/.test(x.nom) && listeDeTextes(x.prefixes) && x.prefixes.length > 0 && x.prefixes.every((q) => /^[A-Za-z0-9.]+-$/.test(q)))) ko("budget.demande", "une liste de { nom, prefixes } : un nom simple (`rendu`) et des préfixes de fichiers qui finissent par un tiret (`corps-`), ou absent");
+    else {
+      if (new Set(noms).size !== noms.length) ko("budget.demande", "un nom de ligne par entrée (pas deux fois le même)");
+      if (!noms.every((n) => !["jsCss", "anglais", "polices"].includes(n as string))) ko("budget.demande", "un nom qui n'est pas celui d'une ligne d'office (`jsCss`, `anglais`, `polices`)");
+      if (Array.isArray(b.lignes) && !noms.every((n) => (b.lignes as string[]).includes(`${id}.${n}`))) ko("budget.demande", `chaque ligne déclarée ici s'écrit aussi dans budget.lignes (« ${id}.<nom> »)`);
+    }
+  }
 
   return p;
 }
@@ -637,6 +653,8 @@ export interface ProjectionCI {
     budget: string[];
     /** Lot K4e : préfixes de fichiers chargés à la demande, en plus des briques du kit (absent : aucun). */
     budgetALaDemande?: string[];
+    /** Lot K8 : les lignes à la demande mesurées d'un jeu neuf (`{ nom, prefixes }`, absent : aucune). */
+    budgetDemande?: { nom: string; prefixes: string[] }[];
     outilsAdmin: boolean;
     /** Lot K4e : un jeu témoin (jamais en production). */
     temoin?: true;
@@ -644,7 +662,7 @@ export interface ProjectionCI {
 }
 export function projectionCI(fiches: readonly FicheJeu[]): ProjectionCI {
   return {
-    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd, fabrication: f.jours.fabrication }, sim: f.dossiers?.sim ?? `${f.id}-sim`, budget: f.budget.lignes, ...(f.budget.aLaDemande ? { budgetALaDemande: f.budget.aLaDemande } : {}), outilsAdmin: f.admin.outils, ...(f.temoin ? { temoin: true as const } : {}) })),
+    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd, fabrication: f.jours.fabrication }, sim: f.dossiers?.sim ?? `${f.id}-sim`, budget: f.budget.lignes, ...(f.budget.aLaDemande ? { budgetALaDemande: f.budget.aLaDemande } : {}), ...(f.budget.demande ? { budgetDemande: f.budget.demande } : {}), outilsAdmin: f.admin.outils, ...(f.temoin ? { temoin: true as const } : {}) })),
   };
 }
 
