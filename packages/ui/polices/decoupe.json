@@ -1,6 +1,6 @@
 {
   "outil": "pyftsubset (fonttools 4.68.0)",
-  "caracteres": 216,
+  "caracteres": 217,
   "polices": [
     {
       "fichier": "archivo-black-latin-400-normal.woff2",
@@ -57,12 +57,6 @@
       "sha256": "d3091586eb28c928210649d89666a5c6b9ca31a1e7f05fd943be181f03b22132"
     },
     {
-      "fichier": "lilita-one-latin-400-normal.woff2",
-      "avant": 10672,
-      "apres": 9040,
-      "sha256": "938735feab893cf77dca9e91f33025dcc14b7c3c290e49ed2b09d6b82a4564db"
-    },
-    {
       "fichier": "rubik-mono-one-latin-400-normal.woff2",
       "avant": 12752,
       "apres": 10524,
@@ -73,6 +67,12 @@
       "avant": 14344,
       "apres": 11596,
       "sha256": "5ca5ff78cfa7e1d93b3a2d0ae8c4cd344681efe09fc712d2813d81f48efe7e02"
+    },
+    {
+      "fichier": "lilita-one-latin-400-normal.woff2",
+      "avant": 10672,
+      "apres": 9040,
+      "sha256": "938735feab893cf77dca9e91f33025dcc14b7c3c290e49ed2b09d6b82a4564db"
     }
   ],
   "profil": {
@@ -89,6 +89,12 @@
         "avant": 14344,
         "apres": 4108,
         "sha256": "278fd62e12dbb3e5270d93c01465a2e14210efb01ea45ab38ccdb1a3c9475dcd"
+      },
+      {
+        "fichier": "lilita-one-latin-400-normal.woff2",
+        "avant": 10672,
+        "apres": 4100,
+        "sha256": "95cccc3d8dbce3db458a660c6565798ae390fcfbbbef2009801653e4ca081022"
       }
     ]
   }

@@ -8,6 +8,8 @@ import "@cdj/ui/src/polices/archivo-600.css";
 import "@cdj/ui/src/polices/archivo-700.css";
 import "@cdj/ui/src/polices/jetbrains-mono-700.css";
 import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
+// Lot GR4 : la découpe « profil » de Lilita One (exigée par la fiche d'un jeu à illustration) est déclarée AVANT la feuille complète — celle-ci, déclarée après, l'emporte : le portail charge la même police qu'avant (Jump), la découpe ne coûte aucun octet.
+import "@cdj/ui/src/polices-profil/lilita-one-400.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 // Lot K5 : la voix des jeux hors de leur page — la découpe « profil » (capitales, chiffres : 3 à 4 Ko) de la police de chaque jeu qui a une carte pilotée par sa fiche, et le motif de son étiquette (feuille du portail, `jeux.generated.css`).
 import "@cdj/ui/src/polices-profil/rubik-mono-one-400.css";
