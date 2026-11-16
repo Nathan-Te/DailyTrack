@@ -1,6 +1,7 @@
 import { TILE_BELT_LEFT, TILE_BELT_RIGHT, TILE_ICE, TILE_EMPTY, type Level } from "@cdj/jump-sim";
 import { isMatterTile } from "./autotile";
-import { BELT_BAND, BELT_GAP } from "@cdj/visuels/plateformes";
+import { BELT_BAND, BELT_FLOW, BELT_GAP, BELT_PERIOD, BELT_Z, CHEVRON_LAG, STRIPE, beltTime, chevronAt } from "@cdj/visuels/plateformes";
+import { BELT_FRAGMENT, BELT_VERTEX, buildBeltArt as buildBeltArtCommun, topExposed as topExposedCommun, type BeltArt, type BeltChunk } from "@cdj/visuels/plateformes/three/tapis"; // sans `three` : ce fichier est dans le premier chargement (`beltRuns`)
 
 // Les deux surfaces du lot 11 — tapis roulants `[` `]` et glace `~` — côté affichage, **pur** (aucune dépendance à Three.js ni au DOM, testé
 // sous Node) : on lit la grille, jamais la simulation. Une surface est un **bloc plein** dont seule la face du dessus a un traitement propre
@@ -16,13 +17,10 @@ import { BELT_BAND, BELT_GAP } from "@cdj/visuels/plateformes";
 // personnage) ; les chevrons sont clairs et peu saturés (ils se lisent en niveaux de gris et ne prennent la teinte ni du danger ni du
 // personnage ni d'un ressort) ; ils pointent dans le sens du tapis et **défilent dans ce sens**.
 
-// Lot DA2 : la bande d'un tapis (hauteur, marge) est dans `@cdj/visuels/plateformes`.
-export { BELT_BAND, BELT_GAP } from "@cdj/visuels/plateformes";
-/** Période des chevrons (tuiles) et vitesse d'affichage de leur défilement (tuiles/s : la moitié de la vitesse du tapis, pour ne pas hacher l'image). */
-export const BELT_PERIOD = 0.8;
-export const BELT_FLOW = 2.4;
-/** Profondeur de dessin des chevrons : juste au-dessus de la garniture (`TILE_Z.trim`), sous les dangers (0,05). */
-export const BELT_Z = 0.0075;
+// Lot DA2 : la bande d'un tapis (hauteur, marge) est dans `@cdj/visuels/plateformes`. Lot PG1 : **les chevrons aussi** — période, vitesse, profondeur, `beltTime`, `chevronAt`, le tampon par tronçon (`buildBeltArt`) et
+// le shader (`BELT_VERTEX`, `BELT_FRAGMENT`) : Jump ne garde ici que ce qui lit sa grille (les codes de ses cases, `beltRuns`, `iceRuns`) ; `apps/jump/test/dessinFige.test.ts` garde l'empreinte des chevrons.
+export { BELT_BAND, BELT_GAP, BELT_FLOW, BELT_PERIOD, BELT_Z, CHEVRON_LAG, STRIPE, beltTime, chevronAt, BELT_FRAGMENT, BELT_VERTEX };
+export type { BeltArt, BeltChunk };
 
 /** Sens d'un tapis : −1 vers la gauche, 1 vers la droite, 0 pour toute autre tuile. */
 export function beltDirection(tile: number): number {
@@ -40,8 +38,7 @@ export interface SurfaceRun {
 
 /** La face du dessus de (col, row) est-elle libre ? (une case vide au-dessus : là seulement la surface se voit et agit) */
 export function topExposed(level: Pick<Level, "width" | "height" | "tiles">, col: number, row: number): boolean {
-  if (row - 1 < 0) return false;
-  return level.tiles[(row - 1) * level.width + col] === TILE_EMPTY;
+  return topExposedCommun(level, TILE_EMPTY, col, row);
 }
 
 function runsOf(level: Pick<Level, "width" | "height" | "tiles">, kind: SurfaceRun["kind"]): SurfaceRun[] {
@@ -80,104 +77,9 @@ export function hasSurfaces(level: Pick<Level, "tiles">): boolean {
   return false;
 }
 
-// ——— Les chevrons : un tampon par tronçon, un matériau ———
-
-export interface BeltChunk {
-  col0: number;
-  col1: number;
-  /** x y z par sommet ; sens du tapis (−1 / 1) et position dans la hauteur de la bande (0 bas … 1 haut) par sommet. */
-  pos: number[];
-  dir: number[];
-  band: number[];
-  idx: number[];
-  triangles: number;
-}
-
-export interface BeltArt {
-  chunks: BeltChunk[];
-  /** Tuiles de tapis dessinées. */
-  tiles: number;
-}
+// ——— Les chevrons : un tampon par tronçon, un matériau (le dessin est dans `@cdj/visuels/plateformes/three`) ———
 
 /** Les chevrons de tous les tapis (une bande par tuile de tapis exposée), par tronçons de `chunkColumns` colonnes. */
 export function buildBeltArt(level: Pick<Level, "width" | "height" | "tiles">, chunkColumns: number): BeltArt {
-  const chunks: BeltChunk[] = [];
-  let tiles = 0;
-  for (let c0 = 0; c0 < level.width; c0 += chunkColumns) {
-    const c1 = Math.min(level.width, c0 + chunkColumns);
-    const chunk: BeltChunk = { col0: c0, col1: c1, pos: [], dir: [], band: [], idx: [], triangles: 0 };
-    for (let row = 0; row < level.height; row++) {
-      for (let col = c0; col < c1; col++) {
-        const dir = beltDirection(level.tiles[row * level.width + col]!);
-        if (dir === 0 || !topExposed(level, col, row)) continue;
-        tiles++;
-        const yTop = -row - BELT_GAP;
-        const yBot = yTop - BELT_BAND;
-        const v = chunk.pos.length / 3;
-        for (const [x, y, b] of [[col, yBot, 0], [col + 1, yBot, 0], [col + 1, yTop, 1], [col, yTop, 1]] as const) {
-          chunk.pos.push(x, y, BELT_Z);
-          chunk.dir.push(dir);
-          chunk.band.push(b);
-        }
-        chunk.idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
-        chunk.triangles += 2;
-      }
-    }
-    chunks.push(chunk);
-  }
-  return { chunks, tiles };
+  return buildBeltArtCommun(level, { sensTapis: beltDirection, vide: TILE_EMPTY }, chunkColumns);
 }
-
-/**
- * Phase des chevrons (tuiles de défilement) à l'instant `clock` (s) : `flow` × temps, ou 0 (figés) sans mouvement. Le shader en tire
- * `uTime` ; la fonction est pure pour qu'un test vérifie « figé » et le sens.
- */
-export function beltTime(clock: number, motion: boolean): number {
-  return motion ? clock * (BELT_FLOW / BELT_PERIOD) : 0;
-}
-
-/**
- * Position (tuiles) du centre du chevron le plus proche de `x0` à la rangée centrale de la bande, au temps `uTime`, pour un tapis de sens
- * `dir` : la même formule que le shader (`f = dir·x / période − t`), pour que les tests vérifient le sens du défilement sans WebGL.
- */
-export function chevronAt(x0: number, dir: number, uTime: number): number {
-  // fract(f) < STRIPE : le chevron est là ; son bord avant est à f = 0 → x = dir·(t + k)·période.
-  const f = (dir * x0) / BELT_PERIOD - uTime;
-  const k = Math.floor(f);
-  return dir * (uTime + k + STRIPE / 2) * BELT_PERIOD;
-}
-
-/** Part de la période occupée par un chevron (le reste est du fond). */
-export const STRIPE = 0.42;
-/** Retard des bords du chevron sur sa pointe (périodes) : il pointe dans le sens du tapis. */
-export const CHEVRON_LAG = 0.38;
-
-export const BELT_VERTEX = /* glsl */ `
-attribute float aDir;
-attribute float aBand;
-varying float vDir;
-varying vec2 vP;
-void main() {
-  vDir = aDir;
-  vP = vec2(position.x, aBand);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`;
-
-export const BELT_FRAGMENT = /* glsl */ `
-uniform float uTime;
-uniform vec3 uColor;
-varying float vDir;
-varying vec2 vP;
-void main() {
-  float w = abs(vP.y - 0.5) * 2.0;
-  float f = vDir * vP.x / ${BELT_PERIOD.toFixed(3)} - uTime + w * ${CHEVRON_LAG.toFixed(3)};
-  float q = fract(f);
-  float a = smoothstep(0.0, 0.05, q) * (1.0 - smoothstep(${(STRIPE - 0.05).toFixed(3)}, ${STRIPE.toFixed(3)}, q));
-  // Les deux bords de la bande (liserés) restent nus : le chevron ne touche ni le haut ni le bas.
-  a *= 1.0 - smoothstep(0.84, 0.96, w);
-  if (a < 0.02) discard;
-  gl_FragColor = vec4(uColor, a);
-  #include <colorspace_fragment>
-}
-`;

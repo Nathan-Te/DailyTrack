@@ -42,11 +42,11 @@ import { viewHeightTiles, VIEW_TILES_DESKTOP, type Frame } from "./camera";
 import { SOLID_STENCIL } from "./actors";
 import { BurstMesh, type BurstPool } from "./fx";
 import type { Look } from "./look";
-import { artGeometry, creerPersonnage } from "@cdj/visuels/plateformes/three";
+import { artGeometry, creerPersonnage, creerPiques } from "@cdj/visuels/plateformes/three";
 import type { Art } from "./artKit";
 import { buildDecorArt, keepouts, placeDecor, type DecorChunk } from "./decor";
 import { buildParallax, layerOffset, visibleLayers } from "./parallax";
-import { CHUNK_COLUMNS, buildTileArt } from "./tileArt";
+import { CHUNK_COLUMNS, buildTileArt, sensDuPic } from "./tileArt";
 import { BELT_FRAGMENT, BELT_VERTEX, beltRuns, beltTime, buildBeltArt, iceRuns } from "./surfaceArt";
 import { HAZARD_OUTLINE, backdropColors, type Theme } from "./themes";
 import { createDynamicBlocks, type DynamicStats } from "./dynamicArt";
@@ -209,44 +209,6 @@ const T = UNITS_PER_TILE;
 const PW = PLAYER_WIDTH / T;
 const PH = PLAYER_HEIGHT / T;
 
-/** Pics : un triangle franc par tuile, pointe selon l'orientation (coordonnées du monde, y vers le haut). */
-function spikeTriangles(level: Level, grow = 0): BufferGeometry {
-  const pos: number[] = [];
-  for (let row = 0; row < level.height; row++) {
-    for (let col = 0; col < level.width; col++) {
-      const t = level.tiles[row * level.width + col]!;
-      if (!isSpikeTile(t)) continue;
-      const x0 = col;
-      const x1 = col + 1;
-      const yTop = -row;
-      const yBot = -row - 1;
-      const xm = col + 0.5;
-      const ym = -row - 0.5;
-      // Codes : 4 haut, 5 bas, 6 gauche, 7 droite.
-      if (t === 4) pos.push(x0, yBot, 0, x1, yBot, 0, xm, yTop, 0);
-      else if (t === 5) pos.push(x0, yTop, 0, xm, yBot, 0, x1, yTop, 0);
-      else if (t === 6) pos.push(x1, yTop, 0, x0, ym, 0, x1, yBot, 0);
-      else pos.push(x0, yBot, 0, x1, ym, 0, x0, yTop, 0);
-      if (grow > 0) {
-        // Cerne : le triangle agrandi autour de son centre de gravité.
-        const k = pos.length - 9;
-        const cx = (pos[k]! + pos[k + 3]! + pos[k + 6]!) / 3;
-        const cy = (pos[k + 1]! + pos[k + 4]! + pos[k + 7]!) / 3;
-        for (let v = 0; v < 3; v++) {
-          const dx = pos[k + v * 3]! - cx;
-          const dy = pos[k + v * 3 + 1]! - cy;
-          const len = Math.hypot(dx, dy) || 1;
-          pos[k + v * 3] = cx + dx * (1 + (grow * 2) / len);
-          pos[k + v * 3 + 1] = cy + dy * (1 + (grow * 2) / len);
-        }
-      }
-    }
-  }
-  const g = new BufferGeometry();
-  g.setAttribute("position", new Float32BufferAttribute(pos, 3));
-  return g;
-}
-
 /** Boîte [x, x + w] × [y, y + h] de la simulation (unités, y vers le bas) → quatre segments (tuiles, y vers le haut). */
 function boxSegments(out: number[], x: number, y: number, w: number, h: number): void {
   const a = x / T;
@@ -353,13 +315,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
   applyDetail();
 
   // ——— Pics : triangles francs ———
-  const spikes = new Mesh(spikeTriangles(level), new MeshBasicMaterial({ color: palette.hazard }));
-  spikes.position.z = 0.05;
-  world.add(spikes);
-  // Lot 9 : un cerne sombre autour de chaque pic (le même dans tous les thèmes) : il le détache d'un contour clair, d'un friable, du décor.
-  const spikeRim = new Mesh(spikeTriangles(level, 0.09), new MeshBasicMaterial({ color: HAZARD_OUTLINE }));
-  spikeRim.position.z = 0.045;
-  world.add(spikeRim);
+  // Lot 9 : un cerne sombre autour de chaque pic (le même dans tous les thèmes) : il le détache d'un contour clair, d'un friable, du décor. Lot PG1 : le dessin vient de `@cdj/visuels`.
+  world.add(creerPiques(level, sensDuPic, palette.hazard).groupe);
 
   // ——— Blocs friables : aspect distinct (plus clair, fendu, quatre éclats aux coins), ils tremblent pendant leur minuterie ———
   const crumbleColor = new Color(palette.crumble);

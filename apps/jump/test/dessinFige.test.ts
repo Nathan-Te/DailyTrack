@@ -8,7 +8,8 @@ import { mixColor } from "../src/feel";
 import { buildParallax } from "../src/parallax";
 import { buildBeltArt } from "../src/surfaceArt";
 import { THEMES, THEME_NAMES } from "../src/themes";
-import { buildTileArt } from "../src/tileArt";
+import { buildTileArt, sensDuPic } from "../src/tileArt";
+import { PIQUE, trianglesDePiques } from "@cdj/visuels/plateformes";
 
 // Lot DA2 (partie 2) : le dessin de Jump est le même qu'avant l'extraction du dessinateur dans `@cdj/visuels/plateformes/three`. Il n'y a pas de capture en
 // pixels de référence : la preuve est l'empreinte de la **géométrie** dessinée (positions, couleurs par sommet, indices) des tuiles, de la parallaxe et des
@@ -32,6 +33,15 @@ describe("le dessin de Jump n'a pas bougé", () => {
       tout.push(buildBeltArt(level, 32).chunks.map((c) => [c.col0, c.col1, c.pos, c.dir, c.band, c.idx]));
     }
     expect(h(tout)).toBe("c55ca2344221a12435236c339e7af9caf7994ea3");
+  });
+
+  // Lot PG1 : les piques (avec cerne) sont un dessin commun de `@cdj/visuels`. L'empreinte est celle des triangles que Jump calculait lui-même avant de les lui confier (scene.ts, `spikeTriangles`), sur les niveaux de
+  // Jump et un niveau qui a les quatre sens : la forme et le cerne n'ont pas bougé d'un bit.
+  it("les piques : même triangles, même cerne, au bit près (quatre niveaux)", () => {
+    const TOUS = parseLevel(["S...^..F", "..<..>..", "...v....", "########"].join("\n") + "\n");
+    const f32 = (a: number[]) => Array.from(new Float32Array(a));
+    const tout = [ESSAI_LEVEL, DANGERS_LEVEL, SANDBOX_LEVEL, TOUS].map((l) => [f32(trianglesDePiques(l, sensDuPic)), f32(trianglesDePiques(l, sensDuPic, PIQUE.cerne))]);
+    expect(h(tout)).toBe("e47601db6664f759c1123f512c3110958ae71d71");
   });
 
   it("le personnage : les pieds sont la couleur du corps assombrie de 45 %, comme avant (toutes les palettes)", () => {
