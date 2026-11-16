@@ -39,12 +39,6 @@
       "sha256": "c768a15d18b6d6acb0542175067a92f5d056e42e88a0f9eedd3eebe877ca1357"
     },
     {
-      "fichier": "barlow-condensed-latin-800-italic.woff2",
-      "avant": 23780,
-      "apres": 20004,
-      "sha256": "df18768448603ae5dbbed0abc4109159911268ca5b14ec62224be8e4aa1e7a33"
-    },
-    {
       "fichier": "jetbrains-mono-latin-500-normal.woff2",
       "avant": 21832,
       "apres": 18788,
@@ -73,6 +67,12 @@
       "avant": 10672,
       "apres": 9040,
       "sha256": "938735feab893cf77dca9e91f33025dcc14b7c3c290e49ed2b09d6b82a4564db"
+    },
+    {
+      "fichier": "barlow-condensed-latin-800-italic.woff2",
+      "avant": 23780,
+      "apres": 20004,
+      "sha256": "df18768448603ae5dbbed0abc4109159911268ca5b14ec62224be8e4aa1e7a33"
     }
   ],
   "profil": {
@@ -95,6 +95,12 @@
         "avant": 10672,
         "apres": 4100,
         "sha256": "95cccc3d8dbce3db458a660c6565798ae390fcfbbbef2009801653e4ca081022"
+      },
+      {
+        "fichier": "barlow-condensed-latin-800-italic.woff2",
+        "avant": 23780,
+        "apres": 4924,
+        "sha256": "40cffff4acb3bdb58ea701973ce3e7c8c6ecf4778f67bc8ab45496676238b503"
       }
     ]
   }

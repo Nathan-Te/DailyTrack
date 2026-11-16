@@ -8,16 +8,16 @@
   },
   "accroche": "portail.pinball.accroche",
   "etiquette": {
-    "fond": "#C9B6F2",
-    "coque": "#5B3FA0",
-    "police": "\"Righteous\", \"Archivo\", sans-serif",
+    "fond": "#F6A2D8",
+    "coque": "#962170",
+    "police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
     "dessin": "generique"
   },
   "identite": {
-    "police": "à choisir",
-    "motif": "losanges",
-    "illustration": "à choisir",
-    "aujourdhui": false
+    "police": "Barlow Condensed",
+    "motif": "rayures",
+    "illustration": "apps/pinball/public/illustration.svg",
+    "aujourdhui": true
   },
   "etatDepart": "off",
   "premierJour": "2026-11-02",
@@ -205,6 +205,14 @@
       "essais.spec.ts": [
         "pinball-sim",
         "pinball-jeu"
+      ],
+      "hud.spec.ts": [
+        "pinball-sim",
+        "pinball-jeu"
+      ],
+      "hud-cadrage.spec.ts": [
+        "pinball-sim",
+        "pinball-jeu"
       ]
     },
     "parts": {
@@ -213,7 +221,8 @@
       "nuit": 1
     },
     "regression": [
-      "ecrans-kit.spec.ts"
+      "ecrans-kit.spec.ts",
+      "hud-cadrage.spec.ts"
     ]
   },
   "budget": {
@@ -232,6 +241,7 @@
       "scene-",
       "corps-",
       "dessin-",
+      "panneau-",
       "rediffusion-"
     ],
     "demande": [

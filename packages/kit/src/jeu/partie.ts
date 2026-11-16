@@ -55,11 +55,14 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const secondaire = el("span", { classe: "jeu-hud__secondaire", attrs: { id: "jeu-hud-temps" } });
   const nomFantome = (e: EtatFantome): string => t(`kit.fantome.${e}`);
   const fantomeBtn = sansFantome ? null : boutonFantome({ id: "jeu-hud-fantome", classe: "jeu-hud__bouton", onClick: () => changerFantome() });
+  // Lot K9 : le plein écran reste en vue en partie (charte § 9), en portrait comme en paysage, à droite avec le fantôme et la pause. Caché si le navigateur ne le permet pas (`boutonPleinEcran`) ; sur iPhone il ouvre
+  // l'astuce « Sur l'écran d'accueil » et la partie se met en pause. L'orientation est celle que le jeu choisit (défaut : celle du moment).
+  const pleinEcranBtn = boutonPleinEcran({ t: (cle) => c.i18n.socle().t(cle as never), id: "jeu-hud-plein-ecran", classe: "jeu-hud__bouton", avantAide: () => ouvrirPause(), ...(def.orientation ? { orientation: def.orientation } : {}) });
   const pauseBtn = el("button", { classe: "jeu-hud__bouton jeu-hud__pause", attrs: { type: "button", id: "jeu-hud-pause", "aria-label": t("kit.hud.pause") }, texte: "II" });
   pauseBtn.addEventListener("click", () => ouvrirPause());
   pauseBtn.addEventListener("pointerup", () => pauseBtn.blur());
   const surimpression = def.hud === "surimpression" ? creerSurimpression() : null; // lot PG1 : le HUD sur le plateau ; le texte de la barre n'est plus visible (`ecrans.css`), il reste lu
-  const scene = el("div", { classe: surimpression ? "jeu-scene jeu-scene--surimpression" : "jeu-scene", attrs: { id: "jeu-scene" } }, el("div", { classe: "jeu-hud" }, el("div", { classe: "jeu-hud__gauche" }, principal), el("div", { classe: "jeu-hud__centre" }, secondaire), el("div", { classe: "jeu-hud__droite" }, ...(fantomeBtn ? [fantomeBtn] : []), pauseBtn)), plateau);
+  const scene = el("div", { classe: surimpression ? "jeu-scene jeu-scene--surimpression" : "jeu-scene", attrs: { id: "jeu-scene" } }, el("div", { classe: "jeu-hud" }, el("div", { classe: "jeu-hud__gauche" }, principal), el("div", { classe: "jeu-hud__centre" }, secondaire), el("div", { classe: "jeu-hud__droite" }, pleinEcranBtn, ...(fantomeBtn ? [fantomeBtn] : []), pauseBtn)), plateau);
   c.o.racine.append(scene);
 
   // --- Le fantôme : Aucun → Ma meilleure → Diamant ---
@@ -102,6 +105,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     principal.textContent = h.principal;
     secondaire.textContent = h.secondaire;
   };
+  majHud(); // lot K9 : le texte de la barre est là dès la création de la partie, pas à la première image (un essai ou un lecteur d'écran ne lit jamais une barre vide)
   function image(now: number): void {
     requestAnimationFrame(image);
     lirePad();
@@ -206,7 +210,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
       bouton1("jeu-pause-recommencer", "kit.pause.recommencer", () => recommencer()),
       bouton1("jeu-pause-aide", "kit.pause.aide", () => void import("./aide").then((m) => (aideMontee ??= m.monterAide(c)).ouvrir())),
       bouton1("jeu-pause-reglages", "kit.pause.reglages", () => void import("./reglages").then((m) => m.monterReglages(c).ouvrir())),
-      boutonPleinEcran({ t: (cle) => c.i18n.socle().t(cle as never), id: "jeu-pause-plein-ecran", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true }),
+      boutonPleinEcran({ t: (cle) => c.i18n.socle().t(cle as never), id: "jeu-pause-plein-ecran", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true, ...(def.orientation ? { orientation: def.orientation } : {}) }),
       bouton1("jeu-pause-accueil", "kit.pause.accueil", () => c.retour()),
     ),
     placeMusique,

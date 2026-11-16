@@ -46,7 +46,7 @@ for (const f of readdirSync(join(POLICES, "originaux")).filter((x) => x.endsWith
 }
 // Lot K5 — **les découpes « profil »** : hors du jeu (le profil commun, les cartouches compactes) la voix d'un jeu n'écrit que son nom, un numéro, des chiffres : les capitales, les chiffres, l'espace et quelques signes
 // (de l'ordre de 3 à 4 Ko au lieu de 10 : seul le crénage est gardé, sans les instructions de hinting). Elles sont servies depuis `polices/profil/` (même nom que l'original) et décrites dans `decoupe.json` (`profil`). Une police de jeu s'y ajoute en nommant son fichier ici.
-const PROFIL = ["rubik-mono-one-latin-400-normal.woff2", "bungee-latin-400-normal.woff2", "lilita-one-latin-400-normal.woff2"];
+const PROFIL = ["rubik-mono-one-latin-400-normal.woff2", "bungee-latin-400-normal.woff2", "lilita-one-latin-400-normal.woff2", "barlow-condensed-latin-800-italic.woff2"];
 const CARACTERES_PROFIL = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -'·.:", ...Array.from({ length: 0xde - 0xc0 + 1 }, (_, i) => String.fromCodePoint(0xc0 + i)).filter((c) => c !== "×"), "Œ"];
 const unicodesProfil = CARACTERES_PROFIL.map((c) => `U+${c.codePointAt(0).toString(16)}`).join(",");
 mkdirSync(join(POLICES, "profil"), { recursive: true });

@@ -1,8 +1,7 @@
 import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
 
-// Le catalogue français de « Pinball » : le vocabulaire des écrans (le kit) et ce qui est propre au jeu. Les textes COMPLETS (accueil, aide détaillée, missions) viennent plus tard : ceux d'ici sont courts.
-// **« À remplacer » reste dans `aide.point3` à dessein** : tant qu'il y est, le test des mentions légales (`apps/portail/test/mentions.test.ts`) traite le jeu comme un squelette. La mise à jour des mentions (les clés du
-// navigateur du jeu) est un lot de la plateforme, à faire avant la publication (README du lot PB1, mentions proposées) ; ce marqueur part avec elle.
+// Le catalogue français de « Pinball » : le vocabulaire des écrans (le kit) et ce qui est propre au jeu — l'accueil, le HUD, le panneau « Aujourd'hui », « Comment jouer ». **Lot PB5b : les textes sont complets** ; le
+// marqueur de texte provisoire est parti (les mentions légales sont en place depuis le lot K8 : le test des mentions traite le jeu comme livré).
 export const CATALOGUE_FR = {
   ...CATALOGUE_KIT_FR,
   "page.titre": "Pinball — Du Jour",
@@ -44,18 +43,32 @@ export const CATALOGUE_FR = {
   "mission.texte.tourbillon": "Plonge {but} fois dans le tourbillon",
   "mission.texte.portail": "Passe {but} fois par le portail",
   "mission.texte.geyser": "Déclenche {but} geysers",
-  "mission.hud.manege": "Manège {n} / {but}",
-  "mission.hud.tourbillon": "Tourbillon {n} / {but}",
-  "mission.hud.portail": "Portail {n} / {but}",
-  "mission.hud.geyser": "Geysers {n} / {but}",
-  "mission.hud.reussie": "Mission réussie",
-  "mission.reussie": "Mission réussie ! ×{mult}",
   "robot.joue": "Le robot joue",
-  "aide.point1": "Une table de flipper par jour, la même pour tous. Trois billes : fais le plus de points possible.",
+  "aide.point1": "Une table de flipper par jour, la même pour tous. Trois billes, quinze minutes au plus : fais le plus de points possible.",
   "aide.point2": "Batteur gauche : {gauche} ; batteur droit : {droite} (ou la moitié gauche ou droite de l'écran). Pour lancer, maintiens {lanceur} (ou touche l'écran) puis relâche : plus tu tiens, plus la bille part fort.",
-  "aide.point3": "À remplacer : le multiplicateur, la bille sauvée et les missions (texte complet à venir).",
+  "aide.point3": "Ton score du jour est celui de ta meilleure partie : rejoue autant que tu veux, seule la meilleure compte au classement.",
+  "aide.point4": "La mission du jour change avec la table : tours de manège, plongées dans le tourbillon, passages par les portails ou geysers déclenchés. Réussis-la, une fois par partie : elle rapporte des points et un cran de multiplicateur.",
+  "aide.point5": "Le multiplicateur va de ×1 à ×6 et multiplie chaque point que tu marques. Il monte d'un cran quand tu réussis la mission et quand tu allumes les trois lampes du haut de la table.",
+  "aide.point6": "Bille sauvée : une bille perdue juste après son lancer revient au lanceur, une fois par bille. Les batteurs, eux, ne pardonnent rien : à toi de viser.",
   "commandes.action.gauche": "Batteur gauche",
   "commandes.action.droite": "Batteur droit",
   "commandes.action.lanceur": "Lanceur",
   "hud.detail": "×{mult} · Billes : {billes}",
+  "hud.aide.lancer": "Maintiens, puis relâche pour lancer",
+  "hud.clavier.lancer": "Maintiens, relâche : lancer",
+  "hud.score.aria": "Score : {score}",
+  "hud.mult.aria": "Multiplicateur ×{mult}",
+  "hud.billes.aria": "Billes : {n} sur {total}",
+  "hud.mission.nom.manege": "Manège",
+  "hud.mission.nom.tourbillon": "Tourbillon",
+  "hud.mission.nom.portail": "Portails",
+  "hud.mission.nom.geyser": "Geysers",
+  "hud.mission.reussie": "Réussie",
+  "hud.mission.gain": "+{points}",
+  "aujourdhui.mission": "Mission",
+  "aujourdhui.mission.gain": "+{points} et un cran de multiplicateur, une fois par partie",
+  "aujourdhui.table": "Sur la table",
+  "aujourdhui.medailles": "Médailles du jour",
+  "aujourdhui.apercu": "Aperçu de la table du jour : {theme}",
+  "aujourdhui.seuils.calcul": "Seuils en calcul…",
 } as const;

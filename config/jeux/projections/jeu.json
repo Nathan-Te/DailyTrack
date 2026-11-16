@@ -292,9 +292,9 @@
         "en": "Pinball"
       },
       "etiquette": {
-        "fond": "#C9B6F2",
-        "coque": "#5B3FA0",
-        "police": "\"Righteous\", \"Archivo\", sans-serif",
+        "fond": "#F6A2D8",
+        "coque": "#962170",
+        "police": "\"Barlow Condensed\", \"Archivo\", sans-serif",
         "dessin": "generique"
       },
       "etatDepart": "off",

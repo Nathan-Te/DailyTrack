@@ -1,5 +1,5 @@
 import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroPinball, themeDuJour, type Contenu } from "@cdj/pinball-sim";
-import type { DefinitionJeu } from "@cdj/kit/jeu/types";
+import type { ContexteAujourdhui, DefinitionJeu } from "@cdj/kit/jeu/types";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { ACTIONS } from "./commandes";
 import { lireEssai } from "./essai";
@@ -12,6 +12,9 @@ type Scene = typeof import("./scene");
 type Corps = typeof import("./corps");
 let scene: Scene | null = null;
 let corps: Corps | null = null;
+
+/** Le panneau « Aujourd'hui » de l'accueil (lot PB5b) : le kit l'appelle quand le contenu du jour est lu ; **son code est à la demande** (`panneau.ts` : l'aperçu de la table dessiné à plat, la mission, les médailles), importé seulement alors. */
+export const aujourdhui = (contenu: Contenu, hote: HTMLElement, ctx: ContexteAujourdhui): void => void import("./panneau").then((m) => m.remplirAujourdhui(contenu, hote, ctx));
 
 export const DEFINITION: DefinitionJeu<Contenu> = {
   ticksParSeconde: TICKS_PAR_SECONDE,
@@ -40,5 +43,7 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   rediffusionDiamant: () => "",
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),
-  aide: ["aide.point1", "aide.point2", "aide.point3"],
+  aide: ["aide.point1", "aide.point2", "aide.point3", "aide.point4", "aide.point5", "aide.point6"],
+  // Lot PB5b : le HUD est en surimpression (`hud.ts` : les deux bandes, la pause et le plein écran) ; la barre crème du kit n'est plus visible, son texte reste dans la page pour la pause.
+  hud: "surimpression",
 };

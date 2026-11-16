@@ -1330,9 +1330,17 @@ export interface Surimpression {
   eclat: number;
 }
 
+/** Lot PB5b : la zone du canvas où la table doit tenir en entier, en pixels CSS depuis son coin haut gauche — **entre les deux bandes du HUD en surimpression** (`hud.ts`), marges de sécurité comprises. Le canvas, lui, garde tout l'écran : le décor passe sous le HUD. */
+export interface Libre {
+  x: number;
+  y: number;
+  l: number;
+  h: number;
+}
+
 export interface Rendu {
-  /** La taille du canvas en pixels CSS, à chaque changement. */
-  redimensionner(largeur: number, hauteur: number): void;
+  /** La taille du canvas en pixels CSS, à chaque changement, et la zone libre où la table doit tenir (absente : tout le canvas). */
+  redimensionner(largeur: number, hauteur: number, libre?: Libre): void;
   dessiner(s: Surimpression): void;
   /** Libère ce que le rendu tient (le rendu three.js : ses géométries, ses textures, son contexte WebGL). Absent du rendu à plat. */
   detruire?(): void;
@@ -1514,7 +1522,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     }
   }
 
-  function redimensionner(largeur: number, hauteur: number): void {
+  function redimensionner(largeur: number, hauteur: number, libre?: Libre): void {
     L = Math.max(1, Math.floor(largeur));
     H = Math.max(1, Math.floor(hauteur));
     dpr = Math.min(2, devicePixelRatio || 1);
@@ -1522,9 +1530,11 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     canvas.height = Math.floor(H * dpr);
     canvas.style.width = `${L}px`;
     canvas.style.height = `${H}px`;
-    echelle = Math.min(L / LARGEUR, H / HAUTEUR);
-    ox = (L - LARGEUR * echelle) / 2;
-    oy = (H - HAUTEUR * echelle) / 2;
+    // lot PB5b : la table tient, centrée, dans la zone libre (entre les bandes du HUD) ; sans zone, dans tout le canvas
+    const z = libre ?? { x: 0, y: 0, l: L, h: H };
+    echelle = Math.max(0.01, Math.min(z.l / LARGEUR, z.h / HAUTEUR));
+    ox = z.x + (z.l - LARGEUR * echelle) / 2;
+    oy = z.y + (z.h - HAUTEUR * echelle) / 2;
     const o = document.createElement("canvas");
     o.width = Math.ceil(LARGEUR * echelle * dpr);
     o.height = Math.ceil(HAUTEUR * echelle * dpr);

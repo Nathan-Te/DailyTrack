@@ -109,7 +109,7 @@ test.describe("les écrans du kit : mise en page", () => {
       const { context, page } = await appareil(browser, `/?debug&manuel&tactile=${taille.pc ? 0 : 1}`);
       await page.setViewportSize({ width: taille.width, height: taille.height });
       await lancer(page);
-      await page.locator("#jeu-hud-pause").click();
+      await page.locator("#pinball-pause").click();
       await expect(page.locator("#jeu-pause")).toBeVisible();
       await verifier(page, "la pause", taille);
       await page.locator("#jeu-reprendre").click();

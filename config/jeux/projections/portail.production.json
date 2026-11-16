@@ -183,7 +183,8 @@
       },
       "cumul": false,
       "categorie": "arcade",
-      "format": "entier"
+      "format": "entier",
+      "illustration": true
     }
   ]
 }

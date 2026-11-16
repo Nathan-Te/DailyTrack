@@ -665,10 +665,6 @@ export const FICHES_SERVEUR = [
     "prefixe": "pinball:",
     "reglagesGardes": [],
     "messageOu": "pinball",
-    "zoneNouveautes": "pinball",
-    "identiteManque": [
-      "police",
-      "illustration"
-    ]
+    "zoneNouveautes": "pinball"
   }
 ] as const;

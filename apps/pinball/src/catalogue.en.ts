@@ -2,7 +2,7 @@ import { CATALOGUE_COMMUN_EN } from "@cdj/ui";
 import { CATALOGUE_KIT_EN } from "@cdj/kit/jeu/catalogue";
 import type { CATALOGUE_FR } from "./catalogue.fr";
 
-// L'anglais de « Pinball » (chargé à la demande) : le vocabulaire des écrans (le kit) et ce qui est propre au jeu ; avec l'anglais du catalogue commun de `@cdj/ui`. Textes courts : les complets viennent plus tard.
+// L'anglais de « Pinball » (chargé à la demande) : le vocabulaire des écrans (le kit) et ce qui est propre au jeu ; avec l'anglais du catalogue commun de `@cdj/ui`. Lot PB5b : les textes sont complets.
 export { CATALOGUE_COMMUN_EN };
 export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string } = {
   ...CATALOGUE_KIT_EN,
@@ -45,18 +45,32 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "mission.texte.tourbillon": "Dive into the whirlpool {but} times",
   "mission.texte.portail": "Go through the portal {but} times",
   "mission.texte.geyser": "Set off {but} geysers",
-  "mission.hud.manege": "Carousel {n} / {but}",
-  "mission.hud.tourbillon": "Whirlpool {n} / {but}",
-  "mission.hud.portail": "Portal {n} / {but}",
-  "mission.hud.geyser": "Geysers {n} / {but}",
-  "mission.hud.reussie": "Mission complete",
-  "mission.reussie": "Mission complete! ×{mult}",
   "robot.joue": "The robot plays",
-  "aide.point1": "One pinball table a day, the same for everyone. Three balls: score as many points as you can.",
+  "aide.point1": "One pinball table a day, the same for everyone. Three balls, fifteen minutes at most: score as many points as you can.",
   "aide.point2": "Left flipper: {gauche}; right flipper: {droite} (or touch the left or right half of the screen). To launch, hold {lanceur} (or touch the screen) then let go: the longer you hold, the harder the ball goes.",
-  "aide.point3": "To replace: the multiplier, the ball save and the missions (full text coming).",
+  "aide.point3": "Your score for the day is your best game: play as often as you like, only the best one counts on the leaderboard.",
+  "aide.point4": "Today's mission changes with the table: carousel laps, whirlpool dives, trips through the portals or geysers set off. Complete it, once per game: it earns points and one step of multiplier.",
+  "aide.point5": "The multiplier goes from ×1 to ×6 and multiplies every point you score. It goes up one step when you complete the mission and when you light the three lamps at the top of the table.",
+  "aide.point6": "Ball save: a ball lost just after launch comes back to the launcher, once per ball. The flippers forgive nothing, though: aim well.",
   "commandes.action.gauche": "Left flipper",
   "commandes.action.droite": "Right flipper",
   "commandes.action.lanceur": "Launcher",
   "hud.detail": "×{mult} · Balls: {billes}",
+  "hud.aide.lancer": "Hold, then release to launch",
+  "hud.clavier.lancer": "Hold, release: launch",
+  "hud.score.aria": "Score: {score}",
+  "hud.mult.aria": "Multiplier ×{mult}",
+  "hud.billes.aria": "Balls: {n} of {total}",
+  "hud.mission.nom.manege": "Carousel",
+  "hud.mission.nom.tourbillon": "Whirlpool",
+  "hud.mission.nom.portail": "Portals",
+  "hud.mission.nom.geyser": "Geysers",
+  "hud.mission.reussie": "Complete",
+  "hud.mission.gain": "+{points}",
+  "aujourdhui.mission": "Mission",
+  "aujourdhui.mission.gain": "+{points} and one step of multiplier, once per game",
+  "aujourdhui.table": "On the table",
+  "aujourdhui.medailles": "Today's medals",
+  "aujourdhui.apercu": "Preview of today's table: {theme}",
+  "aujourdhui.seuils.calcul": "Thresholds being calculated…",
 };

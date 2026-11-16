@@ -13,7 +13,8 @@
     "partage.spec.ts": 6,
     "arcade.spec.ts": 2,
     "apercu.spec.ts": 6,
-    "musique.spec.ts": 13
+    "musique.spec.ts": 13,
+    "plein-ecran.spec.ts": 5
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
