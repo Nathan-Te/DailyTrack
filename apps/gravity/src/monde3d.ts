@@ -298,7 +298,8 @@ export class Monde {
     groupe.add(new Mesh(gc, materiau));
     const plans: BandeVue["plans"] = [];
     const couches = buildParallax(theme, COLONNES_PAR_BANDE, `${this.jour}:${b}`);
-    const n = visibleLayers(couches.length, this.reduit);
+    // mouvement réduit : tous les plans restent, mais collés à l'écran (`layerOffset`, mouvement 0) — rien ne défile
+    const n = visibleLayers(couches.length, false);
     for (let i = 0; i < n; i++) {
       const g = artGeometry(couches[i]!.art);
       geometries.push(g);
