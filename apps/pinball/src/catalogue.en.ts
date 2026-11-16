@@ -51,6 +51,7 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "mission.hud.geyser": "Geysers {n} / {but}",
   "mission.hud.reussie": "Mission complete",
   "mission.reussie": "Mission complete! ×{mult}",
+  "robot.joue": "The robot plays",
   "aide.point1": "One pinball table a day, the same for everyone. Three balls: score as many points as you can.",
   "aide.point2": "Left flipper: {gauche}; right flipper: {droite} (or touch the left or right half of the screen). To launch, hold {lanceur} (or touch the screen) then let go: the longer you hold, the harder the ball goes.",
   "aide.point3": "To replace: the multiplier, the ball save and the missions (full text coming).",

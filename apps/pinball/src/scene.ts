@@ -7,7 +7,8 @@
 // changements. Le kit route les touches par `DefinitionJeu.actions` mais ne signale qu'un APPUI : **la scène écoute donc elle-même les touches (relâchement compris, en relisant celles que le joueur a choisies),
 // l'écran tactile et la manette**, et ignore `action()`. Un changement est mis en file et appliqué au début du pas suivant, un par commande et par pas : la même commande ne change jamais deux fois au même pas,
 // ce que la rediffusion exige. Hors production, `?debug` montre les contours de collision, le compteur de pas et le score de chaque contact, et pose `window.__pinball` (les essais e2e y dictent leurs appuis) ;
-// `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`).
+// `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`). **Lot PB4 : `?robot`** — le robot de
+// la simulation joue sa partie (calculée par `niveau.ts`), la scène en rejoue les événements à leur pas ; la mention « Le robot joue » le dit, le toucher et le clavier ne changent rien.
 import { EV_LANCE, EV_MISSION, EV_SAUVEE, MAX_EVENEMENTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
 import { DetecteurBridage } from "@cdj/core/bridage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
@@ -20,6 +21,7 @@ import { reglagesDe, vueDe, type Vue } from "./bornes";
 import { lireEssai, type Qualite } from "./essai";
 import type { RenduTrois } from "./corps";
 import type { Tune } from "./tune";
+import type { RobotDuJour } from "./niveau";
 
 const IDS = ["gauche", "droite", "lanceur"] as const;
 /** Les commandes de la simulation, dans l'ordre des identifiants ci-dessus : 0 gauche, 1 droite, 2 lanceur. */
@@ -58,6 +60,11 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const debug = essais && new URLSearchParams(location.search).has("debug");
   const manuel = essais && new URLSearchParams(location.search).has("manuel");
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
+  // Lot PB4 : `?robot` (hors production, jamais classé) — la partie du robot est rejouée par ses événements ; le toucher et le clavier ne changent rien.
+  const robot = (contenu as Contenu & { robot?: RobotDuJour }).robot;
+  let robotSuivant = 0;
+  /** Le jeu s'arrête à la fin de la partie, ou — quand le robot joue — au pas où sa partie s'arrêtait. */
+  const arretee = (): boolean => partie.finie || (robot !== undefined && partie.tick >= robot.fin);
   let reglages: Reglages = essai.reglages !== null ? reglagesDe(essai.reglages) : REGLAGES;
   let vue: Vue = vueDe(essai.reglages);
   /** Une partie neuve ; `?essai=mission` la met au but moins un (la mission se réussit au prochain pas : le moment fort tout de suite, jamais classé). */
@@ -167,6 +174,14 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   message.className = "pinball-mission-reussie";
   message.setAttribute("role", "status");
   hote.append(pastille, message);
+  // La mention du robot (`?robot`) : un bandeau sous la pastille de la mission.
+  const mentionRobot = robot ? document.createElement("div") : null;
+  if (mentionRobot) {
+    mentionRobot.className = "pinball-robot";
+    mentionRobot.setAttribute("role", "status");
+    mentionRobot.textContent = o.t("robot.joue");
+    hote.append(mentionRobot);
+  }
   let lancee = false;
   let tEclat = -1e9;
   let cleMission = "";
@@ -192,7 +207,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const file: { c: Cmd; enfonce: boolean }[] = [];
   const dernier = [-1, -1, -1];
   const demander = (c: Cmd, enfonce: boolean): void => {
-    if (voulu[c] === enfonce || partie.finie) return;
+    if (robot || voulu[c] === enfonce || partie.finie) return; // quand le robot joue, le toucher et le clavier ne changent rien
     voulu[c] = enfonce;
     file.push({ c, enfonce });
   };
@@ -335,9 +350,19 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const gains: { x: number; y: number; points: number; fin: number }[] = [];
   return {
     avancer(): void {
-      if (partie.finie) return;
+      if (arretee()) {
+        if (tFin === 0) tFin = performance.now();
+        return;
+      }
       if (partie.tick % 6 === 0) lirePad();
-      appliquer();
+      if (robot) {
+        // les événements du robot, à leur pas (un par commande et par pas : ce sont ceux d'une rediffusion)
+        while (robotSuivant < robot.evenements.length && robot.evenements[robotSuivant]!.tick === partie.tick) {
+          const e = robot.evenements[robotSuivant++]!;
+          partie.regler(e.c, e.enfonce);
+          journal.push({ tick: e.tick, c: e.c, enfonce: e.enfonce });
+        }
+      } else appliquer();
       const [vx, vy] = [partie.vx, partie.vy];
       partie.avancer();
       tDernierPas = performance.now();
@@ -359,7 +384,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       }
       majMission();
       if (debug) for (const g of partie.gains) gains.push({ x: g.x, y: g.y, points: g.points, fin: partie.tick + TICKS_PAR_SECONDE });
-      if (partie.finie) tFin = tDernierPas;
+      if (arretee()) tFin = tDernierPas;
     },
     dessiner(): void {
       const maintenant = performance.now();
@@ -376,8 +401,8 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       });
       surveiller(maintenant, performance.now() - avant);
     },
-    finie: () => partie.finie && performance.now() - tFin >= ATTENTE_FIN_MS,
-    finEnCours: () => partie.finie,
+    finie: () => arretee() && tFin > 0 && performance.now() - tFin >= ATTENTE_FIN_MS,
+    finEnCours: () => arretee(),
     action: () => undefined, // les commandes sont tenues : la scène les lit elle-même (voir l'en-tête)
     hud: () => ({ principal: grouper(partie.score, o.langue), secondaire: o.t("hud.detail", { mult: partie.mult, billes: partie.billes }) }),
     resultat: () => ({ score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, journal) }),
@@ -387,6 +412,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       clearTimeout(delaiMessage);
       pastille.remove();
       message.remove();
+      mentionRobot?.remove();
       tune?.detruire();
       rendu.detruire?.();
       observateur.disconnect();

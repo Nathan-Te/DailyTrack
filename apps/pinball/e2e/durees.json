@@ -7,7 +7,8 @@
     "poids.spec.ts": 1,
     "ecrans-kit.spec.ts": 18,
     "rendu.spec.ts": 30,
-    "themes.spec.ts": 6
+    "themes.spec.ts": 6,
+    "essais.spec.ts": 10
   },
   "essentiel": {
     "determinisme.spec.ts": 1,
@@ -15,6 +16,7 @@
     "classement.spec.ts": 9,
     "poids.spec.ts": 1,
     "rendu.spec.ts": 30,
-    "themes.spec.ts": 6
+    "themes.spec.ts": 6,
+    "essais.spec.ts": 10
   }
 }

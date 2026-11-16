@@ -12,7 +12,10 @@
   "scripts": {
     "figer:pinball": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
     "golden:pinball": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs",
-    "mesures:pinball": "esbuild tools/mesures.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures.mjs --log-level=warning && node dist/mesures.mjs"
+    "mesures:pinball": "esbuild tools/mesures.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/mesures.mjs --log-level=warning && node dist/mesures.mjs",
+    "valider:pinball": "esbuild tools/valider.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/valider.mjs --log-level=warning && node dist/valider.mjs",
+    "robot:pinball": "esbuild tools/rapport.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/rapport.mjs --log-level=warning && node dist/rapport.mjs",
+    "preparer:pinball": "esbuild tools/preparer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/preparer.mjs --log-level=warning && node dist/preparer.mjs"
   },
   "exports": {
     ".": "./src/index.ts",

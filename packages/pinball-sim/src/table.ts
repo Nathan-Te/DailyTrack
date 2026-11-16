@@ -74,6 +74,9 @@ export interface Poser {
   emplacement: number;
   x: number;
   y: number;
+  /** Lot PB4 : où sont les éléments de ce module dans les tableaux de la table, pour la validation et le rapport : le rang du premier (dans `bumpers`, `banques`, `spinners`, `trous`, `plateaux`, `tourbillons`, `trousNoirs`, `portails`, `geysers` ou `coulees`, selon le module) et leur nombre. */
+  rang: number;
+  n: number;
 }
 export interface Table {
   murs: Segment[];
@@ -138,7 +141,9 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
 }
 
 function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, emplacement: number, cx: number, cy: number): void {
-  t.poses.push({ type: module, emplacement, x: cx, y: cy });
+  const rangs: Record<string, readonly unknown[]> = { bumpers: t.bumpers, mini: t.bumpers, asteroide: t.bumpers, cibles: t.banques, spinner: t.spinners, trou: t.trous, manege: t.plateaux, tourbillon: t.tourbillons, trouNoir: t.trousNoirs, portailA: t.portails, portailB: t.portails, geyser: t.geysers, coulee: t.coulees };
+  const pose: Poser = { type: module, emplacement, x: cx, y: cy, rang: rangs[module]?.length ?? 0, n: 0 };
+  t.poses.push(pose);
   const mur = (ax: number, ay: number, bx: number, by: number, e: number): void => void t.murs.push(segment(ax, ay, bx, by, e));
   switch (module) {
     case "bumpers":
@@ -215,5 +220,6 @@ function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, empla
     default:
       throw new Error(`module inconnu : ${module}`);
   }
+  pose.n = (rangs[module]?.length ?? 0) - pose.rang;
 }
 

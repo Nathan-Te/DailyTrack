@@ -3,7 +3,7 @@ import { daysFromCivil } from "@cdj/core";
 import { toBase64Url } from "@cdj/core";
 import {
   DROITE, DUREE_MAX_TICKS, ErreurRediffusion, GAUCHE, LANCEUR, MAX_CARACTERES, MAX_EVENEMENTS, PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, chargeDe, dailyPinball, decoderRediffusion, encoderRediffusion, enregistrer, lireCharge,
-  piloter, rejouer, type Evenement,
+  jouerRobot, rejouer, type Evenement,
 } from "../src/index";
 
 const JOUR = daysFromCivil(2026, 11, 9);
@@ -50,7 +50,7 @@ describe("une rediffusion valide", () => {
     expect(encoderRediffusion(r)).toBe(texte);
   });
   it("écrit les pas en deltas : deux octets pour un appui toutes les 0,3 s", () => {
-    const evs = piloter(c, 30000).evenements;
+    const evs = jouerRobot(c, 1, { maxTicks: 30000 }).evenements;
     const charge = chargeDe(evs);
     expect(charge.length).toBeLessThan(evs.length * 3);
     expect(lireCharge(charge)).toEqual(evs);

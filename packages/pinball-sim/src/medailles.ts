@@ -3,7 +3,7 @@ import { seuilsDuJour } from "./seuils";
 import type { Contenu } from "./generateur";
 import { VARIANTE, type Medaille, type Seuils } from "./variante";
 
-// Les médailles : quatre seuils par jour, **figés avec la table** (`seuils.ts`, `jours.ts`). Au lot PB1 ils sont provisoires ; le robot du lot PB4 les remplace.
+// Les médailles : quatre seuils par jour, **figés avec la table** (`seuils.ts`, `jours.ts`). Ils viennent du robot (lot PB4).
 export type { Medaille, Seuils };
 
 export const seuilsDe = (contenu: Contenu): Seuils => seuilsDuJour(contenu);

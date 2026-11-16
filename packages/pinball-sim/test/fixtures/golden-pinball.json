@@ -1,7 +1,8 @@
 {
-  "_": "Golden de Pinball (lot PB1). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
+  "_": "Golden de Pinball (lots PB1 à PB4). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
   "sim": 3,
   "generateur": 3,
+  "bot": 2,
   "jours": [
     {
       "date": "2026-11-02",
@@ -16,10 +17,10 @@
       ],
       "empreinte": "0d1b0e3a",
       "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
+        "bronze": 10500,
+        "silver": 24500,
+        "gold": 42100,
+        "author": 70100
       }
     },
     {
@@ -35,10 +36,10 @@
       ],
       "empreinte": "3a470a14",
       "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
+        "bronze": 20600,
+        "silver": 48100,
+        "gold": 82400,
+        "author": 137400
       }
     },
     {
@@ -54,10 +55,10 @@
       ],
       "empreinte": "d84ba56b",
       "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
+        "bronze": 16100,
+        "silver": 37700,
+        "gold": 64600,
+        "author": 107600
       }
     },
     {
@@ -71,13 +72,7 @@
         "mini",
         "manege"
       ],
-      "empreinte": "3fd58d1c",
-      "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
-      }
+      "empreinte": "3fd58d1c"
     },
     {
       "date": "2026-11-14",
@@ -90,13 +85,7 @@
         "trou",
         "tourbillon"
       ],
-      "empreinte": "7dd01999",
-      "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
-      }
+      "empreinte": "7dd01999"
     },
     {
       "date": "2026-11-17",
@@ -109,13 +98,7 @@
         "trou",
         "trouNoir"
       ],
-      "empreinte": "96def6f9",
-      "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
-      }
+      "empreinte": "96def6f9"
     },
     {
       "date": "2026-11-20",
@@ -130,10 +113,10 @@
       ],
       "empreinte": "cf429f9d",
       "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
+        "bronze": 10600,
+        "silver": 24700,
+        "gold": 42400,
+        "author": 70600
       }
     },
     {
@@ -147,13 +130,7 @@
         "trou",
         "trouNoir"
       ],
-      "empreinte": "c4c511b9",
-      "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
-      }
+      "empreinte": "c4c511b9"
     },
     {
       "date": "2026-11-26",
@@ -166,13 +143,7 @@
         "trou",
         "coulee"
       ],
-      "empreinte": "c18fb2da",
-      "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
-      }
+      "empreinte": "c18fb2da"
     },
     {
       "date": "2026-11-29",
@@ -185,13 +156,7 @@
         "trou",
         "coulee"
       ],
-      "empreinte": "37276826",
-      "seuils": {
-        "bronze": 10000,
-        "silver": 30000,
-        "gold": 80000,
-        "author": 200000
-      }
+      "empreinte": "37276826"
     }
   ],
   "rediffusions": [
@@ -220,51 +185,63 @@
       }
     },
     {
-      "nom": "pilote-2-minutes",
+      "nom": "robot-30-secondes",
       "date": "2026-11-20",
       "g": 3,
-      "code": "AQMDAKmiAQT7E6g0gwWSfsEE4EnnBPJP2wSWHw7xBEWaGrkFnCLZBPghvwWeIcEEpjPhBLpDwQSEWLMFzBM46wQ51GmnBcA3pwWWI80F1AfDBJwd4QTqTvsTqDSDBZJ-wQTgSecE8k_bBJYfDvEERZoauQWcItkE-CG_BZ4hwQSmM-EEukPBBIRYswXMEzjrBDnUaacFwDenBZYjzQXUB8MEnB3hBOpO-xOoNIMFkn7BBOBJ5wTyT9sElh8O8QRFmhq5BZwi2QT4Ib8FniHBBKYz4QS6Q8EEhFizBcwTOOsEOdRppwX2IfsTqDSDBQ",
+      "code": "AQMDAKmiAZIFjRS6NN8B0iDnAZIYzQSgLN8BsEevFfAx6wH8PQLlAQOwItsB4EOjC6oH_wHwGf0BklXnAdItzxTmM-UB0AyLAg",
       "resultat": {
-        "score": 40760,
+        "score": 20480,
         "ticks": 540000,
         "billes": 2,
         "multMax": 2
       }
     },
     {
-      "nom": "pilote-8-minutes",
+      "nom": "robot-volcan",
+      "date": "2026-11-20",
+      "g": 3,
+      "code": "AQMDAKmiAZIFjRS6NN8B0iDnAZIYzQSgLN8BsEevFfAx6wH8PQLlAQOwItsB4EOjC6oH_wHwGf0BklXnAdItzxTmM-UB0AyLAtigAacC-CSVAsQUoQvsCvMB2uIBhQLSF-EEliPhAaYXjwKWE98B-iGjAsQX3wHgIu0B7C2zApYU7QH-MbkDmBIC6wEDoCapBMgnmwKSKOEBnjDZAbAu4QHSK6ELoAXfAeQn6xK2Nq0CvBDzAZQagQb6LOUBwoQBoQuwBq0CwoIB7QG2HgLlAQPQP6MLhgmJAprdAaELnga5AuQdowvmDs8UijSJAuoUnQKyF8cEli6VAqIR2wG6mwHnAbJ12wH0IakCyir9Ag",
+      "resultat": {
+        "score": 72360,
+        "ticks": 540000,
+        "billes": 1,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-espace",
       "date": "2026-11-17",
       "g": 3,
-      "code": "AQMDAKaiAQT7E6g0gwWkJLMFgAzBBOQsqQWGKoMFgDTeBKUBkQeCGsEEjDytBcAatQWQIv0E3jXNBeABogGvBR-eJfMEtEHDBNg12wSKI_kEzBThBOAE2wSAUd8EpiOtBbRAAt8EV9hPgwWiHe0EnAvBBeAcwwTKNsME1h7PBPQX_QTkIsEEpjUC4QRhxggM2wSjBPwXzwTUGKcF6iH7E6g0gwWkJLMFgAzBBOQsqQWGKoMFgDTeBKUBkQeCGsEEjDytBcAatQWQIv0E3jXNBeABogGvBR-eJfMEtEHDBNg12wSKI_kEzBThBOAE2wSAUd8EpiOtBbRAAt8EV9hPgwXIhAHBBNo0rwXoIIMF4D_BBKgoAvEEV9pJqQXkIv0EnCWDBcYuoQXYGoUF2hKnBdgHjwXuIvsTqDSDBaQkswWADMEE5CypBYYqgwWANN4EpQGRB4IawQSMPK0FwBq1BZAi_QTeNc0F4AGiAa8FH54l8wS0QcME2DXbBIoj-QTMFOEE4ATbBIBR3wSmI60FtEAC3wRX2E-DBfRIwwTOHoMFlEezBfIj-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMFpCSzBYAMwQTkLKkFhiqDBYA03gSlAZEHghrBBIw8rQXgQsEExjWRBfJH-xOoNIMF",
+      "code": "AQMDAKaiAZIFjRSGM7kC0CnxAdQ8oQumC_cBypMBowucCgLrAQOKHJsCrBqhC64K3wH2OqELihL7FoQxpwLKDr8Cti3HBKAR8wPMJaEL-AThAeAVoQLKDvUCmjajC-IJhQLMI50CzCPRA9IjiwKcHIkCjCftA5A18wHSLOEB4iDZAfAlgwL8IqcCjjntAb4O3wfuFdsB3hnJCYYcowumBrUCpCGhAugO4wL-OqMLxgjhAYoWjwK8Ko8CkBDZAeI12QHINM0C2kLfAag4owuKBdsB3iuhC5YK9wGskwGjC6YIAusBA85CoQvqCv0B8JIBowuCCALxAQPcGs8DsjbhAdgN5wa-IZECxB3xAYol5QHQP9sBtBfxAtAjgwKCKqMLzgr5Aeoc5QHYJd8B5kPbAYQatQLCTKMLqAT9AbIOAusBA9Q8oQvaDP0BsJQB-QQ",
       "resultat": {
-        "score": 76460,
+        "score": 88200,
+        "ticks": 540000,
+        "billes": 1,
+        "multMax": 3
+      }
+    },
+    {
+      "nom": "robot-foire",
+      "date": "2026-11-11",
+      "g": 3,
+      "code": "AQMDAKCiAZIFjRTyM-sB0C_lAZwW6wG-UPcBlCPFArYc5wHCSOkC3BetAvwo5QHID-UBqlijAs4f4QH0GOEBolCjC8wEuQK4Y6ML2gSRAvgt5QGkOrsCrBfZAcod9wHyHoMCklzjFtguswLAKNkB8hXlAcYNvQPUH6kCyGz3AY4jvwLEHvMB1hffAYZajwLkDuEBnmGbA4AVAusBA8Q2owvwBZ0CrhmhC5wN_QH8EOcDmCGnApZMjwKiEKEL3AWPAqQt2QHsHt8B3kOtBco5owuIBtsBgBihC5QP_wHOGALlAQP2NaMIjBXZAeI5owuQEq0ThjbfAeZj3wHkFgLlAQPGQ5sCyCS_ApIT_wGIHqML2AShC7QHoQKCYvEB5h6DCIQ03wHISaMLmAeFAqAavQPuIfMBlGU",
+      "resultat": {
+        "score": 78240,
         "ticks": 540000,
         "billes": 2,
         "multMax": 2
       }
     },
     {
-      "nom": "pilote-foire",
-      "date": "2026-11-11",
-      "g": 3,
-      "code": "AQMDAKCiAQT7E6g0gwWqJwK5BQOKF8MEnDT9BKImyQSmETjrBAPUEIsFyDy_BbYj-xOoNIMFujdK6wRLsC2VBbIp4wX2K8EEtivtBMwyrwX4MwKlBhBjmxOoNIMFqicCuQUDihfDBJw0_QSiJskEphE46wQD1BCLBcg8vwW2I_sTqDSDBbo3SusES7AtlQWyKeMF9ivBBLYr7QTMMq8F-DMCpQYQY5sTqDSDBaonArkFA4oXwwScNP0EoibJBKYROOsEA9QQiwXIPL8FtiP7E6g0gwW6N0rrBEuwLZUFsinjBfYrwQS2K-0EzDKvBfgzAqUG",
-      "resultat": {
-        "score": 37660,
-        "ticks": 53919,
-        "billes": 0,
-        "multMax": 2
-      }
-    },
-    {
-      "nom": "pilote-ocean",
+      "nom": "robot-ocean",
       "date": "2026-11-08",
       "g": 3,
-      "code": "AQMDAJ2iAQT7E6g0gwWmEqkFvCqDBYwW1QTMF-cEziP7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBfwk-xOoNIMFjBbbBIIUpwX8JPsTqDSDBYwW2wSCFKcF_CT7E6g0gwWMFtsEghSnBQ",
+      "code": "AQMDAJ2iAZIFjRSGM7kC1i3nAZIvixWkM_EBsh2JApI98wGsogHnAawa5QGqJK0CykrlAYJY6xX0L7kChB8C5QED6i2LFYoxkwOINucB9i2rFO5F5wHyGMsI4jDbAdZKoQuOCwLlAQOwHLUC5CCLAuYi5wGYY9kBzDrlAbIXAuUBA9R1oQuaBdkB_nWhC94E2QGQmAHhAcYqwRXwQe0BphvnAbg-oQvaCuEBgBz_Acw42wGCJ9sBuBfVA8g56QLwGYkCzmODAvgnlQKyIfkB6BjzAaRSowuOBq8C5lehC4wG2QGaQK0TijT_BowQowvABZEC1iHhCpQs3wHINKMLkgr5Acge6wE",
       "resultat": {
-        "score": 2500,
+        "score": 59430,
         "ticks": 540000,
-        "billes": 3,
-        "multMax": 1
+        "billes": 2,
+        "multMax": 3
       }
     }
   ]

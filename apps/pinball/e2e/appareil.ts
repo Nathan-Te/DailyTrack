@@ -1,10 +1,12 @@
-import { dailyPinball, jouer, piloter, type Evenement, type Resultat } from "@cdj/pinball-sim";
+import { dailyPinball, figerJour, jouer, jouerRobot, type Evenement, type Resultat, type Seuils } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
 // Un appareil neuf : l'horloge du serveur d'essai (le 06/11/2026 à midi UTC, comme `PINBALL_AUJOURDHUI`), l'aide « Comment jouer » déjà vue (elle a son propre test), les droits du presse-papiers.
 export const API = "http://127.0.0.1:8803";
 export const JOUR = "2026-11-06";
+/** Lot PB4 : les seuils du jour d'essai. Le robot en calcule de vrais (quelques secondes, et l'écran de fin les attendrait) : le jour d'essai est servi **comme un jour figé** (`appareil` répond au fichier `jours/AAAA-MM-JJ.json`), avec ces seuils. */
+export const SEUILS_ESSAI: Seuils = { bronze: 1000, silver: 5000, gold: 15000, author: 40000 };
 
 export interface Porte {
   manuel(oui?: boolean): void;
@@ -53,6 +55,8 @@ export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&m
     },
     { decalage, aideVue },
   );
+  const fichier = JSON.stringify(figerJour(parseDay(JOUR)!, SEUILS_ESSAI));
+  await context.route("**/jours/*.json", (route) => (route.request().url().includes(`/jours/${JOUR}.json`) ? route.fulfill({ contentType: "application/json", body: fichier }) : route.fulfill({ status: 404, body: "" })));
   const page = await context.newPage();
   await page.goto(adresse);
   await page.waitForSelector("#jeu-jouer", { state: "attached" });
@@ -65,8 +69,8 @@ export async function lancer(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu);
 }
 
-/** La partie scriptée des essais : le pilote d'essai de la simulation joue le jour pendant `pas` pas (ses changements de commandes sont la rediffusion). */
-export const evenementsDeLEssai = (pas = 9000): Evenement[] => piloter(dailyPinball(parseDay(JOUR)!), pas).evenements;
+/** La partie scriptée des essais : le robot de la simulation joue le jour pendant `pas` pas (ses changements de commandes sont la rediffusion). */
+export const evenementsDeLEssai = (pas = 9000): Evenement[] => jouerRobot(dailyPinball(parseDay(JOUR)!), 1, { maxTicks: pas }).evenements;
 
 /**
  * Joue la partie du jour à la main, pas à pas : chaque changement de commande est dicté à son pas (`__pinball.regler`), la rediffusion du jeu est donc cette liste ; puis la partie se joue seule jusqu'à sa fin
