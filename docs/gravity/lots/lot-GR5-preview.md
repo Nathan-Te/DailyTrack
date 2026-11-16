@@ -34,7 +34,7 @@ Branche `ccr-36287547-q40dui` (la branche que la session impose ne contient pas 
 - [x] **Golden inchangé** : `npm run golden:gravity` ne change aucun octet ; `golden.test.ts` ; `e2e/determinisme.spec.ts`.
 - [x] **Serveur** : rejeu, classement, copies, aperçu, effacement : `apps/api/test/gravity.test.ts` (SQLite et libSQL), `recette:seed` par `gravity-essais.ts`.
 - [x] **Son mêlé à celui du téléphone** (règle S2) : `packages/core/test/sonMelange.test.ts`.
-- [x] **Zones** : `zones-jeu.mjs` avec `jeu:gravity` : « les 57 fichiers restent dans ses zones ».
+- [x] **Zones** : `zones-jeu.mjs` avec `jeu:gravity` : « les 58 fichiers restent dans ses zones ».
 - [x] **« Pour les joueurs »** : `rien` (le jeu est `off`).
 
 ## Ce que Nathan fait lui-même
