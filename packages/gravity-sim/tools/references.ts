@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { dailyGravity, empreinteContenu, enregistrer, jouer, jouerRobot, seuilsDuRobot, terrainDuJour, GRAVITY_BOT_VERSION, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION } from "../src/index";
 
@@ -32,5 +32,15 @@ const sortie = {
   }),
   rediffusions: reds,
 };
-writeFileSync(new URL("../test/fixtures/golden-gravity.json", import.meta.url), JSON.stringify(sortie, null, 2) + "\n");
+const cible = new URL("../test/fixtures/golden-gravity.json", import.meta.url);
+// Lot GR5 : un golden d'une autre version n'est jamais perdu — il est copié sous `golden-gravity-g<N>-sim<M>.json` (jamais écrasé) avant d'écrire le nouveau ; `golden.test.ts` le rejoue tant que la version est dans les registres.
+if (existsSync(cible)) {
+  const avant = JSON.parse(readFileSync(cible, "utf8")) as { sim: number; generateur: number };
+  if (avant.sim !== GRAVITY_SIM_VERSION || avant.generateur !== GRAVITY_GENERATOR_VERSION) {
+    const archive = new URL(`../test/fixtures/golden-gravity-g${avant.generateur}-sim${avant.sim}.json`, import.meta.url);
+    if (!existsSync(archive)) copyFileSync(cible, archive);
+    console.log(`golden de g${avant.generateur} / sim ${avant.sim} gardé : ${archive.pathname.split("/").pop()}`);
+  }
+}
+writeFileSync(cible, JSON.stringify(sortie, null, 2) + "\n");
 console.log("golden écrit :", reds.map((r) => `${r.nom}=${r.resultat.score}/${r.resultat.ticks}`).join(" "));

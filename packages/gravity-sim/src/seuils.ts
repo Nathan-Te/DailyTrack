@@ -1,4 +1,4 @@
-import { LARGEUR_MORCEAU, MORCEAUX_PAR_THEME, NB_THEMES } from "./constantes";
+import { LARGEUR_MORCEAU, MORCEAUX_PAR_THEME, NB_THEMES, POURCENT_DU_ROBOT } from "./constantes";
 import { terrainDuJour, type Contenu } from "./generateur";
 import { cleDesRegles, type Regles } from "./regles";
 import { jouerRobotEnTranches } from "./robot";
@@ -12,8 +12,7 @@ import type { Seuils } from "./types";
 // code alors en production) écrit les seuils dans le fichier de chaque jour protégé : le serveur et le jeu les y lisent. (2) Un jour sans fichier est calculé **une fois** : par le serveur (le module des jeux garde le
 // niveau d'un jour en mémoire, `niveauDuJour`) et, côté jeu, **à la fin de la première partie** seulement (`apps/gravity/src/niveau.ts`) — pas en production une fois la fiche munie de `preparer` (voir le README du lot GR2).
 
-/** Le pourcentage du score du robot que vaut un seuil (seed : « 60 % »). **Il se règle par Nathan** (lot GR4). */
-export const POURCENT_DU_ROBOT = 60;
+// `POURCENT_DU_ROBOT` (60 %, **réglé par Nathan**, lot GR4) est dans `constantes.ts` (lot GR5 : le premier chargement du jeu le lit sans le robot).
 /**
  * Les points d'arrêt, en nombre de thèmes parcourus : bronze au bout du 1er thème, argent du 2e, or du 3e, Diamant de la boucle des cinq. **Nathan les règle aussi** (lot GR4) ; la distance de chacun en mètres est
  * `thèmes × MORCEAUX_PAR_THEME × LARGEUR_MORCEAU` (304, 608, 912 et 1 520).

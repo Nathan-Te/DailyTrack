@@ -1,6 +1,6 @@
 import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroGravity, themeDuJour, type Contenu } from "@cdj/gravity-sim";
 import type { ContexteAujourdhui, DefinitionJeu } from "@cdj/kit/jeu/types";
-import { lireEssais, lireReglagesEssai } from "./essai";
+import { aUnReglageDEssai, lireEssais } from "./essai";
 
 // La définition de « Gravity » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le niveau (générateur, morceaux, seuils) et la scène (Three.js, `scene.ts`) sont chargés à la demande** : le premier
 // chargement est l'accueil seul (ligne de budget `gravity.jsCss`). Lot GR5 : `contenuDuJour` ne rend plus que le niveau (le panneau « Aujourd'hui » et les seuils sont prêts avant JOUER) ; **la scène (≈ 148 Ko gzip) est chargée par
@@ -43,7 +43,7 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   classable: (adresse) => {
     const production = import.meta.env.VITE_PRODUCTION === "1";
     const e = lireEssais(adresse, production);
-    return !new URLSearchParams(adresse).has("theme") && !e.robot && e.morceau === null && lireReglagesEssai(adresse, production) === null; // lot GR5 : un réglage d'essai non plus
+    return !new URLSearchParams(adresse).has("theme") && !e.robot && e.morceau === null && !aUnReglageDEssai(adresse, production); // lot GR5 : un réglage d'essai non plus
   },
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),

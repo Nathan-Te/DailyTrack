@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { MORCEAUX_PAR_BOUCLE } from "@cdj/gravity-sim";
 import { DEFINITION } from "../src/definition";
-import { COLONNES_AVANT_MORCEAU, DISTANCE_DU_ROBOT, PARAMETRES_D_ESSAI, distanceAvantMorceau, libellesDesReglages, lireEssais, lireReglagesEssai } from "../src/essai";
+import { COLONNES_AVANT_MORCEAU, DISTANCE_DU_ROBOT, NOMS_DES_REGLAGES, aUnReglageDEssai, distanceAvantMorceau, lireEssais } from "../src/essai";
+import { PARAMETRES_D_ESSAI, libellesDesReglages, lireReglagesEssai } from "../src/reglagesEssai";
 
 // Les essais de recette du lot GR2 : `?robot` (on regarde le robot jouer le niveau du jour) et `?morceau=<n>` (on commence juste avant le morceau n). Hors production seulement, jamais classés.
 describe("la lecture de ?robot et ?morceau=", () => {
@@ -39,6 +40,7 @@ describe("la lecture de ?robot et ?morceau=", () => {
 describe("lot GR5 : la lecture des réglages d'essai", () => {
   it("lit les six paramètres et les met en unités entières de la simulation", () => {
     expect(PARAMETRES_D_ESSAI.map((p) => p.nom)).toEqual(["vitesse", "plafond", "pente", "gravite", "longueur", "medailles"]);
+    expect([...NOMS_DES_REGLAGES]).toEqual(PARAMETRES_D_ESSAI.map((p) => p.nom)); // le test du premier chargement (`aUnReglageDEssai`) et la lecture parlent des mêmes paramètres
     expect(lireReglagesEssai("?vitesse=8&plafond=14&pente=180&gravite=40&longueur=12&medailles=55", false)).toEqual({ vitesseBase: 32768, vitesseMax: 57344, distanceParCran: 180, gravite: 1365, morceauxParTheme: 12, pourcent: 55 });
     expect(lireReglagesEssai("?gravite=46", false)).toEqual({ gravite: 1570 }); // 46 cases/s² : la valeur de la simulation
     expect(lireReglagesEssai("?vitesse=7.5", false)).toEqual({ vitesseBase: 30720 });
@@ -59,8 +61,11 @@ describe("lot GR5 : la lecture des réglages d'essai", () => {
     ]);
     expect(libellesDesReglages(lireReglagesEssai("?plafond=14&pente=180&gravite=40&longueur=12", false)!).map((l) => `${l.cle}=${l.valeur}`)).toEqual(["plafond=14", "pente=180", "gravite=40", "longueur=12"]);
   });
-  it("une partie avec un réglage d'essai n'est jamais classable ; un réglage invalide est ignoré", () => {
-    for (const a of ["?vitesse=8", "?gravite=40&debug", "?longueur=12", "?medailles=50"]) expect(DEFINITION.classable?.(a), a).toBe(false);
-    expect(DEFINITION.classable?.("?vitesse=1")).toBe(true);
+  it("une partie avec un réglage d'essai n'est jamais classable (hors production : un paramètre de réglage, même illisible, suffit : la lecture des valeurs n'est pas du premier chargement)", () => {
+    for (const a of ["?vitesse=8", "?gravite=40&debug", "?longueur=12", "?medailles=50", "?vitesse=1"]) expect(DEFINITION.classable?.(a), a).toBe(false);
+    expect(DEFINITION.classable?.("?debug&manuel")).toBe(true);
+    expect(aUnReglageDEssai("?vitesse=8", true)).toBe(false); // en production, rien
+    expect(aUnReglageDEssai("?vitesse=8", false)).toBe(true);
+    expect(aUnReglageDEssai("?jour=2026-11-09&robot", false)).toBe(false);
   });
 });

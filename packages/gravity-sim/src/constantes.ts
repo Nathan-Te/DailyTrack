@@ -99,3 +99,9 @@ export const MULT_MAX = 5;
 // Les appuis : la rediffusion n'est que la liste des pas où le joueur a touché l'écran.
 /** Au plus 4 000 appuis par partie (un joueur ne touche pas plus de 6 fois par seconde pendant 10 minutes) : au-delà, la rediffusion est refusée. */
 export const MAX_APPUIS = 4000;
+
+/**
+ * Le pourcentage du score du robot que vaut un seuil de médaille (seed : « 60 % »), arrondi à 10 près (`seuils.ts`). **Il se règle par Nathan** (lot GR4) et monte `GRAVITY_BOT_VERSION`. Lot GR5 : ici et non dans
+ * `seuils.ts`, pour que la lecture des réglages d'essai (`apps/gravity/src/essai.ts`, dans le premier chargement) ne tire pas le robot avec elle.
+ */
+export const POURCENT_DU_ROBOT = 60;

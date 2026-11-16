@@ -1,7 +1,8 @@
 import { GRAVITY_GENERATOR_VERSION, THEMES_GRAVITY, dailyGravity, jouerRobot, lireJourFige, ordreCommencantPar, seuilsEnTranches, terrainDuJour, type Contenu, type Seuils, type ThemeGravity } from "@cdj/gravity-sim";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
-import { DISTANCE_DU_ROBOT, distanceAvantMorceau, lireEssais, lireReglagesEssai, type EssaiRecette } from "./essai";
+import { DISTANCE_DU_ROBOT, distanceAvantMorceau, lireEssais, type EssaiRecette } from "./essai";
+import { lireReglagesEssai } from "./reglagesEssai";
 
 // Le niveau du jour, chargé À LA DEMANDE (`import()` de `definition.ts`) : le générateur, les morceaux, le robot et le calcul des seuils ne sont pas dans le premier chargement (l'accueil). Le contenu rendu porte ses
 // seuils (`seuilsFiges` : ceux du fichier de jour figé s'il y en a un ; sinon ceux du robot, calculés **en arrière-plan** — voir `seuilsEnArrierePlan` — et lus par `DEFINITION.seuils` à l'écran de fin).
