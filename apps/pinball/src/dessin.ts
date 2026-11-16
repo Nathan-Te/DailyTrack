@@ -1,10 +1,13 @@
-import { AXE, DROITE, GAUCHE, HAUTEUR, JET_GEYSER, LARGEUR, MISSION_DU_THEME, MODULES_DE_MISSION, MULT_MAX, RAYON, TICKS_PAR_SECONDE, UNITE, pointeDuBatteur, type Mission, type Partie, type Table, type ThemePinball } from "@cdj/pinball-sim";
+import { AXE, DROITE, GAUCHE, HAUTEUR, JET_GEYSER, LARGEUR, MISSION_DU_THEME, MODULES_DE_MISSION, MULT_MAX, NORME, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, pointeDuBatteur, type Mission, type Partie, type Porte, type Poser, type Rail, type Table, type ThemePinball } from "@cdj/pinball-sim";
 import { modulesAPlat } from "./modeles/plat";
+import { echantillons, hauteurRail, type PointRail } from "./rails";
 
 // Le rendu À PLAT de « Pinball » (lot PB1) : le dessin « Canvas+ » de la maquette (`docs/pinball/maquettes/pinball-maquette-jouable.html`) — rails avec leur ombre, modules communs (lot PBV4 : une icône par thème, `modeles/`), lance-pierres à
 // caoutchouc, batteurs, flèches de tir devant chaque module, nom de chaque module, lampes des couloirs et des multiplicateurs. **Écrit pour être gardé comme rendu de secours** (qualité minimale, petits écrans) quand le
 // rendu three.js du lot PB2 arrivera : il ne connaît que la partie (`Partie`, en lecture) et un canvas ; aucune entrée, aucun DOM autre que le canvas. Les couleurs sont celles de la maquette (palettes des quatre thèmes) :
 // elles passeront aux jetons avec le rendu définitif.
+// **Lot PBG1 : les rails** — les rampes et l'orbite à plat (un ruban à l'ombre portée, par thème, cuit une fois dans une image à la taille de l'écran : `dessinerRails`), leurs flèches de tir et leurs bouches en entonnoir (`flechesDesRails`, peintes
+// dans le sol, donc aussi en three.js), la bille posée sur un rail (agrandie, son ombre décalée sur le plateau), le mini-batteur, et les noms des rails dans `placerEtiquettes` (les rails et leurs bouches sont des obstacles pour les plaques).
 // **Lot PB2 : ce fichier est aussi la source du SOL du rendu three.js** (`dessinerSol` : bandes, lampes, étiquettes, flèches, dans les palettes des quatre thèmes, posé en texture par `corps.ts`) et des pastilles de nom
 // (`pastille`) : une seule description du sol pour les deux rendus. Il ne charge ni three.js ni rien d'autre que la simulation (types et constantes).
 export const ENCRE = "#2A1E16";
@@ -82,7 +85,8 @@ export const ARC_CENTRE = { x: 196.25, y: 205, r: 176.25 } as const;
 /** Les petites lampes du décor, allumées : sur les deux flancs de l'arc (au ras du rail, hors des couloirs du haut) et sur le dessus des lance-pierres. `pierre` : posée sur un lance-pierre (en three.js, à sa hauteur). */
 export function lampesDecor(): { x: number; y: number; pierre: boolean }[] {
   const l: { x: number; y: number; pierre: boolean }[] = [];
-  const r = ARC_CENTRE.r - 12;
+  // lot PBG1 : à 8 px du rail de l'arc (12 avant) : l'orbite, qui le longe à 150–152 px du centre, ne les recouvre pas
+  const r = ARC_CENTRE.r - 8;
   for (let k = 0; k < 5; k++) {
     for (const a of [Math.PI + 0.16 + k * 0.2, 2 * Math.PI - 0.16 - k * 0.2]) l.push({ x: ARC_CENTRE.x + Math.cos(a) * r, y: ARC_CENTRE.y + Math.sin(a) * r, pierre: false });
   }
@@ -845,6 +849,18 @@ export function ombresDeContact(c: CanvasRenderingContext2D, t: Table, theme: Th
     for (const b of t.bumpers) halo(px(b.x), px(b.y), px(b.r) * 0.9, px(b.r) * 1.7 + 4, 0.42 * force);
     for (const p of t.poteaux) halo(px(p.x), px(p.y), px(p.r), px(p.r) + 9, 0.45 * force);
     for (const x of [112, 2 * AXE - 112]) halo(x, 640, 8, 26, 0.35 * force);
+    // lot PBG1 : le mini-batteur, et l'ombre de contact de chaque rail (discrète : les rails en volume ou à plat ont la leur)
+    if (t.mini) halo(px(t.mini.cote === 0 ? t.mini.x : 2 * AXE * UNITE - t.mini.x), px(t.mini.y), 6, 22, 0.35 * force);
+    for (const rail of t.rails) {
+      const pts = echantillons(rail, 8);
+      for (const [ep, a] of [[largeurDuRail(rail) + 14, 0.05], [largeurDuRail(rail) + 6, 0.07]] as const) {
+        c.strokeStyle = `rgba(${o},${Math.min(1, a * force)})`;
+        c.lineWidth = ep;
+        c.beginPath();
+        pts.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+        c.stroke();
+      }
+    }
   }
   if (vignettage > 0) {
     const v = (a: number): string => `rgba(${o},${Math.min(1, a * vignettage)})`;
@@ -1128,6 +1144,246 @@ export function pastille(c: CanvasRenderingContext2D, police: string, x: number,
   c.restore();
 }
 
+// --- Lot PBG1 : les rails (les rampes et l'orbite) du rendu à plat. **Au-dessus du sol** : un ruban à l'ombre portée sur le sol (d'autant plus décalée que le rail est haut), des rebords, une bouche en entonnoir et sa flèche de
+// tir ; habillé par thème avec les mêmes idées que le rendu three.js (foire : rails rouge et blanc à traverses ; océan : gouttière turquoise ; espace : tube néon cyan ; volcan : rail de fer sur traverses et lueur orange).
+// **Tout est cuit une fois** (`dessinerRails`, dans une image à la taille de l'écran) : le rendu à plat n'y dessine rien par image que la bille posée sur un rail.
+/** La largeur du ruban d'un rail (px de la table) : celle d'une rampe ; l'orbite, qui longe l'arc et ses lampes, est un peu plus étroite. */
+export const largeurDuRail = (rail: Pick<Rail, "genre">): number => (rail.genre === "orbite" ? 20 : 22);
+/** À quelle distance avant sa bouche la flèche de tir d'un rail se pose (px) : devant l'entonnoir. */
+const RECUL_FLECHE_RAIL = 26;
+export interface FlecheDeRail {
+  x: number;
+  y: number;
+  /** L'angle de la flèche : celui de l'entrée dans la bouche. */
+  a: number;
+  rail: number;
+  bout: 0 | 1;
+}
+/** Les flèches de tir des rails, une par bouche : devant la bouche, tournée dans le sens de l'entrée (l'orbite en a deux). Communes aux deux rendus (le sol les peint, le rendu à plat les fait clignoter). */
+export function flechesDesRails(table: Table): FlecheDeRail[] {
+  return table.portes.map((g) => {
+    const ux = g.ux / NORME;
+    const uy = g.uy / NORME;
+    return { x: g.x / UNITE - ux * RECUL_FLECHE_RAIL, y: g.y / UNITE - uy * RECUL_FLECHE_RAIL, a: Math.atan2(uy, ux), rail: g.rail, bout: g.bout };
+  });
+}
+/** Ce que les plaques des modules ne doivent pas recouvrir : le tracé épaissi de chaque rail (un disque tous les 10 px), chaque bouche avec son entonnoir et chaque flèche de bouche. */
+export function disquesDesRails(table: Table): { x: number; y: number; r: number }[] {
+  const d: { x: number; y: number; r: number }[] = [];
+  for (const rail of table.rails) for (const p of echantillons(rail, 10)) d.push({ x: p.x, y: p.y, r: largeurDuRail(rail) / 2 + 3.5 });
+  for (const g of table.portes) d.push({ x: g.x / UNITE - (g.ux / NORME) * 8, y: g.y / UNITE - (g.uy / NORME) * 8, r: g.l / UNITE + 10 });
+  for (const f of flechesDesRails(table)) d.push({ x: f.x, y: f.y, r: 10 });
+  return d;
+}
+
+/** Lot PBG1 : la place que balaie le mini-batteur (du repos à la levée) : un disque tous les 8 px de sa longueur, à cinq angles. Les plaques ne la recouvrent pas. */
+export function disquesDuMini(table: Table): { x: number; y: number; r: number }[] {
+  const m = table.mini;
+  if (!m) return [];
+  const x0 = px(m.cote === GAUCHE ? m.x : 2 * AXE * UNITE - m.x);
+  const y0 = px(m.y);
+  const lg = px(m.longueur);
+  const sens = m.cote === GAUCHE ? 1 : -1;
+  const d: { x: number; y: number; r: number }[] = [];
+  for (let k = 0; k <= 4; k++) {
+    const a = (REGLAGES.batteurHaut + ((REGLAGES.batteurRepos - REGLAGES.batteurHaut) * k) / 4) / 1000;
+    for (let u = 0; u <= lg; u += 8) d.push({ x: x0 + sens * Math.cos(a) * u, y: y0 + Math.sin(a) * u, r: 11 });
+  }
+  return d;
+}
+
+interface XY {
+  x: number;
+  y: number;
+}
+/** Le tracé décalé de `d` px sur le côté (la normale du tracé). */
+const decaler = (pts: readonly PointRail[], d: number): XY[] => pts.map((p) => ({ x: p.x - p.dy * d, y: p.y + p.dx * d }));
+function ligne(c: CanvasRenderingContext2D, pts: readonly XY[]): void {
+  c.beginPath();
+  pts.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+}
+/** Des traverses : un petit trait en travers du ruban tous les `pas` échantillons. */
+function traverses(c: CanvasRenderingContext2D, pts: readonly PointRail[], demi: number, pas: number, couleur: string, epaisseur: number, alpha = 1): void {
+  c.beginPath();
+  for (let i = 1; i < pts.length - 1; i += pas) {
+    const p = pts[i]!;
+    c.moveTo(p.x - p.dy * demi, p.y + p.dx * demi);
+    c.lineTo(p.x + p.dy * demi, p.y - p.dx * demi);
+  }
+  c.globalAlpha = alpha;
+  c.strokeStyle = couleur;
+  c.lineWidth = epaisseur;
+  c.stroke();
+  c.globalAlpha = 1;
+}
+/** Des chevrons dans le sens de la marche (une rampe se prend dans un seul sens) : un tous les 45 px. */
+function chevrons(c: CanvasRenderingContext2D, pts: readonly PointRail[], couleur: string, alpha: number): void {
+  c.beginPath();
+  for (let i = 6; i < pts.length - 6; i += 9) {
+    const p = pts[i]!;
+    const nx = -p.dy;
+    const ny = p.dx;
+    c.moveTo(p.x - p.dx * 3 + nx * 5, p.y - p.dy * 3 + ny * 5);
+    c.lineTo(p.x + p.dx * 3, p.y + p.dy * 3);
+    c.lineTo(p.x - p.dx * 3 - nx * 5, p.y - p.dy * 3 - ny * 5);
+  }
+  c.globalAlpha = alpha;
+  c.strokeStyle = couleur;
+  c.lineWidth = 2.4;
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  c.stroke();
+  c.globalAlpha = 1;
+  c.lineCap = "butt";
+}
+/** Les couleurs de l'entonnoir d'une bouche et des chevrons, par thème. */
+const COULEURS_RAILS: Readonly<Record<ThemePinball, { entonnoir: string; chevron: string; alpha: number; bord: string }>> = {
+  foire: { entonnoir: "#C2401F", chevron: "#2A1E16", alpha: 0.55, bord: "#FFB23E" },
+  ocean: { entonnoir: "#2E6E8E", chevron: "#FFFFFF", alpha: 0.8, bord: "#3FE6F2" },
+  espace: { entonnoir: "#26436e", chevron: "#E8FDFF", alpha: 0.8, bord: "#5FD3E8" },
+  volcan: { entonnoir: "#6b6770", chevron: "#FFC46B", alpha: 0.8, bord: "#FF7A2E" },
+};
+/** La couleur du bord de l'entonnoir d'un rail et de sa flèche qui clignote : celle du rail du thème (le rendu three.js peut la reprendre). */
+export const couleurDeBouche = (theme: ThemePinball): string => COULEURS_RAILS[theme].bord;
+
+/** Le ruban d'un rail, habillé par thème (le tracé `pts` : échantillons de 5 px, de l'entrée à la sortie). */
+function ruban(c: CanvasRenderingContext2D, rail: Rail, pts: readonly PointRail[], theme: ThemePinball): void {
+  const W = largeurDuRail(rail);
+  const demi = W / 2;
+  c.save();
+  c.lineCap = "butt";
+  c.lineJoin = "round";
+  const tracer = (couleur: string, largeur: number, alpha = 1): void => {
+    ligne(c, pts);
+    c.globalAlpha = alpha;
+    c.strokeStyle = couleur;
+    c.lineWidth = largeur;
+    c.stroke();
+    c.globalAlpha = 1;
+  };
+  if (theme === "foire") {
+    // des rails rouge et blanc sur des traverses de bois
+    tracer(ENCRE, W + 5);
+    tracer("#D9A25C", W);
+    traverses(c, pts, demi, 2, "#8A5632", 2.6);
+    for (const s of [-1, 1]) {
+      const e = decaler(pts, s * (demi - 3));
+      ligne(c, e);
+      c.strokeStyle = "#C2401F";
+      c.lineWidth = 4;
+      c.stroke();
+      c.setLineDash([7, 7]);
+      c.strokeStyle = PAPIER;
+      c.stroke();
+      c.setLineDash([]);
+    }
+  } else if (theme === "ocean") {
+    // une gouttière turquoise : l'eau au fond, l'écume au milieu
+    tracer(ENCRE, W + 5);
+    tracer("#2E6E8E", W);
+    tracer("#7FE6EE", W - 8);
+    c.setLineDash([4, 10]);
+    tracer("#FFFFFF", 2, 0.9);
+    c.setLineDash([]);
+    for (const s of [-1, 1]) {
+      ligne(c, decaler(pts, s * (demi - 1.5)));
+      c.strokeStyle = "#BFF3F6";
+      c.lineWidth = 1.6;
+      c.stroke();
+    }
+  } else if (theme === "espace") {
+    // un tube néon cyan : une lueur, un tube sombre, des anneaux, deux filets lumineux
+    tracer("#5FD3E8", W + 10, 0.22);
+    tracer("#05061a", W + 5);
+    tracer("#1b2150", W);
+    traverses(c, pts, demi - 1, 3, "#5FD3E8", 1.6, 0.55);
+    for (const s of [-1, 1]) {
+      const e = decaler(pts, s * (demi - 3));
+      ligne(c, e);
+      c.strokeStyle = "#5FD3E8";
+      c.lineWidth = 2.8;
+      c.stroke();
+      c.strokeStyle = "#E8FDFF";
+      c.lineWidth = 1;
+      c.stroke();
+    }
+  } else {
+    // un rail de fer sur des traverses, sur une lueur de lave
+    tracer("#FF7A2E", W + 12, 0.32);
+    tracer(ENCRE, W + 5);
+    tracer("#55505a", W);
+    traverses(c, pts, demi, 2, "#241a16", 3);
+    for (const s of [-1, 1]) {
+      ligne(c, decaler(pts, s * (demi - 4)));
+      c.strokeStyle = "#C8C4D0";
+      c.lineWidth = 3;
+      c.stroke();
+    }
+    c.setLineDash([3, 7]);
+    tracer("#F2894B", 2, 0.7);
+    c.setLineDash([]);
+  }
+  if (rail.genre === "rampe") chevrons(c, pts, COULEURS_RAILS[theme].chevron, COULEURS_RAILS[theme].alpha);
+  c.restore();
+}
+
+/** La bouche d'un rail : un entonnoir évasé vers l'extérieur (le ruban, puis le bord large qui accueille la bille), cerné d'encre. */
+function entonnoir(c: CanvasRenderingContext2D, g: Porte, theme: ThemePinball): void {
+  const ux = g.ux / NORME;
+  const uy = g.uy / NORME;
+  const nx = -uy;
+  const ny = ux;
+  const l = g.l / UNITE;
+  const mx = g.x / UNITE;
+  const my = g.y / UNITE;
+  const coin = (a: number, b: number): [number, number] => [mx + ux * a + nx * b, my + uy * a + ny * b];
+  c.save();
+  c.beginPath();
+  c.moveTo(...coin(0, l));
+  c.lineTo(...coin(-12, l + 8));
+  c.lineTo(...coin(-12, -(l + 8)));
+  c.lineTo(...coin(0, -l));
+  c.closePath();
+  c.fillStyle = COULEURS_RAILS[theme].entonnoir;
+  c.fill();
+  c.lineWidth = 2.5;
+  c.lineJoin = "round";
+  c.strokeStyle = ENCRE;
+  c.stroke();
+  // le bord large, éclairé de la couleur du rail du thème
+  c.beginPath();
+  c.moveTo(...coin(-11, l + 7));
+  c.lineTo(...coin(-11, -(l + 7)));
+  c.strokeStyle = COULEURS_RAILS[theme].bord;
+  c.lineWidth = 2;
+  c.lineCap = "round";
+  c.stroke();
+  c.restore();
+}
+
+/** Les rails à plat, sur un canvas transparent à l'échelle de la table (375 × 760) : d'abord leurs ombres sur le sol (décalées d'autant plus que le rail est haut), puis les rubans du plus bas au plus haut, puis les entonnoirs. */
+export function dessinerRails(c: CanvasRenderingContext2D, table: Table, theme: ThemePinball): void {
+  if (table.rails.length === 0) return;
+  const o = OMBRE[theme];
+  const ordre = table.rails.map((rail, i) => ({ rail, i, pts: echantillons(rail, 5) })).sort((a, b) => a.rail.hauteur - b.rail.hauteur || a.i - b.i);
+  c.save();
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  for (const { rail, pts } of ordre) {
+    const W = largeurDuRail(rail);
+    const ombre = pts.map((p) => ({ x: p.x + p.h * 0.22, y: p.y + p.h * 0.32 }));
+    for (const [w, a] of [[W + 8, 0.07], [W - 1, 0.2]] as const) {
+      ligne(c, ombre);
+      c.strokeStyle = `rgba(${o},${a})`;
+      c.lineWidth = w;
+      c.stroke();
+    }
+  }
+  for (const { rail, pts } of ordre) ruban(c, rail, pts, theme);
+  for (const g of table.portes) entonnoir(c, g, theme);
+  c.restore();
+}
+
 // --- Lot PBV2 : la mise en place des étiquettes des modules, commune aux deux rendus et gardée par `test/etiquettes.test.ts`
 /** De combien les plaques sont grossies à l'écran par défaut (la taille « 140 % » du curseur des étiquettes, plus la perspective : la caméra est plus près du bas de la table que du haut, de moins de 4 %). */
 export const GROSSISSEMENT_ETIQUETTE = 1.4 * 1.04;
@@ -1145,6 +1401,8 @@ export interface Etiquette {
   /** La boîte de la plaque à l'écran, en px de la table (grossissement compris). */
   l: number;
   h: number;
+  /** Lot PBG1 : ce que la plaque nomme, sur la table : le centre du module, ou la ou les bouches d'un rail (l'orbite en a deux). Le test mesure sur eux qu'une plaque reste plus près de ce qu'elle nomme que de tout autre. */
+  ancres: readonly { x: number; y: number }[];
 }
 export const boiteDeLEtiquette = (e: Pick<Etiquette, "x" | "y" | "l" | "h">): { x0: number; y0: number; x1: number; y1: number } => ({ x0: e.x - e.l / 2, y0: e.y - e.h / 2, x1: e.x + e.l / 2, y1: e.y + e.h / 2 });
 /** Une boîte et un disque se recouvrent-ils ? */
@@ -1167,53 +1425,152 @@ function dansLaTable(b: { x0: number; y0: number; x1: number; y1: number }): boo
 /** **La règle des étiquettes** : chaque module garde son nom à sa place habituelle (`placeDuNom`, au-dessous de lui). Si la plaque recouvre une autre plaque, un module (le sien compris : elle se pose juste au bord), un poteau ou une
  *  lampe de couloir, ou sort de la table, on cherche la meilleure autre place — **décalée** (de côté, plus bas, ou au-dessus du module), **sur deux lignes** quand le nom a une espace ou un trait d'union (« POMMES / D'AMOUR »), **réduite**
  *  en dernier recours (jusqu'à 68 %) — au moindre coût : un décalage coûte sa longueur, deux lignes un petit forfait, une réduction beaucoup, et une place plus proche d'un autre module que du sien est refusée en pratique (on lirait
- *  le nom du voisin). Les plus longues se placent d'abord, la mise en place est donc déterministe et ne dépend que de la table et des textes. Rend une étiquette par module nommé, dans l'ordre des modules. */
+ *  le nom du voisin). Rend une étiquette par nom, dans l'ordre : les modules, puis les rails (lot PBG1).
+ *  **Lot PBG1 : les rails et leurs bouches sont des obstacles** (leur tracé épaissi : `disquesDesRails`), et chaque rampe et l'orbite ont leur plaque, **posée derrière la flèche de sa bouche** (l'orbite a deux bouches : elle prend la meilleure).
+ *  Comme la table est plus encombrée, la mise en place se fait en deux temps : **les places possibles de chaque plaque** (celles qui ne touchent rien de fixe, avec leur coût), puis **la plus contrainte d'abord** (celle qui a le moins de places, puis la plus longue), chacune à sa meilleure place qui ne recouvre pas une plaque déjà posée.
+ *  Déterministe : ne dépend que de la table et des textes. */
 export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module: string) => string | null): Etiquette[] {
   const style = styleEtiquette(theme);
-  const disques = table.poses.map((m) => ({ x: px(m.x), y: px(m.y), r: empreinteDuModule(m.type) }));
+  type Disque = { x: number; y: number; r: number; souple?: boolean };
+  const disques: Disque[] = table.poses.map((m) => ({ x: px(m.x), y: px(m.y), r: empreinteDuModule(m.type) }));
   for (const p of table.poteaux) disques.push({ x: px(p.x), y: px(p.y), r: px(p.r) + 3 });
   for (const v of table.voies) disques.push({ x: px(v.x), y: px(v.y) + 24, r: 7.5 });
   // les lampes de la mission, en arc au-dessus de l'élément du thème (de trois à cinq : les buts par défaut ; l'arc de cinq contient celui de trois)
   for (const but of [4, 5]) for (const l of lampesMission(table, theme, but)) disques.push({ x: l.x, y: l.y, r: 5.5 });
-  const aPlacer = table.poses.flatMap((m, i) => {
-    const n = nom(m.type);
-    if (!n) return [];
+  // lot PBG1 : les rails, leurs bouches et leurs flèches, et la place du mini-batteur — **souples** : une plaque qui n'a aucune autre place peut les recouvrir (jamais un module, un poteau ni une autre plaque)
+  for (const d of [...disquesDesRails(table), ...disquesDuMini(table)]) disques.push({ ...d, souple: true });
+  // les disques rangés par case de 16 px : une plaque n'est comparée qu'à ceux de ses cases
+  const CASE = 16;
+  const cases = new Map<number, typeof disques>();
+  for (const d of disques) {
+    for (let cx = Math.floor((d.x - d.r) / CASE); cx <= Math.floor((d.x + d.r) / CASE); cx++) {
+      for (let cy = Math.floor((d.y - d.r) / CASE); cy <= Math.floor((d.y + d.r) / CASE); cy++) {
+        const k = cx * 4096 + cy;
+        const l = cases.get(k);
+        if (l) l.push(d);
+        else cases.set(k, [d]);
+      }
+    }
+  }
+  const toucheUnDisque = (b: { x0: number; y0: number; x1: number; y1: number }, strict: boolean): boolean => {
+    for (let cx = Math.floor(b.x0 / CASE); cx <= Math.floor(b.x1 / CASE); cx++) {
+      for (let cy = Math.floor(b.y0 / CASE); cy <= Math.floor(b.y1 / CASE); cy++) {
+        const l = cases.get(cx * 4096 + cy);
+        if (l && l.some((d) => (strict || !d.souple) && boiteTouche(b, d.x, d.y, d.r))) return true;
+      }
+    }
+    return false;
+  };
+  const fleches = flechesDesRails(table);
+  /** Ce qu'une plaque nomme : `de` est le rang de la plaque (modules : leur rang ; rails : 1000 + leur rang). */
+  const ancresDe = (de: number): { x: number; y: number }[] => (de < 1000 ? [{ x: px(table.poses[de]!.x), y: px(table.poses[de]!.y) }] : fleches.filter((f) => f.rail === de - 1000).map((f) => ({ x: f.x, y: f.y })));
+  const toutesLesAncres = [...table.poses.map((_, i) => ({ de: i, ...ancresDe(i)[0]! })), ...fleches.map((f) => ({ de: 1000 + f.rail, x: f.x, y: f.y }))];
+  const variantesDe = (n: string): string[] => {
     const texte = n.toLocaleUpperCase();
-    return [{ i, m, variantes: [texte, ...coupures(texte).slice(0, 1)] }];
+    return [texte, ...coupures(texte).slice(0, 1)];
+  };
+  interface Cible {
+    i: number;
+    de: number;
+    type: string;
+    variantes: string[];
+    pose: Poser | null;
+    /** Les places possibles (sans rien de fixe dessous), de la moins chère à la plus chère. */
+    places: { e: Etiquette; cout: number }[];
+    /** Les places qui ne recouvrent que des rails ou le mini-batteur (plus 500 de coût), cherchées seulement si la plaque n'a pas d'autre place. */
+    souples?: { e: Etiquette; cout: number }[];
+  }
+  const aPlacer: Cible[] = [];
+  table.poses.forEach((m, i) => {
+    const n = nom(m.type);
+    if (n) aPlacer.push({ i, de: i, type: m.type, variantes: variantesDe(n), pose: m, places: [] });
   });
-  const posees: { i: number; e: Etiquette }[] = [];
-  const parLargeur = [...aPlacer].sort((a, b) => largeurPlaque(b.variantes[0]!, style) - largeurPlaque(a.variantes[0]!, style) || a.i - b.i);
-  for (const { i, m, variantes } of parLargeur) {
-    const base = placeDuNom(m);
-    const emp = empreinteDuModule(m.type);
-    let meilleure: { e: Etiquette; cout: number } | null = null;
+  table.rails.forEach((r, k) => {
+    const n = nom(r.genre);
+    if (n && fleches.some((f) => f.rail === k)) aPlacer.push({ i: table.poses.length + k, de: 1000 + k, type: r.genre, variantes: variantesDe(n), pose: null, places: [] });
+  });
+  // 1. les places possibles de chaque plaque (`strict` : sans toucher aux rails ni au mini-batteur)
+  const generer = (cible: Cible, strict: boolean): { e: Etiquette; cout: number }[] => {
+    const { de, type, variantes, pose: m } = cible;
+    const places: { e: Etiquette; cout: number }[] = [];
+    const ancres = ancresDe(de);
+    const base = m ? placeDuNom(m) : null;
+    const emp = empreinteDuModule(type);
     for (const [v, texte] of variantes.entries()) {
       const lignes = texte.split("\n").length;
       for (const taille of [1, 0.92, 0.84, 0.76, 0.68]) {
         const l = largeurPlaque(texte, style) * taille * GROSSISSEMENT_ETIQUETTE;
         const h = hauteurPlaque(lignes) * taille * GROSSISSEMENT_ETIQUETTE;
-        const ys = [...[-6, -4, -2, -1, 0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 22, 26, 32, 40, 50, 62, 74, 86, 98].map((d) => ({ y: base.y + d, haut: false })), ...[0, 6, 12].map((d) => ({ y: px(m.y) - emp - h / 2 - 2 - d, haut: true }))];
-        for (const { y, haut } of ys) {
-          for (let dx = -144; dx <= 144; dx += 8) {
-            const e: Etiquette = { module: m.type, texte, x: base.x + dx, y, taille, l, h };
-            const b = boiteDeLEtiquette(e);
-            if (!dansLaTable(b)) continue;
-            if (disques.some((d) => boiteTouche(b, d.x, d.y, d.r))) continue;
-            if (posees.some((q) => boitesSeRecouvrent(b, boiteDeLEtiquette(q.e), 2))) continue;
-            // plus près d'un autre module que du sien : on lirait le nom du voisin
-            const propre = Math.hypot(e.x - px(m.x), e.y - px(m.y));
-            const voisins = table.poses.filter((o) => o !== m && Math.hypot(e.x - px(o.x), e.y - px(o.y)) < propre).length;
-            const cout = (1 - taille) * 600 + Math.abs(dx) * 0.8 + Math.abs(y - base.y) + (haut ? 30 : 0) + (v ? 45 : 0) + voisins * 110;
-            if (!meilleure || cout < meilleure.cout) meilleure = { e, cout };
+        // une place essayée : (x, y, coût de la place)
+        const essayer = (x: number, y: number, coutPlace: number): void => {
+          const b = { x0: x - l / 2, y0: y - h / 2, x1: x + l / 2, y1: y + h / 2 };
+          if (!dansLaTable(b) || toucheUnDisque(b, strict)) return;
+          // plus près d'un autre module (ou d'une autre bouche) que du sien : on lirait le nom du voisin
+          let propre = Infinity;
+          for (const a of ancres) propre = Math.min(propre, Math.hypot(x - a.x, y - a.y));
+          let voisins = 0;
+          for (const o of toutesLesAncres) if (o.de !== de && Math.hypot(x - o.x, y - o.y) < propre) voisins++;
+          places.push({ e: { module: type, texte, x, y, taille, l, h, ancres }, cout: (1 - taille) * 600 + coutPlace + (v ? 45 : 0) + voisins * 110 + (strict ? 0 : 500) });
+        };
+        if (m && base) {
+          for (const d of [-6, -4, -2, -1, 0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 22, 26, 32, 40, 50, 62, 74, 86, 98]) for (let dx = -144; dx <= 144; dx += 8) essayer(base.x + dx, base.y + d, Math.abs(dx) * 0.8 + Math.abs(d));
+          for (const d of [0, 6, 12]) {
+            const y = px(m.y) - emp - h / 2 - 2 - d;
+            for (let dx = -144; dx <= 144; dx += 8) essayer(base.x + dx, y, Math.abs(dx) * 0.8 + Math.abs(y - base.y) + 30);
+          }
+          // lot PBG1 : et, tout autour, les poches libres entre les rails (une place au-dessus du module coûte 30 de plus)
+          for (let d = -120; d <= 120; d += 6) for (let dx = -144; dx <= 144; dx += 8) essayer(base.x + dx, base.y + d, Math.abs(dx) * 0.8 + Math.abs(d) + (base.y + d + h / 2 < px(m.y) ? 30 : 0));
+        } else {
+          // un rail : derrière la flèche de chaque bouche (de l'autre côté de la bouche), puis tout autour
+          for (const f of fleches.filter((q) => q.rail === de - 1000)) {
+            const bx = f.x - Math.cos(f.a) * (13 + h / 2 + 3);
+            const by = f.y - Math.sin(f.a) * (13 + h / 2 + 3);
+            for (let dy = -96; dy <= 96; dy += 6) for (let dx = -144; dx <= 144; dx += 8) essayer(bx + dx, by + dy, Math.hypot(dx, dy));
           }
         }
       }
     }
-    // aucune place (ne devrait pas arriver : le test le garde) : l'endroit habituel, à la plus petite taille
-    const texte = variantes[0]!;
-    const taille = 0.68;
-    posees.push({ i, e: meilleure?.e ?? { module: m.type, texte, x: base.x, y: base.y, taille, l: largeurPlaque(texte, style) * taille * GROSSISSEMENT_ETIQUETTE, h: HAUTEUR_PLAQUE * taille * GROSSISSEMENT_ETIQUETTE } });
+    return places.sort((a, b) => a.cout - b.cout);
+  };
+  for (const cible of aPlacer) cible.places = generer(cible, true);
+  // 2. la pose : on essaie plusieurs ordres (la plus contrainte d'abord, la plus longue d'abord, les rails d'abord, les modules d'abord…), chacun à la meilleure place de chaque plaque qui ne recouvre pas une plaque déjà posée,
+  // et on garde l'ordre qui laisse le moins de plaques sans place, puis le coût le moins grand
+  const largeur = (c: Cible): number => largeurPlaque(c.variantes[0]!, style);
+  const ordres: Cible[][] = [
+    [...aPlacer].sort((a, b) => a.places.length - b.places.length || largeur(b) - largeur(a) || a.i - b.i),
+    [...aPlacer].sort((a, b) => largeur(b) - largeur(a) || a.i - b.i),
+    [...aPlacer].sort((a, b) => Number(b.pose === null) - Number(a.pose === null) || a.places.length - b.places.length || a.i - b.i),
+    [...aPlacer].sort((a, b) => Number(a.pose === null) - Number(b.pose === null) || a.places.length - b.places.length || a.i - b.i),
+    [...aPlacer].sort((a, b) => b.places.length - a.places.length || a.i - b.i),
+    [...aPlacer].sort((a, b) => (a.places[0]?.cout ?? 1e9) - (b.places[0]?.cout ?? 1e9) || a.i - b.i),
+    [...aPlacer].sort((a, b) => b.i - a.i),
+  ];
+  let meilleur: { posees: { i: number; e: Etiquette | null; cout: number }[]; manque: number; cout: number } | null = null;
+  for (const ordre of ordres) {
+    const posees: { i: number; e: Etiquette | null; cout: number }[] = [];
+    let manque = 0;
+    let total = 0;
+    for (const cible of ordre) {
+      const { i, places } = cible;
+      const libre = (p: { e: Etiquette }): boolean => !posees.some((q) => q.e && boitesSeRecouvrent(boiteDeLEtiquette(p.e), boiteDeLEtiquette(q.e), 2));
+      const choix = places.find(libre) ?? (cible.souples ??= generer(cible, false)).find(libre);
+      if (!choix) manque++;
+      else total += choix.cout;
+      posees.push({ i, e: choix?.e ?? null, cout: choix?.cout ?? 0 });
+    }
+    if (!meilleur || manque < meilleur.manque || (manque === meilleur.manque && total < meilleur.cout)) meilleur = { posees, manque, cout: total };
+    if (manque === 0 && ordre === ordres[0]) break; // le premier ordre suffit : c'est le cas de presque toutes les tables
   }
+  const posees = (meilleur?.posees ?? []).map((q) => {
+    if (q.e) return { i: q.i, e: q.e };
+    // aucune place (ne devrait pas arriver : le test le garde) : l'endroit habituel, à la plus petite taille
+    const c = aPlacer.find((x) => x.i === q.i)!;
+    const texte = c.variantes[0]!;
+    const taille = 0.68;
+    const ancres = ancresDe(c.de);
+    const repli = c.pose ? placeDuNom(c.pose) : { x: ancres[0]!.x, y: ancres[0]!.y + 20 };
+    return { i: q.i, e: { module: c.type, texte, x: repli.x, y: repli.y, taille, l: largeurPlaque(texte, style) * taille * GROSSISSEMENT_ETIQUETTE, h: HAUTEUR_PLAQUE * taille * GROSSISSEMENT_ETIQUETTE, ancres } as Etiquette };
+  });
   return posees.sort((a, b) => a.i - b.i).map((q) => q.e);
 }
 
@@ -1284,6 +1641,8 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
     const f = flecheDe(m);
     fleche(c, P, f.x, f.y, f.a);
   }
+  // lot PBG1 : une flèche de tir devant chaque bouche de rail, dans le sens de l'entrée (le rendu à plat la fait clignoter, comme celles des modules)
+  for (const f of flechesDesRails(t)) fleche(c, P, f.x, f.y, f.a);
   // les multiplicateurs, au-dessus du trou
   c.font = `700 10px ${police}`;
   c.textAlign = "center";
@@ -1360,9 +1719,12 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
   let ox = 0;
   let oy = 0;
   let sol: HTMLCanvasElement | null = null;
+  /** Lot PBG1 : les rails, cuits une fois à la taille de l'écran (leur ombre sur le sol, les rubans, les entonnoirs) : rien par image que la bille qui roule dessus. */
+  let rails: HTMLCanvasElement | null = null;
   const modules = modulesAPlat(theme, partie);
   const decor = lampesDecor();
   const etiquettes = placerEtiquettes(t, theme, nom);
+  const fleches = flechesDesRails(t);
 
   const rond = (x: number, y: number, r: number, fill: string | null, trait = 3): void => {
     g.beginPath();
@@ -1520,6 +1882,50 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
         fleche(g, P, f.x, f.y, f.a, couleurModule(P, theme, m.type));
       }
     }
+    // lot PBG1 : les flèches des bouches de rail clignotent toujours (un rail se refait autant qu'on veut), dans la couleur du rail du thème
+    if (clignote(tick)) for (const f of fleches) fleche(g, P, f.x, f.y, f.a, couleurDeBouche(theme));
+  }
+
+  /** La bille à l'image : sa place interpolée, sa hauteur au-dessus du plateau (px : celle du rail sur lequel elle roule) et son grossissement. `null` quand elle n'est pas à voir. */
+  function positionDeLaBille(alpha: number): { x: number; y: number; h: number; k: number } | null {
+    if (partie.finie || partie.captif !== 0) return null;
+    const rail = partie.couche === 1 ? t.rails[partie.rail] : undefined;
+    const h = rail ? hauteurRail(rail, partie.railS) : 0;
+    return { x: px(partie.px) + (px(partie.x) - px(partie.px)) * alpha, y: px(partie.py) + (px(partie.y) - px(partie.py)) * alpha, h, k: 1 + h / 160 };
+  }
+  /** L'ombre de la bille sur le plateau : décalée d'autant plus qu'elle est haute (la lumière vient du haut gauche). */
+  function ombreBille(b: { x: number; y: number; h: number }): void {
+    g.fillStyle = "rgba(0,0,0,.28)";
+    g.beginPath();
+    g.ellipse(b.x + 3.5 + b.h * 0.22, b.y + 5 + b.h * 0.32, RAYON, RAYON * 0.8, 0, 0, TAU);
+    g.fill();
+  }
+  /** Un batteur (le grand ou le mini) : de son pivot (x0, y0) à sa pointe (x1, y1). */
+  function batteur(x0: number, y0: number, x1: number, y1: number): void {
+    const a = Math.atan2(y1 - y0, x1 - x0);
+    const nx = -Math.sin(a);
+    const ny = Math.cos(a);
+    const forme = (): void => {
+      g.beginPath();
+      g.moveTo(x0 + nx * 9, y0 + ny * 9);
+      g.lineTo(x1 + nx * 5.5, y1 + ny * 5.5);
+      g.arc(x1, y1, 5.5, a + Math.PI / 2, a - Math.PI / 2, true);
+      g.lineTo(x0 - nx * 9, y0 - ny * 9);
+      g.arc(x0, y0, 9, a - Math.PI / 2, a + Math.PI / 2, true);
+      g.closePath();
+    };
+    ombre(() => {
+      forme();
+      g.fillStyle = ENCRE;
+      g.fill();
+    });
+    forme();
+    g.fillStyle = P.sombre ? MOUTARDE : PAPIER;
+    g.fill();
+    g.lineWidth = 4;
+    g.strokeStyle = ENCRE;
+    g.stroke();
+    rond(x0, y0, 4, P.bumper, 2);
   }
 
   function redimensionner(largeur: number, hauteur: number, libre?: Libre): void {
@@ -1544,6 +1950,16 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     dessinerSol(oc, { theme, table: t, titre, police, vignettage: 0.6 });
     etalonner(oc, o.width, o.height, 1, 1.15, 1.08);
     sol = o;
+    // lot PBG1 : les rails, à la même échelle que le sol, sur un fond transparent
+    if (t.rails.length > 0) {
+      const r = document.createElement("canvas");
+      r.width = o.width;
+      r.height = o.height;
+      const rc = r.getContext("2d")!;
+      rc.setTransform(r.width / LARGEUR, 0, 0, r.height / HAUTEUR, 0, 0);
+      dessinerRails(rc, t, theme);
+      rails = r;
+    } else rails = null;
   }
 
   function dessiner(s: Surimpression): void {
@@ -1650,38 +2066,23 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     });
     g.globalAlpha = 1;
     modules.dessus(g); // lot PBV4 : les spinners, les cibles et les bumpers du thème (`modeles/plat.ts`)
+    // lot PBG1 : les rails passent par-dessus le sol et les modules ; la bille qui roule dessus a son ombre portée sur le plateau, sous eux
+    const bille = positionDeLaBille(s.alpha);
+    if (bille && bille.h > 0) ombreBille(bille);
+    if (rails) g.drawImage(rails, 0, 0, LARGEUR, HAUTEUR);
     noms(g);
-    // les batteurs : corps clair, caoutchouc d'encre
+    // les batteurs : corps clair, caoutchouc d'encre ; lot PBG1 : le mini-batteur, plus court, suit l'angle du batteur du même côté
     for (const i of [GAUCHE, DROITE]) {
       const { px: bx, py: by, tx, ty } = pointeDuBatteur(i, partie.a[i]!);
-      const a = Math.atan2(px(ty) - px(by), px(tx) - px(bx));
-      const x0 = px(bx);
-      const y0 = px(by);
-      const x1 = px(tx);
-      const y1 = px(ty);
-      const nx = -Math.sin(a);
-      const ny = Math.cos(a);
-      const forme = (): void => {
-        g.beginPath();
-        g.moveTo(x0 + nx * 9, y0 + ny * 9);
-        g.lineTo(x1 + nx * 5.5, y1 + ny * 5.5);
-        g.arc(x1, y1, 5.5, a + Math.PI / 2, a - Math.PI / 2, true);
-        g.lineTo(x0 - nx * 9, y0 - ny * 9);
-        g.arc(x0, y0, 9, a - Math.PI / 2, a + Math.PI / 2, true);
-        g.closePath();
-      };
-      ombre(() => {
-        forme();
-        g.fillStyle = ENCRE;
-        g.fill();
-      });
-      forme();
-      g.fillStyle = P.sombre ? MOUTARDE : PAPIER;
-      g.fill();
-      g.lineWidth = 4;
-      g.strokeStyle = ENCRE;
-      g.stroke();
-      rond(x0, y0, 4, P.bumper, 2);
+      batteur(px(bx), px(by), px(tx), px(ty));
+    }
+    if (t.mini) {
+      const { px: bx, py: by, tx, ty } = pointeDuBatteur(t.mini.cote, partie.a[t.mini.cote]!);
+      const d = Math.hypot(tx - bx, ty - by);
+      const x0 = px(t.mini.cote === GAUCHE ? t.mini.x : 2 * AXE * UNITE - t.mini.x);
+      const y0 = px(t.mini.y);
+      const lg = px(t.mini.longueur);
+      batteur(x0, y0, x0 + ((tx - bx) / d) * lg, y0 + ((ty - by) / d) * lg);
     }
     // le lanceur : le ressort se comprime avec la charge
     const ressort = 709 + (partie.charge * 22) / 1000;
@@ -1695,24 +2096,22 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.lineTo(368, y);
       g.stroke();
     }
-    // la bille : chrome, avec son ombre (cachée quand un trou la garde)
-    if (!partie.finie && partie.captif === 0) {
-      const a = s.alpha;
-      const bx = px(partie.px) + (px(partie.x) - px(partie.px)) * a;
-      const by = px(partie.py) + (px(partie.y) - px(partie.py)) * a;
-      g.fillStyle = "rgba(0,0,0,.28)";
+    // la bille : chrome, avec son ombre (cachée quand un trou la garde) ; lot PBG1 : posée sur un rail, elle est dessinée par-dessus les rails et les modules, un peu plus grande, son ombre décalée sur le plateau
+    if (bille) {
+      if (bille.h === 0) ombreBille(bille);
+      g.save();
+      g.translate(bille.x, bille.y);
+      g.scale(bille.k, bille.k);
+      rond(0, 0, RAYON, "#C9CED6", 2);
       g.beginPath();
-      g.ellipse(bx + 3.5, by + 5, RAYON, RAYON * 0.8, 0, 0, TAU);
-      g.fill();
-      rond(bx, by, RAYON, "#C9CED6", 2);
-      g.beginPath();
-      g.arc(bx, by, RAYON - 1, 0.2, Math.PI - 0.2);
+      g.arc(0, 0, RAYON - 1, 0.2, Math.PI - 0.2);
       g.fillStyle = "#9AA1AC";
       g.fill();
       g.beginPath();
-      g.arc(bx - 3, by - 3.5, 3.2, 0, TAU);
+      g.arc(-3, -3.5, 3.2, 0, TAU);
       g.fillStyle = "#fff";
       g.fill();
+      g.restore();
     }
     masque(g, ENCRE);
     if (s.eclat > 0) {
@@ -1760,7 +2159,31 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     for (const c of t.spinners) {
       g.strokeRect(px(c.x) - px(c.l), px(c.y) - 1, px(c.l) * 2, 2);
     }
+    // lot PBG1 : le tracé de chaque rail, sa bouche (le mur que la bille lente rencontre) et le mini-batteur
+    g.strokeStyle = "#FF9900";
+    for (const rail of t.rails) {
+      g.beginPath();
+      rail.x.forEach((x, i) => (i ? g.lineTo(px(x), px(rail.y[i]!)) : g.moveTo(px(x), px(rail.y[i]!))));
+      g.stroke();
+    }
+    for (const gg of t.portes) {
+      g.beginPath();
+      g.moveTo(px(gg.seg.ax), px(gg.seg.ay));
+      g.lineTo(px(gg.seg.bx), px(gg.seg.by));
+      g.stroke();
+    }
     g.strokeStyle = "#00FF66";
+    if (t.mini) {
+      const { px: bx, py: by, tx, ty } = pointeDuBatteur(t.mini.cote, partie.a[t.mini.cote]!);
+      const d = Math.hypot(tx - bx, ty - by);
+      const x0 = px(t.mini.cote === GAUCHE ? t.mini.x : 2 * AXE * UNITE - t.mini.x);
+      const y0 = px(t.mini.y);
+      const lg = px(t.mini.longueur);
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x0 + ((tx - bx) / d) * lg, y0 + ((ty - by) / d) * lg);
+      g.stroke();
+    }
     for (const i of [GAUCHE, DROITE]) {
       const { px: bx, py: by, tx, ty } = pointeDuBatteur(i, partie.a[i]!);
       for (const [x, y, r] of [[px(bx), px(by), 8], [px(tx), px(ty), 5]] as const) {

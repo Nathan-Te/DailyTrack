@@ -21,6 +21,9 @@ export interface EtatHud {
   faite: boolean;
   /** La première bille est partie : l'aide d'avant le lancer s'en va. */
   lancee: boolean;
+  /** Lot PBG1 : le rang du combo en cours (0 : aucun, ou son délai est passé) et la part du délai qui reste avant qu'il se perde, de 1 (un rail vient d'être mené à son bout) à 0. */
+  combo: number;
+  reste: number;
 }
 
 export interface OptionsHud {
@@ -29,6 +32,8 @@ export interface OptionsHud {
   billes: number;
   /** Les touches de chaque commande (« ← », « Q »…) : l'aide du clavier, sur ordinateur à la première partie ; `null` : pas d'aide du clavier (écran tactile, ou une partie déjà jouée sur cette page). */
   clavier: { gauche: readonly string[]; droite: readonly string[]; lanceur: readonly string[] } | null;
+  /** Lot PBG1 : le mouvement réduit (le joueur l'a demandé) : le compteur de combo ne « saute » plus à chaque rang. */
+  reduit?: boolean;
   /** Ouvre la pause du kit (le bouton du HUD, ou le plein écran de l'iPhone qui ouvre l'aide « Sur l'écran d'accueil »). */
   pause(): void;
 }
@@ -39,8 +44,8 @@ export interface Hud {
   /** La zone où la table doit tenir en entier, en pixels depuis le coin haut gauche de `hote` (entre les bandes, marges de sécurité comprises). */
   libre(hote: HTMLElement): Libre;
   maj(e: EtatHud): void;
-  /** Le gain de la mission : l'afficheur le montre deux secondes (« +10 000 ») à la place du score. */
-  gain(texte: string): void;
+  /** Un gain : l'afficheur le montre deux secondes (« +10 000 » à la mission réussie ; lot PBG1 : « +1 600 » à un rail mené à son bout, `ms` plus court) à la place du score. */
+  gain(texte: string, ms?: number): void;
   detruire(): void;
 }
 
@@ -70,6 +75,11 @@ export function creerHud(o: OptionsHud): Hud {
   const billes = el("div", { classe: "pinball-hud__plaque pinball-hud__billes", attrs: { role: "img" } });
   for (let i = 0; i < o.billes; i++) billes.append(el("span", { classe: "pinball-hud__bille" }));
 
+  // Lot PBG1 : le compteur de combo — « COMBO ×3 » et une fine jauge de temps qui se vide jusqu'à ce que le combo se perde. **Toujours posé dans la grille** (caché, sans changer la mise en page : `visibility`) : le gabarit de la table lui laisse sa place.
+  const comboTexte = el("span", { classe: "pinball-combo__texte" });
+  const comboReste = el("i");
+  const combo = el("div", { classe: "pinball-hud__plaque pinball-combo", attrs: { role: "status", "data-actif": "0", "data-haut": "0" } }, comboTexte, el("span", { classe: "pinball-combo__jauge", attrs: { "aria-hidden": "true" } }, comboReste));
+
   const aide = el("p", { classe: "pinball-hud__aide", texte: t("hud.aide.lancer") });
   const clavier = o.clavier ? el("div", { classe: "pinball-hud__clavier" }) : null;
   if (clavier && o.clavier) {
@@ -77,13 +87,14 @@ export function creerHud(o: OptionsHud): Hud {
     clavier.append(ligne(o.clavier.gauche, t("commandes.action.gauche")), ligne(o.clavier.droite, t("commandes.action.droite")), ligne(o.clavier.lanceur, t("hud.clavier.lancer")));
   }
   const gabarit = el("div", { classe: "pinball-hud__libre", attrs: { "aria-hidden": "true" } });
-  const racine = el("div", { classe: "pinball-hud", attrs: { "data-lancee": "0" } }, gabarit, pause, plein, afficheur, mult, mission, billes, aide, ...(clavier ? [clavier] : []));
+  const racine = el("div", { classe: "pinball-hud", attrs: { "data-lancee": "0" } }, gabarit, pause, plein, afficheur, mult, mission, billes, combo, aide, ...(clavier ? [clavier] : []));
 
   // Les nœuds ne sont écrits que quand ce qu'ils disent change.
   let cle = "";
   let scoreAffiche = "";
   let enGain = false;
   let delaiGain = 0;
+  let comboAvant = 0;
   const ecrireScore = (texte: string): void => {
     chiffres.textContent = texte;
     afficheur.dataset.long = texte.length > SCORE_LONG ? "1" : "0";
@@ -102,7 +113,9 @@ export function creerHud(o: OptionsHud): Hud {
       return { x, y: g.top - h.top, l: Math.max(0, centree ? h.width - 2 * m : h.width - gauche - droite), h: g.height };
     },
     maj(e): void {
-      const k = `${e.score}|${e.mult}|${e.billes}|${e.mission}|${e.compteur}|${e.but}|${e.faite ? 1 : 0}|${e.lancee ? 1 : 0}`;
+      // la jauge du combo se règle au quarantième : assez fin pour se voir couler, assez rare pour ne pas écrire un nœud à chaque image
+      const reste = Math.round(Math.max(0, Math.min(1, e.reste)) * 40);
+      const k = `${e.score}|${e.mult}|${e.billes}|${e.mission}|${e.compteur}|${e.but}|${e.faite ? 1 : 0}|${e.lancee ? 1 : 0}|${e.combo}|${e.combo > 0 ? reste : 0}`;
       if (k === cle) return;
       cle = k;
       if (e.score !== scoreAffiche) {
@@ -122,8 +135,18 @@ export function creerHud(o: OptionsHud): Hud {
       [...jauge.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < e.compteur ? "1" : "0"));
       missionVal.textContent = e.faite ? t("hud.mission.reussie") : `${e.compteur}/${e.but}`;
       racine.dataset.lancee = e.lancee ? "1" : "0";
+      combo.dataset.actif = e.combo > 0 ? "1" : "0";
+      if (e.combo > 0) {
+        combo.dataset.haut = e.combo >= 2 ? "1" : "0";
+        comboTexte.textContent = t("hud.combo", { n: e.combo });
+        combo.setAttribute("aria-label", t("hud.combo.aria", { n: e.combo }));
+        comboReste.style.setProperty("--p-reste", String(reste / 40));
+        // un rang de plus : la plaque « saute » une fois (jamais avec le mouvement réduit)
+        if (e.combo > comboAvant && e.combo >= 2 && !o.reduit && typeof combo.animate === "function") combo.animate([{ transform: "scale(1)" }, { transform: "scale(1.14)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" });
+      }
+      comboAvant = e.combo;
     },
-    gain(texte): void {
+    gain(texte, ms = GAIN_MS): void {
       enGain = true;
       ecrireScore(texte);
       afficheur.dataset.gain = "1";
@@ -132,7 +155,7 @@ export function creerHud(o: OptionsHud): Hud {
         enGain = false;
         afficheur.dataset.gain = "0";
         ecrireScore(scoreAffiche);
-      }, GAIN_MS);
+      }, ms);
     },
     detruire(): void {
       clearTimeout(delaiGain);

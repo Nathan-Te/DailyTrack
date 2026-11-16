@@ -44,6 +44,11 @@ export const EXEMPLES: Readonly<Record<NomSon, readonly Exemple[]>> = {
   portail: [ex("Portail", "Portal", { son: "portail" })],
   geyser: [ex("Geyser", "Geyser", { son: "geyser" })],
   coulee: [ex("Coulée", "Lava flow", { son: "coulee" })],
+  rail: [ex("Rail : la bille est prise", "Rail: ball caught", { son: "rail" })],
+  recul: [ex("Rail : la bille recule", "Rail: ball falls back", { son: "recul" })],
+  rampe: [ex("Rampe réussie", "Ramp made", { son: "rampe" })],
+  orbite: [ex("Orbite réussie", "Orbit made", { son: "orbite" })],
+  combo: [2, 3, 5].map((n) => ex(`Combo ×${n}`, `Combo ×${n}`, { son: "combo", rang: n })),
   mult: [2, 3, 4, 5, 6].map((m) => ex(`Multiplicateur ×${m}`, `Multiplier ×${m}`, { son: "mult", mult: m, retard: 0 })),
   missionPas: [1, 2, 3].map((n) => ex(`Mission : pas ${n}`, `Mission: step ${n}`, { son: "missionPas", compteur: n })),
   mission: [ex("Mission réussie", "Mission complete", { son: "mission" })],
@@ -57,6 +62,7 @@ const GROUPES: readonly { fr: string; en: string; sons: readonly NomSon[] }[] = 
   { fr: "La table", en: "The table", sons: ["batteur", "lanceur", "sling"] },
   { fr: "Les modules communs", en: "Common modules", sons: ["bumper", "cible", "banque", "spinner", "trou", "voie", "voies"] },
   { fr: "Les éléments des thèmes", en: "Theme elements", sons: ["manege", "tourbillon", "portail", "geyser", "coulee"] },
+  { fr: "Les rails (lot PBG1)", en: "Rails (lot PBG1)", sons: ["rail", "recul", "rampe", "orbite", "combo"] },
   { fr: "Les moments", en: "Moments", sons: ["mult", "missionPas", "mission", "sauvee", "perdue", "fin"] },
 ];
 

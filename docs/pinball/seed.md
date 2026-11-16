@@ -84,3 +84,29 @@ Chaque module porte son nom sur la table, dans le vocabulaire du thème, avec un
 - Les sensations : force des batteurs, pente, rebonds, lanceur.
 - **Bille sauvée** au lancement (quelques secondes pendant lesquelles une bille perdue revient) : oui ou non.
 - **Un rendu à plat en secours**, pour la qualité minimale et les petits écrans. C'est le Canvas+ de la maquette, qui dessine déjà le sol : il coûte peu et règle la lisibilité du haut de la table.
+
+## Le contenu des tables (décisions de Nathan du 16/11/2026)
+
+### Des plans de table tirés du jour
+- **Le bas de la table ne change toujours pas** : les batteurs, les lance-pierres, les couloirs de retour et le lanceur.
+- **Le haut suit un plan tiré du jour**, parmi plusieurs. Un plan fixe la place des rampes, de l'orbite, du mini-batteur et des emplacements de modules. Ensuite, les modules sont tirés dans les emplacements du plan.
+- On pourra ajouter des plans, comme des thèmes.
+
+### Les nouveaux éléments
+- **Rampes** : des rails où la bille monte, puis redescend vers un batteur. Il faut les prendre assez vite : trop lente, la bille redescend par l'entrée. Elles sont habillées par thème : montagnes russes (Fête foraine), toboggan aquatique (Océan), tube orbital (Espace), rail de wagonnet (Volcan).
+- **Orbite** : un couloir qui fait le tour du haut de la table.
+- **Combo** : enchaîner des rampes et des orbites en quelques secondes fait monter un compteur de combo, qui rapporte de plus en plus.
+- **Mini-batteur** : un troisième batteur en haut de la table, sur certains plans. Il bouge avec le bouton du batteur du même côté.
+- **Éléments qui se débloquent** :
+  - une **porte** qui s'ouvre quand la banque de cibles est complète, et donne accès à un passage ;
+  - un **kickback** : le couloir de sortie gauche renvoie une fois la bille en jeu, quand on l'a allumé ;
+  - un **aiguillage**, qui change la sortie d'une rampe.
+
+### La boucle de la partie : mission, puis multibille
+1. **La mission du thème** se fait comme aujourd'hui.
+2. **La mission réussie allume le verrou.** Une bille qui y entre est verrouillée, et une nouvelle bille arrive au lanceur.
+3. **Avec deux billes verrouillées, c'est la multibille** : trois billes en jeu en même temps, avec quelques secondes de bille sauvée au départ.
+   - **Pendant la multibille, l'élément du thème rapporte un jackpot**, de plus en plus gros à chaque fois.
+   - La multibille s'arrête quand il ne reste qu'une bille sur la table.
+4. **Puis la mission revient, au niveau suivant** : un but plus haut, et elle rapporte plus. La boucle recommence.
+- Une partie reste à trois billes, avec une durée maximale.

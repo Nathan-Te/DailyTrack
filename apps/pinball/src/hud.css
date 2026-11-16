@@ -208,6 +208,52 @@
   box-shadow: none;
 }
 
+/* --- Le compteur de combo (lot PBG1) : « COMBO ×3 » et une fine jauge de temps qui se vide, tout au bas de la plaque. Dans la langue du multiplicateur (papier au rang 1, moutarde dès le rang 2). Toujours posé (caché par
+   `visibility`, sans toucher la mise en page) : au coin haut gauche de la zone de la table en portrait (le coin vide de l'arc), sous les billes dans la marge de gauche en paysage — là où l'aide d'avant le lancer se pose,
+   qui est partie quand un rail se joue. Petit (30 px de haut, une centaine de large) : il ne cache jamais le jeu. --- */
+.pinball-combo {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  align-self: start;
+  justify-self: start;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 30px;
+  margin-top: 4px;
+  padding: 0 10px 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  visibility: hidden;
+}
+.pinball-combo[data-actif="1"] {
+  visibility: visible;
+}
+.pinball-combo[data-haut="1"] {
+  background: var(--dj-moutarde);
+  border-width: var(--dj-trait-fort);
+}
+.pinball-combo__texte {
+  font: 700 13px var(--dj-police-texte, sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pinball-combo__jauge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--dj-creme-2);
+}
+.pinball-combo__jauge i {
+  display: block;
+  height: 100%;
+  background: var(--dj-encre);
+  transform-origin: left center;
+  transform: scaleX(var(--p-reste, 1));
+}
+
 /* --- L'aide d'avant le lancer : une ligne sur le haut du meuble, qui part au premier lancer --- */
 .pinball-hud__aide {
   grid-row: 2;
@@ -301,6 +347,11 @@
     grid-row: 4;
     grid-column: 1 / span 3;
     margin-top: 0;
+  }
+  .pinball-combo {
+    grid-row: 3;
+    grid-column: 1 / span 3;
+    margin-top: 4px;
   }
 }
 

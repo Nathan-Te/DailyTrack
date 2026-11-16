@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsValides, themeDuJour, type Evenement } from "@cdj/pinball-sim";
+import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsValides, themeDuJour, planDuJour, NB_PLANS, IDS_PLANS, type Evenement } from "@cdj/pinball-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_PINBALL } from "../scripts/pinball-essais";
 import { contenuDePinball } from "../src/pinball";
@@ -61,17 +61,19 @@ describe("Pinball sur le serveur", () => {
     expect(board.body.me).toMatchObject({ name: "Joueur3" });
   });
 
-  it("lot PB3 : le module d'essais joue les quatre thèmes (éléments, missions) et le serveur retrouve les mêmes scores", async () => {
+  it("lot PB3 : le module d'essais joue les quatre thèmes (éléments, missions) et le serveur retrouve les mêmes scores ; lot PBG1 : sur tous les plans (rampes, orbite, combo, mini-batteur)", async () => {
     // lot PB4 : les jours sont figés (leurs seuils sont ceux du fichier) : le robot ne calcule pas les seuils de seize tables à chaque jour de ce test
     const figes = Object.fromEntries(Array.from({ length: 16 }, (_, i) => [formatDay(JOUR + i), figerJour(JOUR + i, { bronze: 1000, silver: 3000, gold: 8000, author: 20000 })]));
     const t = await monter({ frozen: figes });
     const themes = new Set<string>();
+    const plans = new Set<string>();
     let n = 20;
     // les jours qui suivent : on avance l'horloge du serveur d'un jour à chaque fois (un jour n'est ouvert qu'à son jour de Paris)
-    for (let i = 0; themes.size < 4 || i < 8; i++) {
+    for (let i = 0; themes.size < 4 || plans.size < NB_PLANS || i < 8; i++) {
       const jour = JOUR + i;
       t.clock.now = jour * DAY_MS + 12 * 3_600_000;
       themes.add(themeDuJour(jour));
+      plans.add(planDuJour(jour).id);
       const date = formatDay(jour);
       for (const variante of [0, 3]) {
         const essai = ESSAIS_PINBALL.partie(jour, VERSIONS, variante);
@@ -82,6 +84,7 @@ describe("Pinball sur le serveur", () => {
       }
     }
     expect([...themes].sort()).toEqual(["espace", "foire", "ocean", "volcan"]);
+    expect([...plans].sort()).toEqual([...IDS_PLANS].sort());
   });
 
   it("range la durée de la partie (en pas) comme départage, à côté du score (cle1 = −score, cle2 = pas)", async () => {

@@ -9,7 +9,8 @@
 // ce que la rediffusion exige. Hors production, `?debug` montre les contours de collision, le compteur de pas et le score de chaque contact, et pose `window.__pinball` (les essais e2e y dictent leurs appuis) ;
 // `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`). **Lot PB4 : `?robot`** — le robot de
 // la simulation joue sa partie (calculée par `niveau.ts`), la scène en rejoue les événements à leur pas ; la mention « Le robot joue » le dit, le toucher et le clavier ne changent rien.
-import { DROITE, EV_BUMPER, EV_CIBLE, EV_LANCE, EV_MISSION, EV_SAUVEE, EV_SPINNER, GAUCHE, LANCEUR, MAX_EVENEMENTS, NB_BILLES, POINTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
+// **Lot PBG1 : les rails** — la scène lit `partie.combo` / `comboFin` pour le compteur de combo du HUD (la part du délai qui reste) et les événements `EV_RAMPE` / `EV_ORBITE` pour « +1 600 » à l'afficheur (le gain du pas) ; `?plan=<id>` (essai) joue un plan donné (`niveau.ts`).
+import { DROITE, EV_BUMPER, EV_CIBLE, EV_LANCE, EV_MISSION, EV_ORBITE, EV_RAMPE, EV_SAUVEE, EV_SPINNER, GAUCHE, LANCEUR, MAX_EVENEMENTS, NB_BILLES, POINTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
 import { DetecteurBridage } from "@cdj/core/bridage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -33,6 +34,8 @@ const IDS = ["gauche", "droite", "lanceur"] as const;
 type Cmd = 0 | 1 | 2;
 /** Après la dernière bille, la table reste visible 0,8 s avant l'écran de fin (la maquette en attendait 0,5). */
 const ATTENTE_FIN_MS = 800;
+/** Lot PBG1 : « +1 600 » reste à l'afficheur un peu moins longtemps que le gain de la mission (ms). */
+const RAIL_GAIN_MS = 1400;
 /** Une vibration courte quand un batteur frappe la bille (ms), et le temps minimal entre deux (ms). */
 const VIBRATION_MS = 16;
 const PAUSE_VIBRATION_MS = 140;
@@ -58,7 +61,7 @@ function commandes(): Commandes {
 declare global {
   interface Window {
     /** Hors production, avec `?debug` : les essais e2e dictent leurs changements de commandes (`c` : 0 gauche, 1 droite, 2 lanceur). */
-    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] } | null; vibrations(): number; contours(oui: boolean): void; sons(): { pret: boolean; joues: { son: string; joue: boolean }[]; stats: { appels: number; ms: number; pire: number; refuses: number } } };
+    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; partie(): Partie; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] } | null; vibrations(): number; contours(oui: boolean): void; sons(): { pret: boolean; joues: { son: string; joue: boolean }[]; stats: { appels: number; ms: number; pire: number; refuses: number } } };
   }
 }
 
@@ -100,6 +103,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const cmd = commandes();
   const hud = creerHud({
     t: (cle, params) => o.t(cle, params),
+    reduit: o.reduit,
     billes: NB_BILLES,
     clavier: sansClavier ? null : { gauche: cmd.nomsTouches("gauche", o.langue).slice(0, 2), droite: cmd.nomsTouches("droite", o.langue).slice(0, 2), lanceur: cmd.nomsTouches("lanceur", o.langue).slice(0, 1) },
     pause: () => document.getElementById("jeu-hud-pause")?.click(), // la pause est celle du kit : son bouton, que la barre cachée garde
@@ -190,8 +194,11 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   let lancee = false;
   let tEclat = -1e9;
   /** Le HUD relit la partie à chaque image (il n'écrit un nœud que si ce qu'il dit change). */
-  const majHud = (): void =>
-    hud.maj({ score: grouper(partie.score, o.langue), mult: partie.mult, billes: partie.billes, mission: o.t(`hud.mission.nom.${partie.mission}`), compteur: partie.compteur, but: partie.but, faite: partie.missionFaite, lancee });
+  const majHud = (): void => {
+    // lot PBG1 : le combo en cours (celui dont le délai n'est pas passé) et la part du délai qui reste
+    const enCours = partie.combo > 0 && partie.tick <= partie.comboFin;
+    hud.maj({ score: grouper(partie.score, o.langue), mult: partie.mult, billes: partie.billes, mission: o.t(`hud.mission.nom.${partie.mission}`), compteur: partie.compteur, but: partie.but, faite: partie.missionFaite, lancee, combo: enCours ? partie.combo : 0, reste: enCours ? (partie.comboFin - partie.tick) / reglages.comboDelai : 0 });
+  };
   majHud();
 
   // --- Les entrées : des changements d'état datés au pas ---
@@ -314,6 +321,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     p.captifTb = partie.captifTb;
     p.mult = partie.mult;
     p.compteur = partie.compteur;
+    p.combo = partie.combo;
     let voies = 0;
     for (const v of partie.voiesAllumees) if (v) voies++;
     p.voies = voies;
@@ -336,7 +344,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   }
 
   let vibrations = 0;
-  if (essais && debug) window.__pinball = { regler: (c, enfonce) => (enfonce ? tenir(c as Cmd, "essai") : lacher(c as Cmd, "essai")), tick: () => partie.tick, evenements: () => journal, qualite: () => qualite, trois: () => trois?.info() ?? null, vibrations: () => vibrations, contours: (oui) => (contours = oui), sons: () => ({ pret: sons.pret, joues: sons.joues.slice(), stats: { ...sons.stats } }) };
+  if (essais && debug) window.__pinball = { regler: (c, enfonce) => (enfonce ? tenir(c as Cmd, "essai") : lacher(c as Cmd, "essai")), tick: () => partie.tick, evenements: () => journal, qualite: () => qualite, partie: () => partie, trois: () => trois?.info() ?? null, vibrations: () => vibrations, contours: (oui) => (contours = oui), sons: () => ({ pret: sons.pret, joues: sons.joues.slice(), stats: { ...sons.stats } }) };
 
   /** Une partie neuve avec les réglages d'essai du panneau (jamais classée) : même table, autres sensations ; les rendus la lisent par `vivante`. */
   const relancer = (): void => {
@@ -420,6 +428,11 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         tEclat = tDernierPas;
         hud.gain(o.t("hud.mission.gain", { points: grouper(POINTS.mission * multAvant, o.langue) }));
         o.vibrer(120);
+      }
+      if (partie.ev & (EV_RAMPE | EV_ORBITE)) {
+        // lot PBG1 : un rail mené à son bout — ses points (multiplicateur compris : le gain du pas) un instant à l'afficheur
+        const points = partie.gains.reduce((somme, g) => somme + g.points, 0);
+        if (points > 0) hud.gain(o.t("hud.rail.gain", { points: grouper(points, o.langue) }), RAIL_GAIN_MS);
       }
       majHud();
       if (debug) for (const g of partie.gains) gains.push({ x: g.x, y: g.y, points: g.points, fin: partie.tick + TICKS_PAR_SECONDE });

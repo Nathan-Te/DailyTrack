@@ -1,5 +1,5 @@
 import { mixSeed, Rng } from "@cdj/core";
-import { EV_GEYSER, EV_PORTAIL, EV_SPINNER, LANCEUR, NB_BILLES, NORME, TOUR, UNITE } from "./constantes";
+import { AXE, EV_GEYSER, EV_PORTAIL, EV_SPINNER, LANCEUR, NB_BILLES, NORME, TOUR, UNITE } from "./constantes";
 import { cosinus, div, sinus } from "./entiers";
 import type { Contenu, Module } from "./generateur";
 import { Partie } from "./partie";
@@ -18,7 +18,7 @@ import type { Poser, Segment, Table } from "./table";
 
 /** Le délai d'une bille lâchée : 54 000 pas = 90 secondes de jeu. Les billes lâchées mettent bien moins (le pire mesuré est dans le README du lot) ; une bille qui y est encore est coincée. */
 export const DELAI_BILLE_MAX = 54000;
-/** La grille de lâcher : tous les 30 px (bords de la table : 40 à 330 px, de 30 à 600 px de haut) ; à chaque point, une bille à l'arrêt et une bille lancée. */
+/** La grille de lâcher : tous les 30 px (bords de la table : 41 à 331 px, de 30 à 600 px de haut ; décalée d'un pixel) ; à chaque point, une bille à l'arrêt et une bille lancée. */
 export const PAS_GRILLE = 30;
 
 export interface BilleCoincee {
@@ -36,6 +36,8 @@ export interface RapportBilles {
 
 /** Le nom d'un module posé : `S4:geyser` (emplacement et type) — celui du rapport et des tests. */
 export const nomDuModule = (m: Pick<Poser, "emplacement" | "type">): string => `S${m.emplacement + 1}:${m.type}`;
+/** Lot PBG1 : le nom d'un rail dans le suivi — `rampe1`, `rampe2` (dans l'ordre du plan) et `orbite`. */
+export const nomDuRail = (t: Pick<Table, "rails">, i: number): string => (t.rails[i]!.genre === "orbite" ? "orbite" : `rampe${t.rails.slice(0, i).filter((r) => r.genre === "rampe").length + 1}`);
 
 /** Pose la bille en jeu, à `(x, y)` pixels, avec sa vitesse en unités par seconde. */
 function enJeu(p: Partie, x: number, y: number, vx: number, vy: number): void {
@@ -83,6 +85,16 @@ function pointOccupe(t: Table, x: number, y: number): boolean {
     const d3 = aire(cx, cy, s.ax, s.ay, ux, uy);
     if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return true;
   }
+  // lot PBG1 : le mini-batteur au repos est un mur (sa capsule, du pivot à la pointe)
+  if (t.mini) {
+    const a = div(REGLAGES.batteurRepos * TOUR, 6283);
+    const sens = t.mini.cote === 0 ? 1 : -1;
+    const ox = t.mini.cote === 0 ? t.mini.x : 2 * AXE * UNITE - t.mini.x;
+    const tx = ox + sens * div(cosinus(a) * t.mini.longueur, NORME);
+    const ty = t.mini.y + div(sinus(a) * t.mini.longueur, NORME);
+    const m = 10 * UNITE + marge;
+    if (distance2(ux, uy, { ax: ox, ay: t.mini.y, bx: tx, by: ty } as Segment) < m * m) return true;
+  }
   for (const c of [...t.poteaux, ...t.bumpers]) {
     const m = c.r + 14 * UNITE;
     if ((ux - c.x) * (ux - c.x) + (uy - c.y) * (uy - c.y) < m * m) return true;
@@ -110,7 +122,9 @@ export function billesCoincees(contenu: Contenu, base: Reglages = REGLAGES): Rap
   let pire = 0;
   const modele = new Partie(contenu, reglages);
   for (let y = 30; y <= 600; y += PAS_GRILLE) {
-    for (let x = 40; x <= 330; x += PAS_GRILLE) {
+    for (let gx = 40; gx <= 330; gx += PAS_GRILLE) {
+      // la grille est décalée d'un pixel : une bille lâchée à l'arrêt pile au-dessus du centre d'un bumper ou du bout d'un mur y rebondirait toujours au même endroit — un équilibre qu'aucune partie réelle ne trouve
+      const x = gx + 1;
       if (!dansLaTable(x, y) || pointOccupe(modele.table, x, y)) continue;
       for (const lance of [false, true]) {
         // le tirage se fait toujours (même graine qu'on lance ou non) : la grille d'une table ne dépend pas d'un test voisin
@@ -145,18 +159,28 @@ export class SuiviModules {
   private readonly poses: readonly { pose: Poser; nom: string }[];
   /** Les rangs (dans `poses`) des modules pas encore touchés : la boucle de chaque pas n'a plus qu'eux à regarder. */
   private readonly restants: number[];
+  /** Lot PBG1 : les rails (rampes, orbite) de la table pas encore menés à leur bout, par rang. */
+  private readonly railsRestants: number[];
   constructor(private readonly table: Table) {
     this.poses = table.poses.map((pose) => ({ pose, nom: nomDuModule(pose) }));
     this.restants = this.poses.map((_, i) => i);
+    this.railsRestants = table.rails.map((_, i) => i);
   }
 
-  /** Les modules de la table jamais touchés. */
+  /** Les modules de la table et les rails jamais touchés (un rail est « touché » quand une bille l'a mené à son bout). */
   manquants(): string[] {
-    return this.poses.filter((m) => !this.touches.has(m.nom)).map((m) => m.nom);
+    return [...this.poses.filter((m) => !this.touches.has(m.nom)).map((m) => m.nom), ...this.table.rails.map((_, i) => nomDuRail(this.table, i)).filter((n) => !this.touches.has(n))];
   }
 
   pas(p: Partie): void {
     if (p.missionFaite) this.mission = true;
+    for (let q = this.railsRestants.length - 1; q >= 0; q--) {
+      const i = this.railsRestants[q]!;
+      if (p.railsFaits[i]! > 0) {
+        this.touches.add(nomDuRail(this.table, i));
+        this.railsRestants.splice(q, 1);
+      }
+    }
     if (this.restants.length === 0) return;
     const t = this.table;
     let entree = -2;

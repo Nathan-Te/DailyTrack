@@ -3,7 +3,7 @@
 // qu'alors (ligne `panneau-` de `budget.aLaDemande` de la fiche). **L'aperçu est le rendu à plat** (`dessin.ts`, jamais three.js ni le rendu haute qualité), dessiné **une fois** dans un petit canvas, après l'accueil.
 // **Les seuils s'affichent quand ils sont prêts** : `pretSeuils()` (jamais `seuilsFiges`, qui forcerait d'un trait le calcul du robot) ; un jour sans fichier figé les calcule en arrière-plan (`niveau.ts`), le panneau les attend en
 // les relisant toutes les demi-secondes, avec une mention discrète. Un jour figé les a d'emblée. Textes : catalogue du jeu ; couleurs : jetons de la charte ; jamais de HTML injecté (tout se pose en `textContent`).
-import { MISSION_DU_THEME, MODULES_DE_MISSION, POINTS, Partie, REGLAGES, grouper, type Contenu, type Seuils } from "@cdj/pinball-sim";
+import { MISSION_DU_THEME, MODULES_DE_MISSION, POINTS, Partie, REGLAGES, grouper, planDe, type Contenu, type Seuils } from "@cdj/pinball-sim";
 import type { ContexteAujourdhui } from "@cdj/kit/jeu/types";
 import { creerRendu } from "./dessin";
 import { nomDuModule } from "./noms";
@@ -33,7 +33,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, classe: string, ...en
   return e;
 };
 
-/** Les noms des modules de la table, sans doublon, ceux de la mission d'abord : `mission` dit lesquels comptent pour elle. */
+/** Les noms des modules de la table, sans doublon, ceux de la mission d'abord : `mission` dit lesquels comptent pour elle. **Lot PBG1 : les rails du plan** (les rampes, puis l'orbite : leur nom du thème, « Montagnes russes », « Grand huit »…) sont de la liste, après les modules. */
 export function modulesDeLaTable(contenu: Contenu, t: (cle: string) => string): { nom: string; mission: boolean }[] {
   const dediesALaMission = new Set<string>(MODULES_DE_MISSION[MISSION_DU_THEME[contenu.theme]]);
   const vus = new Map<string, boolean>();
@@ -41,7 +41,14 @@ export function modulesDeLaTable(contenu: Contenu, t: (cle: string) => string): 
     const nom = nomDuModule(t, contenu.theme, m);
     if (nom !== null) vus.set(nom, (vus.get(nom) ?? false) || dediesALaMission.has(m));
   }
-  return [...vus].map(([nom, mission]) => ({ nom, mission })).sort((a, b) => Number(b.mission) - Number(a.mission));
+  const liste = [...vus].map(([nom, mission]) => ({ nom, mission })).sort((a, b) => Number(b.mission) - Number(a.mission));
+  const plan = contenu.plan ? planDe(contenu.plan) : null;
+  for (const genre of ["rampe", "orbite"] as const) {
+    const present = genre === "rampe" ? (plan?.rampes.length ?? 0) > 0 : plan?.orbite != null;
+    const nom = present ? nomDuModule(t, contenu.theme, genre) : null;
+    if (nom !== null && !vus.has(nom)) liste.push({ nom, mission: false });
+  }
+  return liste;
 }
 
 export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: ContexteAujourdhui): void {
@@ -80,7 +87,8 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
   );
 
   const modules = modulesDeLaTable(contenu, (cle) => t(cle));
-  const sur = el("div", "p-table", el("p", "p-legende", t("aujourdhui.table")), el("ul", "p-modules", ...modules.map((m) => { const li = el("li", "p-module", m.nom); li.dataset.mission = m.mission ? "1" : "0"; return li; })));
+  // lot PBG1 : le plan du jour, nommé (l'aperçu à côté le montre avec ses rails)
+  const sur = el("div", "p-table", el("p", "p-legende", t("aujourdhui.table")), el("p", "p-plan", t("aujourdhui.plan", { plan: t(`plan.${contenu.plan}`) })), el("ul", "p-modules", ...modules.map((m) => { const li = el("li", "p-module", m.nom); li.dataset.mission = m.mission ? "1" : "0"; return li; })));
 
   const seuils = el("div", "p-seuils");
   seuils.setAttribute("role", "status");

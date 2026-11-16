@@ -4,6 +4,8 @@ import { parseDay } from "@cdj/core";
 import { EXEMPLES } from "../src/tune-sons";
 import { appareil, JOUR, lancer } from "./appareil";
 
+// Lot PBG1 : `?plan=<id>` joue un plan donné (jamais classé), combinable avec `?theme=` ; `?robot` continue de marcher avec lui. Le panneau « Aujourd'hui » de l'accueil nomme le plan et liste ses rails.
+
 // « Pinball » (lot PB4) — LES ESSAIS DE RECETTE `?robot` : on regarde le robot jouer la table du jour avec la mention « Le robot joue » ; `?jour=AAAA-MM-JJ&robot` pour un autre jour. La page rejoue les événements
 // que la simulation (Node, la même) calcule pour la partie du robot : le jeu ne décide rien. Hors production seulement, jamais classé (la production n'a aucune de ces options : `test/essai.test.ts`).
 const robot = (jour: string, k = 0) => jouerRobot(dailyPinball(parseDay(jour)!), graineDuRobot(k), { maxTicks: DUREE_PARTIE_ROBOT });
@@ -74,6 +76,41 @@ test.describe("Pinball : le robot joue (?robot)", () => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse");
     await lancer(page);
     await expect(page.locator(".pinball-robot")).toHaveCount(0);
+    await context.close();
+  });
+
+  test("`?plan=` : l'accueil nomme le plan demandé et ses rails ; avec `?theme=`, le thème aussi ; un plan inconnu est ignoré", async ({ browser }) => {
+    const jour = parseDay(JOUR)!;
+    const duJour = dailyPinball(jour);
+    const noms: Record<string, string> = { doublette: "Doublette", tremplin: "Tremplin", bretelle: "Bretelle", boucle: "Boucle" };
+    const autre = Object.keys(noms).find((p) => p !== duJour.plan)!;
+    const a = await appareil(browser, `/?debug&manuel&tactile=0&qualite=basse&plan=${autre}`);
+    await expect(a.page.locator(".p-plan")).toHaveText(`Plan : ${noms[autre]}`);
+    // les rails du plan sont de la liste des modules présents (au nom du thème du jour)
+    await expect(a.page.locator(".p-module").filter({ hasText: /Montagnes russes|Toboggan|Tube orbital|Wagonnet/ })).toHaveCount(1);
+    await expect(a.page.locator(".p-module").filter({ hasText: /Grand huit|Courant|Orbite|Galerie/ })).toHaveCount(1);
+    await a.context.close();
+    const b = await appareil(browser, `/?debug&manuel&tactile=0&qualite=basse&plan=${autre}&theme=volcan`);
+    await expect(b.page.locator(".p-plan")).toHaveText(`Plan : ${noms[autre]}`);
+    await expect(b.page.locator(".p-module").filter({ hasText: "Wagonnet" })).toHaveCount(1);
+    await b.context.close();
+    const c = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&plan=inconnu");
+    await expect(c.page.locator(".p-plan")).toHaveText(`Plan : ${noms[duJour.plan]}`);
+    await c.context.close();
+  });
+
+  test("`?plan=` + `?robot` : le robot joue le plan demandé (ses événements sont ceux de la simulation sur ce plan), et la partie n'est pas classable", async ({ browser }) => {
+    const plan = "tremplin";
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&qualite=basse&robot&plan=${plan}`);
+    await lancer(page);
+    const PAS = 6000;
+    await page.evaluate((pas) => window.__jeu.avancer(pas), PAS);
+    const attendu = jouerRobot(dailyPinball(parseDay(JOUR)!, undefined, undefined, plan), graineDuRobot(0), { maxTicks: DUREE_PARTIE_ROBOT });
+    expect(await page.evaluate(() => window.__pinball!.evenements())).toEqual(attendu.evenements.filter((e) => e.tick < PAS));
+    // la partie d'essai n'est pas classée : l'arrivée le dit
+    await page.evaluate((pas) => window.__jeu.avancer(pas), DUREE_PARTIE_ROBOT);
+    await expect(page.locator("#jeu-fin")).toBeVisible({ timeout: 30_000 }); // les seuils d'un plan d'essai (pas de fichier figé) sont ceux du robot : calculés ici, d'un trait
+    await expect(page.locator("#jeu-fin-rang")).toContainText("essai");
     await context.close();
   });
 });

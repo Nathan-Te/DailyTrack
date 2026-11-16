@@ -1,7 +1,7 @@
 import { AXE, UNITE, type Table } from "@cdj/pinball-sim";
 import { REFERENCE } from "./types";
 
-// Lot PBV4 : où se pose chaque modèle sur la table, en pixels de la table (x, y), commun aux deux rendus et à `test/modeles.test.ts` (qui vérifie sur les 444 tables que chaque modèle posé reste dans l'emprise de collision
+// Lot PBV4 : où se pose chaque modèle sur la table, en pixels de la table (x, y), commun aux deux rendus et à `test/modeles.test.ts` (qui vérifie sur les 500 tables (444 avant les plans du lot PBG1) que chaque modèle posé reste dans l'emprise de collision
 // de son module). Rien ici ne dépend de three.js.
 
 const px = (u: number): number => u / UNITE;

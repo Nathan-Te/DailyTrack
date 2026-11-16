@@ -4,7 +4,7 @@
 //
 // **Ajouter un son (le lot de gameplay qui suit)** : une ligne dans `Evenement` (son nom et ses paramètres), la règle qui le déclenche dans `sonsDuPas` (un bit `EV_*` ou un changement de `Photo`), sa recette dans `recetteDe`, son
 // délai dans `DELAIS_S` s'il peut s'enchaîner ; le test `sons.test.ts` échoue tant que sa recette n'est pas propre (attaque, fin sans clic, niveau borné) et `tune-sons.ts` (`?debug&sons`) en veut un exemple (le type l'impose).
-import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, NB_VOIES, type ThemePinball } from "@cdj/pinball-sim";
+import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_ORBITE, EV_PERDUE, EV_PORTAIL, EV_RAIL, EV_RAMPE, EV_RECUL, EV_COMBO, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, NB_VOIES, type ThemePinball } from "@cdj/pinball-sim";
 
 /** Une couche d'un son : une note (oscillateur) ou un bruit filtré, avec son enveloppe (attaque brève, décroissance exponentielle, fin à zéro : jamais de clic). */
 export interface Couche {
@@ -41,6 +41,11 @@ export type Evenement =
   | { son: "portail" }
   | { son: "geyser" }
   | { son: "coulee" }
+  | { son: "rail" }
+  | { son: "recul" }
+  | { son: "rampe" }
+  | { son: "orbite" }
+  | { son: "combo"; rang: number }
   | { son: "mult"; mult: number; retard: number }
   | { son: "missionPas"; compteur: number }
   | { son: "mission" }
@@ -67,10 +72,12 @@ export interface Photo {
   /** Rang du bumper touché à ce pas (−1 : aucun) et nombre de cibles tombées de la banque la plus avancée (0 : aucune) : la scène ne les cherche que quand l'événement a eu lieu. */
   bumper: number;
   cible: number;
+  /** Lot PBG1 : le rang du combo en cours (0 : aucun). */
+  combo: number;
   /** La vitesse de rotation la plus grande des spinners (`Partie.spin`), lue quand un spinner vient de tourner. */
   spin: number;
 }
-export const photoVide = (): Photo => ({ gauche: false, droite: false, lanceur: false, charge: 0, dansLanceur: true, captif: 0, captifTb: -1, mult: 1, compteur: 0, voies: 0, bumper: -1, cible: 0, spin: 0 });
+export const photoVide = (): Photo => ({ gauche: false, droite: false, lanceur: false, charge: 0, dansLanceur: true, captif: 0, captifTb: -1, mult: 1, compteur: 0, voies: 0, bumper: -1, cible: 0, combo: 0, spin: 0 });
 
 const AUCUN: Evenement[] = [];
 
@@ -101,6 +108,12 @@ export function sonsDuPas(ev: number, avant: Photo, apres: Photo, theme: ThemePi
   if (ev & EV_PORTAIL) sons.push({ son: "portail" });
   if (ev & EV_GEYSER) sons.push({ son: "geyser" });
   if (ev & EV_COULEE) sons.push({ son: "coulee" });
+  // lot PBG1 : les rails — la bille est prise (un souffle qui monte), elle recule (un petit choc sourd), une rampe ou l'orbite est menée à son bout, le combo monte (dès le deuxième rail, plus haut à chaque rang)
+  if (ev & EV_RAIL) sons.push({ son: "rail" });
+  if (ev & EV_RECUL) sons.push({ son: "recul" });
+  if (ev & EV_RAMPE) sons.push({ son: "rampe" });
+  if (ev & EV_ORBITE) sons.push({ son: "orbite" });
+  if (ev & EV_COMBO) sons.push({ son: "combo", rang: Math.max(2, apres.combo) });
   if (relache) sons.push(avant.captifTb >= 0 ? { son: "tourbillon", phase: "sortie" } : { son: "trou", phase: "relance" });
   if (ev & EV_MISSION) sons.push({ son: "mission" });
   else {
@@ -242,6 +255,23 @@ export function recetteDe(e: Evenement, variation = 0.5): Recette {
     case "coulee":
       // Un grondement qui s'éloigne par le haut.
       return recette("coulee", 1, [bruit(220, 0.5, 0.22, 0, 90, "lowpass", 0.7), note("sine", 75, 0.5, 0.18, 0, 44)]);
+    case "rail":
+      // La bille entre sur un rail : un souffle qui monte, et le ronflement du rail qui s'éloigne.
+      return recette("rail", 1, [bruit(500, 0.4, 0.16, 0, 3200, "bandpass", 1.6), note("sine", 180, 0.45, 0.1, 0, 420)]);
+    case "recul":
+      // Trop lente : le rail la rend, un petit choc sourd qui descend.
+      return recette("recul", 1, [note("sine", 220, 0.18, 0.2, 0, 70), bruit(700, 0.14, 0.1, 0, 220, "lowpass", 0.8)]);
+    case "rampe":
+      // Une rampe réussie : trois notes claires qui montent, la dernière tenue.
+      return recette("rampe", 2, [0, 5, 9].map((d, i) => note("triangle", 587 * 2 ** (d / 12), i === 2 ? 0.28 : 0.1, 0.16, i * 0.07)));
+    case "orbite":
+      // L'orbite : un balayage qui tourne et retombe en deux notes.
+      return recette("orbite", 2, [bruit(900, 0.3, 0.1, 0, 2600, "bandpass", 2), note("triangle", 698, 0.1, 0.15, 0.04), note("triangle", 880, 0.24, 0.15, 0.12)]);
+    case "combo": {
+      // Le combo : un « ding » brillant, d'un demi-ton plus haut à chaque rang (de 2 à 6).
+      const f = 1046 * 2 ** ((borne(e.rang, 2, 6) - 2) / 12);
+      return recette("combo", 2, apres([note("sine", f, 0.3, 0.17), note("sine", f * 1.5, 0.2, 0.08, 0.05), note("sine", f * 2.01, 0.15, 0.04)], 0.1));
+    }
     case "mult": {
       // Une courte fanfare, plus aiguë à chaque cran (×2 : sol ; un ton de plus à chaque cran).
       const f = 392 * 2 ** ((2 * (borne(e.mult, 2, 6) - 2)) / 12);
@@ -298,6 +328,10 @@ export const DELAIS_S: Readonly<Partial<Record<NomSon, number>>> = {
   portail: 0.2,
   geyser: 0.25,
   coulee: 0.25,
+  rail: 0.3,
+  rampe: 0.25,
+  orbite: 0.25,
+  combo: 0.15,
   missionPas: 0.15,
 };
 export const DELAI_DEFAUT_S = 0.04;

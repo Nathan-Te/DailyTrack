@@ -7,7 +7,7 @@ import { placements, type Instance } from "../src/modeles/placements";
 import { modele3D } from "../src/modeles/trois";
 import { ENCRE, MOUTARDE, PAPIER, REFERENCE, TYPES_COMMUNS, type Modele3D } from "../src/modeles/types";
 
-// Lot PBV4 : chaque module commun a un vrai modèle par thème, et **ce modèle a l'emprise de sa collision** — sur les 444 tables que le générateur peut tirer (`toutesLesTables`), chaque modèle posé
+// Lot PBV4 : chaque module commun a un vrai modèle par thème, et **ce modèle a l'emprise de sa collision** — sur les 500 tables que le générateur peut tirer (444 avant les plans du lot PBG1) (`toutesLesTables`), chaque modèle posé
 // (`placements`, la mise en place que les deux rendus utilisent) reste dans l'emprise de collision de son module, à une marge fixée près, et ne paraît jamais plus petit qu'elle. Les poses animées comptent :
 // le bumper enfoncé (son haut s'élargit de 12 %) et le spinner à plusieurs angles.
 
@@ -96,9 +96,9 @@ describe("les modèles des modules (lot PBV4)", () => {
     expect([ENCRE, PAPIER, MOUTARDE]).toEqual([ENCRE_DESSIN, PAPIER_DESSIN, MOUTARDE_DESSIN]);
   });
 
-  it("sur les 444 tables, aucun modèle ne sort de l'emprise de collision de son module ni ne paraît plus petit qu'elle", () => {
+  it("sur les 500 tables (lot PBG1 : quatre plans, 444 avant eux), aucun modèle ne sort de l'emprise de collision de son module ni ne paraît plus petit qu'elle", () => {
     const tables = toutesLesTables();
-    expect(tables.length).toBe(444);
+    expect(tables.length).toBe(500);
     const E = Object.fromEntries(THEMES_PINBALL.map((th) => [th, empreintes(th)])) as Record<ThemePinball, ReturnType<typeof empreintes>>;
     for (const th of THEMES_PINBALL) {
       // le modèle de référence, à sa taille de collision

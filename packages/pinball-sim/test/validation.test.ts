@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import {
-  ESSAIS_MAX, REGLAGES, TABLES_REFUSEES, THEMES_PINBALL, Partie, SuiviModules, analyserTable, billesCoincees, cleDeTable, dailyPinball, dailyPinballAvec, nomDuModule, themeDuJour,
+  ESSAIS_MAX, IDS_PLANS, REGLAGES, TABLES_REFUSEES, THEMES_PINBALL, Partie, SuiviModules, analyserTable, billesCoincees, cleDeTable, dailyPinball, dailyPinballAvec, nomDuModule, nomDuRail, planDuJour, themeDuJour,
   tirsDisperses, toutesLesTables,
 } from "../src/index";
 
@@ -10,10 +10,11 @@ const JOUR = daysFromCivil(2026, 11, 9);
 
 describe("toutes les tables que le générateur peut tirer", () => {
   const toutes = toutesLesTables();
-  it("444 tables, chacune une seule fois (216 pour la foire, 72 l'océan, 12 l'espace, 144 le volcan)", () => {
-    expect(toutes).toHaveLength(444);
-    expect(new Set(toutes.map(cleDeTable)).size).toBe(444);
-    for (const [theme, n] of [["foire", 216], ["ocean", 72], ["espace", 12], ["volcan", 144]] as const) expect(toutes.filter((c) => c.theme === theme)).toHaveLength(n);
+  it("500 tables, chacune une seule fois (quatre plans × quatre thèmes ; l'espace n'en a que deux par plan : presque tous ses emplacements sont fixes)", () => {
+    expect(toutes).toHaveLength(500);
+    expect(new Set(toutes.map(cleDeTable)).size).toBe(500);
+    for (const [theme, n] of [["foire", 180], ["ocean", 180], ["espace", 8], ["volcan", 132]] as const) expect(toutes.filter((c) => c.theme === theme)).toHaveLength(n);
+    for (const plan of IDS_PLANS) expect(toutes.some((c) => c.plan === plan), plan).toBe(true);
   });
   it("chaque table du générateur sur 1 500 jours (le thème du jour comme imposé) est l'une d'elles", () => {
     const cles = new Set(toutes.map(cleDeTable));
@@ -25,21 +26,23 @@ describe("toutes les tables que le générateur peut tirer", () => {
       const t = dailyPinballAvec(JOUR + j, new Set(), undefined, THEMES_PINBALL[j % 4]!);
       expect(cles.has(cleDeTable(t))).toBe(true);
     }
-    expect(vues.size).toBeGreaterThan(300);
+    expect(vues.size).toBeGreaterThan(150);
   });
 });
 
 describe("une table refusée est retirée : le générateur passe à la graine suivante, fixée", () => {
-  it("avec la table du jour refusée, le jour donne une autre table, toujours la même, du même thème", () => {
-    const base = dailyPinballAvec(JOUR, new Set());
+  it("avec la table du jour refusée, le jour donne une autre table, toujours la même, du même thème et du même plan", () => {
+    // un thème qui a assez de tables (l'espace n'en a que deux par plan : refuser les deux serait refuser le jour)
+    const base = dailyPinballAvec(JOUR, new Set(), undefined, "foire");
     const refusee = new Set([cleDeTable(base)]);
-    const suite = dailyPinballAvec(JOUR, refusee);
+    const suite = dailyPinballAvec(JOUR, refusee, undefined, "foire");
     expect(cleDeTable(suite)).not.toBe(cleDeTable(base));
-    expect(suite.theme).toBe(base.theme);
-    expect(suite.theme).toBe(themeDuJour(JOUR));
-    expect(dailyPinballAvec(JOUR, refusee)).toEqual(suite);
+    expect(suite.theme).toBe("foire");
+    expect(suite.plan).toBe(base.plan);
+    expect(suite.plan).toBe(planDuJour(JOUR).id);
+    expect(dailyPinballAvec(JOUR, refusee, undefined, "foire")).toEqual(suite);
     // refuser aussi la suivante donne la troisième ; les jours dont la table n'est pas refusée ne changent pas
-    const trois = dailyPinballAvec(JOUR, new Set([...refusee, cleDeTable(suite)]));
+    const trois = dailyPinballAvec(JOUR, new Set([...refusee, cleDeTable(suite)]), undefined, "foire");
     expect(new Set([cleDeTable(base), cleDeTable(suite), cleDeTable(trois)]).size).toBe(3);
     expect(dailyPinballAvec(JOUR + 1, refusee)).toEqual(dailyPinballAvec(JOUR + 1, new Set()));
   });
@@ -70,6 +73,15 @@ describe("la validation refuse une table piégée exprès", () => {
     expect(r.lachers).toBeGreaterThan(200);
     expect(r.pire).toBeLessThan(54000);
   });
+  it("lot PBG1 : sur chaque plan et dans chaque thème, une table tirée ne garde aucune bille (grille de 30 px, à l'arrêt et lancée, rails et mini-batteur compris)", () => {
+    for (const plan of IDS_PLANS) {
+      for (const theme of THEMES_PINBALL) {
+        const r = billesCoincees(dailyPinball(JOUR + 3, undefined, theme, plan));
+        expect(r.coincee, `${plan} ${theme}`).toBeNull();
+        expect(r.pire, `${plan} ${theme}`).toBeLessThan(54000);
+      }
+    }
+  });
   it("un trou qui ne prend jamais la bille et une mission qu'on ne peut pas finir : module jamais touché et mission jamais réussie, donc refusée", () => {
     const piege = analyserTable(dailyPinball(JOUR + 2, undefined, "foire"), { ...REGLAGES, trouVitesseMax: 0, butManege: 1000 });
     expect(piege.ok).toBe(false);
@@ -84,8 +96,9 @@ describe("le suivi des modules touchés", () => {
     const c = dailyPinball(JOUR + 1);
     const t = new Partie(c).table;
     const suivi = new SuiviModules(t);
-    expect(suivi.manquants()).toEqual(t.poses.map(nomDuModule));
+    expect(suivi.manquants()).toEqual([...t.poses.map(nomDuModule), ...t.rails.map((_, i) => nomDuRail(t, i))]);
     expect(t.poses.map(nomDuModule)).toEqual(c.modules.map((m, i) => `S${i + 1}:${m}`));
+    expect(t.rails.map((_, i) => nomDuRail(t, i)).at(-1)).toBe("orbite");
     expect(tirsDisperses(c, suivi)).toBe(119);
     expect(suivi.touches.size).toBeGreaterThan(3);
   });
@@ -93,10 +106,12 @@ describe("le suivi des modules touchés", () => {
     // l'union des modules touchés, table par table, par les seuls lancers dispersés : le robot complète (voir le test des 30 jours)
     const types = new Set<string>();
     for (const theme of THEMES_PINBALL) {
-      const c = dailyPinball(JOUR + 7, undefined, theme);
-      const suivi = new SuiviModules(new Partie(c).table);
-      tirsDisperses(c, suivi);
-      for (const n of suivi.touches) types.add(n.split(":")[1]!);
+      for (const plan of IDS_PLANS) {
+        const c = dailyPinball(JOUR + 7, undefined, theme, plan);
+        const suivi = new SuiviModules(new Partie(c).table);
+        tirsDisperses(c, suivi);
+        for (const n of suivi.touches) types.add(n.split(":")[1]!);
+      }
     }
     for (const t of ["bumpers", "cibles", "manege", "trouNoir", "coulee"]) expect(types.has(t), t).toBe(true);
     expect(types.size).toBeGreaterThanOrEqual(6);

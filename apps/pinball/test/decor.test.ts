@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Partie, UNITE, dailyPinball } from "@cdj/pinball-sim";
+import { IDS_PLANS, Partie, UNITE, dailyPinball } from "@cdj/pinball-sim";
 import { ARC_CENTRE, BANDES, PALETTES, RAYON_MODULE, lampesDecor, lueurLampe, styleEtiquette } from "../src/dessin";
 import { BORNES_VUE, VUE_DEFAUT, vueDe } from "../src/bornes";
 
@@ -43,15 +43,17 @@ describe("les bandes lumineuses et les lampes du décor (lot PBV1)", () => {
     }
   });
 
-  it("aucune lampe de l'arc n'est près d'un module, d'un poteau ou d'un couloir du haut, sur 120 jours des quatre thèmes", () => {
+  it("aucune lampe de l'arc n'est près d'un module, d'un poteau ou d'un couloir du haut, sur 128 tables : les quatre plans (lot PBG1) × les quatre thèmes × huit jours (les rails ont leur test : `rails.test.ts`)", () => {
     const arc = lampesDecor().filter((l) => !l.pierre);
-    for (const theme of ["foire", "ocean", "espace", "volcan"] as const) {
-      for (let j = 20800; j < 20830; j++) {
-        const t = new Partie(dailyPinball(j, undefined, theme)).table;
-        for (const l of arc) {
-          for (const m of t.poses) expect(Math.hypot(l.x - px(m.x), l.y - px(m.y)), `${theme} ${j} ${m.type}`).toBeGreaterThan((RAYON_MODULE[m.type] ?? 30) + 6);
-          for (const p of t.poteaux) expect(Math.hypot(l.x - px(p.x), l.y - px(p.y))).toBeGreaterThan(px(p.r) + 8);
-          for (const v of t.voies) expect(Math.hypot(l.x - px(v.x), l.y - px(v.y) - 24)).toBeGreaterThan(14);
+    for (const plan of IDS_PLANS) {
+      for (const theme of ["foire", "ocean", "espace", "volcan"] as const) {
+        for (let j = 20800; j < 20808; j++) {
+          const t = new Partie(dailyPinball(j, undefined, theme, plan)).table;
+          for (const l of arc) {
+            for (const m of t.poses) expect(Math.hypot(l.x - px(m.x), l.y - px(m.y)), `${plan} ${theme} ${j} ${m.type}`).toBeGreaterThan((RAYON_MODULE[m.type] ?? 30) + 6);
+            for (const p of t.poteaux) expect(Math.hypot(l.x - px(p.x), l.y - px(p.y))).toBeGreaterThan(px(p.r) + 8);
+            for (const v of t.voies) expect(Math.hypot(l.x - px(v.x), l.y - px(v.y) - 24)).toBeGreaterThan(14);
+          }
         }
       }
     }

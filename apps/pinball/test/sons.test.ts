@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, THEMES_PINBALL } from "@cdj/pinball-sim";
+import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COMBO, EV_COULEE, EV_ORBITE, EV_RAIL, EV_RAMPE, EV_RECUL, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, THEMES_PINBALL } from "@cdj/pinball-sim";
 import { Sons, type ContexteAudio } from "../src/sons";
 import { Cliquetis, DELAIS_S, Melange, PAR_SON_MAX, VOIX_ABSOLU, VOIX_MAX, cadenceSpinner, coupureRoulement, hauteurRessort, niveauEffets, niveauRessort, niveauRoulement, niveauTrouNoir, photoVide, recetteDe, sonsDuPas, type Evenement, type NomSon, type Photo } from "../src/sonsLogique";
 import { EXEMPLES } from "../src/tune-sons";
@@ -52,6 +52,17 @@ describe("« Pinball » : quel son pour quel événement", () => {
     expect(noms(sonsDuPas(EV_PORTAIL, photo(), photo(), "espace"))).toEqual(["portail"]);
     expect(noms(sonsDuPas(EV_GEYSER, photo(), photo(), "volcan"))).toEqual(["geyser"]);
     expect(noms(sonsDuPas(EV_COULEE, photo(), photo(), "volcan"))).toEqual(["coulee"]);
+  });
+
+  it("lot PBG1 : les rails — la prise, le recul, la rampe, l'orbite, le combo (de plus en plus haut avec son rang)", () => {
+    expect(noms(sonsDuPas(EV_RAIL, photo(), photo(), "foire"))).toEqual(["rail"]);
+    expect(noms(sonsDuPas(EV_RECUL, photo(), photo(), "foire"))).toEqual(["recul"]);
+    expect(noms(sonsDuPas(EV_RAMPE, photo(), photo({ combo: 1 }), "foire"))).toEqual(["rampe"]);
+    expect(noms(sonsDuPas(EV_ORBITE, photo(), photo({ combo: 1 }), "foire"))).toEqual(["orbite"]);
+    expect(sonsDuPas(EV_RAMPE | EV_COMBO, photo(), photo({ combo: 3 }), "foire")).toEqual([{ son: "rampe" }, { son: "combo", rang: 3 }]);
+    const f = (rang: number): number => recetteDe({ son: "combo", rang }).couches[0]!.freq;
+    expect(f(3)).toBeGreaterThan(f(2));
+    expect(f(6)).toBeGreaterThan(f(5));
   });
 
   it("le multiplicateur qui monte est une fanfare à son cran ; chaque pas de la jauge est un son, et la mission réussie prend la place du cran qu'elle donne", () => {

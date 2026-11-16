@@ -54,10 +54,12 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
-import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, type Partie, type ThemePinball } from "@cdj/pinball-sim";
+import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, type Partie, type ThemePinball } from "@cdj/pinball-sim";
 import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 import { creerModules } from "./modeles/trois";
+import { creerRails3d, hauteurBille, hauteurVue } from "./rails3d";
+import { hauteurRail } from "./rails";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
 // Le sol de la table est le dessin à plat de `dessin.ts` (`dessinerSol`) posé en texture, avec ses bandes, ses lampes éteintes, ses flèches et le nom du thème, dans la palette du thème ; par-dessus, en volume : le meuble en
@@ -222,7 +224,11 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const etalon = { value: new Vector3(1, SATURATION, 0) };
   /** Chaque matériau reçoit les réglages de l'étalonnage (un objet partagé : les curseurs agissent en direct, sans recompiler). */
   const etalonne = (m: Material): void => {
-    m.onBeforeCompile = (sh) => void (sh.uniforms.cdjEtalon = etalon);
+    // lot PBG1 : un matériau peut ajouter son propre crochet (les rails : la fenêtre sur la bille, `rails3d.ts`)
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.cdjEtalon = etalon;
+      (m.userData.crochet as ((s: typeof sh) => void) | undefined)?.(sh);
+    };
   };
   renderer.info.autoReset = false; // l'image compte tout : la scène, les ombres et les passes du bloom
   const surPerte = (e: Event): void => {
@@ -1006,6 +1012,11 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const sceneLueur = new Scene();
   sceneLueur.add(new Mesh(lesTubes.geometry, tube));
   for (const g of tubes) g.dispose();
+  // --- Lot PBG1 : les rails (les rampes et l'orbite du plan du jour), en volume, surélevés et habillés par thème (`rails3d.ts`) : trois maillages fusionnés pour toute la table ; celui qui rayonne passe aussi dans la scène du bloom
+  const rails = creerRails3d(o.theme, t);
+  for (const m of [rails.opaque, rails.translucide, rails.rayonne]) if (m) groupe.add(m);
+  if (rails.rayonne) sceneLueur.add(new Mesh(rails.rayonne.geometry, rails.rayonne.material));
+  aLiberer.push(...rails.liberables);
   // les petites lampes du décor, allumées : sur les flancs de l'arc et sur les lance-pierres (une seule instance de dessin ; leur lueur, une vague qui court, change chaque image)
   const decor = lampesDecor();
   const lampes = new InstancedMesh(geo(new SphereGeometry(4, 14, 8)), new MeshBasicMaterial({ color: "#ffffff" }), decor.length);
@@ -1071,6 +1082,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     tube.color.copy(couleurBande).multiplyScalar(0.35 + 2.4 * k);
     lueursSol.opacity = Math.min(1, 0.38 * k);
     halos.opacity = Math.min(1, 0.7 * k);
+    rails.lueur(k);
   };
   lueurs();
 
@@ -1099,12 +1111,39 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     return groupeB;
   });
 
+  // --- Lot PBG1 : le mini-batteur du plan (s'il y en a un) : un troisième batteur, en haut de la table, **exactement l'angle du batteur du même côté** ; plus court, de 8 px au pivot à 5 px à la pointe, comme les grands (crème brillant, base de métal, pastille)
+  const mini = t.mini;
+  const miniBatteur = ((): Group | null => {
+    if (!mini) return null;
+    const L = mini.longueur / UNITE;
+    const s = new Shape();
+    s.moveTo(0, -8);
+    s.lineTo(L, -5);
+    s.absarc(L, 0, 5, -Math.PI / 2, Math.PI / 2, false);
+    s.lineTo(0, 8);
+    s.absarc(0, 0, 8, Math.PI / 2, Math.PI * 1.5, false);
+    const g = geo(new ExtrudeGeometry(s, { depth: 12, bevelEnabled: true, bevelSize: 0.9, bevelThickness: 0.9, bevelSegments: 2 }));
+    g.rotateX(Math.PI / 2);
+    g.translate(0, 13.5, 0);
+    const gm = new Group();
+    const pivotX = mini.cote === 0 ? mini.x / UNITE : 2 * AXE - mini.x / UNITE;
+    gm.position.set(X(pivotX), 0, Z(mini.y / UNITE));
+    gm.add(ombrageur(new Mesh(g, mat(P.sombre ? MOUTARDE : PAPIER, { roughness: 0.3, envMapIntensity: 0.7 }))), contour(g, 40));
+    const base = ombrageur(new Mesh(geo(new CylinderGeometry(12, 13, 3, 24)), metal), false);
+    base.position.y = 1.5;
+    const pastilleRouge = cylindre(4.2, 15.6, P.bumper, { roughness: 0.14, envMapIntensity: 1.1 });
+    pastilleRouge.position.y = 7.8;
+    gm.add(base, pastilleRouge);
+    groupe.add(gm);
+    return gm;
+  })();
+
   // --- Le lanceur (le ressort et la tête) et la bille
   const ressort = ombrageur(new Mesh(geo(new BoxGeometry(17, 3, 1)), mat("#9AA1AC", { metalness: 0.5, roughness: 0.4 })), false);
   groupe.add(ressort);
   const tete = ombrageur(new Mesh(geo(new BoxGeometry(18, 14, 10)), mat("#9AA1AC", { metalness: 0.6, roughness: 0.3 })));
   groupe.add(tete);
-  const bille = new Mesh(geo(new SphereGeometry(RAYON, 32, 24)), mat("#B4BBC4", { metalness: 1, roughness: 0.1, envMapIntensity: 1.05 }));
+  const bille = new Mesh(geo(new SphereGeometry(RAYON, 32, 24)), mat("#B4BBC4", { metalness: 1, roughness: 0.1, envMapIntensity: 1.05, unique: true }));
   bille.castShadow = true;
   // un contour d'encre (la coque inversée) : la bille se détache de tous les sols, même du sable et du bois clair
   const coque = new MeshBasicMaterial({ color: ENCRE, side: BackSide });
@@ -1113,6 +1152,28 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   contourBille.scale.setScalar(1.14);
   bille.add(contourBille);
   groupe.add(bille);
+  // lot PBG1 : la bille sur un rail est dessinée par-dessus tout (ni le plateau ni les modules en dessous ne la coupent) ; son ombre, elle, reste dessous : un disque sombre sur le rail et un autre, plus large, sur le plateau
+  // (la vraie ombre de la lumière tomberait à côté de sa place : elle est éteinte tant que la bille roule sur un rail)
+  const tacheOmbre = toile(64, 64, (c) => {
+    const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(0,0,0,0.75)");
+    g.addColorStop(0.5, "rgba(0,0,0,0.45)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 64);
+  });
+  const matOmbre = new MeshBasicMaterial({ map: tacheOmbre, transparent: true, depthWrite: false });
+  aLiberer.push(matOmbre);
+  const geoOmbre = geo(new PlaneGeometry(1, 1).rotateX(-Math.PI / 2));
+  const ombreRail = new Mesh(geoOmbre, matOmbre);
+  const ombrePlateau = new Mesh(geoOmbre, matOmbre);
+  ombreRail.visible = ombrePlateau.visible = false;
+  ombreRail.renderOrder = ombrePlateau.renderOrder = 1;
+  groupe.add(ombreRail, ombrePlateau);
+  let billeSurRail = false;
+  /** La fenêtre des rails sur la bille : seulement quand elle est sur le plateau, où un rail peut la cacher. */
+  let fenetreBille = false;
+  const centreBille = new Vector3();
 
   // --- Les étiquettes des modules : des plaques à part, tournées vers le joueur et grossies (voir `majEtiquettes`)
   const etiquettes: { plaque: Mesh; x: number; y: number; taille: number }[] = [];
@@ -1289,13 +1350,44 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     for (const i of [0, 1] as const) {
       const ang = ((partie.aAvant[i]! + (partie.a[i]! - partie.aAvant[i]!) * a) * 2 * Math.PI) / TOUR;
       batteurs[i]!.rotation.y = i === 0 ? -ang : -(Math.PI - ang);
+      if (mini && miniBatteur && mini.cote === i) miniBatteur.rotation.y = i === 0 ? -ang : -(Math.PI - ang); // le mini-batteur : le même angle que le grand du même côté
     }
     // la bille
     const cache = partie.finie || partie.captif > 0;
     bille.visible = !cache;
     const bx = px(partie.px) + (px(partie.x) - px(partie.px)) * a;
     const by = px(partie.py) + (px(partie.y) - px(partie.py)) * a;
-    bille.position.set(X(bx), RAYON, Z(by));
+    // lot PBG1 : sur un rail, la bille est à la hauteur du rail à son abscisse (interpolée entre deux pas : `railV` est en unités par seconde) ; sa place sur le plateau reste (x, y)
+    const rl = partie.couche === 1 ? t.rails[partie.rail] : undefined;
+    let hBille = RAYON;
+    let hRail = 0;
+    if (rl) {
+      const sBille = Math.max(0, Math.min(rl.len, partie.railS + (partie.railV * a) / TICKS_PAR_SECONDE));
+      hBille = hauteurBille(rl, sBille);
+      hRail = hauteurVue(hauteurRail(rl, sBille));
+    }
+    if (!!rl !== billeSurRail) {
+      billeSurRail = !!rl;
+      bille.castShadow = !rl;
+      // sur un rail : sans test de profondeur et dans la file des objets translucides (derrière le toboggan et le tube de verre qui l'enveloppent, la bille resterait voilée)
+      for (const m of [bille.material as Material, coque]) {
+        m.depthTest = !rl;
+        m.transparent = !!rl;
+      }
+      bille.renderOrder = rl ? 4 : 0;
+      contourBille.renderOrder = rl ? 3 : 0;
+    }
+    bille.position.set(X(bx), hBille, Z(by));
+    ombreRail.visible = ombrePlateau.visible = !!rl && !cache;
+    if (rl) {
+      ombreRail.position.set(X(bx), hRail + 0.45, Z(by));
+      ombreRail.scale.setScalar(RAYON * 2.3);
+      ombrePlateau.position.set(X(bx), 0.35, Z(by));
+      ombrePlateau.scale.setScalar(RAYON * 2.6 + hRail * 0.5);
+      matOmbre.opacity = 0.9;
+    }
+    centreBille.set(X(bx), RAYON, Z(by));
+    fenetreBille = !cache && !rl;
     // le lanceur : le ressort se comprime avec la charge
     const haut = 709 + (partie.charge * 22) / 1000;
     const long = Math.max(1, 718 - haut);
@@ -1345,6 +1437,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const kb = vue.bandes / 100;
     for (let i = 0; i < decor.length; i++) lampes.setColorAt(i, teinte.copy(couleurLampe).multiplyScalar((0.25 + 2.6 * kb) * lueurLampe(i, s.tick)));
     if (lampes.instanceColor) lampes.instanceColor.needsUpdate = true;
+    rails.fenetre(fenetreBille ? centreBille : null, camera);
     renderer.info.reset();
     composition.dessiner(scene, camera, (vue.bloom / 100) * 1.6, sceneLueur);
     msImage += (performance.now() - debut - msImage) * 0.05;

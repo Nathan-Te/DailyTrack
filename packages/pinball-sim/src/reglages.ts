@@ -74,6 +74,21 @@ export interface Reglages {
   butTourbillon: number;
   butPortail: number;
   butGeyser: number;
+  // --- Lot PBG1 : les rails (rampes et orbite) et le combo.
+  /** La vitesse minimale d'entrée d'un rail (px/s, la composante de la vitesse dans le sens de la bouche) : plus lente, la bouche est un mur et la bille redescend. */
+  rampeVitesseMin: number;
+  /** La pente d'un rail (px/s²) : sur un rail la bille ralentit en montant et accélère en descendant de cette pente multipliée par celle du tracé (la pente du plateau, 820, est plus forte : un rail est plus doux). */
+  rampePente: number;
+  /** Le frottement d'un rail : la part de sa vitesse que la bille perd par seconde (‰). */
+  rampeFrottement: number;
+  /** Ce que rapporte une rampe et l'orbite menées à leur bout (avant le combo et le multiplicateur). */
+  rampePoints: number;
+  orbitePoints: number;
+  /** Le combo : le délai (pas) entre deux rails réussis pour que le compteur monte, et le rang de combo au-delà duquel les points ne montent plus. */
+  comboDelai: number;
+  comboMax: number;
+  /** Ce que chaque rang de combo ajoute aux points d'un rail, en % de sa valeur (50 : le deuxième rail d'une série rapporte 1,5 fois, le troisième 2 fois…). */
+  comboPas: number;
 }
 
 /** Les valeurs de la maquette (à régler au jeu : « Les sensations » du seed). */
@@ -125,6 +140,14 @@ export const REGLAGES: Reglages = {
   butTourbillon: 3,
   butPortail: 3,
   butGeyser: 4,
+  rampeVitesseMin: 500,
+  rampePente: 300,
+  rampeFrottement: 100,
+  rampePoints: 800,
+  orbitePoints: 500,
+  comboDelai: 3000,
+  comboMax: 5,
+  comboPas: 50,
 };
 
 export const copierReglages = (r: Reglages = REGLAGES): Reglages => ({ ...r });
@@ -149,6 +172,10 @@ export interface Derives {
   tourbillonRadial: number;
   tourbillonTangent: number;
   couleeParPas: number;
+  /** Lot PBG1 : l'entrée minimale d'un rail (unités/s), la pente d'un rail par pas, le frottement d'un rail par pas et par unité de vitesse (millionièmes), la vitesse minimale de sortie. */
+  rampeMin: number;
+  railParPas: number;
+  railFrein: number;
 }
 
 /** Un angle de millièmes de radian en angle de la table (`TOUR` = 2π = 6 283 millièmes de radian, arrondi). */
@@ -172,6 +199,9 @@ export function deriver(r: Reglages): Derives {
     tourbillonRadial: r.tourbillonForce * UNITE,
     tourbillonTangent: r.tourbillonSpirale * UNITE,
     couleeParPas: div(r.couleeForce * UNITE, TICKS_PAR_SECONDE),
+    rampeMin: r.rampeVitesseMin * UNITE,
+    railParPas: div(r.rampePente * UNITE, TICKS_PAR_SECONDE),
+    railFrein: div(r.rampeFrottement * 1000000, 1000 * TICKS_PAR_SECONDE),
   };
 }
 
