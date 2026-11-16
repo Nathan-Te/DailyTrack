@@ -209,7 +209,8 @@
   "budget": {
     "lignes": [
       "pinball.jsCss",
-      "pinball.rendu"
+      "pinball.rendu",
+      "pinball.demande"
     ],
     "aLaDemande": [
       "partie-",

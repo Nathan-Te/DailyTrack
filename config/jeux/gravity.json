@@ -208,7 +208,8 @@
   },
   "budget": {
     "lignes": [
-      "gravity.jsCss"
+      "gravity.jsCss",
+      "gravity.demande"
     ],
     "aLaDemande": [
       "partie-",

@@ -208,7 +208,8 @@
   "budget": {
     "lignes": [
       "rush.jsCss",
-      "rush.rendu"
+      "rush.rendu",
+      "rush.demande"
     ],
     "aLaDemande": [
       "corps-",

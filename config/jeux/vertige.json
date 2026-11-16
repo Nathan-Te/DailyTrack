@@ -201,7 +201,8 @@
   },
   "budget": {
     "lignes": [
-      "vertige.jsCss"
+      "vertige.jsCss",
+      "vertige.demande"
     ],
     "aLaDemande": [
       "corps-",

@@ -22,7 +22,16 @@ async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
   return dailyCibles(jour, CIBLES_GENERATOR_VERSION);
 }
 
+/**
+ * Lot PG1 — **les essais du kit sur le jeu témoin** (`?debug`, jamais en production : règle R9) : `?debug&chargement=1000` déclare un `chargerPartie` lent (la partie ne démarre qu'après) et
+ * `?debug&hud=surimpression` met le HUD sur le plateau (les zones du kit : `scene.ts`). Ils servent `e2e/surimpression.spec.ts` ; sans eux, rien ne change.
+ */
+const essai = (nom: string): string | null => (import.meta.env.VITE_PRODUCTION === "1" ? null : new URLSearchParams(location.search).has("debug") ? new URLSearchParams(location.search).get(nom) : null);
+const CHARGEMENT_MS = Number(essai("chargement")) || 0;
+
 export const DEFINITION: DefinitionJeu<Contenu> = {
+  ...(CHARGEMENT_MS > 0 ? { chargerPartie: () => new Promise<void>((fini) => setTimeout(fini, CHARGEMENT_MS)) } : {}),
+  ...(essai("hud") === "surimpression" ? { hud: "surimpression" as const } : {}),
   ticksParSeconde: TICKS_PAR_SECONDE,
   versions: { simVersion: CIBLES_SIM_VERSION, generatorVersion: CIBLES_GENERATOR_VERSION },
   actions: [

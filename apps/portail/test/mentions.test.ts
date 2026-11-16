@@ -318,6 +318,24 @@ describe("lot « manques de Blocks » : les clés des jeux du kit sont décrites
   });
 });
 
+// Lot PG1 : un jeu du kit dont la page est prête **avant** qu'il ne dépasse son squelette (Gravity : son catalogue garde « À remplacer » jusqu'au GR4 / GR5, donc le test ci-dessus ne le regarde pas encore) : ses quatre clés et
+// sa famille sont déjà nommées dans les deux pages, et ne peuvent plus en sortir. Dès que son catalogue est livré, c'est le test générique qui prend le relais ; cette liste n'a plus de raison d'être (la retirer alors).
+describe("lot PG1 : les clés d'un jeu du kit encore off sont décrites avant sa livraison (fr et en)", () => {
+  const { lireFichesBrutes } = require(join(ROOT, "scripts/fiches-brutes.mjs")) as typeof import("../../../scripts/fiches-brutes.mjs");
+  const fiches = lireFichesBrutes(ROOT, {}).map((f) => f.brut as { id: string; donnees: { stockage: { prefixe: string } } });
+  for (const id of ["gravity"]) {
+    const fiche = fiches.find((f) => f.id === id);
+    it(`${id} : sa famille et ses quatre clés (records, reglages, aide:vu, identite:vue)`, () => {
+      expect(fiche, `la fiche de ${id}`).toBeDefined();
+      const prefixe = fiche!.donnees.stockage.prefixe;
+      for (const page of [PAGE, PAGE_EN]) {
+        expect(page, `${prefixe}…`).toContain(`<code>${prefixe}…</code>`);
+        for (const s of ["records", "reglages", "aide:vu", "identite:vue"]) expect(page, `${prefixe}${s}`).toContain(`<code>${prefixe}${s}</code>`);
+      }
+    });
+  }
+});
+
 describe("lot R5 : plus aucune trace de l'import par l'adresse (#dujour=…)", () => {
   it("ni le module de profil, ni les jeux, ni le portail ne lisent le fragment de migration", () => {
     const hits: string[] = [];
