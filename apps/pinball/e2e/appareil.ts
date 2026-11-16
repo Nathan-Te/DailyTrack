@@ -28,6 +28,8 @@ export interface PorteScene {
   vibrations(): number;
   /** Lot PBV1 : allume ou éteint les contours de collision, le compteur de pas et les gains (les captures les éteignent). */
   contours(oui: boolean): void;
+  /** Lot PBS1 : les sons demandés (les 64 derniers, joués ou refusés par le mélange), le coût sur le fil principal, et si le premier geste a ouvert le contexte audio. */
+  sons(): { pret: boolean; joues: { son: string; joue: boolean }[]; stats: { appels: number; ms: number; pire: number; refuses: number } };
 }
 declare global {
   interface Window {
