@@ -12,7 +12,6 @@ import {
   EdgesGeometry,
   ExtrudeGeometry,
   Group,
-  HalfFloatType,
   HemisphereLight,
   InstancedMesh,
   LinearFilter,
@@ -23,8 +22,8 @@ import {
   Material,
   Mesh,
   MeshBasicMaterial,
+  MeshPhongMaterial,
   MeshStandardMaterial,
-  NoColorSpace,
   PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
@@ -66,9 +65,8 @@ import type { Vue } from "./bornes";
 // **Lot PBV1, la recette visuelle** (les cibles : `docs/pinball/maquettes/cibles/`) : une lumière chaude de fin d'après-midi qui vient du haut de la table (soleil bas, longues ombres douces), le motif d'une fenêtre sur le
 // parquet de la pièce autour du meuble (cuit dans sa texture, avec l'ombre du meuble), des reflets sur ce qui est verni ou en métal (le sol verni garde les couleurs exactes de sa palette : il est émissif, la lumière
 // n'y ajoute que ses reflets et les ombres) ; le meuble en bois verni orangé veiné, arêtes arrondies, vis en métal ; des bandes lumineuses sur les rails latéraux et de petites lampes allumées (couleurs du thème) ;
-// poteaux en métal brossé, batteurs crème brillants sur une base de métal avec leur pastille rouge, lance-pierres à liseré clair, bumpers vernis à rivet. **Le BLOOM** (des bandes et des lampes, ce qui dépasse 1 en
-// lumière linéaire) est une passe de composition à demi-résolution (`Composition`, l'idée du pipeline de Rush, recopiée : les jeux ne s'importent jamais) ; il n'existe qu'ici, en haute qualité (le rendu à plat de secours
-// n'a ni bloom ni rien de coûteux). Tout se règle en direct dans `?debug&tune` (section « Lumière » : `Vue`).
+// poteaux en métal brossé, batteurs crème brillants sur une base de métal avec leur pastille rouge, lance-pierres à liseré clair, bumpers vernis à rivet. **Le BLOOM** des bandes et des lampes est une lueur
+// sélective au quart de la résolution (`Lueur`, plus bas) ; il n'existe qu'ici, en haute qualité (le rendu à plat de secours n'a ni bloom ni rien de coûteux). Le vignettage chaud est un dégradé CSS de la surcouche. Tout se règle en direct dans `?debug&tune` (section « Lumière » : `Vue`).
 
 const X = (x: number): number => x - LARGEUR / 2;
 const Z = (y: number): number => y - HAUTEUR / 2;
@@ -76,91 +74,88 @@ const BOIS = "#7A3D1B"; // au-dessus de l'arc : le bois du meuble, plus sombre
 const rad = (d: number): number => (d * Math.PI) / 180;
 const TEXTURE_L = 1024;
 
-// --- Le bloom (haute qualité seulement ; lot PBV1) : l'idée du pipeline de Rush, recopiée et réduite (les jeux ne s'importent jamais). La scène est dessinée dans une cible en virgule flottante (anticrénelée) ; à
-// demi-résolution, ce qui dépasse 1 en lumière linéaire (les bandes, les lampes, les éclats) est flouté deux fois (un flou séparable de 9 coups, le second plus large) ; puis UNE passe pose la scène et sa lueur, et passe en sRGB.
+// --- Le bloom (haute qualité seulement ; lot PBV1) : l'idée du pipeline de Rush (lueur floutée, ajoutée), recopiée (les jeux ne s'importent jamais) et rendue SÉLECTIVE pour ne rien coûter à la scène : la scène se dessine
+// directement à l'écran (son anticrénelage natif, aucune cible flottante) ; seuls les objets qui rayonnent (une petite scène à part, `sceneLueur` : les bandes et les lampes, mêmes géométries et matériaux) sont redessinés au quart de la résolution, floutés deux fois
+// (un flou séparable de 9 coups, le second plus large), puis la lueur est AJOUTÉE à l'image. Mesuré avec le rendu logiciel des essais : une cible flottante anticrénelée et cinq passes plein écran coûtaient ~150 ms
+// par image à 1 280 × 720 ; la lueur sélective, quelques millisecondes.
 const SOMMET = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }";
-const FLOU = (seuil: boolean): string => `
+const FLOU = `
   varying vec2 vUv; uniform sampler2D tex; uniform vec2 dir;
-  vec3 prise(vec2 uv){ vec3 c = texture2D(tex, uv).rgb; ${seuil ? "return max(c - vec3(1.25), vec3(0.0));" : "return c;"} }
   void main(){
-    vec3 s = prise(vUv) * 0.2270;
-    s += (prise(vUv + dir * 1.3846) + prise(vUv - dir * 1.3846)) * 0.3162;
-    s += (prise(vUv + dir * 3.2308) + prise(vUv - dir * 3.2308)) * 0.0703;
+    vec3 s = texture2D(tex, vUv).rgb * 0.2270;
+    s += (texture2D(tex, vUv + dir * 1.3846).rgb + texture2D(tex, vUv - dir * 1.3846).rgb) * 0.3162;
+    s += (texture2D(tex, vUv + dir * 3.2308).rgb + texture2D(tex, vUv - dir * 3.2308).rgb) * 0.0703;
     gl_FragColor = vec4(s, 1.0);
   }`;
-const POSE = `
-  varying vec2 vUv; uniform sampler2D tScene; uniform sampler2D tBloom; uniform float force;
-  vec3 srgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c)); }
-  void main(){
-    vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * force;
-    // un vignettage doux et chaud : les coins de l'image (la pièce) s'assombrissent, la table reste telle quelle
-    vec2 q = vUv * 2.0 - 1.0;
-    c *= mix(vec3(1.0), vec3(0.62, 0.55, 0.5), smoothstep(0.75, 1.6, dot(q, q * vec2(1.2, 0.75))));
-    gl_FragColor = vec4(srgb(clamp(c, 0.0, 1.0)), 1.0);
-  }`;
+const AJOUT = `
+  varying vec2 vUv; uniform sampler2D tex; uniform float force;
+  void main(){ gl_FragColor = vec4(texture2D(tex, vUv).rgb * force, 1.0); }`;
 
-class Composition {
-  private scene: WebGLRenderTarget | null = null;
+class Lueur {
   private a: WebGLRenderTarget | null = null;
   private b: WebGLRenderTarget | null = null;
   private readonly quad = new FullScreenQuad();
-  private readonly seuil = new ShaderMaterial({ vertexShader: SOMMET, fragmentShader: FLOU(true), uniforms: { tex: { value: null }, dir: { value: new Vector2() } }, depthTest: false, depthWrite: false });
-  private readonly flou = new ShaderMaterial({ vertexShader: SOMMET, fragmentShader: FLOU(false), uniforms: { tex: { value: null }, dir: { value: new Vector2() } }, depthTest: false, depthWrite: false });
-  private readonly pose = new ShaderMaterial({ vertexShader: SOMMET, fragmentShader: POSE, uniforms: { tScene: { value: null }, tBloom: { value: null }, force: { value: 1 } }, depthTest: false, depthWrite: false });
+  private readonly flou = new ShaderMaterial({ vertexShader: SOMMET, fragmentShader: FLOU, uniforms: { tex: { value: null }, dir: { value: new Vector2() } }, depthTest: false, depthWrite: false });
+  private readonly ajout = new ShaderMaterial({ vertexShader: SOMMET, fragmentShader: AJOUT, uniforms: { tex: { value: null }, force: { value: 1 } }, depthTest: false, depthWrite: false, transparent: true, blending: AdditiveBlending });
   private l = 2;
   private h = 2;
+  private readonly noir = new Color("#000000");
+  private readonly avant = new Color();
   constructor(private readonly renderer: WebGLRenderer) {}
   taille(l: number, h: number): void {
-    this.l = Math.max(2, l);
-    this.h = Math.max(2, h);
+    this.l = Math.max(2, l >> 2);
+    this.h = Math.max(2, h >> 2);
     this.liberer();
   }
-  private allouer(): void {
-    if (this.scene) return;
-    this.scene = new WebGLRenderTarget(this.l, this.h, { type: HalfFloatType, samples: 4, minFilter: LinearFilter, magFilter: LinearFilter });
-    const moitie = { type: HalfFloatType, depthBuffer: false, minFilter: LinearFilter, magFilter: LinearFilter } as const;
-    this.a = new WebGLRenderTarget(Math.max(2, this.l >> 1), Math.max(2, this.h >> 1), moitie);
-    this.b = new WebGLRenderTarget(Math.max(2, this.l >> 1), Math.max(2, this.h >> 1), moitie);
-  }
   liberer(): void {
-    for (const c of [this.scene, this.a, this.b]) c?.dispose();
-    this.scene = this.a = this.b = null;
+    for (const c of [this.a, this.b]) c?.dispose();
+    this.a = this.b = null;
   }
   private passe(m: ShaderMaterial, cible: WebGLRenderTarget | null): void {
     this.quad.material = m;
     this.renderer.setRenderTarget(cible);
     this.quad.render(this.renderer);
   }
-  dessiner(scene: Scene, camera: PerspectiveCamera, force: number): void {
+  dessiner(scene: Scene, camera: PerspectiveCamera, force: number, sceneLueur: Scene): void {
     const r = this.renderer;
-    if (force <= 0) {
-      r.setRenderTarget(null);
-      r.render(scene, camera);
-      return;
-    }
-    this.allouer();
-    r.setRenderTarget(this.scene);
-    r.clear();
+    r.setRenderTarget(null);
     r.render(scene, camera);
-    const [l, h] = [this.l >> 1, this.h >> 1];
-    const u = (m: ShaderMaterial, tex: WebGLRenderTarget, dx: number, dy: number): ShaderMaterial => {
-      m.uniforms.tex!.value = tex.texture;
-      (m.uniforms.dir!.value as Vector2).set(dx / l, dy / h);
-      return m;
+    if (force <= 0) return;
+    if (!this.a) {
+      const o = { depthBuffer: true, minFilter: LinearFilter, magFilter: LinearFilter } as const;
+      this.a = new WebGLRenderTarget(this.l, this.h, o);
+      this.b = new WebGLRenderTarget(this.l, this.h, { ...o, depthBuffer: false });
+    }
+    // les objets qui rayonnent, seuls, sur du noir, au quart de la résolution (leur scène n'a ni lumière ni ombre : son rendu ne parcourt qu'eux)
+    r.getClearColor(this.avant);
+    const alpha = r.getClearAlpha();
+    r.setClearColor(this.noir, 1);
+    r.setRenderTarget(this.a);
+    r.clear();
+    r.render(sceneLueur, camera);
+    r.setClearColor(this.avant, alpha);
+    const u = (tex: WebGLRenderTarget, dx: number, dy: number): ShaderMaterial => {
+      this.flou.uniforms.tex!.value = tex.texture;
+      (this.flou.uniforms.dir!.value as Vector2).set(dx / this.l, dy / this.h);
+      return this.flou;
     };
-    this.passe(u(this.seuil, this.scene!, 1, 0), this.a);
-    this.passe(u(this.flou, this.a!, 0, 1), this.b);
-    this.passe(u(this.flou, this.b!, 2.5, 0), this.a);
-    this.passe(u(this.flou, this.a!, 0, 2.5), this.b);
-    this.pose.uniforms.tScene!.value = this.scene!.texture;
-    this.pose.uniforms.tBloom!.value = this.b!.texture;
-    this.pose.uniforms.force!.value = force;
-    this.passe(this.pose, null);
+    this.passe(u(this.a, 1, 0), this.b);
+    this.passe(u(this.b!, 0, 1), this.a);
+    this.passe(u(this.a, 2, 0), this.b);
+    this.passe(u(this.b!, 0, 2), this.a);
+    // la lueur, ajoutée à l'image déjà à l'écran
+    this.ajout.uniforms.tex!.value = this.a.texture;
+    this.ajout.uniforms.force!.value = force;
+    const auto = r.autoClear;
+    r.autoClear = false;
+    this.passe(this.ajout, null);
+    r.autoClear = auto;
   }
   detruire(): void {
     this.liberer();
     this.quad.dispose();
-    for (const m of [this.seuil, this.flou, this.pose]) m.dispose();
+    this.flou.dispose();
+    this.ajout.dispose();
   }
 }
 
@@ -217,7 +212,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const soleil = new DirectionalLight("#ffc888", 1.6);
   soleil.castShadow = true;
   soleil.shadow.mapSize.set(2048, 2048);
-  soleil.shadow.radius = 5;
+  soleil.shadow.radius = 3;
   Object.assign(soleil.shadow.camera, { left: -560, right: 560, top: 560, bottom: -560, near: 50, far: 2800 });
   soleil.shadow.bias = -0.0006;
   soleil.shadow.normalBias = 0.5;
@@ -288,7 +283,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     dessinerSol(c, { theme: o.theme, table: t, titre: o.titre, police: o.police, hors: BOIS });
   });
   // verni : émissif (les couleurs exactes de la palette), la lumière n'y ajoute que ses reflets (l'environnement, le soleil) ; les ombres viennent du calque `ombres`
-  const plan = new Mesh(geo(new PlaneGeometry(LARGEUR, HAUTEUR)), new MeshStandardMaterial({ color: "#000000", emissive: "#ffffff", emissiveMap: sol, roughness: 0.42, metalness: 0, envMapIntensity: 0.32 }));
+  // (Phong et non « Standard » : le reflet du soleil sans échantillonner l'environnement à chaque pixel de la table — le poste le plus cher sur un processeur graphique faible ou logiciel)
+  const plan = new Mesh(geo(new PlaneGeometry(LARGEUR, HAUTEUR)), new MeshPhongMaterial({ color: "#000000", emissive: "#ffffff", emissiveMap: sol, specular: "#2a2620", shininess: 28 }));
   aLiberer.push(plan.material as Material);
   plan.rotation.x = -Math.PI / 2;
   groupe.add(plan);
@@ -318,7 +314,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       c.stroke();
     }
   });
-  const bois = new MeshStandardMaterial({ map: veinage, roughness: 0.3, metalness: 0, envMapIntensity: 0.75 });
+  // verni : un reflet net du soleil (Phong), sans échantillonner l'environnement sur ces grandes surfaces (mesuré : ~35 ms par image avec le rendu logiciel des essais)
+  const bois = new MeshPhongMaterial({ map: veinage, specular: "#4a3a2a", shininess: 42 });
   aLiberer.push(bois);
   const cadre: BufferGeometry[] = [];
   for (const [x, z, l, p] of [[-LARGEUR / 2 - 10, 0, 20, HAUTEUR + 40], [LARGEUR / 2 + 10, 0, 20, HAUTEUR + 40], [0, -HAUTEUR / 2 - 10, LARGEUR + 40, 20], [0, HAUTEUR / 2 + 10, LARGEUR + 40, 20]] as const) {
@@ -330,13 +327,20 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   for (const g of cadre) g.dispose();
   const SOL_PIECE = -205;
   const BAS_CAISSE = -75;
-  const caisse = new Mesh(geo(new BoxGeometry(LARGEUR + 36, -13 - BAS_CAISSE, HAUTEUR + 36)), bois);
+  // la caisse n'a que les trois faces que la caméra peut voir (les côtés et l'avant) : son dessus, sous la table, serait éclairé pour rien à chaque pixel (le plus gros poste mesuré avec un rendu logiciel)
+  const geoCaisse = geo(new BoxGeometry(LARGEUR + 36, -13 - BAS_CAISSE, HAUTEUR + 36));
+  geoCaisse.clearGroups();
+  geoCaisse.addGroup(0, 12, 0); // +x et −x
+  geoCaisse.addGroup(24, 6, 0); // +z (l'avant)
+  const caisse = new Mesh(geoCaisse, [bois]);
   caisse.position.y = (-13 + BAS_CAISSE) / 2;
   groupe.add(caisse);
   // quatre pieds en métal, jusqu'au parquet
   const pieds: BufferGeometry[] = [];
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) pieds.push(new BoxGeometry(16, BAS_CAISSE - SOL_PIECE, 16).translate(sx * (LARGEUR / 2 + 6), (BAS_CAISSE + SOL_PIECE) / 2, sz * (HAUTEUR / 2 + 6)));
-  groupe.add(new Mesh(geo(mergeGeometries(pieds)!), mat("#3A3F46", { metalness: 0.9, roughness: 0.35, envMapIntensity: 1 })));
+  const lesPieds = new Mesh(geo(mergeGeometries(pieds)!), mat("#3A3F46", { metalness: 0.9, roughness: 0.35, envMapIntensity: 1 }));
+  lesPieds.renderOrder = 2;
+  groupe.add(lesPieds);
   for (const g of pieds) g.dispose();
 
   // --- La pièce : un parquet, le motif de la fenêtre que le soleil y projette et l'ombre du meuble, cuits dans une texture (redessinée quand la direction du soleil change)
@@ -353,7 +357,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   }
   const pieceTexture = new CanvasTexture(pieceTex);
   pieceTexture.colorSpace = SRGBColorSpace;
-  pieceTexture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  // pas de filtrage anisotrope : le parquet est vu en rasant, flou de toute façon, et ce filtrage y coûte cher
   aLiberer.push(pieceTexture);
   const flouLumiere = document.createElement("canvas");
   flouLumiere.width = flouLumiere.height = 512;
@@ -414,10 +418,18 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     pieceTexture.needsUpdate = true;
   };
   cuirePiece();
-  const piece = new Mesh(geo(new PlaneGeometry(PIECE, PIECE)), new MeshBasicMaterial({ map: pieceTexture }));
+  // le parquet est percé sous le meuble (sauf la bande qu'on voit entre les pieds, à l'avant) : il n'est dessiné que là où il se voit
+  const contourPiece = new Shape([new Vector2(-PIECE / 2, -PIECE / 2), new Vector2(PIECE / 2, -PIECE / 2), new Vector2(PIECE / 2, PIECE / 2), new Vector2(-PIECE / 2, PIECE / 2)]);
+  const [tx, tz0, tz1] = [LARGEUR / 2 + 8, -HAUTEUR / 2 - 16, HAUTEUR / 2 - 70];
+  contourPiece.holes.push(new Shape([new Vector2(-tx, -tz1), new Vector2(tx, -tz1), new Vector2(tx, -tz0), new Vector2(-tx, -tz0)]));
+  const geoPiece = geo(new ShapeGeometry(contourPiece));
+  const uv = geoPiece.getAttribute("uv");
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / PIECE + 0.5, uv.getY(i) / PIECE + 0.5);
+  const piece = new Mesh(geoPiece, new MeshBasicMaterial({ map: pieceTexture }));
   aLiberer.push(piece.material as Material);
   piece.rotation.x = -Math.PI / 2;
   piece.position.y = SOL_PIECE;
+  piece.renderOrder = 2; // de même : le parquet caché par le meuble n'est jamais dessiné
   groupe.add(piece);
 
   // --- Les murs : des rails ; les poteaux
@@ -854,32 +866,20 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     lampesMult.push(m);
   }
 
-  // --- Lot PBV1 : les bandes lumineuses sur les rails latéraux (un tube qui dépasse 1 en lumière linéaire : le bloom le fait rayonner) et leur lueur sur le sol (un dégradé ajouté, qui suffit sans bloom)
+  // --- Lot PBV1 : les bandes lumineuses sur les rails latéraux : un tube (le bloom le fait rayonner) ; leur lueur sur le sol est cuite dans le sol (`dessinerSol`)
   const couleurBande = new Color(P.bande);
   const tube = new MeshBasicMaterial({ color: couleurBande.clone() });
   aLiberer.push(tube);
-  const lueurSol = toile(64, 4, (c) => {
-    const gr = c.createLinearGradient(0, 0, 64, 0);
-    gr.addColorStop(0, "rgba(255,255,255,1)");
-    gr.addColorStop(1, "rgba(255,255,255,0)");
-    c.fillStyle = gr;
-    c.fillRect(0, 0, 64, 4);
-  });
-  lueurSol.colorSpace = NoColorSpace;
-  const halo = new MeshBasicMaterial({ map: lueurSol, color: P.bande, transparent: true, opacity: 0.4, blending: AdditiveBlending, depthWrite: false });
-  aLiberer.push(halo);
   const tubes: BufferGeometry[] = [];
-  BANDES.forEach(([x, y0, y1], i) => {
+  for (const [x, y0, y1] of BANDES) {
     const g = new BoxGeometry(3.2, 1.4, y1 - y0);
     g.translate(X(x), 18.7, Z((y0 + y1) / 2));
     tubes.push(g);
-    const h = plat(geo(new PlaneGeometry(20, y1 - y0)), 0.45, halo);
-    h.position.set(X(x) + (i === 0 ? 13 : -13), 0.45, Z((y0 + y1) / 2));
-    if (i !== 0) h.rotation.z = Math.PI; // le dégradé part du rail, vers l'intérieur de la table
-    h.renderOrder = 1;
-    groupe.add(h);
-  });
-  groupe.add(new Mesh(geo(mergeGeometries(tubes)!), tube));
+  }
+  const lesTubes = new Mesh(geo(mergeGeometries(tubes)!), tube);
+  groupe.add(lesTubes);
+  const sceneLueur = new Scene();
+  sceneLueur.add(new Mesh(lesTubes.geometry, tube));
   for (const g of tubes) g.dispose();
   // les petites lampes du décor, allumées : sur les flancs de l'arc et sur les lance-pierres (une seule instance de dessin ; leur lueur, une vague qui court, change chaque image)
   const decor = lampesDecor();
@@ -894,6 +894,10 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     lampes.setColorAt(i, couleurBande);
   });
   groupe.add(lampes);
+  const lampesLueur = new InstancedMesh(lampes.geometry, lampes.material, decor.length);
+  lampesLueur.instanceMatrix = lampes.instanceMatrix;
+  lampesLueur.instanceColor = lampes.instanceColor;
+  sceneLueur.add(lampesLueur);
   const couleurLampe = new Color(P.lampe);
   const teinte = new Color();
   // les vis en métal : aux coins et le long du meuble, aux coins des lance-pierres (une seule instance de dessin)
@@ -919,7 +923,6 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const lueurs = (): void => {
     const k = vue.bandes / 100;
     tube.color.copy(couleurBande).multiplyScalar(0.35 + 2.4 * k);
-    halo.opacity = Math.min(1, 0.3 * k);
   };
   lueurs();
 
@@ -1019,11 +1022,13 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const surcouche = document.createElement("canvas");
   surcouche.className = "pinball-surcouche";
   Object.assign(surcouche.style, { position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", pointerEvents: "none" });
+  // le vignettage chaud (lot PBV1) : les coins de l'image, la pièce, s'assombrissent ; la table reste telle quelle (un dégradé du navigateur, il ne coûte rien à la carte graphique)
+  surcouche.style.background = "radial-gradient(ellipse 75% 62% at 50% 50%, rgba(40,20,8,0) 72%, rgba(40,20,8,.42) 100%)";
   canvas.after(surcouche);
   const sc = surcouche.getContext("2d")!;
   let surcoucheVide = true;
 
-  const composition = new Composition(renderer);
+  const composition = new Lueur(renderer);
 
   // --- La caméra : elle cadre toute la table
   let L = 1;
@@ -1102,7 +1107,12 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   let msMoy = 0;
   let msImage = 0;
 
+  /** Lot PBV1 : une partie finie ne bouge plus (l'écran de fin la couvre) : sa dernière image reste au canvas, on ne la redessine que si l'écran change de taille. Mesuré avec le rendu logiciel des essais : redessiner
+   *  la table derrière l'écran de fin retardait son apparition de plusieurs secondes ; sur un téléphone, c'est de la batterie. */
+  let figee = false;
   function dessiner(s: Surimpression): void {
+    if (partie.finie && figee) return;
+    figee = partie.finie;
     const debut = performance.now();
     const dt = Math.min(0.05, (debut - dernier) / 1000);
     dernier = debut;
@@ -1193,7 +1203,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     for (let i = 0; i < decor.length; i++) lampes.setColorAt(i, teinte.copy(couleurLampe).multiplyScalar((0.25 + 2.6 * kb) * lueurLampe(i, s.tick)));
     if (lampes.instanceColor) lampes.instanceColor.needsUpdate = true;
     renderer.info.reset();
-    composition.dessiner(scene, camera, vue.bloom / 100);
+    composition.dessiner(scene, camera, (vue.bloom / 100) * 1.6, sceneLueur);
     msImage += (performance.now() - debut - msImage) * 0.05;
 
     // la surcouche : « Bille sauvée ! », et pour `?debug` le compteur de pas et les gains
@@ -1252,6 +1262,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     surcouche.style.width = `${L}px`;
     surcouche.style.height = `${H}px`;
     surcoucheVide = false;
+    figee = false;
     cadrer();
   }
 
@@ -1260,6 +1271,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     dessiner,
     regler(v: Vue): void {
       vue = { ...v };
+      figee = false;
       lumiere();
       lueurs();
       cuirePiece();

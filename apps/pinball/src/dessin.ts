@@ -560,6 +560,18 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
     }
     c.globalAlpha = 1;
   }
+  // lot PBV1 : la lueur des bandes lumineuses sur le sol, le long des rails latéraux (un dégradé de la couleur du thème, du rail vers l'intérieur)
+  for (const [x, y0, y1] of BANDES) {
+    const s = x < AXE ? 1 : -1;
+    const g = c.createLinearGradient(x, 0, x + s * 18, 0);
+    g.addColorStop(0, P.bande);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    c.save();
+    c.globalAlpha = 0.32;
+    c.fillStyle = g;
+    c.fillRect(Math.min(x, x + s * 18), y0, 18, y1 - y0);
+    c.restore();
+  }
   // la zone des batteurs : un sol plus sombre, le danger est en bas
   c.beginPath();
   c.moveTo(20, 560);
@@ -916,7 +928,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     tracer(P.sombre ? "#6a6f9a" : "#8a6a52", 2);
     // lot PBV1 : les bandes lumineuses sur les rails latéraux, dans la couleur du thème (une lueur, puis le tube)
     for (const [x, y0, y1] of BANDES) {
-      for (const [l, a] of [[7, 0.3], [2.4, 1]] as const) {
+      for (const [l, a] of [[4, 0.35], [2.4, 1]] as const) {
         g.globalAlpha = a;
         g.beginPath();
         g.moveTo(x, y0);
