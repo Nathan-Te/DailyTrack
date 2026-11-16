@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2927 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2944 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3710,6 +3710,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aujourdhui.mission` | Mission | Mission |
 | `aujourdhui.mission.gain` | +{points} et un cran de multiplicateur, une fois par partie | +{points} and one step of multiplier, once per game |
 | `aujourdhui.table` | Sur la table | On the table |
+| `aujourdhui.plan` | Plan : {plan} | Layout: {plan} |
 | `aujourdhui.medailles` | Médailles du jour | Today's medals |
 | `aujourdhui.apercu` | Aperçu de la table du jour : {theme} | Preview of today's table: {theme} |
 | `aujourdhui.seuils.calcul` | Seuils en calcul… | Thresholds being calculated… |
@@ -3732,6 +3733,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.point4` | La mission du jour change avec la table : tours de manège, plongées dans le tourbillon, passages par les portails ou geysers déclenchés. Réussis-la, une fois par partie : elle rapporte des points et un cran de multiplicateur. | Today's mission changes with the table: carousel laps, whirlpool dives, trips through the portals or geysers set off. Complete it, once per game: it earns points and one step of multiplier. |
 | `aide.point5` | Le multiplicateur va de ×1 à ×6 et multiplie chaque point que tu marques. Il monte d'un cran quand tu réussis la mission et quand tu allumes les trois lampes du haut de la table. | The multiplier goes from ×1 to ×6 and multiplies every point you score. It goes up one step when you complete the mission and when you light the three lamps at the top of the table. |
 | `aide.point6` | Bille sauvée : une bille perdue juste après son lancer revient au lanceur, une fois par bille. Les batteurs, eux, ne pardonnent rien : à toi de viser. | Ball save: a ball lost just after launch comes back to the launcher, once per ball. The flippers forgive nothing, though: aim well. |
+| `aide.point7` | Les rampes et l'orbite se prennent en visant la flèche de leur entrée, assez vite : la bille roule au-dessus de la table et rapporte des points quand elle arrive au bout. Deux rails de suite avant que la jauge du combo ne se vide, et le combo monte : chaque rail rapporte plus. | Ramps and the orbit are taken by aiming at the arrow at their entrance, fast enough: the ball rolls above the table and scores when it reaches the end. Two rails in a row before the combo gauge runs out, and the combo goes up: each rail is worth more. |
 
 ### kit (`kit.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3867,6 +3869,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `module.asteroide` | Astéroïde | Asteroid |
 | `module.geyser` | Geyser | Geyser |
 | `module.coulee` | Coulée | Lava flow |
+| `module.rampe.foire` | Montagnes russes | Roller coaster |
+| `module.rampe.ocean` | Toboggan | Water slide |
+| `module.rampe.espace` | Tube orbital | Orbital tube |
+| `module.rampe.volcan` | Wagonnet | Mine cart |
+| `module.orbite.foire` | Grand huit | Big dipper |
+| `module.orbite.ocean` | Courant | Current |
+| `module.orbite.espace` | Orbite | Orbit |
+| `module.orbite.volcan` | Galerie | Gallery |
 
 ### Page (titre, chargement) (`page.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3890,6 +3900,18 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.mission.nom.geyser` | Geysers | Geysers |
 | `hud.mission.reussie` | Réussie | Complete |
 | `hud.mission.gain` | +{points} | +{points} |
+| `hud.rail.gain` | +{points} | +{points} |
+| `hud.combo` | Combo ×{n} | Combo ×{n} |
+| `hud.combo.aria` | Combo ×{n} | Combo ×{n} |
+
+### plan (`plan.*`, `apps/pinball/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `plan.doublette` | Doublette | Double ramp |
+| `plan.tremplin` | Tremplin | Ramp-up |
+| `plan.bretelle` | Bretelle | Sliproad |
+| `plan.boucle` | Boucle | Loop |
 
 ### robot (`robot.*`, `apps/pinball/src/catalogue.*.ts`)
 

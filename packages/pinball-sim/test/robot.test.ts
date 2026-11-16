@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import {
-  DROITE, GAUCHE, LANCEUR, REGLAGES, ROBOT_ECART_MIN, ROBOT_IMPRECISION, ROBOT_MAINTIEN_MAX, ROBOT_MAINTIEN_MIN, ROBOT_MARGE, ROBOT_REACTION, THEMES_PINBALL, Partie, chargeDe, dailyPinball, enregistrer, graineDuRobot, jouer, jouerRobot, lireCharge, noterFrappe,
+  DROITE, GAUCHE, IDS_PLANS, LANCEUR, REGLAGES, ROBOT_ECART_MIN, ROBOT_IMPRECISION, ROBOT_MAINTIEN_MAX, ROBOT_MAINTIEN_MIN, ROBOT_MARGE, ROBOT_REACTION, THEMES_PINBALL, Partie, chargeDe, dailyPinball, enregistrer, graineDuRobot, jouer, jouerRobot, lireCharge, noterFrappe,
   rejouer, type Coup, type Evenement,
 } from "../src/index";
 
@@ -107,10 +107,24 @@ describe("le robot a des contraintes d'humain", () => {
 
 describe("le robot vise : la mission du jour compte en premier", () => {
   it.each(THEMES_PINBALL)("%s : il réussit la mission en deux minutes de jeu", (theme) => {
-    const c = dailyPinball(JOUR + 4, undefined, theme);
+    const c = dailyPinball(JOUR + 4, undefined, theme, "doublette"); // lot PBG1 : un plan fixé (la validation éprouve les 500 tables)
     const r = jouerRobot(c, graineDuRobot(0), { maxTicks: 72000 });
     expect(r.partie.missionFaite, `${theme} : mission ${r.partie.compteur} / ${r.partie.but}`).toBe(true);
     expect(r.partie.score).toBeGreaterThan(20000);
+  });
+  it("lot PBG1 : il vise les rails — sur chaque plan, ses quatre parties de deux minutes (celles des seuils) mènent chaque rail à son bout au moins une fois, avec un combo", () => {
+    for (const plan of IDS_PLANS) {
+      const c = dailyPinball(JOUR + 4, undefined, "foire", plan);
+      const faits = new Set<number>();
+      let combo = 0;
+      for (let k = 0; k < 4; k++) {
+        const r = jouerRobot(c, graineDuRobot(k), { maxTicks: 72000 });
+        r.partie.railsFaits.forEach((n, i) => n > 0 && faits.add(i));
+        combo = Math.max(combo, r.partie.comboMaxPartie);
+      }
+      expect(faits.size, plan).toBe(new Partie(c).table.rails.length);
+      expect(combo, plan).toBeGreaterThanOrEqual(2);
+    }
   });
 });
 

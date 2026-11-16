@@ -3,10 +3,10 @@ import { daysFromCivil } from "@cdj/core";
 import { PINBALL_GENERATOR_VERSION, TABLES_REFUSEES, analyserTable, cleDeTable, dailyPinballAvec, toutesLesTables, type Contenu } from "../src/index";
 import { enFil, enParallele, repondre } from "./fils";
 
-// `npm run valider:pinball -w @cdj/pinball-sim -- [--ecrire] [--fils=N] [--seulement=<début de clé>] [--jours=400]` : **la validation des 444 tables que le générateur peut tirer** (lot PB4). Chaque table passe les trois
+// `npm run valider:pinball -w @cdj/pinball-sim -- [--ecrire] [--fils=N] [--seulement=<début de clé>] [--jours=400]` : **la validation des 500 tables que le générateur peut tirer** (lot PB4). Chaque table passe les trois
 // épreuves de `validation.ts` (aucune bille coincée, chaque module touché, la mission réussie) ; le verdict ne dépend que de la table, donc se calcule une fois pour toutes. `--ecrire` écrit les tables refusées dans
 // `src/refusees.ts` (que le générateur lit) ; **si la liste change, monter `PINBALL_GENERATOR_VERSION`** (un jour servi ne change pas). `--jours=400` dit combien de jours auraient tiré une table refusée.
-// Aucune base, aucun réseau. Une table met de 3 à 6 secondes : 444 tables ≈ 10 minutes sur 4 cœurs.
+// Aucune base, aucun réseau. Une table met de 3 à 6 secondes : 500 tables ≈ 14 minutes sur 4 cœurs.
 interface Resume {
   cle: string;
   ok: boolean;
@@ -59,7 +59,7 @@ else {
     if (seulement) throw new Error("--ecrire demande la validation de toutes les tables (pas de --seulement)");
     const cles = refusees.map((r) => r.cle).sort();
     const fichier = new URL("../src/refusees.ts", import.meta.url);
-    const entete = `// Les tables refusées par la validation (lot PB4) : la clé \`thème:module,…\` de chacune (\`cleDeTable\`). **Produit par \`npm run valider:pinball -w @cdj/pinball-sim -- --ecrire\`**, jamais à la main : l'outil valide les 444
+    const entete = `// Les tables refusées par la validation (lot PB4) : la clé \`thème:plan:module,…\` de chacune (\`cleDeTable\`). **Produit par \`npm run valider:pinball -w @cdj/pinball-sim -- --ecrire\`**, jamais à la main : l'outil valide les 500
 // tables que le générateur peut tirer (\`toutesLesTables\`) et écrit ici celles qu'il refuse. Le générateur ne les sert jamais : il passe à la graine suivante (\`dailyPinball\`).
 // Changer le robot, la validation ou la simulation peut changer cette liste : la relancer, et **si elle change, monter \`PINBALL_GENERATOR_VERSION\`** (un jour déjà servi ne change pas : règle des jours figés).
 // Dernière validation : générateur g${PINBALL_GENERATOR_VERSION}, ${resumes.length} tables, ${refusees.length} refusée(s).

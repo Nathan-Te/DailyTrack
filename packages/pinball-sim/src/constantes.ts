@@ -2,11 +2,11 @@
 // 1/60 s) sont portés tels quels ; ce fichier ne garde que ce qui ne se règle jamais à la main. Les constantes de SENSATION (pente, rebonds, force des batteurs et du lanceur) sont dans `reglages.ts`, en un seul objet.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée (une règle, un réglage par défaut, la géométrie). */
-export const PINBALL_SIM_VERSION = 3;
+export const PINBALL_SIM_VERSION = 4;
 /** La version du générateur de la table du jour. Elle monte à tout changement de ce que `dailyPinball` produit. Jamais une date. */
-export const PINBALL_GENERATOR_VERSION = 3;
+export const PINBALL_GENERATOR_VERSION = 4;
 /** La version du calcul des seuils des médailles : le robot du lot PB4 (version 1 : les seuils provisoires du PB1, les mêmes tous les jours). Elle monte à tout changement du robot, de ses constantes ou des pourcentages (`seuils.ts`). */
-export const PINBALL_BOT_VERSION = 2;
+export const PINBALL_BOT_VERSION = 3;
 
 /** Le pas : 600 par seconde (celui de la maquette). La bille va à 1 500 px/s au plus, soit 2,5 px par pas, pour un rayon de 9 px : elle ne saute jamais un mur (`test/traversee.test.ts`). */
 export const TICKS_PAR_SECONDE = 600;
@@ -58,6 +58,13 @@ export const EV_PORTAIL = 16384;
 export const EV_GEYSER = 32768;
 export const EV_COULEE = 65536;
 export const EV_MISSION = 131072;
+/** Lot PBG1 : une rampe ou l'orbite menée à son bout, et un combo qui monte (au moins deux de suite). */
+export const EV_RAMPE = 262144;
+export const EV_ORBITE = 524288;
+export const EV_COMBO = 1048576;
+/** Lot PBG1 : la bille quitte le plateau pour un rail (elle y entre assez vite) / elle en retombe par son entrée (trop lente). */
+export const EV_RAIL = 2097152;
+export const EV_RECUL = 4194304;
 
 /** Les points de la maquette et du seed (lot PB3 : les éléments des thèmes et la mission). */
 export const POINTS = { sling: 10, spinner: 50, bumper: 100, voie: 100, cible: 250, trouVoies: 1000, trou: 1500, banque: 2000, manege: 500, coulee: 300, geyser: 750, portail: 800, tourbillon: 2000, mission: 10000 } as const;

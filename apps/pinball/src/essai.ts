@@ -4,6 +4,7 @@
 //     seulement bridé à 30 images par seconde : `@cdj/core/bridage`) ;
 //   · `?debug&fps` : l'affichage des images par seconde et de la durée d'une image ;
 //   · `?essai=mission` (lot PB3) : la partie commence au but de la mission moins un, pour voir tout de suite le moment fort (jamais classée) ;
+//   · `?plan=<id>` (lot PBG1) : la table de ce plan (doublette, tremplin, bretelle, boucle) ce jour-là, **combinable avec `?theme=`** (jamais classée) ; un plan inconnu est ignoré par `niveau.ts` (la table du jour) ;
 //   · `?robot` (lot PB4) : on regarde le robot jouer la table du jour (sa première partie ; `?robot=2` : la troisième) avec la mention « Le robot joue » ; `?jour=AAAA-MM-JJ&robot` pour un autre jour (jamais classé).
 // Ce fichier est dans le premier chargement (la définition y lit `classable`) : **il ne fait que lire l'adresse**, tout le reste (bornes, validation, panneau) est à la demande.
 export type Qualite = "haute" | "basse";
@@ -19,12 +20,14 @@ export interface Essai {
   mission: boolean;
   /** `?robot` (lot PB4) : le rang de la partie du robot qu'on regarde (0 : la première), ou `null`. */
   robot: number | null;
+  /** `?plan=<id>` (lot PBG1) : l'identifiant demandé (une suite de lettres), **non vérifié ici** — la liste des plans est à la demande (`niveau.ts` l'ignore s'il est inconnu) —, ou `null`. */
+  plan: string | null;
   /** Vrai dès qu'une option change la partie : elle n'est alors pas classable. */
   essai: boolean;
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { tune: false, fps: false, qualite: null, reglages: null, mission: false, robot: null, essai: false };
+  const vide: Essai = { tune: false, fps: false, qualite: null, reglages: null, mission: false, robot: null, plan: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const debug = q.has("debug");
@@ -44,5 +47,8 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   const brutRobot = q.get("robot");
   const rang = brutRobot === null || brutRobot === "" ? 0 : Number(brutRobot);
   const robot = q.has("robot") ? (Number.isInteger(rang) && rang >= 0 && rang < 100 ? rang : 0) : null;
-  return { tune, fps: debug && q.has("fps"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, robot, essai: tune || reglages !== null || mission || robot !== null };
+  // `?plan=` : un identifiant en lettres minuscules ; autre chose est ignoré
+  const brutPlan = q.get("plan");
+  const plan = brutPlan !== null && /^[a-z]{1,20}$/.test(brutPlan) ? brutPlan : null;
+  return { tune, fps: debug && q.has("fps"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, robot, plan, essai: tune || reglages !== null || mission || robot !== null || plan !== null };
 }

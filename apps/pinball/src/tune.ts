@@ -80,6 +80,15 @@ const CURSEURS: readonly Curseur[] = [
   sim("butTourbillon", "Missions (buts)", "Océan : plongées dans le tourbillon", "Ocean: whirlpool dives"),
   sim("butPortail", "Missions (buts)", "Espace : passages par un portail", "Space: portal passes"),
   sim("butGeyser", "Missions (buts)", "Volcan : geysers déclenchés", "Volcano: geysers set off"),
+  // lot PBG1 : les rampes, l'orbite et le combo (valeurs en points : avant le combo et le multiplicateur)
+  sim("rampeVitesseMin", "Rampes et orbite", "Vitesse minimale pour entrer (px/s)", "Minimum speed to enter (px/s)"),
+  sim("rampeFrottement", "Rampes et orbite", "Frottement (‰ de la vitesse par seconde)", "Friction (‰ of speed per second)"),
+  sim("rampePente", "Rampes et orbite", "Inclinaison des rails (px/s², la table : 820)", "Rail incline (px/s², the table: 820)"),
+  sim("rampePoints", "Rampes et orbite", "Rampe menée à son bout (points)", "Ramp completed (points)", 50),
+  sim("orbitePoints", "Rampes et orbite", "Orbite traversée (points)", "Orbit completed (points)", 50),
+  sim("comboDelai", "Combo", "Délai pour enchaîner (pas ; 600 = 1 s)", "Time to chain (steps; 600 = 1 s)", 50),
+  sim("comboMax", "Combo", "Rang de combo au-delà duquel les points ne montent plus", "Combo rank beyond which points stop rising"),
+  sim("comboPas", "Combo", "Points en plus par rang (% d'un rail)", "Extra points per rank (% of a rail)", 5),
   { cle: "angle", groupe: "vue", section: "Vue", fr: "Caméra : angle (°)", en: "Camera: angle (°)" },
   { cle: "distance", groupe: "vue", section: "Vue", fr: "Caméra : distance (% du cadrage)", en: "Camera: distance (% of framing)" },
   { cle: "champ", groupe: "vue", section: "Vue", fr: "Caméra : champ (°)", en: "Camera: field of view (°)" },
@@ -98,7 +107,7 @@ const CURSEURS: readonly Curseur[] = [
   { cle: "occlusion", groupe: "vue", section: "Lumière", fr: "Ombres de contact sur le sol (%)", en: "Contact shadows on the floor (%)" },
   { cle: "vignettage", groupe: "vue", section: "Lumière", fr: "Vignettage de la table (%)", en: "Table vignetting (%)" },
 ];
-const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", Vue: "View", "Lumière": "Light" };
+const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", "Rampes et orbite": "Ramps and orbit", Combo: "Combo", Vue: "View", "Lumière": "Light" };
 const TEXTES = {
   fr: { ouvrir: "Réglages d'essai", titre: "Réglages d'essai", note: "Un curseur de la simulation relance la partie (non classée) ; ceux de la vue agissent en direct (rendu haute qualité).", exporter: "Exporter", copie: "Copié", lien: "Copier le lien", retablir: "Rétablir", fermer: "Fermer", json: "Les réglages, en JSON", sansTrois: "Le rendu de secours est affiché : la vue n'a pas d'effet." },
   en: { ouvrir: "Tuning", titre: "Tuning", note: "A simulation slider restarts the game (not ranked); the view sliders apply live (high quality render).", exporter: "Export", copie: "Copied", lien: "Copy link", retablir: "Reset", fermer: "Close", json: "The settings, as JSON", sansTrois: "The fallback render is showing: the view has no effect." },

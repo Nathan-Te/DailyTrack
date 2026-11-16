@@ -1,4 +1,4 @@
-import { DUREE_PARTIE_ROBOT, PARTIES_DU_ROBOT, PINBALL_GENERATOR_VERSION, THEMES_PINBALL, dailyPinball, graineDuRobot, jouerRobot, lireJourFige, seuilsEnTranches, type Contenu, type Evenement, type Seuils, type ThemePinball } from "@cdj/pinball-sim";
+import { DUREE_PARTIE_ROBOT, IDS_PLANS, PARTIES_DU_ROBOT, PINBALL_GENERATOR_VERSION, THEMES_PINBALL, dailyPinball, graineDuRobot, jouerRobot, lireJourFige, seuilsEnTranches, type Contenu, type Evenement, type Seuils, type ThemePinball } from "@cdj/pinball-sim";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { lireEssai } from "./essai";
@@ -68,12 +68,15 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
     }
   }
   contenu ??= dailyPinball(jour, PINBALL_GENERATOR_VERSION);
+  const essai = lireEssai(typeof location === "undefined" ? "" : location.search, production);
   // Un autre thème (`?theme=`, essai) : la table de ce thème ce jour-là, avec ses éléments et sa mission (lot PB3), jamais celle du jour avec d'autres couleurs.
-  if (theme !== contenu.theme && (THEMES_PINBALL as readonly string[]).includes(theme)) contenu = dailyPinball(jour, PINBALL_GENERATOR_VERSION, theme as ThemePinball);
+  // Lot PBG1 : un autre plan (`?plan=<id>`, essai), seul ou avec le thème : la table de ce plan ce jour-là ; un plan inconnu est ignoré.
+  const themeVoulu = (THEMES_PINBALL as readonly string[]).includes(theme) ? (theme as ThemePinball) : contenu.theme;
+  const planVoulu = essai.plan !== null && (IDS_PLANS as readonly string[]).includes(essai.plan) ? essai.plan : contenu.plan;
+  if (themeVoulu !== contenu.theme || planVoulu !== contenu.plan) contenu = dailyPinball(jour, PINBALL_GENERATOR_VERSION, themeVoulu, planVoulu);
   const calcul = contenu.seuilsFiges ? null : seuilsEnArrierePlan(contenu);
   const rendu: Contenu & PretSeuils & { robot?: RobotDuJour } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? calcul!.seuils, pretSeuils: calcul ? calcul.pret : () => contenu.seuilsFiges ?? null };
   // L'essai de recette `?robot` (hors production) : le robot joue ici, avant la partie (quelques secondes), et la scène rejoue ses appuis. C'est l'une des parties qui donnent les seuils (la première, ou `?robot=<n>`).
-  const essai = lireEssai(typeof location === "undefined" ? "" : location.search, production);
   if (essai.robot !== null) {
     await new Promise((r) => setTimeout(r, 30)); // laisse l'écran de chargement se peindre avant le calcul
     const r = jouerRobot(contenu, graineDuRobot(essai.robot % PARTIES_DU_ROBOT), { maxTicks: DUREE_PARTIE_ROBOT });

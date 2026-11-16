@@ -43,6 +43,8 @@ export const ROBOT_IMPRECISION = 6;
 export const ROBOT_PAS_ESSAI = 6;
 /** Ce qu'il regarde après sa frappe : 360 pas (0,6 s) — le temps que la bille remonte et touche son module ; la suite s'arrête plus tôt si la bille est perdue ou retombe. */
 export const ROBOT_HORIZON = 360;
+/** Lot PBG1 : une bille sur un rail est suivie jusqu'à son bout (une rampe dure 1 à 2 secondes : plus que l'horizon), au plus 2 400 pas (4 s). */
+export const ROBOT_HORIZON_RAIL = 2400;
 /** Le robot décide quand la bille passe sous cette ligne (px) en tombant ; il relâche quand elle remonte au-dessus de `ROBOT_Y_LACHE` ; la bille « arrive » aux batteurs à `ROBOT_Y_BATTEURS`. */
 export const ROBOT_Y_DECISION = 420;
 export const ROBOT_Y_LACHE = 570;
@@ -128,7 +130,7 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[]): { note: num
   let pas = 0;
   const haut = (ROBOT_Y_DECISION - 100) * UNITE;
   const decision = ROBOT_Y_DECISION * UNITE;
-  while (pas < ROBOT_HORIZON && !c.finie) {
+  while ((pas < ROBOT_HORIZON || c.couche === 1) && pas < ROBOT_HORIZON_RAIL && !c.finie) {
     if (tenu && doitLacher(c, depuis)) {
       for (const b of appuyes) c.regler(b, false);
       tenu = false;
@@ -138,7 +140,7 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[]): { note: num
     depuis++;
     if (c.billes < d.billes || c.dansLanceur || c.ev & EV_SAUVEE) break;
     if (c.y < haut) monte = true;
-    else if (monte && depuis > ROBOT_MAINTIEN_MIN && c.vy > 0 && c.y > decision) break;
+    else if (monte && depuis > ROBOT_MAINTIEN_MIN && c.vy > 0 && c.y > decision && c.couche === 0) break;
   }
   return { note: noter(c, d), pas };
 }
@@ -313,7 +315,7 @@ export function* jouerRobotEnTranches(contenu: Contenu, graine: number, options:
           dernier[b] = t;
         }
         prevu = null;
-      } else if (prevu === null && t >= revoir && !partie.tenue(GAUCHE) && !partie.tenue(DROITE) && partie.captif === 0 && partie.vy > 0 && partie.y > ROBOT_Y_DECISION * UNITE && partie.x < 340 * UNITE) {
+      } else if (prevu === null && t >= revoir && !partie.tenue(GAUCHE) && !partie.tenue(DROITE) && partie.captif === 0 && partie.couche === 0 && partie.vy > 0 && partie.y > ROBOT_Y_DECISION * UNITE && partie.x < 340 * UNITE) {
         decisions++;
         const c = yield* choisirEnTranches(partie, [dernier[0] + ROBOT_ECART_MIN - t, dernier[1] + ROBOT_ECART_MIN - t]);
         pasSimules += c.pas;

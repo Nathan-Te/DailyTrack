@@ -52,6 +52,15 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   butTourbillon: [1, 20],
   butPortail: [1, 20],
   butGeyser: [1, 20],
+  // lot PBG1 : les rails (rampes et orbite) et le combo
+  rampeVitesseMin: [100, 1500],
+  rampePente: [0, 1600],
+  rampeFrottement: [0, 600],
+  rampePoints: [0, 20000],
+  orbitePoints: [0, 20000],
+  comboDelai: [600, 12000],
+  comboMax: [1, 10],
+  comboPas: [0, 200],
 };
 
 /** Ce que le joueur d'essai règle sur la vue (rien de cela n'entre dans la simulation). */

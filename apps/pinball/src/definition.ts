@@ -43,7 +43,7 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   rediffusionDiamant: () => "",
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),
-  aide: ["aide.point1", "aide.point2", "aide.point3", "aide.point4", "aide.point5", "aide.point6"],
+  aide: ["aide.point1", "aide.point2", "aide.point3", "aide.point4", "aide.point5", "aide.point6", "aide.point7"],
   // Lot PB5b : le HUD est en surimpression (`hud.ts` : les deux bandes, la pause et le plein écran) ; la barre crème du kit n'est plus visible, son texte reste dans la page pour la pause.
   hud: "surimpression",
 };

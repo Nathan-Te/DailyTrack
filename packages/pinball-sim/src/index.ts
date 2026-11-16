@@ -1,6 +1,7 @@
 export * from "./constantes";
 export * from "./calendrier";
 export * from "./themes";
+export * from "./plans";
 export * from "./generateur";
 export * from "./reglages";
 export * from "./table";

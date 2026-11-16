@@ -86,14 +86,20 @@ describe("aucun élément ne fait traverser un mur", () => {
         const b = (rng.int(360) * Math.PI) / 180;
         enJeu(p, x, y, Math.trunc(Math.cos(b) * REGLAGES.vitesseMax), Math.trunc(Math.sin(b) * REGLAGES.vitesseMax));
         for (let k = 0; k < 900 && p.billes === NB_BILLES && !p.finie; k++) {
-          const [ax, ay, capte] = [p.x, p.y, p.captif > 0];
+          const [ax, ay, capte, avant] = [p.x, p.y, p.captif > 0, p.couche];
+          const [avx, avy] = [p.vx, p.vy];
           p.avancer();
           pas++;
+          // lot PBG1 : la bille prise par un rail (ou qui en sort) change de couche : elle ne touche plus rien, la traversée est celle du test des rails
+          if (avant === 1 || p.couche === 1) {
+            teleports++;
+            continue;
+          }
           if (p.ev & EV_PERDUE || p.dansLanceur) break;
           if (p.ev & (EV_PORTAIL | EV_TOURBILLON | EV_TROU) || capte) {
             teleports++; // la bille repart d'ailleurs, d'un point qui n'est pas dans un mur (vérifié ci-dessous)
           } else {
-            expect(PX(Math.hypot(p.x - ax, p.y - ay)), `${theme}, tir ${i}, pas ${k} : trop loin en un pas`).toBeLessThan(7.4);
+            expect(PX(Math.hypot(p.x - ax, p.y - ay)), `${theme}, tir ${i}, pas ${k} : trop loin en un pas (${p.table.plan} ev ${p.ev} v avant (${PX(avx).toFixed(0)}, ${PX(avy).toFixed(0)}) après (${PX(p.vx).toFixed(0)}, ${PX(p.vy).toFixed(0)}) de (${PX(ax).toFixed(1)}, ${PX(ay).toFixed(1)}) à (${PX(p.x).toFixed(1)}, ${PX(p.y).toFixed(1)}))`).toBeLessThan(7.4);
           }
           if (p.captif > 0) continue;
           if (!dansLaTable(p.x, p.y, 9 - 3)) throw new Error(`${theme}, tir ${i}, pas ${k} : la bille est sortie de la table en (${PX(p.x).toFixed(1)}, ${PX(p.y).toFixed(1)})`);

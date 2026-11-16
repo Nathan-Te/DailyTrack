@@ -2,7 +2,8 @@ import { PINBALL_GENERATOR_VERSION, UNITE, Partie, type Contenu, type Module, ty
 
 // Des aides pour les tests de règles : une table écrite à la main (les six modules, dans l'ordre des emplacements) et une bille posée où l'on veut, en pixels.
 export const JOUR_ESSAI = 20800;
-export const contenuDe = (modules: readonly Module[] = ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"], theme: ThemePinball = "foire"): Contenu => ({ jour: JOUR_ESSAI, g: PINBALL_GENERATOR_VERSION, theme, modules: [...modules] });
+/** `plan` : par défaut le plan d'essai (`classique`, la table des lots PB1 à PB4 : six emplacements, ni rampe ni orbite), pour que les tests des règles posent leurs modules aux mêmes endroits. */
+export const contenuDe = (modules: readonly Module[] = ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"], theme: ThemePinball = "foire", plan = "classique"): Contenu => ({ jour: JOUR_ESSAI, g: PINBALL_GENERATOR_VERSION, theme, plan, modules: [...modules] });
 /** Une partie dont les six emplacements portent ce `module` (ou la liste donnée). */
 export const partieDe = (modules?: readonly Module[], reglages: Reglages = REGLAGES, theme: ThemePinball = "foire"): Partie => new Partie(contenuDe(modules, theme), reglages);
 export const pleine = (m: Module): Module[] => [m, m, m, m, m, m];

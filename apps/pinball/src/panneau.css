@@ -70,6 +70,15 @@
 .p-table .p-legende {
   margin-bottom: var(--dj-espace-1);
 }
+/* lot PBG1 : le plan du jour, nommé */
+.p-plan {
+  margin: 0 0 var(--dj-espace-2);
+  font-family: var(--dj-police-texte, sans-serif);
+  font-size: var(--dj-taille-15);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--dj-encre);
+}
 .p-modules {
   display: flex;
   flex-wrap: wrap;

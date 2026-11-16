@@ -2,7 +2,7 @@ import { AXE, NORME, UNITE } from "./constantes";
 import { racine, unitaire, div } from "./entiers";
 import type { Contenu } from "./generateur";
 import type { ThemePinball } from "./themes";
-import { EMPLACEMENTS } from "./generateur";
+import { planDe, type DefMini, type DefRail } from "./plans";
 import type { Reglages } from "./reglages";
 
 // La géométrie de la table (lot PB1), en unités (4 096 par pixel de la maquette). **Le châssis ne change jamais** : le mur gauche, l'arc du haut, le mur droit, le couloir du lanceur, les deux couloirs de retour
@@ -69,6 +69,36 @@ export interface Coulee {
   l: number;
   h: number;
 }
+/** **Un rail** (lot PBG1) : une rampe ou l'orbite, un tracé en segments que la bille suit, au-dessus du plateau (une autre couche : elle ne touche plus rien). `x`, `y` : les sommets (unités) ; `cum` : la longueur cumulée à chaque sommet ; `ux`, `uy` : le vecteur unitaire (`NORME`) de chaque segment, dans le sens de l'entrée vers la sortie ; `len` : la longueur totale. */
+export interface Rail {
+  genre: "rampe" | "orbite";
+  x: number[];
+  y: number[];
+  cum: number[];
+  ux: number[];
+  uy: number[];
+  len: number;
+  /** Au rendu seulement : la hauteur au-dessus du plateau (px). */
+  hauteur: number;
+}
+/** **La bouche d'un rail** : un segment en travers du chemin, que la bille franchit dans le sens `(ux, uy)` (échelle `NORME`). Assez vite (`rampeVitesseMin`), elle est prise ; trop lente, la bouche est un mur et elle redescend. `bout` : 0 l'entrée du rail, 1 sa sortie (l'orbite se prend par les deux bouts). `l` : la demi-largeur (unités). */
+export interface Porte {
+  rail: number;
+  bout: 0 | 1;
+  x: number;
+  y: number;
+  ux: number;
+  uy: number;
+  l: number;
+  seg: Segment;
+}
+/** Le mini-batteur (lot PBG1), dans le repère du côté gauche : le côté, le pivot et la longueur (unités). Il suit l'angle du batteur du même côté. */
+export interface MiniBatteur {
+  cote: 0 | 1;
+  x: number;
+  y: number;
+  longueur: number;
+}
 export interface Poser {
   type: string;
   emplacement: number;
@@ -96,6 +126,11 @@ export interface Table {
   banques: number[][];
   /** Ce qui est posé à chaque emplacement (rendu, essais). */
   poses: Poser[];
+  /** Lot PBG1 : le plan du jour — ses rails (les rampes, puis l'orbite en dernier), leurs bouches, le mini-batteur s'il y en a un. */
+  plan: string;
+  rails: Rail[];
+  portes: Porte[];
+  mini: MiniBatteur | null;
 }
 
 /** Les points de l'arc du haut (centre 196,25 × 205, rayon 176,25 : 31 points de la maquette), en unités. Calculés hors ligne, entiers. */
@@ -116,7 +151,8 @@ function segment(ax: number, ay: number, bx: number, by: number, e: number, kick
 
 /** La table du jour : le châssis, puis les six emplacements. */
 export function construireTable(contenu: Contenu, r: Reglages): Table {
-  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [] };
+  const plan = planDe(contenu.plan);
+  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null };
   const mur = (ax: number, ay: number, bx: number, by: number, e: number, kick = 0, type: 0 | 1 = 0): void => void t.murs.push(segment(ax, ay, bx, by, e, kick, type));
   // --- le châssis
   mur(px(20), px(560), px(20), px(205), r.rebondMur);
@@ -135,9 +171,67 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
   // --- les couloirs du haut : quatre poteaux, trois lampes
   for (const x of [132, 172, 212, 252]) t.poteaux.push({ x: px(x), y: px(100), r: px(5), kick: 0 });
   for (const x of [152, 192, 232]) t.voies.push({ x: px(x), y: px(104) });
-  // --- le haut : un module par emplacement
-  contenu.modules.forEach((m, i) => poser(t, r, contenu.theme, m, i, px(EMPLACEMENTS[i]!.x), px(EMPLACEMENTS[i]!.y)));
+  // --- le haut : les rails du plan, son mini-batteur, puis un module par emplacement
+  for (const def of plan.orbite ? [...plan.rampes, plan.orbite] : plan.rampes) poserRail(t, def, r);
+  if (plan.mini) t.mini = miniDe(plan.mini);
+  contenu.modules.forEach((m, i) => poser(t, r, contenu.theme, m, i, px(plan.emplacements[i]!.x), px(plan.emplacements[i]!.y)));
   return t;
+}
+
+const miniDe = (d: DefMini): MiniBatteur => ({ cote: d.cote, x: px(d.x), y: px(d.y), longueur: px(d.longueur) });
+
+/** Les points de contrôle d'un rail en une courbe lisse : des arcs quadratiques de milieu en milieu (le tracé commence au premier point et finit au dernier, tangent à leur premier et dernier côté), `k` sommets par arc. Entier. */
+export function lisser(pts: readonly (readonly [number, number])[], k = 4): [number, number][] {
+  const n = pts.length;
+  const mil = (a: readonly [number, number], b: readonly [number, number]): [number, number] => [div(a[0] + b[0], 2), div(a[1] + b[1], 2)];
+  const sortie: [number, number][] = [[pts[0]![0], pts[0]![1]]];
+  for (let i = 1; i < n - 1; i++) {
+    const a = i === 1 ? pts[0]! : mil(pts[i - 1]!, pts[i]!);
+    const b = i === n - 2 ? pts[n - 1]! : mil(pts[i]!, pts[i + 1]!);
+    const c = pts[i]!;
+    for (let j = 1; j <= k; j++) {
+      const u = k - j;
+      sortie.push([div(u * u * a[0] + 2 * u * j * c[0] + j * j * b[0], k * k), div(u * u * a[1] + 2 * u * j * c[1] + j * j * b[1], k * k)]);
+    }
+  }
+  if (n === 2) sortie.push([pts[1]![0], pts[1]![1]]);
+  return sortie;
+}
+
+/** Un rail et ses bouches : une rampe n'a de bouche qu'à son entrée, l'orbite en a une à chaque bout. */
+function poserRail(t: Table, def: DefRail, r: Reglages): void {
+  void r;
+  const pts = lisser(def.points.map(([x, y]) => [px(x), px(y)] as const));
+  const rail: Rail = { genre: def.genre, x: [], y: [], cum: [], ux: [], uy: [], len: 0, hauteur: def.hauteur };
+  let cum = 0;
+  pts.forEach(([x, y], i) => {
+    rail.x.push(x);
+    rail.y.push(y);
+    rail.cum.push(cum);
+    if (i === pts.length - 1) return;
+    const [bx, by] = pts[i + 1]!;
+    const len = racine((bx - x) * (bx - x) + (by - y) * (by - y));
+    rail.ux.push(unitaire(bx - x, len));
+    rail.uy.push(unitaire(by - y, len));
+    cum += len;
+  });
+  rail.len = cum;
+  const id = t.rails.length;
+  t.rails.push(rail);
+  const l = px(def.demiPorte);
+  const porte = (bout: 0 | 1): void => {
+    const i = bout === 0 ? 0 : pts.length - 1;
+    // la direction d'entrée : celle du premier segment, ou le contraire de celle du dernier pour la sortie d'une orbite
+    const ux = bout === 0 ? rail.ux[0]! : -rail.ux[rail.ux.length - 1]!;
+    const uy = bout === 0 ? rail.uy[0]! : -rail.uy[rail.uy.length - 1]!;
+    const cx = rail.x[i]!;
+    const cy = rail.y[i]!;
+    const lx = div(-uy * l, NORME);
+    const ly = div(ux * l, NORME);
+    t.portes.push({ rail: id, bout, x: cx, y: cy, ux, uy, l, seg: segment(cx - lx, cy - ly, cx + lx, cy + ly, r.rebondGuide) });
+  };
+  porte(0);
+  if (def.genre === "orbite") porte(1);
 }
 
 function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, emplacement: number, cx: number, cy: number): void {

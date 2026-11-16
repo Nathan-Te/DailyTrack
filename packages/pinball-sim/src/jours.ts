@@ -21,8 +21,8 @@ export interface JourFige {
   /** La version du calcul des seuils qui a produit `seuils`. */
   bot: number;
   seuils: Seuils;
-  /** Le thème, le module de chaque emplacement et l'empreinte de ce que le générateur donne (`empreinteContenu`). */
-  contenu: { theme: string; modules: string[]; empreinte: string };
+  /** Le thème, le plan (lot PBG1), le module de chaque emplacement du plan et l'empreinte de ce que le générateur donne (`empreinteContenu`). */
+  contenu: { theme: string; plan: string; modules: string[]; empreinte: string };
 }
 
 /** Le fichier d'un jour, avec les seuils qu'on lui donne (par défaut ceux du robot : quelques secondes la première fois pour une table). */
@@ -38,7 +38,7 @@ export function figerJour(jour: number, seuils?: Seuils, version: number = PINBA
     sim: PINBALL_SIM_VERSION,
     bot: PINBALL_BOT_VERSION,
     seuils: { bronze: s.bronze, silver: s.silver, gold: s.gold, author: s.author },
-    contenu: { theme: c.theme, modules: [...c.modules], empreinte: empreinteContenu(c) },
+    contenu: { theme: c.theme, plan: c.plan, modules: [...c.modules], empreinte: empreinteContenu(c) },
   };
 }
 
@@ -50,14 +50,14 @@ export function lireJourFige(brut: unknown): Contenu | null {
   const jour = parseDay(f.date);
   if (jour === null || f.sim !== PINBALL_SIM_VERSION || !seuilsValides(f.seuils)) return null;
   const c = f.contenu as Partial<JourFige["contenu"]> | undefined;
-  if (!c || typeof c.theme !== "string" || !(THEMES_PINBALL as readonly string[]).includes(c.theme) || !Array.isArray(c.modules) || typeof c.empreinte !== "string") return null;
+  if (!c || typeof c.theme !== "string" || typeof c.plan !== "string" || !(THEMES_PINBALL as readonly string[]).includes(c.theme) || !Array.isArray(c.modules) || typeof c.empreinte !== "string") return null;
   let attendu: Contenu;
   try {
     attendu = dailyPinball(jour, f.g);
   } catch {
     return null;
   }
-  if (c.theme !== attendu.theme || c.modules.join(",") !== attendu.modules.join(",") || c.empreinte !== empreinteContenu(attendu)) return null;
+  if (c.theme !== attendu.theme || c.plan !== attendu.plan || c.modules.join(",") !== attendu.modules.join(",") || c.empreinte !== empreinteContenu(attendu)) return null;
   const { bronze, silver, gold, author } = f.seuils;
   return { ...attendu, seuilsFiges: { bronze, silver, gold, author } };
 }

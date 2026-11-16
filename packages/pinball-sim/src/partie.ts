@@ -3,11 +3,11 @@ import type { Controle } from "./constantes";
 import * as E from "./entiers";
 import { MISSION_DU_THEME, type Contenu, type Mission } from "./generateur";
 import { deriver, REGLAGES, type Derives, type Reglages } from "./reglages";
-import { construireTable, type Segment, type Table } from "./table";
+import { construireTable, type Porte, type Segment, type Table } from "./table";
 // Les constantes et les fonctions chaudes sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, deux à trois fois plus lent dans une boucle de millions de pas (le robot du
 // lot PB4 en joue des dizaines de millions). Rien ne change pour le jeu ni le serveur.
 const {
-  AXE, DROITE, DUREE_MAX_TICKS, EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS,
+  AXE, DROITE, DUREE_MAX_TICKS, EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_COMBO, EV_ORBITE, EV_RAIL, EV_RAMPE, EV_RECUL, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS,
   RAYON, TICKS_PAR_SECONDE, TOUR, UNITE,
 } = K;
 const { cosinus, div, racine, sinus, unitaire } = E;
@@ -25,6 +25,10 @@ const LONGUEUR = 60 * UNITE;
 const BATTEUR_GROS = 8 * UNITE; // le rayon du batteur à son pivot, 5 à sa pointe : `8 − 3 u`
 const BATTEUR_PERTE = 3 * UNITE;
 const CHARGE_MAX = 1000;
+/** Au plus 3 600 pas (6 s) sur un rail, après quoi la bille en repart par son entrée (jamais plus de quelques secondes : un rail de 800 px à 400 px/s en demande 2). */
+export const RAIL_DUREE_MAX = 3600;
+/** Sous cette vitesse d'entrée (120 px/s, en unités par seconde) la bouche d'un rail ne fait rien : ni prise, ni mur. */
+const BOUCHE_MIN = 120 * UNITE;
 /** Un angle de 2,2 rad : la sortie d'un trou. */
 const ANGLE_TROU = div(2200 * TOUR, 6283);
 /** Le quotient de la vitesse d'un point d'un batteur : 2π × 600 / `TOUR`, en 23 010 cent-millièmes. */
@@ -129,6 +133,19 @@ export class Partie {
   readonly geyserJet: number[];
   readonly couleeDedans: boolean[];
   geyserJets = 0;
+  /** **Lot PBG1 : la couche de la bille.** 0 : le plateau ; 1 : un rail (`rail` : son rang dans `table.rails`), où elle suit le tracé (`railS` : l'abscisse curviligne, en unités ; `railV` : sa vitesse le long du tracé, en unités par seconde, négative quand elle redescend) et ne touche plus rien. `railDepuis` : les pas passés sur ce rail. */
+  couche: 0 | 1 = 0;
+  rail = -1;
+  railS = 0;
+  railV = 0;
+  railDepuis = 0;
+  /** Par quel bout la bille est entrée sur le rail (0 : l'entrée, 1 : la sortie d'une orbite). */
+  railBout: 0 | 1 = 0;
+  /** Le combo : le rang du rail réussi en cours (0 : aucun), et le pas avant lequel le prochain doit finir pour l'enchaîner. Les rails menés à leur bout, par rail (le suivi de la validation). */
+  combo = 0;
+  comboFin = 0;
+  comboMaxPartie = 0;
+  readonly railsFaits: number[];
   private fin = false;
 
   constructor(
@@ -161,6 +178,7 @@ export class Partie {
     this.geyserAttente = m ? m.geyserAttente.slice() : tb.geysers.map(() => 0);
     this.geyserJet = m ? m.geyserJet.slice() : tb.geysers.map(() => 0);
     this.couleeDedans = m ? m.couleeDedans.slice() : tb.coulees.map(() => false);
+    this.railsFaits = m ? m.railsFaits.slice() : tb.rails.map(() => 0);
     this.sansGains = sansGains;
     if (!m) return;
     this.tick = m.tick;
@@ -191,7 +209,21 @@ export class Partie {
     this.compteur = m.compteur;
     this.missionFaite = m.missionFaite;
     this.geyserJets = m.geyserJets;
+    this.couche = m.couche;
+    this.rail = m.rail;
+    this.railS = m.railS;
+    this.railV = m.railV;
+    this.railDepuis = m.railDepuis;
+    this.railBout = m.railBout;
+    this.combo = m.combo;
+    this.comboFin = m.comboFin;
+    this.comboMaxPartie = m.comboMaxPartie;
     this.fin = m.fin;
+  }
+
+  /** La bille est-elle sur un rail ? (Un accesseur : le compilateur ne suit pas le changement de couche d'une méthode.) */
+  get surUnRail(): boolean {
+    return this.couche === 1;
   }
 
   get finie(): boolean {
@@ -254,6 +286,13 @@ export class Partie {
     this.sauvee = false;
     this.geyserJets = 0;
     this.manegeSecteur.fill(-1);
+    this.couche = 0;
+    this.rail = -1;
+    this.railS = 0;
+    this.railV = 0;
+    this.railDepuis = 0;
+    this.combo = 0;
+    this.comboFin = 0;
   }
 
   /** Un pas de 1/600 s. */
@@ -329,6 +368,10 @@ export class Partie {
       return this.finDuPas();
     }
     for (let i = 0; i < this.trouPause.length; i++) this.trouPause[i] = this.trouPause[i]! - 1;
+    if (this.couche === 1) {
+      this.surRail(d, r, t);
+      return this.finDuPas();
+    }
     if (this.dansLanceur) {
       if (this.appuiLanceur) this.charge = Math.min(CHARGE_MAX, this.charge + d.chargeParPas);
       else if (this.charge > 0) {
@@ -358,6 +401,11 @@ export class Partie {
     this.y += div(this.vy, TICKS_PAR_SECONDE);
     // --- les collisions, dans l'ordre de la maquette : murs, poteaux, bumpers, cibles, batteurs
     for (const s of t.murs) if (s.type !== 2 && this.segment(s)) if (s.type === 1) this.choquerSling(s);
+    // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
+    for (const g of t.portes) {
+      this.porte(g, d);
+      if (this.surUnRail) return this.finDuPas();
+    }
     for (const p of t.poteaux) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0);
     for (let i = 0; i < t.bumpers.length; i++) {
       const b = t.bumpers[i]!;
@@ -382,8 +430,10 @@ export class Partie {
         }
       }
     }
-    this.batteur(GAUCHE);
-    this.batteur(DROITE);
+    this.batteur(GAUCHE, ORIGINE, PIVOT_Y, LONGUEUR);
+    this.batteur(DROITE, ORIGINE, PIVOT_Y, LONGUEUR);
+    // lot PBG1 : le mini-batteur suit l'angle du batteur du même côté (le même appui : la rediffusion ne change pas de forme)
+    if (t.mini) this.batteur(t.mini.cote, t.mini.x, t.mini.y, t.mini.longueur);
     // --- les capteurs
     for (let i = 0; i < t.voies.length; i++) {
       const v = t.voies[i]!;
@@ -575,6 +625,104 @@ export class Partie {
     }
   }
 
+  /**
+   * **La bouche d'un rail** (lot PBG1). La bille la franchit dans le sens de la bouche : à `rampeVitesseMin` (px/s, composante dans ce sens) ou plus elle est **prise** — elle change de couche, au bout du rail qui est
+   * celui de la bouche ; plus lente, la bouche est un mur (la bille « redescend par l'entrée »). Dans l'autre sens, ou de côté, la bouche ne fait rien : une bille qui descend passe sous le rail.
+   */
+  private porte(g: Porte, d: Derives): void {
+    const dx = this.x - g.x;
+    const dy = this.y - g.y;
+    const sd = div(dx * g.ux + dy * g.uy, NORME);
+    if (sd <= -RU || sd >= RU) return;
+    const vn = div(this.vx * g.ux + this.vy * g.uy, NORME);
+    // une bille qui longe la bouche (vitesse d'entrée presque nulle) passe : la bouche n'est un mur que pour celle qui s'y jette
+    if (vn <= BOUCHE_MIN) return;
+    if (vn >= d.rampeMin) {
+      const lat = div(-dx * g.uy + dy * g.ux, NORME);
+      if (Math.abs(lat) > g.l) {
+        if (sd < 0) this.segment(g.seg);
+        return;
+      }
+      const rail = this.table.rails[g.rail]!;
+      this.couche = 1;
+      this.rail = g.rail;
+      this.railS = g.bout === 0 ? 0 : rail.len;
+      this.railV = g.bout === 0 ? vn : -vn;
+      this.railDepuis = 0;
+      this.railBout = g.bout;
+      this.x = g.x;
+      this.y = g.y;
+      this.vx = 0;
+      this.vy = 0;
+      this.ev |= EV_RAIL;
+    } else if (sd < 0) this.segment(g.seg);
+  }
+
+  /**
+   * **Un pas sur un rail** (lot PBG1) : la bille suit le tracé, sans rien toucher d'autre. Elle ralentit en montant et accélère en descendant (`rampePente` multipliée par la pente du tracé), perd un peu de vitesse
+   * par le frottement, et avance de `railV / 600`. **Au bout du rail** (la sortie) elle repart sur le plateau dans le sens du tracé, et le rail est réussi (points, combo) ; **si elle recule jusqu'à son entrée** (trop lente)
+   * elle en ressort vers l'arrière, sans rien rapporter. Au plus `RAIL_DUREE_MAX` pas sur un rail : un tracé plat ne garde jamais la bille.
+   */
+  private surRail(d: Derives, r: Reglages, t: Table): void {
+    const rl = t.rails[this.rail]!;
+    const n = rl.ux.length;
+    let k = 0;
+    while (k < n - 1 && rl.cum[k + 1]! <= this.railS) k++;
+    this.railV += div(rl.uy[k]! * d.railParPas, NORME);
+    this.railV -= div(this.railV * d.railFrein, 1000000);
+    if (this.railV > d.vitesseMax) this.railV = d.vitesseMax;
+    else if (this.railV < -d.vitesseMax) this.railV = -d.vitesseMax;
+    this.railS += div(this.railV, TICKS_PAR_SECONDE);
+    this.railDepuis++;
+    if (this.railDepuis > RAIL_DUREE_MAX && this.railV > 0 && this.railS < rl.len) this.railV = -this.railV; // un tracé plat ne garde jamais la bille : elle repart par où elle est venue
+    if (this.railS >= rl.len || this.railS <= 0) {
+      const sortie = this.railS >= rl.len;
+      const fin = n - 1;
+      // la direction de sortie : celle du dernier segment (en avant) ou le contraire de celle du premier (en arrière)
+      const ux = sortie ? rl.ux[fin]! : -rl.ux[0]!;
+      const uy = sortie ? rl.uy[fin]! : -rl.uy[0]!;
+      const v = Math.abs(this.railV);
+      const bx = sortie ? rl.x[fin + 1]! : rl.x[0]!;
+      const by = sortie ? rl.y[fin + 1]! : rl.y[0]!;
+      // la bille ressort un peu en avant de la bouche (la bouche ne la reprend pas) : 16 px
+      this.x = bx + div(ux * 16 * UNITE, NORME);
+      this.y = by + div(uy * 16 * UNITE, NORME);
+      this.vx = div(ux * v, NORME);
+      this.vy = div(uy * v, NORME);
+      this.couche = 0;
+      const faite = this.rail;
+      this.rail = -1;
+      this.railV = 0;
+      this.px = this.x;
+      this.py = this.y;
+      // bouche d'une orbite : la bille y ressort par le bout opposé à son entrée ; seule la traversée (de l'entrée à l'autre bout) est réussie. Une rampe reculée ou une orbite ressortie par son entrée ne rapporte rien.
+      const traversee = sortie ? this.railBout === 0 : this.railBout === 1;
+      if (traversee) this.railReussi(faite, r);
+      else this.ev |= EV_RECUL;
+    }
+    if (this.couche === 1) {
+      let j = 0;
+      while (j < n - 1 && rl.cum[j + 1]! <= this.railS) j++;
+      this.x = rl.x[j]! + div(rl.ux[j]! * (this.railS - rl.cum[j]!), NORME);
+      this.y = rl.y[j]! + div(rl.uy[j]! * (this.railS - rl.cum[j]!), NORME);
+      // la vitesse du tracé (pour le rendu et le robot : une bille sur un rail a une vitesse, pas un arrêt)
+      this.vx = div(rl.ux[j]! * this.railV, NORME);
+      this.vy = div(rl.uy[j]! * this.railV, NORME);
+    }
+  }
+
+  /** Un rail mené à son bout : ses points, augmentés de `comboPas` % par rang de combo (`comboMax` au plus) puis multipliés par le multiplicateur ; un deuxième rail réussi dans les `comboDelai` pas qui suivent le précédent fait monter le combo. */
+  private railReussi(rang: number, r: Reglages): void {
+    const rl = this.table.rails[rang]!;
+    this.combo = this.tick <= this.comboFin ? this.combo + 1 : 1;
+    this.comboFin = this.tick + r.comboDelai;
+    this.comboMaxPartie = Math.max(this.comboMaxPartie, this.combo);
+    this.railsFaits[rang] = this.railsFaits[rang]! + 1;
+    this.ev |= rl.genre === "rampe" ? EV_RAMPE : EV_ORBITE;
+    if (this.combo >= 2) this.ev |= EV_COMBO;
+    this.points(div((rl.genre === "rampe" ? r.rampePoints : r.orbitePoints) * (100 + r.comboPas * (Math.min(this.combo, r.comboMax) - 1)), 100));
+  }
+
   private finDuPas(): void {
     this.tick++;
     if (!this.fin && this.tick >= DUREE_MAX_TICKS) {
@@ -658,18 +806,18 @@ export class Partie {
   }
 
   /** La bille contre un batteur : une capsule du pivot à la pointe (rayon 8 à 5 px), dont la surface en mouvement la pousse. Calculé pour le batteur gauche ; le droit est son image. */
-  private batteur(i: number): void {
+  private batteur(i: number, ox: number, oy: number, longueur: number): void {
     const sens = i === GAUCHE ? 1 : -1;
     const a = this.a[i]!;
     const bx = sens > 0 ? this.x : AXE2 - this.x;
     const by = this.y;
     const co = cosinus(a);
     const si = sinus(a);
-    let p = div((bx - ORIGINE) * co + (by - PIVOT_Y) * si, NORME);
-    p = p < 0 ? 0 : p > LONGUEUR ? LONGUEUR : p;
-    const qx = ORIGINE + div(co * p, NORME);
-    const qy = PIVOT_Y + div(si * p, NORME);
-    const m = RU + BATTEUR_GROS - div(BATTEUR_PERTE * p, LONGUEUR);
+    let p = div((bx - ox) * co + (by - oy) * si, NORME);
+    p = p < 0 ? 0 : p > longueur ? longueur : p;
+    const qx = ox + div(co * p, NORME);
+    const qy = oy + div(si * p, NORME);
+    const m = RU + BATTEUR_GROS - div(BATTEUR_PERTE * p, longueur);
     const dx = bx - qx;
     const dy = by - qy;
     const d2 = dx * dx + dy * dy;
@@ -687,8 +835,8 @@ export class Partie {
     const nbx = qx + div(nx * m, NORME);
     const nby = qy + div(ny * m, NORME);
     const da = a - this.aAvant[i]!;
-    const vqx = -div(da * (qy - PIVOT_Y) * K_VITESSE, 100000);
-    const vqy = div(da * (qx - ORIGINE) * K_VITESSE, 100000);
+    const vqx = -div(da * (qy - oy) * K_VITESSE, 100000);
+    const vqy = div(da * (qx - ox) * K_VITESSE, 100000);
     const bvx = sens * this.vx;
     const bvy = this.vy;
     const vn = div((bvx - vqx) * nx + (bvy - vqy) * ny, NORME);
