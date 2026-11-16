@@ -1226,8 +1226,15 @@
           ],
           "musique.spec.ts": [
             "blocks-jeu"
+          ],
+          "plein-ecran.spec.ts": [
+            "blocks-jeu",
+            "ui"
           ]
         },
+        "regression": [
+          "plein-ecran.spec.ts"
+        ],
         "parts": {
           "main": 1,
           "complet": 1,

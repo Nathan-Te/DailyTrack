@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { astuceIphoneAPropos, basculerPleinEcran, modeApplication, pleinEcranActif, pleinEcranBoutonVisible, pleinEcranParEcranAccueil, pleinEcranPossible, surChangementPleinEcran } from "../src/pleinEcran";
+import { astuceIphoneAPropos, basculerPleinEcran, verrouDemande, modeApplication, pleinEcranActif, pleinEcranBoutonVisible, pleinEcranParEcranAccueil, pleinEcranPossible, surChangementPleinEcran } from "../src/pleinEcran";
 
 // Lot I7 : la seule logique de plein écran de la plateforme, essayée sur des navigateurs fictifs (la page est remplacée par `vi.stubGlobal` : rien de réel).
 
@@ -10,6 +10,8 @@ interface Options {
   tactile?: boolean;
   ua?: string;
   verrou?: "ok" | "refuse" | "absent";
+  /** L'orientation de l'écran au moment de l'appui (`screen.orientation.type`) ; défaut : portrait (le téléphone en main). */
+  orientation?: "portrait-primary" | "landscape-primary" | "aucune";
   requete?: "ok" | "refuse";
 }
 
@@ -39,13 +41,16 @@ function navigateur(o: Options = {}) {
       o.verrou === "absent"
         ? undefined
         : {
+            ...(o.orientation === "aucune" ? {} : { type: o.orientation ?? "portrait-primary" }),
             lock: async (orientation: string) => {
               if (o.verrou === "refuse") throw new Error("NotSupportedError");
               journal.push(`verrou:${orientation}`);
             },
           },
   });
-  vi.stubGlobal("matchMedia", (q: string) => ({ matches: (o.standalone === "media" && q === "(display-mode: standalone)") || (!!o.tactile && q === "(pointer: coarse)") }));
+  vi.stubGlobal("matchMedia", (q: string) => ({
+    matches: (o.standalone === "media" && q === "(display-mode: standalone)") || (!!o.tactile && q === "(pointer: coarse)") || (o.orientation === "aucune" && q === "(orientation: portrait)"),
+  }));
   vi.stubGlobal("navigator", { userAgent: o.ua ?? "Mozilla/5.0 (Linux; Android 14)", maxTouchPoints: o.tactile ? 5 : 0, ...(o.standalone === "ios" ? { standalone: true } : {}) });
   return { journal, ecouteurs };
 }
@@ -89,10 +94,31 @@ describe("état", () => {
 });
 
 describe("basculerPleinEcran", () => {
-  it("entre sans barre de navigation, puis verrouille le paysage", async () => {
-    const { journal } = navigateur();
+  it("entre sans barre de navigation, puis verrouille l'orientation du moment par défaut (lot K9)", async () => {
+    const { journal } = navigateur({ orientation: "portrait-primary" });
     await basculerPleinEcran();
+    expect(journal).toEqual(['entree:{"navigationUI":"hide"}', "verrou:portrait"]);
+  });
+  it("« actuelle » : un téléphone tenu en paysage reste en paysage", async () => {
+    const { journal } = navigateur({ orientation: "landscape-primary" });
+    await basculerPleinEcran("actuelle");
     expect(journal).toEqual(['entree:{"navigationUI":"hide"}', "verrou:landscape"]);
+  });
+  it("« paysage » verrouille le paysage même en portrait (Track et Jump)", async () => {
+    const { journal } = navigateur({ orientation: "portrait-primary" });
+    await basculerPleinEcran("paysage");
+    expect(journal).toEqual(['entree:{"navigationUI":"hide"}', "verrou:landscape"]);
+  });
+  it("« portrait » verrouille le portrait même en paysage", async () => {
+    const { journal } = navigateur({ orientation: "landscape-primary" });
+    await basculerPleinEcran("portrait");
+    expect(journal).toEqual(['entree:{"navigationUI":"hide"}', "verrou:portrait"]);
+  });
+  it("sans `screen.orientation.type`, l'orientation du moment vient de `matchMedia`", () => {
+    navigateur({ orientation: "aucune" });
+    expect(verrouDemande("actuelle")).toBe("portrait");
+    navigateur({ orientation: "landscape-primary" });
+    expect(verrouDemande()).toBe("landscape");
   });
   it("ne verrouille pas en sortant", async () => {
     const { journal } = navigateur();
@@ -101,21 +127,25 @@ describe("basculerPleinEcran", () => {
     await basculerPleinEcran();
     expect(journal).toEqual(["sortie"]);
   });
-  it("un verrou refusé est ignoré, sans erreur", async () => {
-    navigateur({ verrou: "refuse" });
-    await expect(basculerPleinEcran()).resolves.toBeUndefined();
-    expect(pleinEcranActif()).toBe(true);
+  it("un verrou refusé est ignoré, sans erreur, quelle que soit l'orientation demandée", async () => {
+    for (const o of ["paysage", "portrait", "actuelle"] as const) {
+      navigateur({ verrou: "refuse" });
+      await expect(basculerPleinEcran(o)).resolves.toBeUndefined();
+      expect(pleinEcranActif()).toBe(true);
+    }
   });
   it("un navigateur sans verrou d'orientation est sans conséquence", async () => {
     navigateur({ verrou: "absent" });
     await expect(basculerPleinEcran()).resolves.toBeUndefined();
     expect(pleinEcranActif()).toBe(true);
   });
-  it("une entrée refusée laisse le jeu tel quel : pas d'erreur, pas de verrou", async () => {
-    const { journal } = navigateur({ requete: "refuse" });
-    await expect(basculerPleinEcran()).resolves.toBeUndefined();
-    expect(pleinEcranActif()).toBe(false);
-    expect(journal).toEqual([]);
+  it("une entrée refusée laisse le jeu tel quel : pas d'erreur, pas de verrou, quelle que soit l'orientation demandée", async () => {
+    for (const o of ["paysage", "portrait", "actuelle"] as const) {
+      const { journal } = navigateur({ requete: "refuse" });
+      await expect(basculerPleinEcran(o)).resolves.toBeUndefined();
+      expect(pleinEcranActif()).toBe(false);
+      expect(journal).toEqual([]);
+    }
   });
 });
 

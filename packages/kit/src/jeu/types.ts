@@ -1,4 +1,4 @@
-import type { Catalogue } from "@cdj/ui";
+import type { Catalogue, OrientationPleinEcran } from "@cdj/ui";
 import type { ActionCommande } from "@cdj/ui/src/commandes";
 import type { Sens } from "../records";
 
@@ -158,6 +158,11 @@ export interface DefinitionJeu<C> {
    * (`OptionsPartie.zones`), et le texte de la barre (`PartieDuJeu.hud()`) n'est plus visible — il reste dans la page, lu par la pause et les lecteurs d'écran. La barre garde ses boutons (fantôme, pause).
    */
   hud?: "barre" | "surimpression";
+  /**
+   * Lot K9 — **l'orientation que le plein écran verrouille** (accueil, HUD de la partie, pause) : `"actuelle"` (défaut : celle du moment, un jeu qui se joue en portrait y reste), `"portrait"` ou `"paysage"`
+   * (un jeu qui ne se joue qu'à l'horizontale). Choix du jeu, dans sa définition et non dans sa fiche : c'est une affaire de rendu, qui ne change ni le classement ni les projections de la fiche.
+   */
+  orientation?: OrientationPleinEcran;
   /** Lot « écrans du kit » — la peau du jeu (illustration du titre, décor du thème, accent des boutons) : voir `PeauJeu`. Absente : la peau tirée de la fiche. */
   peau?: PeauJeu;
 }

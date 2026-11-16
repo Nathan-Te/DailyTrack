@@ -77,7 +77,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   const settings = second("menu-settings", "pause.reglages", () => opts.onSettings());
   const help = second("menu-help", "pause.aide", () => opts.onHelp());
   // Lot I7 : le plein écran de la pause est le bouton du socle, en texte (même logique que celui de la partie et de l'accueil) ; caché s'il n'est pas possible.
-  const full = boutonPleinEcran({ t, id: "menu-fullscreen", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true });
+  const full = boutonPleinEcran({ t, id: "menu-fullscreen", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true, orientation: "paysage" });
   const home = second("menu-home", "pause.accueil", () => opts.onHome?.());
   home.hidden = !opts.onHome;
   // Lot I2 de la plateforme : le retour au portail « ‹ DU JOUR » (le logo des barres des jeux, un lien de 44 px).
