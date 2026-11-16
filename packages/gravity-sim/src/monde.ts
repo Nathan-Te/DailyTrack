@@ -1,5 +1,6 @@
 import * as K from "./constantes";
 const { CASE, CLIGNOTANT_ALLUME, CLIGNOTANT_CYCLE, ALTERNE_BATTEMENT, LARGEUR_MORCEAU, LIGNES } = K;
+import type { Regles } from "./regles";
 import type { ThemeGravity } from "./themes";
 
 // Le monde : des colonnes de 12 cases, groupées en morceaux de 16 colonnes. Une case est un code entier. **Un morceau est une donnée** (cases, objets, chemin sûr) ; le terrain (`Terrain`) en donne le morceau
@@ -64,6 +65,8 @@ export interface Morceau {
 /** Un terrain : les morceaux, à la demande. Le même numéro rend toujours le même morceau. */
 export interface Terrain {
   morceau(k: number): Morceau;
+  /** Lot GR5 : les règles sous lesquelles ce terrain se joue (la version de la simulation du jour, ses réglages d'essai). Absentes d'un terrain écrit à la main : les règles de la version courante. */
+  regles?: Regles;
 }
 
 /** La case (colonne absolue `cx` ≥ 0, rangée `cy`) d'un morceau : `VIDE` hors de l'écran. */

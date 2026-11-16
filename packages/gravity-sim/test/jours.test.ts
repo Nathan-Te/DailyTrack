@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { DISTANCES_D_ARRET, GRAVITY_BOT_VERSION, POURCENT_DU_ROBOT, THEMES_D_ARRET, dailyGravity, figerJour, jouerRobot, lireJourFige, medailleDe, seuilsDe, seuilsDuJour, seuilsDuRobot, seuilsEnTranches, seuilsValides, terrainDuJour } from "../src/index";
@@ -104,5 +105,22 @@ describe("un jour figé fige ses seuils", () => {
   });
   it("refuse de figer avec des seuils invalides", () => {
     expect(() => figerJour(JOUR, { bronze: 10, silver: 10, gold: 20, author: 30 })).toThrow();
+  });
+});
+
+// Lot GR5 — **le garde-fou de `preparer`** (`jours.fabrication.preparer.garde` de la fiche) : « Mettre en production » le lance après avoir préparé les jours à venir ; chaque fichier du dépôt (ceux de la fenêtre comme les
+// jours déjà figés) se relit, se régénère à l'identique avec les versions qu'il nomme (générateur ET simulation : un jour figé sous une ancienne version se relit tant que le code la garde) et porte sa date.
+describe("garde-fou : les jours figés du dépôt", () => {
+  const DOSSIER = new URL("../../../apps/gravity/public/jours/", import.meta.url).pathname;
+  const fichiers = existsSync(DOSSIER) ? readdirSync(DOSSIER).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)) : [];
+  it(`chacun des ${fichiers.length} fichier(s) se relit, se régénère à l'identique et porte sa date`, () => {
+    for (const f of fichiers) {
+      const brut = JSON.parse(readFileSync(DOSSIER + f, "utf8")) as { date?: string };
+      expect(brut.date, f).toBe(f.slice(0, 10));
+      const c = lireJourFige(brut);
+      expect(c, `${f} ne se relit plus`).not.toBeNull();
+      expect(formatDay(c!.jour), f).toBe(f.slice(0, 10));
+      expect(seuilsValides(seuilsDe(c!)), f).toBe(true);
+    }
   });
 });

@@ -577,6 +577,12 @@ export const FICHES_SERVEUR = [
           "paquet": "@cdj/gravity-sim",
           "script": "figer:gravity",
           "forme": "jours-proteges"
+        },
+        "preparer": {
+          "paquet": "@cdj/gravity-sim",
+          "script": "preparer:gravity",
+          "joursApresBascule": 14,
+          "garde": "packages/gravity-sim/test/jours.test.ts"
         }
       }
     },
