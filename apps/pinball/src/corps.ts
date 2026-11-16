@@ -57,10 +57,11 @@ import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, type Partie, type ThemePinball } from "@cdj/pinball-sim";
 import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
+import { creerModules } from "./modeles/trois";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
 // Le sol de la table est le dessin à plat de `dessin.ts` (`dessinerSol`) posé en texture, avec ses bandes, ses lampes éteintes, ses flèches et le nom du thème, dans la palette du thème ; par-dessus, en volume : le meuble en
-// bois, les rails, les poteaux, les lance-pierres, les bumpers (qui s'enfoncent et s'allument au contact, avec des yeux qui suivent la bille), les cibles (qui tombent), les spinners, les trous, les batteurs, le lanceur et la
+// bois, les rails, les poteaux, les lance-pierres, les modules communs (lot PBV4 : un modèle par thème, `modeles/` : les bumpers s'enfoncent, les cibles tombent, les spinners tournent, les trous s'allument), les batteurs, le lanceur et la
 // bille en métal. Rien ici ne décide quoi que ce soit : ce fichier **lit** la partie (`Partie`) à chaque image, l'état entre deux pas étant interpolé (la bille, les batteurs). Les ombres sont celles d'une lumière directionnelle.
 // La caméra CADRE TOUTE LA TABLE (`cadrer`) : elle cherche la distance et le point visé qui font tenir le terrain de jeu dans l'image, quelle que soit la taille de l'écran ; les batteurs, au bord bas de la table, restent donc
 // toujours à l'image. Les étiquettes des modules sont des plaques à part (grossies d'autant que la perspective les rapetisse : lot PB2, le seul défaut de la maquette) et non du sol.
@@ -555,88 +556,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     caoutchoucs.push(caou);
   }
 
-  // --- Les bumpers : jupe, corps, chapeau, deux yeux qui suivent la bille
-  const bumpers = t.bumpers.map((b) => {  // (lot PB3 : `g` suit l'astéroïde, qui se déplace)
-    const r = px(b.r);
-    const g = new Group();
-    g.position.set(X(px(b.x)), 0, Z(px(b.y)));
-    const jupe = cylindre(r * 1.22, 5, P.accent);
-    jupe.position.y = 2.5;
-    const haut = new Group();
-    haut.position.y = 2;
-    const corps = cylindre(r, 20, b.mobile ? "#9AA3B5" : P.bumper, { emissive: MOUTARDE, unique: true, roughness: 0.2, envMapIntensity: 0.95 }); // l'astéroïde est gris ; vernis
-    corps.position.y = 10;
-    (corps.material as MeshStandardMaterial).emissiveIntensity = 0;
-    corps.add(contour(corps.geometry));
-    const chapeau = cylindre(r * 0.66, 4, PAPIER, { roughness: 0.22, envMapIntensity: 0.9 });
-    chapeau.position.y = 22;
-    // le rivet en métal du chapeau, derrière les yeux
-    const rivet = ombrageur(new Mesh(geo(new SphereGeometry(r * 0.1, 12, 8)), metal), false);
-    rivet.scale.y = 0.5;
-    rivet.position.set(0, 24.1, -r * 0.4);
-    haut.add(corps, chapeau, rivet);
-    const pupilles: Mesh[] = [];
-    for (const sx of [-1, 1]) {
-      const blanc = ombrageur(new Mesh(geo(new SphereGeometry(r * 0.2, 16, 12)), mat(PAPIER)), false);
-      blanc.scale.y = 0.6;
-      blanc.position.set(sx * r * 0.28, 24, r * 0.12);
-      const pupille = new Mesh(geo(new SphereGeometry(r * 0.1, 12, 8)), mat(ENCRE));
-      pupille.position.set(sx * r * 0.28, 25.5, r * 0.16);
-      haut.add(blanc, pupille);
-      pupilles.push(pupille);
-    }
-    g.add(jupe, haut);
-    groupe.add(g);
-    return { b, g, r, haut, corps, pupilles, x: px(b.x), y: px(b.y) };
-  });
-
-  // --- Les cibles : des blocs qui tombent (et leur trace pointillée au sol)
-  const cibles: { i: number; m: Mesh; trace: Mesh }[] = [];
-  t.murs.forEach((m, i) => {
-    if (m.type !== 2) return;
-    const ax = px(m.ax);
-    const ay = px(m.ay);
-    const bx = px(m.bx);
-    const by = px(m.by);
-    const l = Math.hypot(bx - ax, by - ay);
-    const b = ombrageur(new Mesh(geo(new BoxGeometry(l - 1, 18, 6)), mat(o.theme === "volcan" ? "#8a8a94" : P.cible)));
-    b.position.set(X((ax + bx) / 2), 9, Z((ay + by) / 2));
-    b.rotation.y = -Math.atan2(by - ay, bx - ax);
-    b.add(contour(b.geometry));
-    const trace = new Mesh(geo(new BoxGeometry(l - 1, 0.4, 3)), new MeshBasicMaterial({ color: ENCRE, transparent: true, opacity: 0.4 }));
-    aLiberer.push(trace.material as Material);
-    trace.position.set(X((ax + bx) / 2), 0.5, Z((ay + by) / 2));
-    trace.rotation.y = b.rotation.y;
-    trace.visible = false;
-    groupe.add(b, trace);
-    cibles.push({ i, m: b, trace });
-  });
-
-  // --- Les spinners : une plaque sur un axe
-  const roues = t.spinners.map((c) => {
-    const g = new Group();
-    g.position.set(X(px(c.x)), 14, Z(px(c.y)));
-    const l = px(c.l);
-    const plaque = ombrageur(new Mesh(geo(new BoxGeometry((l - 4) * 2, 2, 16)), mat(P.accent)));
-    plaque.add(contour(plaque.geometry));
-    const axe = new Mesh(geo(new CylinderGeometry(1.5, 1.5, l * 2 + 4, 8)), mat(ENCRE));
-    axe.rotation.z = Math.PI / 2;
-    g.add(plaque, axe);
-    groupe.add(g);
-    return { plaque, angle: 0 };
-  });
-
-  // --- Les trous : un anneau et un fond noir
-  for (const tr of t.trous) {
-    const r = px(tr.r);
-    const anneau = ombrageur(new Mesh(geo(new TorusGeometry(r + 3, 3.5, 10, 32)), mat(P.accent)));
-    anneau.rotation.x = Math.PI / 2;
-    anneau.position.set(X(px(tr.x)), 2, Z(px(tr.y)));
-    const fond = new Mesh(geo(new CircleGeometry(r, 32)), mat("#0c0806"));
-    fond.rotation.x = -Math.PI / 2;
-    fond.position.set(X(px(tr.x)), 0.6, Z(px(tr.y)));
-    groupe.add(anneau, fond);
-  }
+  // --- Lot PBV4 : les modules communs (bumpers et mini-bumpers, cibles, spinners, trous) : un modèle par type et par thème, partagé et instancié, et le même retour au contact partout (`modeles/trois.ts`)
+  const modules = creerModules(o.theme, partie, groupe);
 
   // --- Lot PB3 : les éléments des thèmes, animés en fonction du seul pas ; chaque mise à jour reçoit le pas (et la part de pas écoulée) et rien d'autre
   const C = COULEURS_ELEMENTS;
@@ -1370,34 +1291,9 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     lampesM.forEach((m, i) => (m.emissiveIntensity = i < partie.compteur ? 1.4 : 0));
     const clignotante = !partie.missionFaite && clignote(s.tick);
     for (const f of flechesM) f.visible = clignotante;
-    // les bumpers : ils s'enfoncent, s'allument et leurs yeux suivent la bille
-    t.bumpers.forEach((b, i) => {
-      const d = bumpers[i]!;
-      if (b.mobile) {
-        d.x = px(b.x);
-        d.g.position.x = X(d.x);
-      }
-      const e = partie.choc[i]! / 40;
-      d.haut.scale.set(1 + e * 0.12, 1 - e * 0.28, 1 + e * 0.12);
-      (d.corps.material as MeshStandardMaterial).emissiveIntensity = e * 1.4;
-      const dx = bx - d.x;
-      const dy = by - d.y;
-      const n = Math.hypot(dx, dy) || 1;
-      d.pupilles.forEach((p, k) => {
-        p.position.x = (k ? 1 : -1) * d.r * 0.28 + (dx / n) * d.r * 0.08;
-        p.position.z = d.r * 0.12 + (dy / n) * d.r * 0.08;
-      });
-    });
+    // les modules communs : les bumpers s'enfoncent et leur socle s'allume, les cibles tombent, les spinners tournent, les trous s'allument quand ils gardent la bille
+    modules.maj(partie, dt, sec);
     caoutchoucs.forEach((m, k) => ((m.material as MeshStandardMaterial).emissiveIntensity = Math.min(1, partie.chocSling[k]! / 40) * 1.2));
-    for (const c of cibles) {
-      const bas = partie.bas[c.i]!;
-      c.m.position.y += ((bas ? -9 : 9) - c.m.position.y) * Math.min(1, dt * 18);
-      c.trace.visible = bas;
-    }
-    roues.forEach((r, i) => {
-      r.angle += (partie.spin[i]! / 1000) * dt * 60 * 0.016;
-      r.plaque.rotation.x = r.angle;
-    });
     lampesVoies.forEach((m, i) => (m.visible = !!partie.voiesAllumees[i]));
     lampesMult.forEach((m, i) => (m.visible = partie.mult >= i + 2));
     if (s.debug) {
@@ -1519,6 +1415,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         else m?.dispose();
       });
       for (const x of aLiberer) x.dispose();
+      modules.detruire();
       composition.detruire();
       renderer.dispose();
       renderer.forceContextLoss();

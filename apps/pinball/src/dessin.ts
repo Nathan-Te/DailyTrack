@@ -1,6 +1,7 @@
 import { AXE, DROITE, GAUCHE, HAUTEUR, JET_GEYSER, LARGEUR, MISSION_DU_THEME, MODULES_DE_MISSION, MULT_MAX, RAYON, TICKS_PAR_SECONDE, UNITE, pointeDuBatteur, type Mission, type Partie, type Table, type ThemePinball } from "@cdj/pinball-sim";
+import { modulesAPlat } from "./modeles/plat";
 
-// Le rendu À PLAT de « Pinball » (lot PB1) : le dessin « Canvas+ » de la maquette (`docs/pinball/maquettes/pinball-maquette-jouable.html`) — rails avec leur ombre, bumpers à jupe et à yeux, cibles debout, lance-pierres à
+// Le rendu À PLAT de « Pinball » (lot PB1) : le dessin « Canvas+ » de la maquette (`docs/pinball/maquettes/pinball-maquette-jouable.html`) — rails avec leur ombre, modules communs (lot PBV4 : une icône par thème, `modeles/`), lance-pierres à
 // caoutchouc, batteurs, flèches de tir devant chaque module, nom de chaque module, lampes des couloirs et des multiplicateurs. **Écrit pour être gardé comme rendu de secours** (qualité minimale, petits écrans) quand le
 // rendu three.js du lot PB2 arrivera : il ne connaît que la partie (`Partie`, en lecture) et un canvas ; aucune entrée, aucun DOM autre que le canvas. Les couleurs sont celles de la maquette (palettes des quatre thèmes) :
 // elles passeront aux jetons avec le rendu définitif.
@@ -1351,7 +1352,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
   let ox = 0;
   let oy = 0;
   let sol: HTMLCanvasElement | null = null;
-  const angles = t.spinners.map(() => 0);
+  const modules = modulesAPlat(theme, partie);
   const decor = lampesDecor();
   const etiquettes = placerEtiquettes(t, theme, nom);
 
@@ -1374,20 +1375,6 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     g.globalAlpha = 0.22;
     f();
     g.restore();
-  };
-  const yeux = (x: number, y: number, r: number): void => {
-    const dx = px(partie.x) - x;
-    const dy = px(partie.y) - y;
-    const d = Math.hypot(dx, dy) || 1;
-    const ex = (dx / d) * r * 0.08;
-    const ey = (dy / d) * r * 0.08;
-    for (const s of [-1, 1]) {
-      rond(x + s * r * 0.3, y - r * 0.1, r * 0.22, PAPIER, 1.5);
-      g.beginPath();
-      g.arc(x + s * r * 0.3 + ex, y - r * 0.1 + ey, r * 0.11, 0, TAU);
-      g.fillStyle = ENCRE;
-      g.fill();
-    }
   };
   function noms(c: CanvasRenderingContext2D): void {
     // lot PBV2 : la même mise en place que le rendu three.js (aucune plaque n'en recouvre une autre ni un module), à 140 % de la plaque
@@ -1580,12 +1567,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       if (partie.voiesAllumees[i]) rond(px(v.x), px(v.y) + 24, 6, MOUTARDE, 2);
     });
     elements(s.tick);
-    // les trous
-    for (const tr of t.trous) {
-      ombre(() => rond(px(tr.x), px(tr.y), px(tr.r) + 6, ENCRE, 0));
-      rond(px(tr.x), px(tr.y), px(tr.r) + 6, P.accent, 3);
-      rond(px(tr.x), px(tr.y), px(tr.r) - 1, "#120C08", 2.5);
-    }
+    modules.trous(g, s.tick); // lot PBV4 : les trous du thème (`modeles/plat.ts`)
     portailsEtFleches(s.tick);
     // les murs : des rails, avec leur ombre
     g.lineCap = "round";
@@ -1657,68 +1639,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       rond(l.x, l.y, 3.2, P.lampe, 1.2);
     });
     g.globalAlpha = 1;
-    // les spinners (roues vues de profil)
-    t.spinners.forEach((c, i) => {
-      angles[i] = (angles[i]! + (partie.spin[i]! / 1000) * 0.016) % TAU;
-      g.save();
-      g.translate(px(c.x), px(c.y));
-      const k = Math.abs(Math.cos(angles[i]!));
-      const l = px(c.l);
-      g.fillStyle = P.accent;
-      g.strokeStyle = ENCRE;
-      g.lineWidth = 2.5;
-      g.fillRect(-l + 4, -8 * k, (l - 4) * 2, 16 * k + 0.5);
-      g.strokeRect(-l + 4, -8 * k, (l - 4) * 2, 16 * k + 0.5);
-      g.restore();
-    });
-    // les cibles : des blocs debout, ou une trace pointillée quand elles sont tombées
-    t.murs.forEach((m, i) => {
-      if (m.type !== 2) return;
-      if (partie.bas[i]) {
-        g.beginPath();
-        g.moveTo(px(m.ax), px(m.ay));
-        g.lineTo(px(m.bx), px(m.by));
-        g.setLineDash([3, 4]);
-        g.strokeStyle = "rgba(42,30,22,.45)";
-        g.lineWidth = 3;
-        g.stroke();
-        g.setLineDash([]);
-        return;
-      }
-      const trait = (couleur: string, largeur: number, dy = 0): void => {
-        g.beginPath();
-        g.moveTo(px(m.ax), px(m.ay) + dy);
-        g.lineTo(px(m.bx), px(m.by) + dy);
-        g.strokeStyle = couleur;
-        g.lineWidth = largeur;
-        g.stroke();
-      };
-      ombre(() => trait(ENCRE, 12));
-      trait(ENCRE, 12);
-      trait(theme === "volcan" ? "#8a8a94" : P.cible, 6.5);
-      trait("rgba(255,255,255,.55)", 2, -1.5);
-    });
-    // les bumpers : jupe, corps, chapeau, yeux ; une onde au contact
-    t.bumpers.forEach((b, i) => {
-      const eclat = partie.choc[i]! / 40;
-      const k = 1 + eclat * 0.12;
-      const x = px(b.x);
-      const y = px(b.y);
-      const r = px(b.r);
-      ombre(() => rond(x, y, r * 1.22, ENCRE, 0));
-      rond(x, y, r * 1.22, P.accent, 3);
-      rond(x, y, r * k, eclat > 0.4 ? MOUTARDE : b.mobile ? "#9AA3B5" : P.bumper, 3); // l'astéroïde est gris
-      rond(x, y - 1.5, r * 0.62 * k, PAPIER, 2.5);
-      if (eclat > 0) {
-        g.beginPath();
-        g.arc(x, y, r * (1.3 + (1 - eclat) * 0.9), 0, TAU);
-        g.strokeStyle = `rgba(232,178,58,${eclat})`;
-        g.lineWidth = 3;
-        g.stroke();
-      }
-      rond(x, y - 1.5 - r * 0.38 * k, 1.8, "#C9CED6", 1); // le rivet en métal du chapeau
-      yeux(x, y - 1.5, r * 0.62 * k * 1.6);
-    });
+    modules.dessus(g); // lot PBV4 : les spinners, les cibles et les bumpers du thème (`modeles/plat.ts`)
     noms(g);
     // les batteurs : corps clair, caoutchouc d'encre
     for (const i of [GAUCHE, DROITE]) {

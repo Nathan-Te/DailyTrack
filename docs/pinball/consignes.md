@@ -2,6 +2,9 @@
 
 Chargé par lecture des fichiers du jeu (zone `docs/pinball/**`). Réponses et docs en français. **Créé par `npm run nouveau-jeu -- --id pinball --classement score`** (lot K4g) à partir du jeu témoin « Cibles » ; vision : `docs/pinball/seed.md` (**ne pas modifier**, c'est Nathan qui le fait) ; à coller dans une conversation d'orchestration : `docs/pinball/passation.md`.
 
+## Lot PBV4 (un vrai modèle par module et par thème)
+- **Les modules communs deviennent l'objet que leur nom annonce**, en volume et à plat, un fichier par thème (`apps/pinball/src/modeles/`) ; les yeux des bumpers s'en vont (décision de Nathan) ; le retour au contact est le même dans tous les thèmes ; les modèles sont partagés et instanciés. Règles (emprise, retour au contact, ajouter un thème) : `apps/pinball/CLAUDE.md` (« Les modèles des modules communs ») ; détail, mesures et écarts : `docs/pinball/lots/lot-PBV4-elements.md`. **La simulation n'a pas changé.**
+
 ## Lot PBV3 (la lumière et les couleurs des images cibles)
 - **Le sol éclairé** (plus d'émissif), l'occlusion et le vignettage cuits dans le sol, **le tone mapping et l'étalonnage chaud en une seule fonction de couleur** (sans passe de plus ; cuit dans le sol du rendu de secours), les palettes et le décor des sols (bois miel, eau turquoise profond et marges garnies, Espace et Volcan plus contrastés), le meuble (cadre épais, laiton, liseré sombre), des bandes et des lampes plus présentes, des étiquettes plus grandes et des flèches franches ; **un outil qui mesure les couleurs** d'une capture contre sa cible. Règles : `apps/pinball/CLAUDE.md` (« La lumière et les couleurs ») ; mesures et écarts : `docs/pinball/lots/lot-PBV3-lumiere.md`. **La simulation n'a pas changé.**
 
