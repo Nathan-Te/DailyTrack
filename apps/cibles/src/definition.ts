@@ -26,7 +26,11 @@ async function contenuDuJour(jour: number, base: string): Promise<Contenu> {
  * Lot PG1 — **les essais du kit sur le jeu témoin** (`?debug`, jamais en production : règle R9) : `?debug&chargement=1000` déclare un `chargerPartie` lent (la partie ne démarre qu'après) et
  * `?debug&hud=surimpression` met le HUD sur le plateau (les zones du kit : `scene.ts`). Ils servent `e2e/surimpression.spec.ts` ; sans eux, rien ne change.
  */
-const essai = (nom: string): string | null => (import.meta.env.VITE_PRODUCTION === "1" ? null : new URLSearchParams(location.search).has("debug") ? new URLSearchParams(location.search).get(nom) : null);
+const essai = (nom: string): string | null => {
+  if (import.meta.env.VITE_PRODUCTION === "1" || typeof location === "undefined") return null; // hors navigateur (les tests unitaires lisent cette définition) : aucun essai
+  const q = new URLSearchParams(location.search);
+  return q.has("debug") ? q.get(nom) : null;
+};
 const CHARGEMENT_MS = Number(essai("chargement")) || 0;
 
 export const DEFINITION: DefinitionJeu<Contenu> = {
