@@ -34,7 +34,7 @@ Branche `ccr-13565b06-cahb9k` (le nom du prompt, `claude/pinball-visuel-2`, n'a 
 
 ## Mesures
 - **Premier chargement** : rien n'y a été ajouté (le rendu et le sol sont à la demande) ; `e2e/poids.spec.ts` vert.
-- **Rendu à la demande** (`corps-` + `dessin-`, gzip) : voir « Vérifié » (mesure du `verifier`).
+- **Rendu à la demande** (`corps-` + `dessin-`, gzip) : **166 634 o** (`corps-` 155 718, `dessin-` 10 916), contre 162 314 o au PBV1 : **+4,3 Ko, sous le plafond de 172 Ko** de `pinball.rendu`. Pas de relèvement à demander.
 - **Fluidité**, comme au PBV1 (Chromium de Playwright, 390 × 844, bille en jeu, processeur ralenti ×4, WebGL logiciel SwiftShader, médiane du fil principal par image ; mesure bruitée d'environ ±2 ms d'une passe à l'autre) :
 
   | avec bloom | avant (PBV1) | après |
@@ -47,7 +47,7 @@ Branche `ccr-13565b06-cahb9k` (le nom du prompt, `claude/pinball-visuel-2`, n'a 
   Tous **sous 16,7 ms**. L'Océan gagne ~1,7 ms (le calque d'eau, l'entonnoir : +3 000 triangles), dans le bruit de la mesure. **Non mesuré : un vrai téléphone.**
 
 ## Vérifié
-- Voir la section « Résultat du verifier » ci-dessous.
+- **`npm run verifier` : tout vert** (typecheck, tests unitaires SQLite et libSQL, construction, e2e Pinball 7 specs, budgets de toutes les lignes) ; `npm run consignes` vert. Test ajouté : `test/etiquettes.test.ts` (7 tests, dont les 120 tables en fr et en) ; `test/decor.test.ts` mis à jour (styles des plaques). `main` fusionné : déjà à jour.
 - Captures regardées : sept planches (quatre tables du tour 1, secours, Océan contre sa cible, 360 × 640).
 
 ## Non vérifié
