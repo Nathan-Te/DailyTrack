@@ -1,4 +1,4 @@
-import { AXE, DROITE, GAUCHE, HAUTEUR, LARGEUR, MULT_MAX, RAYON, UNITE, pointeDuBatteur, type Partie, type Table, type ThemePinball } from "@cdj/pinball-sim";
+import { AXE, DROITE, GAUCHE, HAUTEUR, JET_GEYSER, LARGEUR, MISSION_DU_THEME, MODULES_DE_MISSION, MULT_MAX, RAYON, TICKS_PAR_SECONDE, UNITE, pointeDuBatteur, type Mission, type Partie, type Table, type ThemePinball } from "@cdj/pinball-sim";
 
 // Le rendu À PLAT de « Pinball » (lot PB1) : le dessin « Canvas+ » de la maquette (`docs/pinball/maquettes/pinball-maquette-jouable.html`) — rails avec leur ombre, bumpers à jupe et à yeux, cibles debout, lance-pierres à
 // caoutchouc, batteurs, flèches de tir devant chaque module, nom de chaque module, lampes des couloirs et des multiplicateurs. **Écrit pour être gardé comme rendu de secours** (qualité minimale, petits écrans) quand le
@@ -26,8 +26,45 @@ export const PALETTES: Readonly<Record<ThemePinball, Palette>> = {
   volcan: { fond: "#E8C6A8", fond2: "#E0B796", bumper: "#C2401F", accent: "#5A3A22", cible: "#4A4A52", sling: "#E8B23A", sombre: false },
 };
 /** Le rayon d'un module (px) : la distance où se pose sa flèche et son nom. */
-export const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22 };
-const TAU = 6.283185307179586;
+export const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22, manege: 60, tourbillon: 64, trouNoir: 26, portailA: 28, portailB: 28, asteroide: 34, geyser: 30, coulee: 56 };
+export const TAU = 6.283185307179586;
+
+// --- Lot PB3 : ce qui est commun aux deux rendus pour les éléments des thèmes et la mission (la maquette : `fleche`, `couleurModule`, les lampes de la mission)
+/** Un module compte-t-il pour la mission du thème ? (sa flèche clignote tant que la mission n'est pas réussie) */
+export const comptePourLaMission = (theme: ThemePinball, type: string): boolean => (MODULES_DE_MISSION[MISSION_DU_THEME[theme]] as readonly string[]).includes(type);
+/** Les flèches clignotent deux fois par seconde (150 pas allumée, 150 pas éteinte), en fonction du seul pas. */
+export const clignote = (tick: number): boolean => Math.floor(tick / 150) % 2 === 0;
+/** La flèche de tir d'un module : où elle se pose (devant lui, sur la ligne qui vient des batteurs) et son angle. */
+export function flecheDe(m: { type: string; x: number; y: number }): { x: number; y: number; a: number } {
+  const mx = px(m.x);
+  const my = px(m.y);
+  const dx = mx - AXE;
+  const dy = my - 600;
+  const d = Math.hypot(dx, dy);
+  const r = RAYON_MODULE[m.type] ?? 30;
+  return { x: mx - (dx / d) * (r + 18), y: my - (dy / d) * (r + 18), a: Math.atan2(dy, dx) };
+}
+/** La couleur d'un module sur la table : les bumpers, la cible, les éléments de la mission (moutarde), le reste à l'accent du thème. */
+export function couleurModule(P: Palette, theme: ThemePinball, type: string): string {
+  if (type === "bumpers" || type === "mini" || type === "asteroide") return P.bumper;
+  if (type === "cibles") return P.cible;
+  if (comptePourLaMission(theme, type) || type === "trouNoir" || type === "coulee") return MOUTARDE;
+  return P.accent;
+}
+/** L'élément qui porte les lampes de la mission (le premier du thème : le portail A pour l'espace) et leur place : un arc au-dessus de lui, une lampe par pas du but. */
+export function lampesMission(table: Table, theme: ThemePinball, but: number): { x: number; y: number }[] {
+  const mission: Mission = MISSION_DU_THEME[theme];
+  const ancre = table.poses.find((m) => (MODULES_DE_MISSION[mission] as readonly string[]).includes(m.type) && m.type !== "portailB");
+  if (!ancre) return [];
+  const rr = (RAYON_MODULE[ancre.type] ?? 30) + 9;
+  const l: { x: number; y: number }[] = [];
+  for (let i = 0; i < but; i++) {
+    const a = -Math.PI / 2 + (i - (but - 1) / 2) * 0.32;
+    l.push({ x: px(ancre.x) + Math.cos(a) * rr, y: px(ancre.y) + Math.sin(a) * rr });
+  }
+  return l;
+}
+export const COULEURS_ELEMENTS = { manegeA: "#C2401F", manegeHub: "#3E7CC4", tourbillon: "#7FC6D2", tourbillonBras: "#2E6E8E", tourbillonCentre: "#16384a", noirCentre: "#0b0918", noirAnneau: "#E8B23A", noirOnde: "167,155,255", portailA: "#5FD3E8", portailB: "#E46FA0", portailFond: "#120f24", geyser: "#5A3A22", lave: "#F2894B", chevron: "#FFE08A" } as const;
 
 /** Ce qu'il faut savoir d'une partie pour dessiner son sol : le thème (palette), la table (les modules posés, les couloirs du haut), le nom du thème peint sur la table et la police du jeu. */
 export interface DonneesSol {
@@ -40,7 +77,7 @@ export interface DonneesSol {
 }
 
 /** Une flèche de tir, à `(x, y)`, tournée de `a`. */
-function fleche(c: CanvasRenderingContext2D, P: Palette, x: number, y: number, a: number): void {
+function fleche(c: CanvasRenderingContext2D, P: Palette, x: number, y: number, a: number, allumee?: string): void {
   c.save();
   c.translate(x, y);
   c.rotate(a);
@@ -50,7 +87,7 @@ function fleche(c: CanvasRenderingContext2D, P: Palette, x: number, y: number, a
   c.lineTo(-3, 0);
   c.lineTo(-7, 11);
   c.closePath();
-  c.fillStyle = P.sombre ? "rgba(255,246,224,.14)" : "rgba(255,255,255,.55)";
+  c.fillStyle = allumee ?? (P.sombre ? "rgba(255,246,224,.14)" : "rgba(255,255,255,.55)");
   c.fill();
   c.lineWidth = 2.5;
   c.strokeStyle = ENCRE;
@@ -92,7 +129,8 @@ function masque(c: CanvasRenderingContext2D, couleur: string): void {
 /** Où se pose le nom d'un module sur la table (px) : au-dessous de lui, sans jamais passer sous les lance-pierres. */
 export function placeDuNom(m: { type: string; x: number; y: number }): { x: number; y: number } {
   const r = RAYON_MODULE[m.type] ?? 30;
-  const y = m.type === "cibles" ? px(m.y) + 22 : px(m.y) + r * (m.type === "bumpers" ? 0.95 : 0.9) + 4;
+  // l'astéroïde va et vient au-dessus d'un petit bumper : son nom se pose au-dessus de lui ; les autres, au-dessous
+  const y = m.type === "asteroide" ? px(m.y) - r - 4 : m.type === "cibles" ? px(m.y) + 22 : px(m.y) + r * (m.type === "bumpers" ? 0.95 : 0.9) + 4;
   return { x: px(m.x), y: Math.min(y, 470) };
 }
 
@@ -150,15 +188,11 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(42,30,22,.10)";
   c.fillText(titre.toLocaleUpperCase(), 0, 0);
   c.restore();
-  // une flèche de tir devant chaque module, qui pointe vers lui depuis les batteurs
+  // une flèche de tir devant chaque module (sauf le trou noir, qui n'est pas une cible), qui pointe vers lui depuis les batteurs
   for (const m of t.poses) {
-    const mx = px(m.x);
-    const my = px(m.y);
-    const dx = mx - AXE;
-    const dy = my - 600;
-    const d = Math.hypot(dx, dy);
-    const r = RAYON_MODULE[m.type] ?? 30;
-    fleche(c, P, mx - (dx / d) * (r + 18), my - (dy / d) * (r + 18), Math.atan2(dy, dx));
+    if (m.type === "trouNoir") continue;
+    const f = flecheDe(m);
+    fleche(c, P, f.x, f.y, f.a);
   }
   // les multiplicateurs, au-dessus du trou
   c.font = `700 10px ${police}`;
@@ -202,6 +236,8 @@ export interface Surimpression {
   gains: readonly { x: number; y: number; points: number; vie: number }[];
   /** La part de pas écoulée depuis le dernier pas joué, de 0 à 1 (interpolation de la bille). */
   alpha: number;
+  /** Lot PB3 : l'éclat de la mission réussie, de 0 à 1 (1 : vient d'être réussie) ; sur la table, un éclat doré (et, en three.js seulement, une brève secousse de caméra). */
+  eclat: number;
 }
 
 export interface Rendu {
@@ -271,6 +307,138 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     }
   }
 
+  /** Lot PB3 : les éléments des thèmes, dessinés sous la bille, tous animés en fonction du seul pas (`tick`) ; puis les lampes de la mission. */
+  function elements(tick: number): void {
+    const C = COULEURS_ELEMENTS;
+    const sec = tick / TICKS_PAR_SECONDE;
+    for (const z of t.plateaux) {
+      // le manège : un plateau de huit parts qui tourne contre les aiguilles, un moyeu bleu
+      const x = px(z.x);
+      const y = px(z.y);
+      const r = px(z.r);
+      ombre(() => rond(x, y, r, ENCRE, 0));
+      rond(x, y, r, MOUTARDE, 3.5);
+      g.save();
+      g.translate(x, y);
+      g.rotate(-sec * 1.6);
+      for (let k = 0; k < 8; k++) {
+        g.rotate(Math.PI / 4);
+        g.fillStyle = k % 2 ? C.manegeA : PAPIER;
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.arc(0, 0, r - 7, 0, Math.PI / 4);
+        g.closePath();
+        g.fill();
+      }
+      g.restore();
+      rond(x, y, r - 7, null, 2.5);
+      rond(x, y, 10, C.manegeHub, 3);
+    }
+    for (const z of t.tourbillons) {
+      // le tourbillon : trois bras en spirale qui tournent
+      const x = px(z.x);
+      const y = px(z.y);
+      const r = px(z.r);
+      rond(x, y, r, C.tourbillon, 3.5);
+      g.save();
+      g.translate(x, y);
+      g.rotate(sec * 4.8);
+      g.strokeStyle = C.tourbillonBras;
+      g.lineWidth = 4;
+      for (let k = 0; k < 3; k++) {
+        g.rotate(2.094);
+        g.beginPath();
+        for (let a = 0; a < 5; a += 0.2) g.lineTo(Math.cos(a) * (r - 5 - a * 9), Math.sin(a) * (r - 5 - a * 9));
+        g.stroke();
+      }
+      g.restore();
+      rond(x, y, 9, C.tourbillonCentre, 3);
+    }
+    for (const z of t.trousNoirs) {
+      // le trou noir : des anneaux en pointillés qui tournent vers lui, un cœur sombre, un anneau d'or
+      const x = px(z.x);
+      const y = px(z.y);
+      for (let k = 4; k >= 1; k--) {
+        g.beginPath();
+        g.arc(x, y, (px(z.r) * k) / 4, 0, TAU);
+        g.strokeStyle = `rgba(${C.noirOnde},${0.22 + (4 - k) * 0.14})`;
+        g.lineWidth = 2.5;
+        g.setLineDash([6, 6]);
+        g.lineDashOffset = -sec * 20 * k;
+        g.stroke();
+      }
+      g.setLineDash([]);
+      rond(x, y, 16, C.noirCentre, 3);
+      g.beginPath();
+      g.ellipse(x, y, 28, 8, -0.3, 0, TAU);
+      g.strokeStyle = C.noirAnneau;
+      g.lineWidth = 4;
+      g.stroke();
+    }
+    t.geysers.forEach((z, i) => {
+      // le geyser : un cratère, de la lave qui rougit quand il est prêt, un jet de bulles qui monte quand il part
+      const x = px(z.x);
+      const y = px(z.y);
+      const prete = partie.geyserAttente[i]! <= 0;
+      ombre(() => rond(x, y, px(z.r), ENCRE, 0));
+      rond(x, y, px(z.r), C.geyser, 3.5);
+      rond(x, y, px(z.r) - 8, prete ? C.lave : C.geyser, 2.5);
+      const j = partie.geyserJet[i]! / JET_GEYSER;
+      if (j > 0) for (let k = 0; k < 6; k++) rond(x + Math.sin(sec * 20 + k) * 8, y - 18 - k * 16 * (1 - j * 0.5), 8 - k, PAPIER, 2);
+    });
+    for (const z of t.coulees) {
+      // la coulée : un couloir de lave dont les chevrons montent
+      const x = px(z.x);
+      const y = px(z.y);
+      const l = px(z.l);
+      const h = px(z.h) * 2;
+      g.fillStyle = C.lave;
+      g.fillRect(x - l, y - h / 2, l * 2, h);
+      g.strokeStyle = C.chevron;
+      g.lineWidth = 4;
+      for (let k = 0; k < 4; k++) {
+        const yy = y + h / 2 - ((sec * 60 + k * 24) % h);
+        g.beginPath();
+        g.moveTo(x - 9, yy + 7);
+        g.lineTo(x, yy);
+        g.lineTo(x + 9, yy + 7);
+        g.stroke();
+      }
+    }
+    // les lampes de la mission, autour de l'élément du thème : une allumée par pas de réussi
+    lampesMission(t, theme, partie.but).forEach((l, i) => rond(l.x, l.y, 5.5, i < partie.compteur ? MOUTARDE : P.sombre ? "#3a3d66" : PAPIER, 2));
+  }
+  /** Les portails et les flèches qui clignotent, par-dessus les trous. */
+  function portailsEtFleches(tick: number): void {
+    const C = COULEURS_ELEMENTS;
+    const sec = tick / TICKS_PAR_SECONDE;
+    for (const p of t.portails) {
+      const x = px(p.x);
+      const y = px(p.y);
+      for (let k = 0; k < 3; k++) {
+        g.beginPath();
+        g.arc(x, y, px(p.r) + 5 + k * 5 + Math.sin(sec * 4 + k) * 1.5, 0, TAU);
+        g.strokeStyle = k % 2 ? C.portailB : C.portailA;
+        g.lineWidth = 3.5;
+        g.stroke();
+      }
+      rond(x, y, px(p.r), C.portailFond, 2.5);
+      g.fillStyle = PAPIER;
+      g.font = `700 12px ${police}`;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(p.id === 0 ? "A" : "B", x, y + 1);
+    }
+    // la flèche d'un module qui compte pour la mission clignote tant qu'elle n'est pas réussie
+    if (!partie.missionFaite && clignote(tick)) {
+      for (const m of t.poses) {
+        if (!comptePourLaMission(theme, m.type)) continue;
+        const f = flecheDe(m);
+        fleche(g, P, f.x, f.y, f.a, couleurModule(P, theme, m.type));
+      }
+    }
+  }
+
   function redimensionner(largeur: number, hauteur: number): void {
     L = Math.max(1, Math.floor(largeur));
     H = Math.max(1, Math.floor(hauteur));
@@ -321,12 +489,14 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     t.voies.forEach((v, i) => {
       if (partie.voiesAllumees[i]) rond(px(v.x), px(v.y) + 24, 6, MOUTARDE, 2);
     });
+    elements(s.tick);
     // les trous
     for (const tr of t.trous) {
       ombre(() => rond(px(tr.x), px(tr.y), px(tr.r) + 6, ENCRE, 0));
       rond(px(tr.x), px(tr.y), px(tr.r) + 6, P.accent, 3);
       rond(px(tr.x), px(tr.y), px(tr.r) - 1, "#120C08", 2.5);
     }
+    portailsEtFleches(s.tick);
     // les murs : des rails, avec leur ombre
     g.lineCap = "round";
     const tracer = (couleur: string, largeur: number, filtre: (i: number) => boolean = () => true): void => {
@@ -426,7 +596,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       const r = px(b.r);
       ombre(() => rond(x, y, r * 1.22, ENCRE, 0));
       rond(x, y, r * 1.22, P.accent, 3);
-      rond(x, y, r * k, eclat > 0.4 ? MOUTARDE : P.bumper, 3);
+      rond(x, y, r * k, eclat > 0.4 ? MOUTARDE : b.mobile ? "#9AA3B5" : P.bumper, 3); // l'astéroïde est gris
       rond(x, y - 1.5, r * 0.62 * k, PAPIER, 2.5);
       if (eclat > 0) {
         g.beginPath();
@@ -502,6 +672,11 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.fill();
     }
     masque(g, ENCRE);
+    if (s.eclat > 0) {
+      // la mission réussie : un éclat doré sur toute la table
+      g.fillStyle = `rgba(232,178,58,${s.eclat * 0.42})`;
+      g.fillRect(0, 0, LARGEUR, HAUTEUR);
+    }
     if (s.sauvee > 0) {
       g.globalAlpha = Math.min(1, s.sauvee * 2);
       pastille(g, police, AXE, 520 - (1 - s.sauvee) * 16, s.texteSauvee.toLocaleUpperCase());
@@ -533,6 +708,12 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.arc(px(tr.x), px(tr.y), px(tr.r), 0, TAU);
       g.stroke();
     }
+    for (const z of [...t.plateaux, ...t.tourbillons, ...t.trousNoirs, ...t.geysers, ...t.portails]) {
+      g.beginPath();
+      g.arc(px(z.x), px(z.y), px(z.r), 0, TAU);
+      g.stroke();
+    }
+    for (const c of t.coulees) g.strokeRect(px(c.x) - px(c.l), px(c.y) - px(c.h), px(c.l) * 2, px(c.h) * 2);
     for (const c of t.spinners) {
       g.strokeRect(px(c.x) - px(c.l), px(c.y) - 1, px(c.l) * 2, 2);
     }

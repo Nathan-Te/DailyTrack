@@ -3,7 +3,7 @@ import { daysFromCivil, formatDay } from "@cdj/core";
 import { DROITE, GAUCHE, LANCEUR, PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, dailyPinball, empreinteContenu, enregistrer, jouer, piloter, seuilsSurLePapier, type Evenement } from "../src/index";
 
 // Le golden de Pinball : `npm run golden:pinball -w @cdj/pinball-sim`. Dix jours (le thème, les six modules, l'empreinte de la table et les seuils) et des rediffusions de référence : une partie vide (la bille ne part
-// jamais : elle dure les 15 minutes), le lanceur relâché puis les deux batteurs tenus, et **le pilote d'essai** (`pilote.ts`) sur deux tables, 2 minutes puis 8 minutes — chaque mécanique y passe. Il ne se régénère jamais
+// jamais : elle dure les 15 minutes), le lanceur relâché puis les deux batteurs tenus, et **le pilote d'essai** (`pilote.ts`) sur quatre tables, une de chaque thème (volcan 2 minutes, espace 8 minutes, foire jusqu'à la fin, océan 2 minutes) — chaque mécanique y passe. Il ne se régénère jamais
 // sans monter la version concernée (`PINBALL_SIM_VERSION` pour les rediffusions, `PINBALL_GENERATOR_VERSION` pour la table).
 const jours = Array.from({ length: 10 }, (_, i) => daysFromCivil(2026, 11, 2) + i * 3);
 const jourRef = jours[0]!;
@@ -20,8 +20,11 @@ const pilote = (jour: number, pas: number): Evenement[] => piloter(dailyPinball(
 const reds = [
   { nom: "vide", jour: jourRef, evenements: [] as Evenement[] },
   { nom: "batteurs-tenus", jour: jourRef, evenements: tenus },
-  { nom: "pilote-2-minutes", jour: jours[1]!, evenements: pilote(jours[1]!, 72000) },
-  { nom: "pilote-8-minutes", jour: jours[4]!, evenements: pilote(jours[4]!, 288000) },
+  // Lot PB3 : les tables du pilote portent les éléments des thèmes (volcan : geyser et coulée ; espace : trou noir, portails, astéroïde ; foire : manège ; océan : tourbillon), et leur mission est réussie sur les trois premières
+  { nom: "pilote-2-minutes", jour: jours[6]!, evenements: pilote(jours[6]!, 72000) },
+  { nom: "pilote-8-minutes", jour: jours[5]!, evenements: pilote(jours[5]!, 288000) },
+  { nom: "pilote-foire", jour: jours[3]!, evenements: pilote(jours[3]!, 288000) },
+  { nom: "pilote-ocean", jour: jours[2]!, evenements: pilote(jours[2]!, 72000) },
 ].map((r) => {
   const contenu = dailyPinball(r.jour);
   return { nom: r.nom, date: formatDay(r.jour), g: contenu.g, code: enregistrer(contenu, r.evenements), resultat: jouer(contenu, r.evenements) };

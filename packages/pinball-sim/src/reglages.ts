@@ -46,6 +46,34 @@ export interface Reglages {
   /** La chute d'une banque de cibles complète : elle se relève après `banqueRelevee` pas ; les lampes des couloirs du haut s'éteignent `voiesRelevees` pas après la troisième. */
   banqueRelevee: number;
   voiesRelevees: number;
+  // --- Lot PB3 : les éléments des thèmes (valeurs de la maquette, en px, px/s, px/s², pas) et les buts des missions.
+  /** Les Bulles (océan) : des bumpers plus doux (coups du trio et de la paire, px/s). */
+  kickBulles: number;
+  kickMiniBulles: number;
+  /** Le manège : la poussée tangentielle au bord du plateau est `manegeVitesse × 96` px/s² (6 : la maquette). */
+  manegeVitesse: number;
+  /** Le tourbillon : l'attraction au centre (px/s²), la poussée en spirale (px/s²), la garde (pas) puis la pause avant de reprendre, la vitesse de la recrache (px/s). */
+  tourbillonForce: number;
+  tourbillonSpirale: number;
+  tourbillonGarde: number;
+  tourbillonPause: number;
+  tourbillonVitesse: number;
+  /** Le trou noir : sa force (px³/s² : l'attraction vaut `force / distance²` px/s², plafonnée à 1 400). */
+  trouNoirForce: number;
+  /** Les portails : la pause des deux après un passage (pas). */
+  portailPause: number;
+  /** Le geyser : la vitesse vers le haut (px/s), la pause entre deux jets (pas), la poussée de côté qui éloigne la bille (px/s) et le nombre de jets par bille (la garantie qu'il ne garde jamais la bille). */
+  geyserVitesse: number;
+  geyserPause: number;
+  geyserDevie: number;
+  geyserParBille: number;
+  /** La coulée : l'accélération vers le haut d'une bille qui y monte (px/s², plus forte que la pente). */
+  couleeForce: number;
+  /** Les buts des quatre missions (tours de manège, plongées dans le tourbillon, passages par un portail, geysers). */
+  butManege: number;
+  butTourbillon: number;
+  butPortail: number;
+  butGeyser: number;
 }
 
 /** Les valeurs de la maquette (à régler au jeu : « Les sensations » du seed). */
@@ -78,6 +106,25 @@ export const REGLAGES: Reglages = {
   sauvee: 3000,
   banqueRelevee: 720,
   voiesRelevees: 360,
+  kickBulles: 330,
+  kickMiniBulles: 285,
+  manegeVitesse: 6,
+  tourbillonForce: 900,
+  tourbillonSpirale: 700,
+  tourbillonGarde: 540,
+  tourbillonPause: 960,
+  tourbillonVitesse: 560,
+  trouNoirForce: 260000,
+  portailPause: 480,
+  geyserVitesse: 880,
+  geyserPause: 420,
+  geyserDevie: 90,
+  geyserParBille: 8,
+  couleeForce: 1500,
+  butManege: 5,
+  butTourbillon: 3,
+  butPortail: 3,
+  butGeyser: 4,
 };
 
 export const copierReglages = (r: Reglages = REGLAGES): Reglages => ({ ...r });
@@ -97,6 +144,11 @@ export interface Derives {
   chargeParPas: number;
   seuilSling: number;
   trouVitesseMax2: number;
+  /** Les éléments des thèmes (lot PB3) : des accélérations en unités/s² (la partie en ajoute le six-centième à chaque pas), `couleeParPas` déjà par pas. */
+  manegeAcc: number;
+  tourbillonRadial: number;
+  tourbillonTangent: number;
+  couleeParPas: number;
 }
 
 /** Un angle de millièmes de radian en angle de la table (`TOUR` = 2π = 6 283 millièmes de radian, arrondi). */
@@ -116,6 +168,10 @@ export function deriver(r: Reglages): Derives {
     chargeParPas: div(r.lanceurCharge, TICKS_PAR_SECONDE),
     seuilSling: r.seuilSling * UNITE,
     trouVitesseMax2: tm * tm,
+    manegeAcc: r.manegeVitesse * 96 * UNITE,
+    tourbillonRadial: r.tourbillonForce * UNITE,
+    tourbillonTangent: r.tourbillonSpirale * UNITE,
+    couleeParPas: div(r.couleeForce * UNITE, TICKS_PAR_SECONDE),
   };
 }
 

@@ -191,6 +191,10 @@
       "rendu.spec.ts": [
         "pinball-sim",
         "pinball-jeu"
+      ],
+      "themes.spec.ts": [
+        "pinball-sim",
+        "pinball-jeu"
       ]
     },
     "parts": {
