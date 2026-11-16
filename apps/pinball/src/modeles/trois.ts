@@ -1,4 +1,4 @@
-import { type Texture, BackSide, BoxGeometry, DoubleSide, FrontSide, Color, InstancedMesh, Matrix4, MeshBasicMaterial, MeshStandardMaterial, Quaternion, Vector3, type BufferGeometry, type Group, type Material } from "three";
+import { MeshPhongMaterial, BackSide, BoxGeometry, DoubleSide, FrontSide, Color, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type BufferGeometry, type Group, type Material } from "three";
 import { HAUTEUR, LARGEUR, UNITE, type Partie, type ThemePinball } from "@cdj/pinball-sim";
 import { MODELES } from "./index";
 import { coque, OUTILS } from "./outils";
@@ -21,6 +21,8 @@ const s3 = new Vector3();
 const axe = new Vector3();
 const teinte = new Color();
 const ZERO = new Matrix4().makeScale(0, 0, 0);
+/** La part de lumière que renvoient les modules (Phong, sans reflets de la pièce) sous la lumière et l'exposition du lot PBV3 : comme `GAIN_SOL` pour le sol, réglée à l'œil pour que les modules restent les objets les plus vifs. */
+const GAIN_MODULES = 3.4;
 
 /** Les modèles d'un thème, construits une fois (la page ne joue qu'un thème à la fois). */
 const construits = new Map<string, Modele3D>();
@@ -53,26 +55,30 @@ export interface Modules {
   detruire(): void;
 }
 
-/** `env` : les reflets de la pièce (lot PBV3 : l'environnement est donné matériau par matériau, jamais par la scène). */
-export function creerModules(theme: ThemePinball, partie: Partie, groupe: Group, env?: Texture): Modules {
+export function creerModules(theme: ThemePinball, partie: Partie, groupe: Group): Modules {
   const t = partie.table;
   const P = placements(t);
   const lum = MODELES[theme].lumieres;
   const aLiberer: { dispose(): void }[] = [];
   const encre = new MeshBasicMaterial({ color: ENCRE, side: BackSide });
   aLiberer.push(encre);
+  // Lot PBV4, après PBV3 : du Phong et non du « Standard » (qui échantillonne l'environnement à chaque pixel) : le reflet du soleil suffit à des objets si petits (vernis : rugosité basse, brillance haute ;
+  // métal : un reflet de sa couleur), et le rendu logiciel des essais est plus léger.
   const materiau = (m: Matiere, blanc: boolean): Material => {
-    const x = new MeshStandardMaterial({ color: blanc ? "#ffffff" : m.c, roughness: m.rug ?? 0.45, metalness: m.met ?? 0, envMapIntensity: m.env ?? 0.5, emissive: m.em ?? "#000000", envMap: env ?? null, transparent: (m.op ?? 1) < 1, opacity: m.op ?? 1, depthWrite: (m.op ?? 1) >= 1, side: m.deux ? DoubleSide : FrontSide });
+    const rug = m.rug ?? 0.45;
+    const x = new MeshPhongMaterial({ color: new Color(blanc ? "#ffffff" : m.c).multiplyScalar(GAIN_MODULES), emissive: m.em ?? "#000000", shininess: 4 + (1 - rug) * (1 - rug) * 90, specular: m.met ? m.c : new Color().setScalar(0.06 + (1 - rug) * 0.5 * Math.min(1.4, (m.env ?? 0.5) + 0.3)), transparent: (m.op ?? 1) < 1, opacity: m.op ?? 1, depthWrite: (m.op ?? 1) >= 1, side: m.deux ? DoubleSide : FrontSide });
     aLiberer.push(x);
     return x;
   };
   const monter = (modele: Modele3D, instances: Instance[]): Groupe => {
     const maillages: Maillage[] = [];
     if (instances.length === 0) return { modele, instances, maillages };
+    // seule la plus grosse pièce opaque projette une ombre (le corps de l'objet) : les petites (rebords, bâton, nacelles, ventouses…) doublaient le coût de la carte d'ombres pour presque rien
+    const ombreuse = modele.pieces.filter((p) => !p.sansOmbre && (p.m.op ?? 1) >= 1).reduce<Piece | null>((a, p) => (!a || p.geo.getAttribute("position").count > a.geo.getAttribute("position").count ? p : a), null);
     for (const piece of modele.pieces) {
       const parInstance = piece.role === "lumiere" || !!piece.m.teintes;
       const mesh = new InstancedMesh(piece.geo, materiau(piece.m, parInstance), instances.length);
-      mesh.castShadow = !piece.sansOmbre;
+      mesh.castShadow = piece === ombreuse;
       mesh.receiveShadow = true;
       mesh.frustumCulled = false;
       if (parInstance)

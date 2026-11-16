@@ -557,7 +557,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   }
 
   // --- Lot PBV4 : les modules communs (bumpers et mini-bumpers, cibles, spinners, trous) : un modèle par type et par thème, partagé et instancié, et le même retour au contact partout (`modeles/trois.ts`)
-  const modules = creerModules(o.theme, partie, groupe, env.texture);
+  const modules = creerModules(o.theme, partie, groupe);
 
   // --- Lot PB3 : les éléments des thèmes, animés en fonction du seul pas ; chaque mise à jour reçoit le pas (et la part de pas écoulée) et rien d'autre
   const C = COULEURS_ELEMENTS;
