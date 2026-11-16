@@ -66,14 +66,29 @@ export interface Vue {
   lumiere: number;
   /** La taille des étiquettes des modules, en % de la maquette (100 : la pastille de 9 px). */
   etiquettes: number;
+  /** Lot PBV1 : l'intensité du soleil, en % (100 : la lumière chaude de fin d'après-midi de la recette). `lumiere` règle alors la lumière du ciel (l'ambiance). */
+  soleil: number;
+  /** Lot PBV1 : d'où vient le soleil, en degrés autour de la table (0 : du haut de la table ; négatif : de la gauche ; positif : de la droite). */
+  azimut: number;
+  /** Lot PBV1 : la hauteur du soleil au-dessus de l'horizon, en degrés (bas : de longues ombres). */
+  hauteur: number;
+  /** Lot PBV1 : la force du bloom, en % (0 : pas de bloom, la passe de composition n'est pas faite). */
+  bloom: number;
+  /** Lot PBV1 : la lueur des bandes lumineuses et des lampes du décor, en %. */
+  bandes: number;
 }
-export const VUE_DEFAUT: Vue = { angle: 66, distance: 100, champ: 20, lumiere: 100, etiquettes: 140 };
+export const VUE_DEFAUT: Vue = { angle: 66, distance: 100, champ: 20, lumiere: 100, etiquettes: 140, soleil: 100, azimut: -28, hauteur: 36, bloom: 100, bandes: 100 };
 export const BORNES_VUE: Readonly<Record<keyof Vue, readonly [number, number]>> = {
   angle: [35, 85],
   distance: [70, 140],
   champ: [15, 60],
   lumiere: [30, 200],
   etiquettes: [60, 320],
+  soleil: [0, 250],
+  azimut: [-90, 90],
+  hauteur: [12, 85],
+  bloom: [0, 300],
+  bandes: [0, 300],
 };
 
 const borne = (v: unknown, [min, max]: readonly [number, number]): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : null);

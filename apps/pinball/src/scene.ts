@@ -51,13 +51,15 @@ function commandes(): Commandes {
 declare global {
   interface Window {
     /** Hors production, avec `?debug` : les essais e2e dictent leurs changements de commandes (`c` : 0 gauche, 1 droite, 2 lanceur). */
-    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } } | null; vibrations(): number };
+    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } } | null; vibrations(): number; contours(oui: boolean): void };
   }
 }
 
 export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: OptionsPartie, corps: typeof import("./corps") | null = null): PartieDuJeu {
   const essais = import.meta.env.VITE_PRODUCTION !== "1";
   const debug = essais && new URLSearchParams(location.search).has("debug");
+  /** Lot PBV1 : les captures des essais éteignent les contours de collision de `?debug` (`__pinball.contours(false)`), pour comparer la table à ses images cibles. */
+  let contours = true;
   const manuel = essais && new URLSearchParams(location.search).has("manuel");
   const essai = lireEssai(location.search, BUILD_RESTRICTED);
   // Lot PB4 : `?robot` (hors production, jamais classé) — la partie du robot est rejouée par ses événements ; le toucher et le clavier ne changent rien.
@@ -298,7 +300,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   };
 
   let vibrations = 0;
-  if (essais && debug) window.__pinball = { regler: (c, enfonce) => (enfonce ? tenir(c as Cmd, "essai") : lacher(c as Cmd, "essai")), tick: () => partie.tick, evenements: () => journal, qualite: () => qualite, trois: () => trois?.info() ?? null, vibrations: () => vibrations };
+  if (essais && debug) window.__pinball = { regler: (c, enfonce) => (enfonce ? tenir(c as Cmd, "essai") : lacher(c as Cmd, "essai")), tick: () => partie.tick, evenements: () => journal, qualite: () => qualite, trois: () => trois?.info() ?? null, vibrations: () => vibrations, contours: (oui) => (contours = oui) };
 
   /** Une partie neuve avec les réglages d'essai du panneau (jamais classée) : même table, autres sensations ; les rendus la lisent par `vivante`. */
   const relancer = (): void => {
@@ -392,7 +394,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       const avant = performance.now();
       rendu.dessiner({
         tick: partie.tick,
-        debug,
+        debug: debug && contours,
         alpha: Math.min(1, Math.max(0, (maintenant - tDernierPas) / (1000 / TICKS_PAR_SECONDE))),
         sauvee: Math.max(0, 1 - (maintenant - tSauvee) / 1600),
         eclat: Math.max(0, 1 - (maintenant - tEclat) / 1100),

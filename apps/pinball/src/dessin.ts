@@ -18,12 +18,15 @@ export interface Palette {
   cible: string;
   sling: string;
   sombre: boolean;
+  /** Lot PBV1 : la couleur des bandes lumineuses le long des rails latéraux et celle des petites lampes du décor (arc, lance-pierres). */
+  bande: string;
+  lampe: string;
 }
 export const PALETTES: Readonly<Record<ThemePinball, Palette>> = {
-  foire: { fond: "#F4D9A0", fond2: "#EFCB86", bumper: "#C2401F", accent: "#3E7CC4", cible: "#E8B23A", sling: "#3E7CC4", sombre: false },
-  ocean: { fond: "#BFE3E6", fond2: "#AED8DC", bumper: "#F08A6C", accent: "#2E6E8E", cible: "#F2C94C", sling: "#2E6E8E", sombre: false },
-  espace: { fond: "#26294A", fond2: "#2E3258", bumper: "#E46FA0", accent: "#5FD3E8", cible: "#E8B23A", sling: "#5FD3E8", sombre: true },
-  volcan: { fond: "#E8C6A8", fond2: "#E0B796", bumper: "#C2401F", accent: "#5A3A22", cible: "#4A4A52", sling: "#E8B23A", sombre: false },
+  foire: { fond: "#F4D9A0", fond2: "#EFCB86", bumper: "#C2401F", accent: "#3E7CC4", cible: "#E8B23A", sling: "#3E7CC4", sombre: false, bande: "#FFB23E", lampe: "#FFD98A" },
+  ocean: { fond: "#BFE3E6", fond2: "#AED8DC", bumper: "#F08A6C", accent: "#2E6E8E", cible: "#F2C94C", sling: "#2E6E8E", sombre: false, bande: "#3FE6F2", lampe: "#C8FBFF" },
+  espace: { fond: "#26294A", fond2: "#2E3258", bumper: "#E46FA0", accent: "#5FD3E8", cible: "#E8B23A", sling: "#5FD3E8", sombre: true, bande: "#E46FA0", lampe: "#9FEFFF" },
+  volcan: { fond: "#E8C6A8", fond2: "#E0B796", bumper: "#C2401F", accent: "#5A3A22", cible: "#4A4A52", sling: "#E8B23A", sombre: false, bande: "#FF7A2E", lampe: "#FFC46B" },
 };
 /** Le rayon d'un module (px) : la distance où se pose sa flèche et son nom. */
 export const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22, manege: 60, tourbillon: 64, trouNoir: 26, portailA: 28, portailB: 28, asteroide: 34, geyser: 30, coulee: 56 };
@@ -66,6 +69,368 @@ export function lampesMission(table: Table, theme: ThemePinball, but: number): {
 }
 export const COULEURS_ELEMENTS = { manegeA: "#C2401F", manegeHub: "#3E7CC4", tourbillon: "#7FC6D2", tourbillonBras: "#2E6E8E", tourbillonCentre: "#16384a", noirCentre: "#0b0918", noirAnneau: "#E8B23A", noirOnde: "167,155,255", portailA: "#5FD3E8", portailB: "#E46FA0", portailFond: "#120f24", geyser: "#5A3A22", lave: "#F2894B", chevron: "#FFE08A" } as const;
 
+// --- Lot PBV1 : la recette visuelle commune (lumière, meuble, matériaux, bandes et lampes), dont ce qui se dessine aussi à plat
+/** Les bandes lumineuses le long des rails latéraux (px de la table) : `[x du rail, y du haut, y du bas]` ; la couleur est `Palette.bande`. */
+export const BANDES: readonly (readonly [number, number, number])[] = [
+  [20, 222, 552],
+  [348, 272, 552],
+];
+/** L'arc du haut de la table (le même que la simulation et que `masque`). */
+export const ARC_CENTRE = { x: 196.25, y: 205, r: 176.25 } as const;
+/** Les petites lampes du décor, allumées : sur les deux flancs de l'arc (au ras du rail, hors des couloirs du haut) et sur le dessus des lance-pierres. `pierre` : posée sur un lance-pierre (en three.js, à sa hauteur). */
+export function lampesDecor(): { x: number; y: number; pierre: boolean }[] {
+  const l: { x: number; y: number; pierre: boolean }[] = [];
+  const r = ARC_CENTRE.r - 12;
+  for (let k = 0; k < 5; k++) {
+    for (const a of [Math.PI + 0.16 + k * 0.2, 2 * Math.PI - 0.16 - k * 0.2]) l.push({ x: ARC_CENTRE.x + Math.cos(a) * r, y: ARC_CENTRE.y + Math.sin(a) * r, pierre: false });
+  }
+  for (const [x, y] of [[47, 500], [49, 520], [53, 540]] as const) for (const xx of [x, 2 * AXE - x]) l.push({ x: xx, y, pierre: true });
+  return l;
+}
+/** La lueur d'une lampe du décor (de 0,35 à 1) : une vague qui court le long de l'arc, en fonction du seul pas. */
+export const lueurLampe = (i: number, tick: number): number => 0.35 + 0.65 * Math.max(0, Math.cos((tick / TICKS_PAR_SECONDE) * 3 - i * 0.7)) ** 2;
+/** Le style des étiquettes des modules : des pastilles d'encre, des plaques de bois dans l'Océan (lot PBV1). */
+export type StyleEtiquette = "encre" | "bois";
+export const styleEtiquette = (theme: ThemePinball): StyleEtiquette => (theme === "ocean" ? "bois" : "encre");
+
+/** Un petit générateur entier (jamais `Math.random` : le sol est le même à chaque chargement), de 0 à 1. */
+function alea(graine: number): () => number {
+  let a = graine >>> 0;
+  return () => {
+    a = (Math.imul(a, 1664525) + 1013904223) >>> 0;
+    return a / 4294967296;
+  };
+}
+
+/** Des planches de bois veinées, dans le sens de la longueur (le parquet de la Fête foraine ; le parquet de la pièce et le meuble du rendu three.js). */
+export function planches(c: CanvasRenderingContext2D, x0: number, y0: number, l: number, h: number, largeur: number, tons: readonly string[], veine: string, joint: string, graine: number): void {
+  const r = alea(graine);
+  c.save();
+  c.beginPath();
+  c.rect(x0, y0, l, h);
+  c.clip();
+  for (let x = x0; x < x0 + l; x += largeur) {
+    let y = y0 - r() * 200;
+    while (y < y0 + h) {
+      const long = 150 + r() * 260;
+      c.globalAlpha = 1;
+      c.fillStyle = tons[Math.floor(r() * tons.length)]!;
+      c.fillRect(x, y, largeur, long);
+      c.strokeStyle = veine;
+      for (let k = 0; k < 6; k++) {
+        const gx = x + 2 + r() * (largeur - 4);
+        const amp = 0.4 + r() * 1.6;
+        const freq = 0.015 + r() * 0.03;
+        const ph = r() * 6;
+        c.globalAlpha = 0.12 + r() * 0.2;
+        c.lineWidth = 0.5 + r() * 0.9;
+        c.beginPath();
+        for (let yy = y; yy <= y + long; yy += 5) c.lineTo(gx + Math.sin(yy * freq + ph) * amp, yy);
+        c.stroke();
+      }
+      if (r() < 0.22) {
+        // un nœud
+        const nx = x + largeur * (0.3 + r() * 0.4);
+        const ny = y + long * (0.2 + r() * 0.6);
+        for (let k = 3; k >= 1; k--) {
+          c.globalAlpha = 0.16 + 0.08 * (3 - k);
+          c.lineWidth = 0.8;
+          c.beginPath();
+          c.ellipse(nx, ny, k * 1.6, k * 3.6, 0, 0, TAU);
+          c.stroke();
+        }
+      }
+      c.globalAlpha = 0.45;
+      c.fillStyle = joint;
+      c.fillRect(x, y + long - 0.6, largeur, 1.2);
+      y += long;
+    }
+    c.globalAlpha = 0.5;
+    c.fillStyle = joint;
+    c.fillRect(x - 0.6, y0, 1.2, h);
+  }
+  c.restore();
+}
+
+/** Une étoile à cinq branches. */
+function etoile(c: CanvasRenderingContext2D, x: number, y: number, r: number, couleur: string): void {
+  c.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI) / 5;
+    const rr = k % 2 ? r * 0.45 : r;
+    c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  c.closePath();
+  c.fillStyle = couleur;
+  c.fill();
+}
+
+/** La Fête foraine : des planches claires veinées, et le nom du thème sur une bannière rouge en arc, avec des étoiles, comme estampé (la peinture est usée par endroits). */
+function solFoire(c: CanvasRenderingContext2D, titre: string, police: string): void {
+  planches(c, 0, 0, LARGEUR, HAUTEUR, 25, ["#F2D7A2", "#EFCF95", "#F5DDAE", "#EACB8E", "#F0D49C"], "#B9864E", "#A9773F", 7);
+  // la bannière : un ruban rouge en arc, ses deux queues, le nom en lettres crème qui suivent l'arc
+  const texte = titre.toLocaleUpperCase();
+  const R = 150;
+  const cx = AXE;
+  const cy = 528 + R;
+  c.save();
+  c.font = `700 17px ${police}`;
+  const espace = 1.5;
+  const largeurs = [...texte].map((ch) => c.measureText(ch).width + espace);
+  const total = largeurs.reduce((a, b) => a + b, 0);
+  const demi = (total / 2 + 16) / R;
+  c.globalAlpha = 0.9;
+  for (const s of [-1, 1]) {
+    // une queue repliée de chaque côté
+    const a = -Math.PI / 2 + s * (demi - 0.02);
+    c.save();
+    c.translate(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    c.rotate(a + Math.PI / 2);
+    c.beginPath();
+    c.moveTo(s * 2, -9);
+    c.lineTo(s * 24, -6);
+    c.lineTo(s * 17, 3);
+    c.lineTo(s * 24, 12);
+    c.lineTo(s * 2, 11);
+    c.closePath();
+    c.fillStyle = "#8E2A14";
+    c.fill();
+    c.restore();
+  }
+  c.lineWidth = 25;
+  c.strokeStyle = "#C2401F";
+  c.beginPath();
+  c.arc(cx, cy, R, -Math.PI / 2 - demi, -Math.PI / 2 + demi);
+  c.stroke();
+  c.lineWidth = 1.2;
+  c.strokeStyle = "rgba(255,246,224,.7)";
+  c.setLineDash([3, 3]);
+  for (const k of [-9.5, 9.5]) {
+    c.beginPath();
+    c.arc(cx, cy, R + k, -Math.PI / 2 - demi + 0.02, -Math.PI / 2 + demi - 0.02);
+    c.stroke();
+  }
+  c.setLineDash([]);
+  c.fillStyle = PAPIER;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  let a = -Math.PI / 2 - total / 2 / R;
+  [...texte].forEach((ch, i) => {
+    const w = largeurs[i]!;
+    const m = a + w / 2 / R;
+    c.save();
+    c.translate(cx + Math.cos(m) * R, cy + Math.sin(m) * R);
+    c.rotate(m + Math.PI / 2);
+    c.fillText(ch, 0, 1);
+    c.restore();
+    a += w / R;
+  });
+  // des étoiles autour de la bannière
+  for (const s of [-1, 1]) {
+    etoile(c, cx + s * (total / 2 + 10), 506, 5.5, MOUTARDE);
+    etoile(c, cx + s * (total / 2 + 26), 520, 3.5, MOUTARDE);
+    etoile(c, cx + s * (total / 4), 499, 3, MOUTARDE);
+  }
+  // estampé : la peinture usée par endroits (des grains du bois qui reparaissent)
+  const r = alea(91);
+  c.globalAlpha = 0.35;
+  c.fillStyle = "#EFCF95";
+  for (let k = 0; k < 140; k++) {
+    const aa = -Math.PI / 2 + (r() * 2 - 1) * demi;
+    const rr = R + (r() * 2 - 1) * 12;
+    c.fillRect(cx + Math.cos(aa) * rr, cy + Math.sin(aa) * rr, 0.6 + r() * 1.6, 0.5 + r() * 0.8);
+  }
+  c.restore();
+}
+
+/** L'Océan : une eau turquoise avec les reflets du fond (des caustiques), un dégradé vers le sable en bas, le décor dans les marges (rochers, algues, étoiles de mer), des silhouettes de poissons et de méduses à peine visibles, le nom en blanc avec une vague. */
+function solOcean(c: CanvasRenderingContext2D, titre: string, police: string): void {
+  const g = c.createLinearGradient(0, 0, 0, HAUTEUR);
+  g.addColorStop(0, "#3DB2BD");
+  g.addColorStop(0.42, "#5BC6C9");
+  g.addColorStop(0.7, "#7ED3CD");
+  g.addColorStop(0.8, "#BFD8B6");
+  g.addColorStop(0.88, "#E3D3A2");
+  g.addColorStop(1, "#EACB92");
+  c.fillStyle = g;
+  c.fillRect(0, 0, LARGEUR, HAUTEUR);
+  const r = alea(23);
+  // le fond : des taches plus profondes
+  for (let k = 0; k < 9; k++) {
+    const x = r() * LARGEUR;
+    const y = 120 + r() * 420;
+    const rg = c.createRadialGradient(x, y, 0, x, y, 40 + r() * 50);
+    rg.addColorStop(0, "rgba(22,98,120,.16)");
+    rg.addColorStop(1, "rgba(22,98,120,0)");
+    c.fillStyle = rg;
+    c.fillRect(x - 100, y - 100, 200, 200);
+  }
+  // les caustiques : des boucles claires sur une grille irrégulière, qui s'éteignent vers le sable
+  c.strokeStyle = "#FFFFFF";
+  c.lineJoin = "round";
+  for (let gy = 0; gy < 640; gy += 28) {
+    for (let gx = -10; gx < LARGEUR + 20; gx += 30) {
+      const x = gx + (gy % 56 ? 15 : 0) + (r() - 0.5) * 18;
+      const y = gy + (r() - 0.5) * 18;
+      const ext = Math.max(0, 1 - Math.max(0, y - 470) / 160);
+      c.globalAlpha = (0.05 + r() * 0.13) * ext;
+      c.lineWidth = 0.7 + r() * 1.5;
+      c.beginPath();
+      const n = 9;
+      const rr0 = 8 + r() * 8;
+      const p0 = r() * TAU;
+      const pts: [number, number][] = [];
+      for (let k = 0; k < n; k++) {
+        const a = p0 + (k / n) * TAU;
+        const rr = rr0 * (0.7 + r() * 0.6);
+        pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.8]);
+      }
+      // une boucle lissée (des courbes passant par le milieu de chaque côté) : des reflets d'eau, pas des cellules
+      for (let k = 0; k <= n; k++) {
+        const [ax, ay] = pts[k % n]!;
+        const [bx, by] = pts[(k + 1) % n]!;
+        if (k === 0) c.moveTo((ax + bx) / 2, (ay + by) / 2);
+        else c.quadraticCurveTo(ax, ay, (ax + bx) / 2, (ay + by) / 2);
+      }
+      c.stroke();
+    }
+  }
+  c.globalAlpha = 1;
+  // le sable : des grains et des rides
+  for (let k = 0; k < 420; k++) {
+    const y = 600 + r() * 160;
+    c.globalAlpha = 0.18 + r() * 0.25;
+    c.fillStyle = r() < 0.5 ? "#B99A62" : "#FFF3D2";
+    c.fillRect(r() * LARGEUR, y, 1.1, 1.1);
+  }
+  c.globalAlpha = 0.25;
+  c.strokeStyle = "#B99A62";
+  c.lineWidth = 1;
+  for (let k = 0; k < 9; k++) {
+    const y = 655 + k * 12 + r() * 5;
+    c.beginPath();
+    for (let x = 0; x <= LARGEUR; x += 8) c.lineTo(x, y + Math.sin(x * 0.05 + k) * 2.5);
+    c.stroke();
+  }
+  c.globalAlpha = 1;
+  // des silhouettes, à peine visibles là où la bille passe
+  c.fillStyle = "rgba(14,70,92,.13)";
+  const poisson = (x: number, y: number, t: number, s: number): void => {
+    c.save();
+    c.translate(x, y);
+    c.scale(s * t, t);
+    c.beginPath();
+    c.ellipse(0, 0, 10, 4.5, 0, 0, TAU);
+    c.moveTo(-8, 0);
+    c.lineTo(-16, -5);
+    c.lineTo(-15, 0);
+    c.lineTo(-16, 5);
+    c.closePath();
+    c.fill();
+    c.restore();
+  };
+  const meduse = (x: number, y: number, t: number): void => {
+    c.save();
+    c.translate(x, y);
+    c.scale(t, t);
+    c.beginPath();
+    c.arc(0, 0, 8, Math.PI, 0);
+    c.quadraticCurveTo(0, 3, -8, 0);
+    c.fill();
+    c.strokeStyle = c.fillStyle;
+    c.lineWidth = 1.4;
+    for (const dx of [-5, -1.5, 2, 5.5]) {
+      c.beginPath();
+      c.moveTo(dx, 1);
+      c.quadraticCurveTo(dx + 3, 8, dx, 15);
+      c.stroke();
+    }
+    c.restore();
+  };
+  poisson(62, 292, 1, 1);
+  poisson(84, 304, 0.7, 1);
+  poisson(312, 238, 0.9, -1);
+  poisson(300, 430, 0.8, -1);
+  poisson(70, 452, 0.75, 1);
+  meduse(330, 332, 1.1);
+  meduse(52, 382, 0.85);
+  // le nom, en blanc, avec une vague
+  c.save();
+  c.translate(AXE, 512);
+  c.font = `700 26px ${police}`;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.fillStyle = "rgba(255,255,255,.72)";
+  c.fillText(titre.toLocaleUpperCase(), 0, 0);
+  c.strokeStyle = "rgba(255,255,255,.62)";
+  c.lineWidth = 3;
+  c.lineCap = "round";
+  c.beginPath();
+  for (let x = -66; x <= 66; x += 3) c.lineTo(x, 20 + Math.sin(x * 0.13) * 3.5);
+  c.stroke();
+  c.restore();
+}
+
+/** L'Océan, le décor des marges (là où la bille ne passe jamais : les coins bas, sous les couloirs de retour, et la bande le long du rail gauche) : rochers, algues, étoiles de mer. Rien n'y a l'air d'un obstacle : tout est à plat, sous les rails. */
+function margesOcean(c: CanvasRenderingContext2D): void {
+  const r = alea(57);
+  const algue = (x: number, y: number, h: number, couleur: string): void => {
+    c.strokeStyle = couleur;
+    c.lineCap = "round";
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(x, y);
+    const ph = r() * 6;
+    for (let k = 1; k <= 8; k++) c.lineTo(x + Math.sin(ph + k * 0.9) * 3.5, y - (h * k) / 8);
+    c.stroke();
+  };
+  const rocher = (x: number, y: number, rr: number): void => {
+    c.beginPath();
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 9) * TAU;
+      const d = rr * (0.8 + r() * 0.3);
+      c.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.75);
+    }
+    c.closePath();
+    c.fillStyle = "#6E7F86";
+    c.fill();
+    c.lineWidth = 1.5;
+    c.strokeStyle = "rgba(42,30,22,.55)";
+    c.stroke();
+    c.beginPath();
+    c.ellipse(x - rr * 0.25, y - rr * 0.3, rr * 0.45, rr * 0.22, -0.3, 0, TAU);
+    c.fillStyle = "rgba(255,255,255,.28)";
+    c.fill();
+  };
+  const etoileDeMer = (x: number, y: number, rr: number, a: number): void => {
+    c.save();
+    c.translate(x, y);
+    c.rotate(a);
+    etoile(c, 0, 0, rr, "#EE8A4E");
+    c.lineWidth = 1;
+    c.strokeStyle = "rgba(122,52,20,.6)";
+    c.stroke();
+    c.restore();
+  };
+  // les coins bas
+  for (const s of [1, -1]) {
+    const x = (v: number): number => (s > 0 ? v : 2 * AXE - v);
+    algue(x(30), 700, 46, "#2F8F6B");
+    algue(x(40), 705, 36, "#4FA66C");
+    algue(x(88), 726, 28, "#2F8F6B");
+    rocher(x(36), 712, 17);
+    rocher(x(70), 740, 13);
+    rocher(x(s > 0 ? 18 : 30), 676, 10);
+  }
+  etoileDeMer(58, 690, 7, 0.4);
+  etoileDeMer(2 * AXE - 82, 712, 6, 1.1);
+  etoileDeMer(98, 752, 5, 0.2);
+  // le long du rail gauche
+  for (const y of [330, 420, 505]) algue(9, y + 30, 26 + r() * 14, r() < 0.5 ? "#2F8F6B" : "#4FA66C");
+  etoileDeMer(10, 262, 5, 0.6);
+}
+
+
 /** Ce qu'il faut savoir d'une partie pour dessiner son sol : le thème (palette), la table (les modules posés, les couloirs du haut), le nom du thème peint sur la table et la police du jeu. */
 export interface DonneesSol {
   theme: ThemePinball;
@@ -95,19 +460,47 @@ function fleche(c: CanvasRenderingContext2D, P: Palette, x: number, y: number, a
   c.restore();
 }
 
-/** Une pastille de texte (le nom d'un module, « Bille sauvée ! ») : `echelle` la grossit autour de son centre, pour les étiquettes du haut que la perspective rapetisse (lot PB2). */
-export function pastille(c: CanvasRenderingContext2D, police: string, x: number, y: number, texte: string, echelle = 1): void {
+/** Une pastille de texte (le nom d'un module, « Bille sauvée ! ») : `echelle` la grossit autour de son centre, pour les étiquettes du haut que la perspective rapetisse (lot PB2). Lot PBV1 : `style` « bois » en fait une
+ *  plaque de bois veinée, clouée (les étiquettes de l'Océan). */
+export function pastille(c: CanvasRenderingContext2D, police: string, x: number, y: number, texte: string, echelle = 1, style: StyleEtiquette = "encre"): void {
   c.save();
   c.translate(x, y);
   c.scale(echelle, echelle);
   c.font = `700 9px ${police}`;
   c.textAlign = "center";
   c.textBaseline = "middle";
-  const w = c.measureText(texte).width + 10;
-  c.fillStyle = ENCRE;
-  c.beginPath();
-  c.roundRect(-w / 2, -7, w, 14, 3);
-  c.fill();
+  const w = c.measureText(texte).width + (style === "bois" ? 14 : 10);
+  if (style === "bois") {
+    c.beginPath();
+    c.roundRect(-w / 2, -7.5, w, 15, 2.5);
+    c.fillStyle = "#74492A";
+    c.fill();
+    c.save();
+    c.clip();
+    c.strokeStyle = "#4E2F18";
+    c.lineWidth = 0.6;
+    for (const [dy, ph] of [[-4.2, 0.3], [-0.6, 2.1], [3.4, 4]] as const) {
+      c.globalAlpha = 0.55;
+      c.beginPath();
+      for (let k = -w / 2; k <= w / 2; k += 3) c.lineTo(k, dy + Math.sin(k * 0.21 + ph) * 0.7);
+      c.stroke();
+    }
+    c.restore();
+    c.lineWidth = 1.3;
+    c.strokeStyle = "#2E1C10";
+    c.stroke();
+    c.fillStyle = "#C9CED6";
+    for (const s of [-1, 1]) {
+      c.beginPath();
+      c.arc(s * (w / 2 - 3.2), 0, 1.1, 0, TAU);
+      c.fill();
+    }
+  } else {
+    c.fillStyle = ENCRE;
+    c.beginPath();
+    c.roundRect(-w / 2, -7, w, 14, 3);
+    c.fill();
+  }
   c.fillStyle = PAPIER;
   c.fillText(texte, 0, 0.5);
   c.restore();
@@ -138,19 +531,23 @@ export function placeDuNom(m: { type: string; x: number; y: number }): { x: numb
 export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   const { theme, table: t, titre, police } = d;
   const P = PALETTES[theme];
-  c.fillStyle = P.fond;
-  c.fillRect(0, 0, LARGEUR, HAUTEUR);
-  c.save();
-  c.globalAlpha = 0.45;
-  c.strokeStyle = P.fond2;
-  c.lineWidth = 14;
-  for (let k = -HAUTEUR; k < LARGEUR + HAUTEUR; k += 36) {
-    c.beginPath();
-    c.moveTo(k, 0);
-    c.lineTo(k - HAUTEUR, HAUTEUR);
-    c.stroke();
+  if (theme === "foire") solFoire(c, titre, police);
+  else if (theme === "ocean") solOcean(c, titre, police);
+  else {
+    c.fillStyle = P.fond;
+    c.fillRect(0, 0, LARGEUR, HAUTEUR);
+    c.save();
+    c.globalAlpha = 0.45;
+    c.strokeStyle = P.fond2;
+    c.lineWidth = 14;
+    for (let k = -HAUTEUR; k < LARGEUR + HAUTEUR; k += 36) {
+      c.beginPath();
+      c.moveTo(k, 0);
+      c.lineTo(k - HAUTEUR, HAUTEUR);
+      c.stroke();
+    }
+    c.restore();
   }
-  c.restore();
   if (theme === "espace") {
     c.fillStyle = "#EDE3CF";
     let a = 12345; // des étoiles qui ne bougent pas : un petit générateur entier, jamais Math.random
@@ -162,6 +559,18 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
       c.fillRect(x, (a >>> 4) % HAUTEUR, 1.6, 1.6);
     }
     c.globalAlpha = 1;
+  }
+  // lot PBV1 : la lueur des bandes lumineuses sur le sol, le long des rails latéraux (un dégradé de la couleur du thème, du rail vers l'intérieur)
+  for (const [x, y0, y1] of BANDES) {
+    const s = x < AXE ? 1 : -1;
+    const g = c.createLinearGradient(x, 0, x + s * 18, 0);
+    g.addColorStop(0, P.bande);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    c.save();
+    c.globalAlpha = 0.32;
+    c.fillStyle = g;
+    c.fillRect(Math.min(x, x + s * 18), y0, 18, y1 - y0);
+    c.restore();
   }
   // la zone des batteurs : un sol plus sombre, le danger est en bas
   c.beginPath();
@@ -179,15 +588,18 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   c.beginPath();
   c.ellipse(AXE, HAUTEUR - 4, 46, 20, 0, 0, TAU);
   c.fill();
-  // le nom du thème, peint sur la table
-  c.save();
-  c.translate(AXE, 512);
-  c.rotate(-0.06);
-  c.font = `700 28px ${police}`;
-  c.textAlign = "center";
-  c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(42,30,22,.10)";
-  c.fillText(titre.toLocaleUpperCase(), 0, 0);
-  c.restore();
+  if (theme === "ocean") margesOcean(c);
+  // le nom du thème, peint sur la table (la Fête foraine et l'Océan ont le leur : la bannière, le nom blanc et sa vague)
+  if (theme !== "foire" && theme !== "ocean") {
+    c.save();
+    c.translate(AXE, 512);
+    c.rotate(-0.06);
+    c.font = `700 28px ${police}`;
+    c.textAlign = "center";
+    c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(42,30,22,.10)";
+    c.fillText(titre.toLocaleUpperCase(), 0, 0);
+    c.restore();
+  }
   // une flèche de tir devant chaque module (sauf le trou noir, qui n'est pas une cible), qui pointe vers lui depuis les batteurs
   for (const m of t.poses) {
     if (m.type === "trouNoir") continue;
@@ -263,6 +675,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
   let oy = 0;
   let sol: HTMLCanvasElement | null = null;
   const angles = t.spinners.map(() => 0);
+  const decor = lampesDecor();
 
   const rond = (x: number, y: number, r: number, fill: string | null, trait = 3): void => {
     g.beginPath();
@@ -303,7 +716,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       const n = nom(m.type);
       if (!n) continue;
       const p = placeDuNom(m);
-      pastille(c, police, p.x, p.y, n.toLocaleUpperCase());
+      pastille(c, police, p.x, p.y, n.toLocaleUpperCase(), 1, styleEtiquette(theme));
     }
   }
 
@@ -513,9 +926,24 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     ombre(() => tracer(ENCRE, 8));
     tracer(ENCRE, 7);
     tracer(P.sombre ? "#6a6f9a" : "#8a6a52", 2);
+    // lot PBV1 : les bandes lumineuses sur les rails latéraux, dans la couleur du thème (une lueur, puis le tube)
+    for (const [x, y0, y1] of BANDES) {
+      for (const [l, a] of [[4, 0.35], [2.4, 1]] as const) {
+        g.globalAlpha = a;
+        g.beginPath();
+        g.moveTo(x, y0);
+        g.lineTo(x, y1);
+        g.strokeStyle = P.bande;
+        g.lineWidth = l;
+        g.stroke();
+      }
+    }
+    g.globalAlpha = 1;
+    // les poteaux, en métal brossé
     for (const p of t.poteaux) {
       ombre(() => rond(px(p.x), px(p.y), px(p.r) + 1, ENCRE, 0));
-      rond(px(p.x), px(p.y), px(p.r) + 1, PAPIER, 2.5);
+      rond(px(p.x), px(p.y), px(p.r) + 1, "#AEB4BC", 2.5);
+      rond(px(p.x) - 1, px(p.y) - 1, px(p.r) * 0.45, "#E9ECEF", 0);
     }
     // les lance-pierres, avec leur caoutchouc
     for (const sens of [1, -1]) {
@@ -546,6 +974,12 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.lineWidth = 5;
       g.stroke();
     }
+    // lot PBV1 : les petites lampes du décor, allumées (une vague court le long de l'arc)
+    decor.forEach((l, i) => {
+      g.globalAlpha = lueurLampe(i, s.tick);
+      rond(l.x, l.y, 3.2, P.lampe, 1.2);
+    });
+    g.globalAlpha = 1;
     // les spinners (roues vues de profil)
     t.spinners.forEach((c, i) => {
       angles[i] = (angles[i]! + (partie.spin[i]! / 1000) * 0.016) % TAU;
@@ -605,6 +1039,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
         g.lineWidth = 3;
         g.stroke();
       }
+      rond(x, y - 1.5 - r * 0.38 * k, 1.8, "#C9CED6", 1); // le rivet en métal du chapeau
       yeux(x, y - 1.5, r * 0.62 * k * 1.6);
     });
     noms(g);

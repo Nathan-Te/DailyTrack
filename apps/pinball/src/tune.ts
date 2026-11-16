@@ -83,10 +83,16 @@ const CURSEURS: readonly Curseur[] = [
   { cle: "angle", groupe: "vue", section: "Vue", fr: "Caméra : angle (°)", en: "Camera: angle (°)" },
   { cle: "distance", groupe: "vue", section: "Vue", fr: "Caméra : distance (% du cadrage)", en: "Camera: distance (% of framing)" },
   { cle: "champ", groupe: "vue", section: "Vue", fr: "Caméra : champ (°)", en: "Camera: field of view (°)" },
-  { cle: "lumiere", groupe: "vue", section: "Vue", fr: "Lumière (%)", en: "Light (%)" },
   { cle: "etiquettes", groupe: "vue", section: "Vue", fr: "Étiquettes : taille (%)", en: "Labels: size (%)" },
+  // lot PBV1 : la lumière, en direct
+  { cle: "soleil", groupe: "vue", section: "Lumière", fr: "Soleil : intensité (%)", en: "Sun: intensity (%)" },
+  { cle: "azimut", groupe: "vue", section: "Lumière", fr: "Soleil : direction (° ; 0 = du haut de la table)", en: "Sun: direction (°; 0 = from the top of the table)" },
+  { cle: "hauteur", groupe: "vue", section: "Lumière", fr: "Soleil : hauteur (° ; bas = longues ombres)", en: "Sun: height (°; low = long shadows)" },
+  { cle: "lumiere", groupe: "vue", section: "Lumière", fr: "Lumière du ciel (%)", en: "Sky light (%)" },
+  { cle: "bloom", groupe: "vue", section: "Lumière", fr: "Bloom : force (% ; 0 = sans)", en: "Bloom: strength (%; 0 = off)" },
+  { cle: "bandes", groupe: "vue", section: "Lumière", fr: "Lueur des bandes et des lampes (%)", en: "Glow of the strips and lamps (%)" },
 ];
-const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", Vue: "View" };
+const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", Vue: "View", "Lumière": "Light" };
 const TEXTES = {
   fr: { ouvrir: "Réglages d'essai", titre: "Réglages d'essai", note: "Un curseur de la simulation relance la partie (non classée) ; ceux de la vue agissent en direct (rendu haute qualité).", exporter: "Exporter", copie: "Copié", lien: "Copier le lien", retablir: "Rétablir", fermer: "Fermer", json: "Les réglages, en JSON", sansTrois: "Le rendu de secours est affiché : la vue n'a pas d'effet." },
   en: { ouvrir: "Tuning", titre: "Tuning", note: "A simulation slider restarts the game (not ranked); the view sliders apply live (high quality render).", exporter: "Export", copie: "Copied", lien: "Copy link", retablir: "Reset", fermer: "Close", json: "The settings, as JSON", sansTrois: "The fallback render is showing: the view has no effect." },

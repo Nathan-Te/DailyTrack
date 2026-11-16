@@ -26,6 +26,8 @@ export interface PorteScene {
   qualite(): "haute" | "basse";
   trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } } | null;
   vibrations(): number;
+  /** Lot PBV1 : allume ou éteint les contours de collision, le compteur de pas et les gains (les captures les éteignent). */
+  contours(oui: boolean): void;
 }
 declare global {
   interface Window {
