@@ -1,9 +1,6 @@
 import { Rng } from "@cdj/core";
 import * as K from "./constantes";
 import type { Controle } from "./constantes";
-
-/** Un batteur : 0 le gauche, 1 le droit. */
-export type Batteur = 0 | 1;
 import type { Contenu } from "./generateur";
 import { Partie } from "./partie";
 import type { Evenement } from "./rediffusion";
@@ -11,8 +8,11 @@ import { REGLAGES, type Reglages } from "./reglages";
 // Posées dans des locales : sous Vitest chaque import se lit par un accesseur (deux à trois fois plus lent dans les boucles du robot).
 const { AXE, DROITE, DUREE_MAX_TICKS, EV_SAUVEE, GAUCHE, LANCEUR, UNITE } = K;
 
+/** Un batteur : 0 le gauche, 1 le droit. */
+export type Batteur = 0 | 1;
+
 // LE ROBOT (lot PB4) — il joue la vraie simulation, comme un joueur, et sert à trois choses : **valider la table** (`validation.ts`), **donner les seuils des médailles** (`seuils.ts`) et se laisser regarder (`?robot`).
-// Il remplace le pilote d'essai de la maquette (`pilote.ts`, qui ne visait pas).
+// Il remplace le pilote d'essai du lot PB1 (le robot de la maquette, qui ne visait pas).
 //
 // **L'algorithme en cinq lignes.**
 //  1. Il ne décide qu'une chose : quand frapper. Quand la bille tombe vers les batteurs, il la joue d'avance sur des copies de l'état (`Partie.copier`), sans rien appuyer, pour savoir quand et de quel côté elle arrive.
@@ -47,13 +47,12 @@ export const ROBOT_HORIZON = 360;
 export const ROBOT_Y_DECISION = 420;
 export const ROBOT_Y_LACHE = 570;
 export const ROBOT_Y_BATTEURS = 600;
-/** La fenêtre des frappes essayées : de 78 pas avant l'arrivée de la bille à 18 pas après. */
+/** **La fenêtre des frappes essayées** : elle commence 78 pas avant l'arrivée de la bille aux batteurs et finit 18 pas après — ou, si la bille roule sur un batteur au repos, quand elle passe sous la ligne `ROBOT_Y_BASSE` (px), au plus `ROBOT_APRES_MAX` pas après son arrivée ; elle ne dépasse jamais `ROBOT_FENETRE_MAX` pas. */
 const AVANT = 78;
-/** La bille « passe sous les batteurs » à cette ligne (px) ; la fenêtre ne dépasse pas 192 pas, ni `ROBOT_APRES_MAX` pas après l'arrivée de la bille. */
+const APRES = 18;
 export const ROBOT_Y_BASSE = 690;
 export const ROBOT_FENETRE_MAX = 192;
 export const ROBOT_APRES_MAX = 240;
-const APRES = 18;
 /** Ce que vaut un pas vers la mission (un tour de manège, une plongée, un portail, un geyser) : un point de mission vaut bien plus qu'un contact. */
 export const ROBOT_VALEUR_MISSION = 12000;
 /** Une bille perdue coûte 10 000 points ; une bille sauvée (elle revient au lanceur), le tiers. Un cran de multiplicateur vaut 3 000. */

@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
-import { PARTIES_DU_ROBOT, POURCENT_ARGENT, POURCENT_BRONZE, POURCENT_OR, TICKS_PAR_SECONDE, analyserTable, cleDeTable, dailyPinball, dailyPinballAvec, type Seuils } from "../src/index";
+import { PARTIES_DU_ROBOT, POURCENT_ARGENT, POURCENT_BRONZE, POURCENT_OR, TICKS_PAR_SECONDE, DUREE_PARTIE_ROBOT, analyserTable, cleDeTable, dailyPinball, dailyPinballAvec, graineDuRobot, jouerRobot, type Seuils } from "../src/index";
 import { enFil, enParallele, repondre } from "./fils";
 
 // `npm run robot:pinball -w @cdj/pinball-sim -- --jours 30 [--du AAAA-MM-JJ] [--liens <adresse du jeu>] [--fils=N]` : le rapport du robot (lot PB4), une ligne par jour : le thème, les scores de ses parties, la mission
@@ -17,15 +17,20 @@ interface Jour {
   raisons: string[];
   retiree: boolean;
   seuils: Seuils;
+  /** La durée du calcul : les parties du robot seules (les seuils), puis la table complète (parties, validation). */
+  secondesRobot: number;
   secondes: number;
   pasSimules: number;
 }
 const travail = (jour: number): Jour => {
-  const t0 = performance.now();
   const c = dailyPinball(jour);
+  const t1 = performance.now();
+  for (let k = 0; k < PARTIES_DU_ROBOT; k++) jouerRobot(c, graineDuRobot(k), { maxTicks: DUREE_PARTIE_ROBOT }); // les parties du robot seules : ce que `figer` et `preparer` calculent (le navigateur, sans fichier)
+  const secondesRobot = (performance.now() - t1) / 1000;
+  const t0 = performance.now();
   const a = analyserTable(c);
   const brut = dailyPinballAvec(jour, new Set());
-  return { jour, date: formatDay(jour), theme: c.theme, scores: a.scores, ticks: a.ticks, missions: a.missions.filter(Boolean).length, manquants: a.manquants!, ok: a.ok!, raisons: a.raisons!, retiree: cleDeTable(brut) !== cleDeTable(c), seuils: a.seuils, secondes: (performance.now() - t0) / 1000, pasSimules: a.pasSimules };
+  return { jour, date: formatDay(jour), theme: c.theme, scores: a.scores, ticks: a.ticks, missions: a.missions.filter(Boolean).length, manquants: a.manquants!, ok: a.ok!, raisons: a.raisons!, retiree: cleDeTable(brut) !== cleDeTable(c), seuils: a.seuils, secondesRobot, secondes: (performance.now() - t0) / 1000, pasSimules: a.pasSimules };
 };
 
 const milliers = (n: number): string => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -44,10 +49,12 @@ else {
   const lignes = await enParallele<number, Jour>(new URL(import.meta.url), jours, () => undefined, valeur("fils") ? Number(valeur("fils")) : undefined);
   for (const l of lignes) {
     const sc = l.scores.map(milliers).join(" / ");
-    console.log(`${l.date}  ${l.theme.padEnd(6)}  scores ${sc}  mission ${l.missions}/${PARTIES_DU_ROBOT}  jamais touchés : ${l.manquants.length ? l.manquants.join(", ") : "aucun"}  table : ${l.ok ? "validée" : "REFUSÉE (" + l.raisons.join(" ; ") + ")"}${l.retiree ? ", retirée (graine suivante)" : ""}  ${l.secondes.toFixed(1)} s`);
+    console.log(`${l.date}  ${l.theme.padEnd(6)}  scores ${sc}  mission ${l.missions}/${PARTIES_DU_ROBOT}  jamais touchés : ${l.manquants.length ? l.manquants.join(", ") : "aucun"}  table : ${l.ok ? "validée" : "REFUSÉE (" + l.raisons.join(" ; ") + ")"}${l.retiree ? ", retirée (graine suivante)" : ""}  robot ${l.secondesRobot.toFixed(1)} s, table complète ${l.secondes.toFixed(1)} s`);
   }
+  const moyenne = (v: number[]): string => (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1);
+  const robot = lignes.map((l) => l.secondesRobot).sort((a, b) => a - b);
   const secondes = lignes.map((l) => l.secondes).sort((a, b) => a - b);
-  console.log(`\n${lignes.length} jours en ${((performance.now() - t0) / 1000).toFixed(0)} s (sur ${valeur("fils") ?? "tous les"} cœurs). Table complète (${PARTIES_DU_ROBOT} parties du robot + validation) : ${(secondes.reduce((a, b) => a + b, 0) / secondes.length).toFixed(1)} s en moyenne, ${secondes[secondes.length - 1]!.toFixed(1)} s au pire.`);
+  console.log(`\n${lignes.length} jours en ${((performance.now() - t0) / 1000).toFixed(0)} s (${valeur("fils") ?? "un fil par cœur"}). Une table, les ${PARTIES_DU_ROBOT} parties du robot : ${moyenne(robot)} s en moyenne, ${robot[robot.length - 1]!.toFixed(1)} s au pire ; avec la validation : ${moyenne(secondes)} s en moyenne, ${secondes[secondes.length - 1]!.toFixed(1)} s au pire.`);
   const pas = lignes.map((l) => l.pasSimules / PARTIES_DU_ROBOT);
   console.log(`Le robot simule ${(pas.reduce((a, b) => a + b, 0) / pas.length / 1000).toFixed(0)} k pas par partie pour décider (une partie de ${(lignes[0]!.ticks[0]! / TICKS_PAR_SECONDE).toFixed(0)} s).`);
   console.log(`Parties : ${lignes.filter((l) => l.ok).length}/${lignes.length} tables valides, mission réussie dans ${lignes.reduce((a, l) => a + l.missions, 0)}/${lignes.length * PARTIES_DU_ROBOT} parties, ${lignes.filter((l) => l.retiree).length} table(s) retirée(s).`);
