@@ -42,6 +42,7 @@ import {
   BufferGeometry,
   Float32BufferAttribute,
   Matrix4,
+  NoColorSpace,
   Euler,
   Quaternion,
   type Object3D,
@@ -52,7 +53,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, type Partie, type ThemePinball } from "@cdj/pinball-sim";
-import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, lampesDecor, lampesMission, lueurLampe, pastille, placeDuNom, planches, px, styleEtiquette, type Palette, type Rendu, type Surimpression } from "./dessin";
+import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
@@ -280,7 +281,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const texH = Math.round((TEXTURE_L * HAUTEUR) / LARGEUR);
   const sol = toile(TEXTURE_L, texH, (c) => {
     c.scale(TEXTURE_L / LARGEUR, texH / HAUTEUR);
-    dessinerSol(c, { theme: o.theme, table: t, titre: o.titre, police: o.police, hors: BOIS });
+    dessinerSol(c, { theme: o.theme, table: t, titre: o.titre, police: o.police, hors: BOIS, sansLueurBandes: true });
   });
   // verni : émissif (les couleurs exactes de la palette), la lumière n'y ajoute que ses reflets (l'environnement, le soleil) ; les ombres viennent du calque `ombres`
   // (Phong et non « Standard » : le reflet du soleil sans échantillonner l'environnement à chaque pixel de la table — le poste le plus cher sur un processeur graphique faible ou logiciel)
@@ -589,6 +590,116 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     aLiberer.push(m);
     return plat(geo(new CircleGeometry(r, 64)), y, m);
   };
+  // lot PBV2 — l'eau de l'Océan bouge un peu : un second calque de reflets (des caustiques claires) qui glisse lentement par-dessus le sol, en haute qualité seulement (le rendu à plat garde son eau immobile). Un seul plan
+  // translucide : la texture se répète et dérive (le motif se tuile), un masque l'éteint vers le sable et autour du tourbillon et des trous (rien ne se dessine sur ce qui est à plat : le calque ne passe pas dans le test de profondeur des éléments sans épaisseur)
+  if (o.theme === "ocean") {
+    let a0 = 4242;
+    const r01 = (): number => ((a0 = (Math.imul(a0, 1664525) + 1013904223) >>> 0) / 4294967296);
+    const TUILE = 256;
+    const reflets = toile(TUILE, TUILE, (c) => {
+      c.strokeStyle = "#FFFFFF";
+      c.lineJoin = "round";
+      for (let k = 0; k < 20; k++) {
+        const x = r01() * TUILE;
+        const y = r01() * TUILE;
+        const rr0 = 9 + r01() * 11;
+        const p0 = r01() * TAU;
+        const pts: [number, number][] = [];
+        for (let j = 0; j < 9; j++) {
+          const rr = rr0 * (0.7 + r01() * 0.6);
+          pts.push([Math.cos(p0 + (j / 9) * TAU) * rr, Math.sin(p0 + (j / 9) * TAU) * rr * 0.8]);
+        }
+        c.globalAlpha = 0.35 + r01() * 0.4;
+        c.lineWidth = 0.9 + r01() * 1.6;
+        // chaque boucle est dessinée neuf fois (décalée d'une tuile) pour que le motif se raccorde sur les bords
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            c.save();
+            c.translate(x + dx * TUILE, y + dy * TUILE);
+            c.beginPath();
+            for (let j = 0; j <= 9; j++) {
+              const [ax, ay] = pts[j % 9]!;
+              const [bx, by] = pts[(j + 1) % 9]!;
+              if (j === 0) c.moveTo((ax + bx) / 2, (ay + by) / 2);
+              else c.quadraticCurveTo(ax, ay, (ax + bx) / 2, (ay + by) / 2);
+            }
+            c.stroke();
+            c.restore();
+          }
+        }
+      }
+    });
+    reflets.wrapS = reflets.wrapT = RepeatWrapping;
+    const HAUT_EAU = 640;
+    reflets.repeat.set(LARGEUR / 150, HAUT_EAU / 150);
+    // le masque : plein au-dessus du sable (comme les caustiques du sol, qui s'éteignent de 470 à 630), vide sur le tourbillon et les trous
+    const masque = toile(128, 256, (c) => {
+      c.scale(128 / LARGEUR, 256 / HAUT_EAU);
+      const g = c.createLinearGradient(0, 0, 0, HAUT_EAU);
+      g.addColorStop(0, "#FFFFFF");
+      g.addColorStop(470 / HAUT_EAU, "#FFFFFF");
+      g.addColorStop(630 / HAUT_EAU, "#000000");
+      g.addColorStop(1, "#000000");
+      c.fillStyle = g;
+      c.fillRect(0, 0, LARGEUR, HAUT_EAU);
+      c.fillStyle = "#000000";
+      for (const z of t.tourbillons) {
+        c.beginPath();
+        c.arc(px(z.x), px(z.y), px(z.r) + 4, 0, TAU);
+        c.fill();
+      }
+      for (const z of t.trous) {
+        c.beginPath();
+        c.arc(px(z.x), px(z.y), px(z.r) + 10, 0, TAU);
+        c.fill();
+      }
+    });
+    masque.colorSpace = NoColorSpace;
+    const eauBouge = new MeshBasicMaterial({ map: reflets, alphaMap: masque, transparent: true, opacity: 0.34, depthWrite: false });
+    aLiberer.push(eauBouge);
+    const calque = new Mesh(geo(new PlaneGeometry(LARGEUR, HAUT_EAU)), eauBouge);
+    calque.rotation.x = -Math.PI / 2;
+    calque.position.set(0, 0.4, Z(HAUT_EAU / 2));
+    calque.renderOrder = 1;
+    groupe.add(calque);
+    maj.push((_, sec) => {
+      reflets.offset.set(sec * 0.012, -sec * 0.008);
+      eauBouge.opacity = 0.3 + 0.07 * Math.sin(sec * 0.9);
+    });
+  }
+  /** Lot PBV2 : un disque en entonnoir de rayon `r`, du bord (hauteur `haut`) au centre (hauteur `bas`) ; ses coordonnées de texture sont celles d'un disque à plat (le haut de l'image vers le haut de la table). */
+  const creux = (r: number, haut: number, bas: number): BufferGeometry => {
+    const anneaux = 10;
+    const segments = 56;
+    const pos: number[] = [];
+    const uv: number[] = [];
+    const idx: number[] = [];
+    for (let i = 0; i <= anneaux; i++) {
+      const rho = i / anneaux;
+      for (let k = 0; k < segments; k++) {
+        const a = (k / segments) * TAU;
+        const x = Math.cos(a) * rho;
+        const z = Math.sin(a) * rho;
+        pos.push(x * r, bas + (haut - bas) * rho ** 1.7, z * r);
+        uv.push(0.5 + x * 0.5, 0.5 - z * 0.5);
+      }
+    }
+    for (let i = 0; i < anneaux; i++) {
+      for (let k = 0; k < segments; k++) {
+        const a = i * segments + k;
+        const b = i * segments + ((k + 1) % segments);
+        const c = (i + 1) * segments + k;
+        const d = (i + 1) * segments + ((k + 1) % segments);
+        idx.push(a, b, c, b, d, c);
+      }
+    }
+    const g = new BufferGeometry();
+    g.setAttribute("position", new Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  };
   // le manège : un plateau de huit parts qui tourne contre les aiguilles, un moyeu, quatre chevaux
   for (const z of t.plateaux) {
     const r = px(z.r);
@@ -684,13 +795,24 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         c.fill();
       }
     });
+    // lot PBV2 : un léger creux — la surface descend du bord (une lèvre d'écume, un peu relevée) vers le centre ; un seul maillage, la mousse en reprend la forme
+    const entonnoir = geo(creux(r, 2.4, 0.5));
+    const surface = new MeshPhongMaterial({ map: eau, emissive: "#ffffff", emissiveMap: eau, emissiveIntensity: 0.62, specular: "#a8e8f0", shininess: 70 });
+    const voile = new MeshBasicMaterial({ map: ecume, transparent: true, depthWrite: false });
+    aLiberer.push(surface, voile);
     const tourne = new Group();
-    tourne.add(disque(r, 0.8, eau, false));
+    tourne.add(new Mesh(entonnoir, surface));
     const mousse = new Group();
-    mousse.add(disque(r, 1.1, ecume));
+    const dessusEcume = new Mesh(entonnoir, voile);
+    dessusEcume.position.y = 0.25;
+    mousse.add(dessusEcume);
+    const levre = ombrageur(new Mesh(geo(new TorusGeometry(r - 1.2, 1.9, 8, 64)), mat("#E6FAFC", { roughness: 0.3, envMapIntensity: 0.9 })), false);
+    levre.rotation.x = Math.PI / 2;
+    levre.position.y = 2.4;
+    levre.scale.z = 0.7;
     const coeur = ombrageur(new Mesh(geo(new CylinderGeometry(9, 9, 2, 24)), mat(C.tourbillonCentre, { roughness: 0.1, envMapIntensity: 1 })), false);
-    coeur.position.y = 1.4;
-    g.add(tourne, mousse, coeur);
+    coeur.position.y = 1.0;
+    g.add(tourne, mousse, levre, coeur);
     groupe.add(g);
     maj.push((_, sec) => {
       tourne.rotation.y = -sec * 4.8;
@@ -878,6 +1000,25 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   }
   const lesTubes = new Mesh(geo(mergeGeometries(tubes)!), tube);
   groupe.add(lesTubes);
+  // lot PBV2 : la lueur des bandes sur le sol est posée à part (elle était cuite dans le sol) : un dégradé de la couleur du thème, du rail vers l'intérieur, dont le curseur « Lueur des bandes » règle l'opacité
+  const degrade = toile(64, 4, (c) => {
+    const g = c.createLinearGradient(0, 0, 64, 0);
+    g.addColorStop(0, P.bande);
+    g.addColorStop(1, `${P.bande}00`);
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 4);
+  });
+  const lueursSol = new MeshBasicMaterial({ map: degrade, transparent: true, opacity: 0.32, depthWrite: false, side: DoubleSide });
+  aLiberer.push(lueursSol);
+  for (const [x, y0, y1] of BANDES) {
+    const cote = x < AXE ? 1 : -1;
+    const lueur = new Mesh(geo(new PlaneGeometry(18, y1 - y0)), lueursSol);
+    lueur.rotation.x = -Math.PI / 2;
+    lueur.scale.x = cote;
+    lueur.position.set(X(x + cote * 9), 0.45, Z((y0 + y1) / 2));
+    lueur.renderOrder = 1;
+    groupe.add(lueur);
+  }
   const sceneLueur = new Scene();
   sceneLueur.add(new Mesh(lesTubes.geometry, tube));
   for (const g of tubes) g.dispose();
@@ -923,6 +1064,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const lueurs = (): void => {
     const k = vue.bandes / 100;
     tube.color.copy(couleurBande).multiplyScalar(0.35 + 2.4 * k);
+    lueursSol.opacity = Math.min(1, 0.32 * k);
   };
   lueurs();
 
@@ -967,26 +1109,23 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   groupe.add(bille);
 
   // --- Les étiquettes des modules : des plaques à part, tournées vers le joueur et grossies (voir `majEtiquettes`)
-  const etiquettes: { plaque: Mesh; x: number; y: number; l: number }[] = [];
-  for (const m of t.poses) {
-    const n = o.nom(m.type);
-    if (!n) continue;
-    const texte = n.toLocaleUpperCase();
-    const mesure = document.createElement("canvas").getContext("2d")!;
-    mesure.font = `700 9px ${o.police}`;
-    const style = styleEtiquette(o.theme);
-    const l = Math.ceil(mesure.measureText(texte).width + (style === "bois" ? 14 : 10)) + 6;
+  const etiquettes: { plaque: Mesh; x: number; y: number; taille: number }[] = [];
+  const style = styleEtiquette(o.theme);
+  // lot PBV2 : la mise en place est celle de `placerEtiquettes` (aucune plaque n'en recouvre une autre ni un module : décalée, sur deux lignes ou réduite), la même que celle du rendu à plat
+  for (const e of placerEtiquettes(t, o.theme, o.nom)) {
+    const lignes = e.texte.split("\n").length;
+    const l = largeurPlaque(e.texte, style) + 6;
+    const hPlan = hauteurPlaque(lignes) + 4;
     const echelle = 6;
-    const tex = toile(l * echelle, 20 * echelle, (c) => {
+    const tex = toile(l * echelle, hPlan * echelle, (c) => {
       c.scale(echelle, echelle);
-      pastille(c, o.police, l / 2, 10, texte, 1, style);
+      pastille(c, o.police, l / 2, hPlan / 2, e.texte, 1, style);
     });
     const mat2 = new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
     aLiberer.push(mat2);
-    const plaque = new Mesh(geo(new PlaneGeometry(l, 20)), mat2);
+    const plaque = new Mesh(geo(new PlaneGeometry(l, hPlan)), mat2);
     plaque.renderOrder = 5;
-    const p = placeDuNom(m);
-    etiquettes.push({ plaque, x: p.x, y: p.y, l });
+    etiquettes.push({ plaque, x: e.x, y: e.y, taille: e.taille });
     groupe.add(plaque);
   }
 
@@ -1090,7 +1229,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     for (const e of etiquettes) {
       // la perspective rapetisse ce qui est loin : une plaque grossit avec sa distance, pour que le haut de la table se lise comme le bas
       const dist = camera.position.distanceTo(v3.set(X(e.x), 0, Z(e.y)));
-      const echelle = k * (dist / reference);
+      const echelle = k * (dist / reference) * e.taille;
       e.plaque.scale.set(echelle, echelle / Math.max(0.5, Math.cos(Math.PI / 2 - el - lean)) * 0.95, 1);
       e.plaque.rotation.x = -Math.PI / 2 + lean;
       e.plaque.position.set(X(e.x), 1 + Math.sin(lean) * 10 * echelle, Z(e.y));

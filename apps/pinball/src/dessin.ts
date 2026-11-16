@@ -26,7 +26,8 @@ export const PALETTES: Readonly<Record<ThemePinball, Palette>> = {
   foire: { fond: "#F4D9A0", fond2: "#EFCB86", bumper: "#C2401F", accent: "#3E7CC4", cible: "#E8B23A", sling: "#3E7CC4", sombre: false, bande: "#FFB23E", lampe: "#FFD98A" },
   ocean: { fond: "#BFE3E6", fond2: "#AED8DC", bumper: "#F08A6C", accent: "#2E6E8E", cible: "#F2C94C", sling: "#2E6E8E", sombre: false, bande: "#3FE6F2", lampe: "#C8FBFF" },
   espace: { fond: "#26294A", fond2: "#2E3258", bumper: "#E46FA0", accent: "#5FD3E8", cible: "#E8B23A", sling: "#5FD3E8", sombre: true, bande: "#E46FA0", lampe: "#9FEFFF" },
-  volcan: { fond: "#E8C6A8", fond2: "#E0B796", bumper: "#C2401F", accent: "#5A3A22", cible: "#4A4A52", sling: "#E8B23A", sombre: false, bande: "#FF7A2E", lampe: "#FFC46B" },
+  // lot PBV2 : le sol du Volcan est une roche sombre craquelée : l'accent (jupe des bumpers, plaque du moulin, anneau des trous) et la cible passent à des tons clairs pour rester lisibles dessus
+  volcan: { fond: "#3A2C27", fond2: "#2E221E", bumper: "#C2401F", accent: "#D9A066", cible: "#B8B4C0", sling: "#E8B23A", sombre: false, bande: "#FF7A2E", lampe: "#FFC46B" },
 };
 /** Le rayon d'un module (px) : la distance où se pose sa flèche et son nom. */
 export const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22, manege: 60, tourbillon: 64, trouNoir: 26, portailA: 28, portailB: 28, asteroide: 34, geyser: 30, coulee: 56 };
@@ -67,7 +68,7 @@ export function lampesMission(table: Table, theme: ThemePinball, but: number): {
   }
   return l;
 }
-export const COULEURS_ELEMENTS = { manegeA: "#C2401F", manegeHub: "#3E7CC4", tourbillon: "#7FC6D2", tourbillonBras: "#2E6E8E", tourbillonCentre: "#16384a", noirCentre: "#0b0918", noirAnneau: "#E8B23A", noirOnde: "167,155,255", portailA: "#5FD3E8", portailB: "#E46FA0", portailFond: "#120f24", geyser: "#5A3A22", lave: "#F2894B", chevron: "#FFE08A" } as const;
+export const COULEURS_ELEMENTS = { manegeA: "#C2401F", manegeHub: "#3E7CC4", tourbillon: "#7FC6D2", tourbillonBras: "#2E6E8E", tourbillonCentre: "#16384a", noirCentre: "#0b0918", noirAnneau: "#E8B23A", noirOnde: "167,155,255", portailA: "#5FD3E8", portailB: "#E46FA0", portailFond: "#120f24", geyser: "#8A5632", lave: "#F2894B", chevron: "#FFE08A" } as const;
 
 // --- Lot PBV1 : la recette visuelle commune (lumière, meuble, matériaux, bandes et lampes), dont ce qui se dessine aussi à plat
 /** Les bandes lumineuses le long des rails latéraux (px de la table) : `[x du rail, y du haut, y du bas]` ; la couleur est `Palette.bande`. */
@@ -89,9 +90,10 @@ export function lampesDecor(): { x: number; y: number; pierre: boolean }[] {
 }
 /** La lueur d'une lampe du décor (de 0,35 à 1) : une vague qui court le long de l'arc, en fonction du seul pas. */
 export const lueurLampe = (i: number, tick: number): number => 0.35 + 0.65 * Math.max(0, Math.cos((tick / TICKS_PAR_SECONDE) * 3 - i * 0.7)) ** 2;
-/** Le style des étiquettes des modules : des pastilles d'encre, des plaques de bois dans l'Océan (lot PBV1). */
-export type StyleEtiquette = "encre" | "bois";
-export const styleEtiquette = (theme: ThemePinball): StyleEtiquette => (theme === "ocean" ? "bois" : "encre");
+/** Le style des étiquettes des modules : des pastilles d'encre (Fête foraine), des plaques de bois (Océan, lot PBV1), de métal rivetées (Espace) et de pierre gravée (Volcan, lot PBV2). */
+export type StyleEtiquette = "encre" | "bois" | "metal" | "pierre";
+const STYLES: Readonly<Record<ThemePinball, StyleEtiquette>> = { foire: "encre", ocean: "bois", espace: "metal", volcan: "pierre" };
+export const styleEtiquette = (theme: ThemePinball): StyleEtiquette => STYLES[theme];
 
 /** Un petit générateur entier (jamais `Math.random` : le sol est le même à chaque chargement), de 0 à 1. */
 function alea(graine: number): () => number {
@@ -431,6 +433,325 @@ function margesOcean(c: CanvasRenderingContext2D): void {
 }
 
 
+/** Où le décor peut être riche, de 0 (là où la bille passe) à 1 (les marges : la bande le long des rails latéraux, les coins bas sous les couloirs de retour, les coins du haut). Lot PBV2 : l'Espace et le Volcan s'en servent pour mettre
+ *  leurs étoiles, leurs nébuleuses, leurs fissures de lave et leurs braises dans les marges, et rester discrets au milieu. */
+export function richesseDuDecor(x: number, y: number): number {
+  const cote = Math.max(0, (66 - x) / 66, (x - (LARGEUR - 66)) / 66);
+  const bas = y > 640 ? Math.min(1, (y - 640) / 50) * Math.min(1, Math.max(0, Math.abs(x - AXE) - 70) / 50) : 0;
+  const haut = y < 170 ? Math.min(1, Math.max(0, Math.abs(x - AXE) - 100) / 60) * Math.min(1, (170 - y) / 60) : 0;
+  return Math.min(1, Math.max(cote, bas, haut));
+}
+
+/** Pose un espacement entre les lettres quand le navigateur le sait (les lettres de néon et la pierre gravée). */
+function espacement(c: CanvasRenderingContext2D, pixels: number): void {
+  (c as unknown as { letterSpacing: string }).letterSpacing = `${pixels}px`;
+}
+
+/** Une planète : un disque ombré (la lumière vient d'en haut à gauche), des bandes, et si on veut un anneau dont la moitié du fond passe derrière. */
+function planete(c: CanvasRenderingContext2D, x: number, y: number, rr: number, clair: string, sombre: string, anneau?: { rx: number; ry: number; a: number; couleur: string; ep: number }, bandes = 0): void {
+  c.save();
+  c.translate(x, y);
+  const dessinAnneau = (de: number, a: number): void => {
+    if (!anneau) return;
+    c.save();
+    c.rotate(anneau.a);
+    c.strokeStyle = anneau.couleur;
+    c.lineWidth = anneau.ep;
+    c.beginPath();
+    c.ellipse(0, 0, anneau.rx, anneau.ry, 0, de, a);
+    c.stroke();
+    c.lineWidth = anneau.ep * 0.4;
+    c.beginPath();
+    c.ellipse(0, 0, anneau.rx * 0.82, anneau.ry * 0.82, 0, de, a);
+    c.stroke();
+    c.restore();
+  };
+  dessinAnneau(Math.PI, TAU);
+  const g = c.createRadialGradient(-rr * 0.4, -rr * 0.45, rr * 0.1, 0, 0, rr * 1.05);
+  g.addColorStop(0, clair);
+  g.addColorStop(1, sombre);
+  c.fillStyle = g;
+  c.beginPath();
+  c.arc(0, 0, rr, 0, TAU);
+  c.fill();
+  if (bandes) {
+    c.save();
+    c.clip();
+    c.globalAlpha *= 0.2;
+    c.fillStyle = sombre;
+    for (let k = 0; k < bandes; k++) c.fillRect(-rr, -rr * 0.6 + k * ((rr * 1.5) / bandes), rr * 2, rr * 0.16);
+    c.restore();
+  }
+  dessinAnneau(0, Math.PI);
+  c.restore();
+}
+
+/** L'Espace (lot PBV2) : un ciel profond, des étoiles de plusieurs tailles (denses et brillantes dans les marges, de petits points pâles au milieu), des nébuleuses dans les marges, des planètes lointaines et leurs anneaux (riches dans
+ *  les coins bas, en silhouettes à 11 % ailleurs : rien n'y a l'air d'un bumper), le nom du thème en lettres de néon. */
+function solEspace(c: CanvasRenderingContext2D, titre: string, police: string): void {
+  const r = alea(404);
+  const g = c.createLinearGradient(0, 0, 0, HAUTEUR);
+  g.addColorStop(0, "#0C0E2C");
+  g.addColorStop(0.5, "#161A44");
+  g.addColorStop(0.85, "#1E2050");
+  g.addColorStop(1, "#12133A");
+  c.fillStyle = g;
+  c.fillRect(0, 0, LARGEUR, HAUTEUR);
+  const nebuleuse = (x: number, y: number, rx: number, ry: number, rgb: string, a: number): void => {
+    c.save();
+    c.translate(x, y);
+    c.scale(1, ry / rx);
+    const rg = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+    rg.addColorStop(0, `rgba(${rgb},${a})`);
+    rg.addColorStop(0.55, `rgba(${rgb},${a * 0.45})`);
+    rg.addColorStop(1, `rgba(${rgb},0)`);
+    c.fillStyle = rg;
+    c.fillRect(-rx, -rx, rx * 2, rx * 2);
+    c.restore();
+  };
+  // dans les marges : de la couleur ; au milieu : un voile à peine visible
+  nebuleuse(14, 330, 95, 170, "132,72,214", 0.5);
+  nebuleuse(10, 560, 80, 110, "228,111,160", 0.34);
+  nebuleuse(362, 250, 95, 160, "60,176,230", 0.42);
+  nebuleuse(360, 500, 80, 130, "150,76,210", 0.36);
+  nebuleuse(70, 130, 90, 70, "228,111,160", 0.26);
+  nebuleuse(318, 120, 90, 70, "90,200,240", 0.24);
+  nebuleuse(48, 722, 120, 70, "228,111,160", 0.42);
+  nebuleuse(328, 724, 120, 70, "95,211,232", 0.38);
+  nebuleuse(AXE, 330, 140, 120, "86,76,190", 0.07);
+  // des planètes lointaines : riches dans les coins bas (sous les couloirs de retour), en silhouettes à peine visibles là où la bille passe
+  planete(c, 62, 714, 19, "#9A8AF0", "#2A2870", { rx: 38, ry: 9, a: -0.35, couleur: "rgba(205,210,255,.6)", ep: 3.2 }, 3);
+  planete(c, 320, 724, 13, "#EE95BC", "#5E2250", undefined, 3);
+  planete(c, 300, 690, 4.5, "#BFD8FF", "#3A4A8A");
+  c.globalAlpha = 0.11;
+  planete(c, 300, 128, 24, "#9FA8FF", "#6068D8", { rx: 44, ry: 10, a: 0.3, couleur: "rgba(170,180,255,.9)", ep: 2.6 });
+  planete(c, 66, 262, 9, "#9FA8FF", "#6068D8");
+  c.globalAlpha = 1;
+  // les étoiles : trois teintes, quatre tailles
+  const teintes = ["255,243,214", "191,216,255", "255,199,224"];
+  for (let k = 0; k < 240; k++) {
+    const x = r() * LARGEUR;
+    const y = r() * HAUTEUR;
+    const v = r();
+    const teinte = teintes[Math.floor(r() * 3)]!;
+    const a0 = r();
+    const riche = richesseDuDecor(x, y) > 0.35;
+    const taille = riche ? (v < 0.6 ? 0.9 : v < 0.88 ? 1.5 : 2.4) : v < 0.8 ? 0.8 : 1.2;
+    const alpha = riche ? 0.35 + a0 * 0.6 : 0.12 + a0 * 0.2;
+    if (taille > 2) {
+      const rg = c.createRadialGradient(x, y, 0, x, y, 7);
+      rg.addColorStop(0, `rgba(${teinte},.35)`);
+      rg.addColorStop(1, `rgba(${teinte},0)`);
+      c.fillStyle = rg;
+      c.fillRect(x - 7, y - 7, 14, 14);
+      c.strokeStyle = `rgba(${teinte},.55)`;
+      c.lineWidth = 0.7;
+      c.beginPath();
+      c.moveTo(x - 6, y);
+      c.lineTo(x + 6, y);
+      c.moveTo(x, y - 6);
+      c.lineTo(x, y + 6);
+      c.stroke();
+    }
+    c.fillStyle = `rgba(${teinte},${alpha})`;
+    c.beginPath();
+    c.arc(x, y, taille / 2 + 0.2, 0, TAU);
+    c.fill();
+  }
+  // le nom, en lettres de néon : une lueur cyan, un trait clair, un filet rose dessous
+  c.save();
+  c.translate(AXE, 512);
+  c.font = `700 28px ${police}`;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  espacement(c, 5);
+  const texte = titre.toLocaleUpperCase();
+  c.shadowColor = "#5FD3E8";
+  c.shadowBlur = 16;
+  c.fillStyle = "rgba(95,211,232,.5)";
+  c.fillText(texte, 0, 0);
+  c.fillText(texte, 0, 0);
+  c.shadowBlur = 0;
+  c.lineWidth = 1.5;
+  c.strokeStyle = "rgba(226,252,255,.9)";
+  c.strokeText(texte, 0, 0);
+  c.fillStyle = "rgba(160,235,250,.28)";
+  c.fillText(texte, 0, 0);
+  c.shadowColor = "#E46FA0";
+  c.shadowBlur = 10;
+  c.strokeStyle = "rgba(255,150,200,.85)";
+  c.lineWidth = 2.4;
+  c.lineCap = "round";
+  c.beginPath();
+  c.moveTo(-58, 25);
+  c.lineTo(58, 25);
+  c.stroke();
+  c.restore();
+}
+
+/** Les cellules d'une roche craquelée : un diagramme de Voronoï de graines jitterées sur une grille de `pas` px (chaque cellule est coupée par la médiatrice de ses voisines). */
+function cellules(r: () => number, pas: number): { poly: [number, number][] }[] {
+  const graines: [number, number][] = [];
+  for (let gy = -1; gy * pas < HAUTEUR + pas; gy++) for (let gx = -1; gx * pas < LARGEUR + pas; gx++) graines.push([gx * pas + 8 + r() * (pas - 16), gy * pas + 8 + r() * (pas - 16)]);
+  return graines.map(([sx, sy]) => {
+    let poly: [number, number][] = [[sx - pas * 2, sy - pas * 2], [sx + pas * 2, sy - pas * 2], [sx + pas * 2, sy + pas * 2], [sx - pas * 2, sy + pas * 2]];
+    for (const [nx, ny] of graines) {
+      if ((nx === sx && ny === sy) || Math.hypot(nx - sx, ny - sy) > pas * 2.9) continue;
+      const a = 2 * (nx - sx);
+      const b = 2 * (ny - sy);
+      const k = nx * nx + ny * ny - sx * sx - sy * sy;
+      const sortie: [number, number][] = [];
+      poly.forEach((p, i) => {
+        const q = poly[(i + 1) % poly.length]!;
+        const dp = a * p[0] + b * p[1] - k;
+        const dq = a * q[0] + b * q[1] - k;
+        if (dp <= 0) sortie.push(p);
+        if (dp <= 0 !== dq <= 0) {
+          const t = dp / (dp - dq);
+          sortie.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+        }
+      });
+      poly = sortie;
+      if (poly.length < 3) break;
+    }
+    return { poly };
+  });
+}
+
+/** Le Volcan (lot PBV2) : une roche sombre craquelée, des fissures de lave qui luisent dans les marges (et seulement là : au milieu les fissures restent sombres, le geyser et la coulée sont les éléments les plus vifs de la table), des cendres,
+ *  des braises, et le nom du thème comme gravé dans la pierre. */
+function solVolcan(c: CanvasRenderingContext2D, titre: string, police: string): void {
+  const r = alea(131);
+  const g = c.createLinearGradient(0, 0, 0, HAUTEUR);
+  g.addColorStop(0, "#2A1F1C");
+  g.addColorStop(0.35, "#3B2D28");
+  g.addColorStop(0.75, "#35271F");
+  g.addColorStop(1, "#221916");
+  c.fillStyle = g;
+  c.fillRect(0, 0, LARGEUR, HAUTEUR);
+  // les dalles
+  const tons = ["#3C2E29", "#33271F", "#42342E", "#2F2420", "#382A24"];
+  const aretes = new Map<string, [number, number, number, number]>();
+  for (const { poly } of cellules(r, 54)) {
+    if (poly.length < 3) continue;
+    c.beginPath();
+    poly.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y)));
+    c.closePath();
+    c.fillStyle = tons[Math.floor(r() * tons.length)]!;
+    c.globalAlpha = 0.8;
+    c.fill();
+    c.globalAlpha = 1;
+    poly.forEach(([ax, ay], i) => {
+      const [bx, by] = poly[(i + 1) % poly.length]!;
+      const cle = ax < bx || (ax === bx && ay < by) ? `${ax.toFixed(1)},${ay.toFixed(1)}|${bx.toFixed(1)},${by.toFixed(1)}` : `${bx.toFixed(1)},${by.toFixed(1)}|${ax.toFixed(1)},${ay.toFixed(1)}`;
+      aretes.set(cle, [ax, ay, bx, by]);
+    });
+  }
+  // du grain : des taches sombres, des éclats clairs
+  for (let k = 0; k < 520; k++) {
+    c.globalAlpha = 0.07 + r() * 0.13;
+    c.fillStyle = r() < 0.6 ? "#000000" : "#FFE2C4";
+    c.fillRect(r() * LARGEUR, r() * HAUTEUR, 0.8 + r() * 1.8, 0.8 + r() * 1.4);
+  }
+  c.globalAlpha = 1;
+  // les fissures : sombres partout, avec un liseré clair du côté éclairé (relief) ; de la lave qui luit dans les marges
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  for (const [ax, ay, bx, by] of aretes.values()) {
+    c.strokeStyle = "rgba(0,0,0,.6)";
+    c.lineWidth = 2.2;
+    c.beginPath();
+    c.moveTo(ax, ay);
+    c.lineTo(bx, by);
+    c.stroke();
+    c.strokeStyle = "rgba(255,206,160,.07)";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(ax - 1, ay - 1);
+    c.lineTo(bx - 1, by - 1);
+    c.stroke();
+  }
+  for (const [ax, ay, bx, by] of aretes.values()) {
+    const w = richesseDuDecor((ax + bx) / 2, (ay + by) / 2);
+    if (w < 0.1) continue;
+    const a = w * w;
+    for (const [ep, couleur, al] of [[6, "255,90,30", 0.2], [2.8, "255,138,46", 0.55], [1, "255,214,122", 0.95]] as const) {
+      c.strokeStyle = `rgba(${couleur},${al * a})`;
+      c.lineWidth = ep;
+      c.beginPath();
+      c.moveTo(ax, ay);
+      c.lineTo(bx, by);
+      c.stroke();
+    }
+  }
+  // des mares de lave dans les coins et le long des rails
+  const lueur = (x: number, y: number, rx: number, ry: number, a: number): void => {
+    c.save();
+    c.translate(x, y);
+    c.scale(1, ry / rx);
+    const rg = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+    rg.addColorStop(0, `rgba(255,110,40,${a})`);
+    rg.addColorStop(1, "rgba(255,110,40,0)");
+    c.fillStyle = rg;
+    c.fillRect(-rx, -rx, rx * 2, rx * 2);
+    c.restore();
+  };
+  lueur(44, 726, 100, 60, 0.4);
+  lueur(332, 728, 100, 60, 0.4);
+  lueur(4, 430, 50, 190, 0.26);
+  lueur(372, 300, 50, 170, 0.26);
+  lueur(60, 120, 70, 60, 0.18);
+  lueur(322, 116, 70, 60, 0.18);
+  // les cendres (très pâles au milieu) et les braises (dans les marges seulement)
+  for (let k = 0; k < 280; k++) {
+    const x = r() * LARGEUR;
+    const y = r() * HAUTEUR;
+    const p = richesseDuDecor(x, y);
+    c.globalAlpha = p > 0.3 ? 0.1 + r() * 0.22 : 0.03 + r() * 0.07;
+    c.fillStyle = "#D8CEC8";
+    c.fillRect(x, y, 0.8 + r() * 1.4, 0.8 + r() * 1.2);
+  }
+  c.globalAlpha = 1;
+  for (let k = 0; k < 70; k++) {
+    const x = r() * LARGEUR;
+    const y = r() * HAUTEUR;
+    const p = richesseDuDecor(x, y);
+    if (p < 0.5) continue;
+    c.fillStyle = `rgba(255,${130 + Math.floor(r() * 80)},60,${0.5 + r() * 0.45})`;
+    c.beginPath();
+    c.arc(x, y, 0.8 + r() * 1.0, 0, TAU);
+    c.fill();
+  }
+  // le nom, comme gravé dans la pierre : la lèvre éclairée sous le creux, une fissure qui le traverse
+  c.save();
+  c.translate(AXE, 512);
+  c.font = `700 28px ${police}`;
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  espacement(c, 4);
+  const texte = titre.toLocaleUpperCase();
+  c.fillStyle = "rgba(255,206,160,.2)";
+  c.fillText(texte, 0.8, 1.7);
+  c.fillStyle = "rgba(12,8,7,.8)";
+  c.fillText(texte, 0, 0);
+  c.strokeStyle = "rgba(0,0,0,.45)";
+  c.lineWidth = 0.9;
+  c.strokeText(texte, -0.3, -0.4);
+  c.strokeStyle = "rgba(12,8,7,.55)";
+  c.lineWidth = 1.2;
+  c.beginPath();
+  c.moveTo(-50, -14);
+  c.lineTo(-30, -2);
+  c.lineTo(-38, 9);
+  c.lineTo(-22, 18);
+  c.stroke();
+  c.fillStyle = "rgba(12,8,7,.6)";
+  c.fillRect(-58, 25, 116, 2);
+  c.fillStyle = "rgba(255,206,160,.16)";
+  c.fillRect(-58, 27, 116, 1);
+  c.restore();
+}
+
 /** Ce qu'il faut savoir d'une partie pour dessiner son sol : le thème (palette), la table (les modules posés, les couloirs du haut), le nom du thème peint sur la table et la police du jeu. */
 export interface DonneesSol {
   theme: ThemePinball;
@@ -439,6 +760,8 @@ export interface DonneesSol {
   police: string;
   /** Hors de la table (au-dessus de l'arc) : l'encre pour le rendu à plat ; le bois de la caisse pour le rendu three.js. */
   hors?: string;
+  /** Lot PBV2 : ne pas cuire la lueur des bandes dans le sol (le rendu three.js la pose à part, pour que le curseur « Lueur des bandes » la règle). */
+  sansLueurBandes?: boolean;
 }
 
 /** Une flèche de tir, à `(x, y)`, tournée de `a`. */
@@ -460,8 +783,48 @@ function fleche(c: CanvasRenderingContext2D, P: Palette, x: number, y: number, a
   c.restore();
 }
 
+/** Lot PBV2 : la largeur et la hauteur d'une plaque d'étiquette (px de la table, à l'échelle 1), pour la placer sans que deux étiquettes se touchent. La largeur du texte est une **estimation prudente** (jamais plus petite que la
+ *  mesure du navigateur, pour la police du jeu comme pour la police de repli) : la mise en place est la même, au pixel près, dans le navigateur, dans le rendu à plat et dans le test. */
+export const HAUTEUR_PLAQUE = 16;
+/** Une plaque à deux lignes (un nom long coupé à une espace ou à un trait d'union) est plus haute de 10 px par ligne en plus. */
+export const hauteurPlaque = (lignes: number): number => HAUTEUR_PLAQUE + (lignes - 1) * 10;
+const MARGE_PLAQUE: Readonly<Record<StyleEtiquette, number>> = { encre: 10, bois: 14, metal: 16, pierre: 14 };
+const ETROITS = " I'’.,!:;1l|";
+const LARGES = "MW";
+export function largeurTexte(texte: string): number {
+  let w = 0;
+  for (const ch of texte) w += ETROITS.includes(ch) ? 4.4 : LARGES.includes(ch) ? 9.4 : 7.2;
+  return w;
+}
+/** La largeur d'une plaque : la plus longue de ses lignes (`\n` les sépare), plus la marge du style. */
+export const largeurPlaque = (texte: string, style: StyleEtiquette): number => Math.ceil(Math.max(...texte.split("\n").map(largeurTexte)) + MARGE_PLAQUE[style]);
+/** Les façons de couper un nom long en deux lignes (à une espace ou après un trait d'union) : la plus équilibrée d'abord. Un nom d'un seul mot n'en a pas. */
+export function coupures(texte: string): string[] {
+  const l: string[] = [];
+  for (let i = 1; i < texte.length - 1; i++) {
+    const ch = texte[i]!;
+    if (ch === " ") l.push(`${texte.slice(0, i)}\n${texte.slice(i + 1)}`);
+    else if (ch === "-") l.push(`${texte.slice(0, i + 1)}\n${texte.slice(i + 1)}`);
+  }
+  return l.sort((a, b) => largeurPlaque(a, "encre") - largeurPlaque(b, "encre"));
+}
+
+/** Un trait arrondi aux coins coupés : la pierre taillée. */
+function pierreTaillee(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, k: number): void {
+  c.beginPath();
+  c.moveTo(x + k, y);
+  c.lineTo(x + w - k * 0.6, y);
+  c.lineTo(x + w, y + k * 0.8);
+  c.lineTo(x + w, y + h - k);
+  c.lineTo(x + w - k, y + h);
+  c.lineTo(x + k * 0.7, y + h);
+  c.lineTo(x, y + h - k * 0.7);
+  c.lineTo(x, y + k);
+  c.closePath();
+}
+
 /** Une pastille de texte (le nom d'un module, « Bille sauvée ! ») : `echelle` la grossit autour de son centre, pour les étiquettes du haut que la perspective rapetisse (lot PB2). Lot PBV1 : `style` « bois » en fait une
- *  plaque de bois veinée, clouée (les étiquettes de l'Océan). */
+ *  plaque de bois veinée, clouée (les étiquettes de l'Océan). Lot PBV2 : « metal » une plaque de métal brossé rivetée (l'Espace), « pierre » une plaque de pierre taillée et gravée (le Volcan). */
 export function pastille(c: CanvasRenderingContext2D, police: string, x: number, y: number, texte: string, echelle = 1, style: StyleEtiquette = "encre"): void {
   c.save();
   c.translate(x, y);
@@ -469,17 +832,20 @@ export function pastille(c: CanvasRenderingContext2D, police: string, x: number,
   c.font = `700 9px ${police}`;
   c.textAlign = "center";
   c.textBaseline = "middle";
-  const w = c.measureText(texte).width + (style === "bois" ? 14 : 10);
+  const lignes = texte.split("\n");
+  const e = (lignes.length - 1) * 10; // la hauteur en plus d'une plaque à deux lignes
+  const w = Math.max(...lignes.map((l) => c.measureText(l).width)) + MARGE_PLAQUE[style];
   if (style === "bois") {
     c.beginPath();
-    c.roundRect(-w / 2, -7.5, w, 15, 2.5);
+    c.roundRect(-w / 2, -7.5 - e / 2, w, 15 + e, 2.5);
     c.fillStyle = "#74492A";
     c.fill();
     c.save();
     c.clip();
     c.strokeStyle = "#4E2F18";
     c.lineWidth = 0.6;
-    for (const [dy, ph] of [[-4.2, 0.3], [-0.6, 2.1], [3.4, 4]] as const) {
+    for (const [dy0, ph] of [[-4.2, 0.3], [-0.6, 2.1], [3.4, 4]] as const) {
+      const dy = dy0 * (1 + e / 15);
       c.globalAlpha = 0.55;
       c.beginPath();
       for (let k = -w / 2; k <= w / 2; k += 3) c.lineTo(k, dy + Math.sin(k * 0.21 + ph) * 0.7);
@@ -495,15 +861,190 @@ export function pastille(c: CanvasRenderingContext2D, police: string, x: number,
       c.arc(s * (w / 2 - 3.2), 0, 1.1, 0, TAU);
       c.fill();
     }
+  } else if (style === "metal") {
+    // une plaque de métal brossé, un liseré clair sur l'arête haute, quatre rivets
+    c.beginPath();
+    c.roundRect(-w / 2, -8 - e / 2, w, 16 + e, 2.5);
+    const mg = c.createLinearGradient(0, -8 - e / 2, 0, 8 + e / 2);
+    mg.addColorStop(0, "#7B84A0");
+    mg.addColorStop(0.45, "#4A5270");
+    mg.addColorStop(1, "#343A55");
+    c.fillStyle = mg;
+    c.fill();
+    c.save();
+    c.clip();
+    c.strokeStyle = "#FFFFFF";
+    c.lineWidth = 0.4;
+    for (const [dy0, a] of [[-5.4, 0.1], [-2.6, 0.06], [0.4, 0.09], [3.1, 0.05], [5.6, 0.08]] as const) {
+      const dy = dy0 * (1 + e / 16);
+      c.globalAlpha = a;
+      c.beginPath();
+      c.moveTo(-w / 2, dy);
+      c.lineTo(w / 2, dy);
+      c.stroke();
+    }
+    c.restore();
+    c.lineWidth = 1.2;
+    c.strokeStyle = "#161A33";
+    c.stroke();
+    c.beginPath();
+    c.roundRect(-w / 2 + 0.9, -7.1 - e / 2, w - 1.8, 14.2 + e, 2);
+    c.lineWidth = 0.7;
+    c.strokeStyle = "rgba(200,210,240,.55)";
+    c.stroke();
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        const rx = sx * (w / 2 - 3.4);
+        const ry = sy * (4.9 + e / 2);
+        c.beginPath();
+        c.arc(rx, ry, 1.35, 0, TAU);
+        c.fillStyle = "#161A33";
+        c.fill();
+        c.beginPath();
+        c.arc(rx - 0.2, ry - 0.25, 0.95, 0, TAU);
+        c.fillStyle = "#C9CFDE";
+        c.fill();
+      }
+    }
+  } else if (style === "pierre") {
+    // une plaque de pierre taillée : le haut et la gauche éclairés, le bas et la droite dans l'ombre, une fissure, des grains
+    pierreTaillee(c, -w / 2, -7.5 - e / 2, w, 15 + e, 2.6);
+    const pg = c.createLinearGradient(0, -7.5 - e / 2, 0, 7.5 + e / 2);
+    pg.addColorStop(0, "#6E665F");
+    pg.addColorStop(1, "#4A4440");
+    c.fillStyle = pg;
+    c.fill();
+    c.save();
+    c.clip();
+    c.strokeStyle = "rgba(20,14,12,.55)";
+    c.lineWidth = 0.6;
+    c.beginPath();
+    c.moveTo(-w / 2 + w * 0.62, -7.5 - e / 2);
+    c.lineTo(-w / 2 + w * 0.6, -2.5);
+    c.lineTo(-w / 2 + w * 0.67, 1.5);
+    c.lineTo(-w / 2 + w * 0.64, 7.5 + e / 2);
+    c.stroke();
+    c.fillStyle = "rgba(255,235,210,.16)";
+    for (let k = 0; k < 9; k++) c.fillRect(-w / 2 + ((k * 37 + 11) % Math.floor(w)), -6 - e / 2 + ((k * 53) % (12 + e)), 0.9, 0.9);
+    c.strokeStyle = "rgba(255,232,205,.42)";
+    c.lineWidth = 1.4;
+    c.beginPath();
+    c.moveTo(-w / 2, 7.5 + e / 2);
+    c.lineTo(-w / 2, -7.5 - e / 2);
+    c.lineTo(w / 2, -7.5 - e / 2);
+    c.stroke();
+    c.strokeStyle = "rgba(0,0,0,.5)";
+    c.beginPath();
+    c.moveTo(w / 2, -7.5 - e / 2);
+    c.lineTo(w / 2, 7.5 + e / 2);
+    c.lineTo(-w / 2, 7.5 + e / 2);
+    c.stroke();
+    c.restore();
+    pierreTaillee(c, -w / 2, -7.5 - e / 2, w, 15 + e, 2.6);
+    c.lineWidth = 1.2;
+    c.strokeStyle = "#1D1613";
+    c.stroke();
+    // le texte est gravé : un creux sombre décalé, puis la lettre claire
+    c.fillStyle = "rgba(10,6,5,.6)";
+    lignes.forEach((l, k) => c.fillText(l, 0.5, (k - (lignes.length - 1) / 2) * 10 + 1.1));
   } else {
     c.fillStyle = ENCRE;
     c.beginPath();
-    c.roundRect(-w / 2, -7, w, 14, 3);
+    c.roundRect(-w / 2, -7 - e / 2, w, 14 + e, 3);
     c.fill();
   }
   c.fillStyle = PAPIER;
-  c.fillText(texte, 0, 0.5);
+  lignes.forEach((l, k) => c.fillText(l, 0, (k - (lignes.length - 1) / 2) * 10 + 0.5));
   c.restore();
+}
+
+// --- Lot PBV2 : la mise en place des étiquettes des modules, commune aux deux rendus et gardée par `test/etiquettes.test.ts`
+/** De combien les plaques sont grossies à l'écran par défaut (la taille « 140 % » du curseur des étiquettes, plus la perspective : la caméra est plus près du bas de la table que du haut, de moins de 4 %). */
+export const GROSSISSEMENT_ETIQUETTE = 1.4 * 1.04;
+/** Ce qu'une étiquette ne doit pas recouvrir : un disque autour d'un module (85 % de son rayon de nom : ce que le module occupe vraiment ; l'astéroïde : son bumper de 16 px, son nom se pose au-dessus de sa course) ; la boîte de l'étiquette y est tangente au plus. */
+export const empreinteDuModule = (type: string): number => (type === "asteroide" ? 19 : (RAYON_MODULE[type] ?? 30) * 0.85);
+export interface Etiquette {
+  /** Le module (son type) et son nom, déjà en capitales ; `\n` sépare les deux lignes d'un nom long coupé en deux. */
+  module: string;
+  texte: string;
+  /** Le centre de la plaque sur la table (px). */
+  x: number;
+  y: number;
+  /** Une plaque longue est réduite pour trouver sa place : 1 (entière) à 0,68 (la plus petite). */
+  taille: number;
+  /** La boîte de la plaque à l'écran, en px de la table (grossissement compris). */
+  l: number;
+  h: number;
+}
+export const boiteDeLEtiquette = (e: Pick<Etiquette, "x" | "y" | "l" | "h">): { x0: number; y0: number; x1: number; y1: number } => ({ x0: e.x - e.l / 2, y0: e.y - e.h / 2, x1: e.x + e.l / 2, y1: e.y + e.h / 2 });
+/** Une boîte et un disque se recouvrent-ils ? */
+export function boiteTouche(b: { x0: number; y0: number; x1: number; y1: number }, cx: number, cy: number, r: number): boolean {
+  const dx = cx - Math.min(b.x1, Math.max(b.x0, cx));
+  const dy = cy - Math.min(b.y1, Math.max(b.y0, cy));
+  return dx * dx + dy * dy < r * r;
+}
+/** Deux boîtes se recouvrent-elles (à `ecart` px près) ? */
+export const boitesSeRecouvrent = (a: { x0: number; y0: number; x1: number; y1: number }, b: { x0: number; y0: number; x1: number; y1: number }, ecart = 0): boolean => a.x0 < b.x1 + ecart && b.x0 < a.x1 + ecart && a.y0 < b.y1 + ecart && b.y0 < a.y1 + ecart;
+/** Les limites de la table pour une étiquette : entre les rails (24 à 344 px), sous les couloirs du haut, au-dessus des lance-pierres, et dans l'arc quand elle est en haut. */
+function dansLaTable(b: { x0: number; y0: number; x1: number; y1: number }): boolean {
+  if (b.x0 < 24 || b.x1 > 344 || b.y0 < 118 || b.y1 > 470) return false;
+  if (b.y0 < ARC_CENTRE.y) {
+    const demi = Math.sqrt(Math.max(0, ARC_CENTRE.r * ARC_CENTRE.r - (ARC_CENTRE.y - b.y0) ** 2)) - 8;
+    if (b.x0 < ARC_CENTRE.x - demi || b.x1 > ARC_CENTRE.x + demi) return false;
+  }
+  return true;
+}
+/** **La règle des étiquettes** : chaque module garde son nom à sa place habituelle (`placeDuNom`, au-dessous de lui). Si la plaque recouvre une autre plaque, un module (le sien compris : elle se pose juste au bord), un poteau ou une
+ *  lampe de couloir, ou sort de la table, on cherche la meilleure autre place — **décalée** (de côté, plus bas, ou au-dessus du module), **sur deux lignes** quand le nom a une espace ou un trait d'union (« POMMES / D'AMOUR »), **réduite**
+ *  en dernier recours (jusqu'à 68 %) — au moindre coût : un décalage coûte sa longueur, deux lignes un petit forfait, une réduction beaucoup, et une place plus proche d'un autre module que du sien est refusée en pratique (on lirait
+ *  le nom du voisin). Les plus longues se placent d'abord, la mise en place est donc déterministe et ne dépend que de la table et des textes. Rend une étiquette par module nommé, dans l'ordre des modules. */
+export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module: string) => string | null): Etiquette[] {
+  const style = styleEtiquette(theme);
+  const disques = table.poses.map((m) => ({ x: px(m.x), y: px(m.y), r: empreinteDuModule(m.type) }));
+  for (const p of table.poteaux) disques.push({ x: px(p.x), y: px(p.y), r: px(p.r) + 3 });
+  for (const v of table.voies) disques.push({ x: px(v.x), y: px(v.y) + 24, r: 7.5 });
+  // les lampes de la mission, en arc au-dessus de l'élément du thème (de trois à cinq : les buts par défaut ; l'arc de cinq contient celui de trois)
+  for (const but of [4, 5]) for (const l of lampesMission(table, theme, but)) disques.push({ x: l.x, y: l.y, r: 5.5 });
+  const aPlacer = table.poses.flatMap((m, i) => {
+    const n = nom(m.type);
+    if (!n) return [];
+    const texte = n.toLocaleUpperCase();
+    return [{ i, m, variantes: [texte, ...coupures(texte).slice(0, 1)] }];
+  });
+  const posees: { i: number; e: Etiquette }[] = [];
+  const parLargeur = [...aPlacer].sort((a, b) => largeurPlaque(b.variantes[0]!, style) - largeurPlaque(a.variantes[0]!, style) || a.i - b.i);
+  for (const { i, m, variantes } of parLargeur) {
+    const base = placeDuNom(m);
+    const emp = empreinteDuModule(m.type);
+    let meilleure: { e: Etiquette; cout: number } | null = null;
+    for (const [v, texte] of variantes.entries()) {
+      const lignes = texte.split("\n").length;
+      for (const taille of [1, 0.92, 0.84, 0.76, 0.68]) {
+        const l = largeurPlaque(texte, style) * taille * GROSSISSEMENT_ETIQUETTE;
+        const h = hauteurPlaque(lignes) * taille * GROSSISSEMENT_ETIQUETTE;
+        const ys = [...[-6, -4, -2, -1, 0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 22, 26, 32, 40, 50, 62, 74, 86, 98].map((d) => ({ y: base.y + d, haut: false })), ...[0, 6, 12].map((d) => ({ y: px(m.y) - emp - h / 2 - 2 - d, haut: true }))];
+        for (const { y, haut } of ys) {
+          for (let dx = -144; dx <= 144; dx += 8) {
+            const e: Etiquette = { module: m.type, texte, x: base.x + dx, y, taille, l, h };
+            const b = boiteDeLEtiquette(e);
+            if (!dansLaTable(b)) continue;
+            if (disques.some((d) => boiteTouche(b, d.x, d.y, d.r))) continue;
+            if (posees.some((q) => boitesSeRecouvrent(b, boiteDeLEtiquette(q.e), 2))) continue;
+            // plus près d'un autre module que du sien : on lirait le nom du voisin
+            const propre = Math.hypot(e.x - px(m.x), e.y - px(m.y));
+            const voisins = table.poses.filter((o) => o !== m && Math.hypot(e.x - px(o.x), e.y - px(o.y)) < propre).length;
+            const cout = (1 - taille) * 600 + Math.abs(dx) * 0.8 + Math.abs(y - base.y) + (haut ? 30 : 0) + (v ? 45 : 0) + voisins * 110;
+            if (!meilleure || cout < meilleure.cout) meilleure = { e, cout };
+          }
+        }
+      }
+    }
+    // aucune place (ne devrait pas arriver : le test le garde) : l'endroit habituel, à la plus petite taille
+    const texte = variantes[0]!;
+    const taille = 0.68;
+    posees.push({ i, e: meilleure?.e ?? { module: m.type, texte, x: base.x, y: base.y, taille, l: largeurPlaque(texte, style) * taille * GROSSISSEMENT_ETIQUETTE, h: HAUTEUR_PLAQUE * taille * GROSSISSEMENT_ETIQUETTE } });
+  }
+  return posees.sort((a, b) => a.i - b.i).map((q) => q.e);
 }
 
 /** Au-dessus de l'arc : hors de la table. */
@@ -533,35 +1074,10 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   const P = PALETTES[theme];
   if (theme === "foire") solFoire(c, titre, police);
   else if (theme === "ocean") solOcean(c, titre, police);
-  else {
-    c.fillStyle = P.fond;
-    c.fillRect(0, 0, LARGEUR, HAUTEUR);
-    c.save();
-    c.globalAlpha = 0.45;
-    c.strokeStyle = P.fond2;
-    c.lineWidth = 14;
-    for (let k = -HAUTEUR; k < LARGEUR + HAUTEUR; k += 36) {
-      c.beginPath();
-      c.moveTo(k, 0);
-      c.lineTo(k - HAUTEUR, HAUTEUR);
-      c.stroke();
-    }
-    c.restore();
-  }
-  if (theme === "espace") {
-    c.fillStyle = "#EDE3CF";
-    let a = 12345; // des étoiles qui ne bougent pas : un petit générateur entier, jamais Math.random
-    for (let i = 0; i < 70; i++) {
-      a = (Math.imul(a, 1664525) + 1013904223) >>> 0;
-      const x = (a >>> 8) % LARGEUR;
-      a = (Math.imul(a, 1664525) + 1013904223) >>> 0;
-      c.globalAlpha = 0.25 + ((a >>> 8) % 50) / 100;
-      c.fillRect(x, (a >>> 4) % HAUTEUR, 1.6, 1.6);
-    }
-    c.globalAlpha = 1;
-  }
+  else if (theme === "espace") solEspace(c, titre, police);
+  else solVolcan(c, titre, police);
   // lot PBV1 : la lueur des bandes lumineuses sur le sol, le long des rails latéraux (un dégradé de la couleur du thème, du rail vers l'intérieur)
-  for (const [x, y0, y1] of BANDES) {
+  for (const [x, y0, y1] of d.sansLueurBandes ? [] : BANDES) {
     const s = x < AXE ? 1 : -1;
     const g = c.createLinearGradient(x, 0, x + s * 18, 0);
     g.addColorStop(0, P.bande);
@@ -582,24 +1098,14 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   c.lineTo(348, HAUTEUR);
   c.lineTo(20, HAUTEUR);
   c.closePath();
-  c.fillStyle = P.sombre ? "rgba(0,0,0,.28)" : "rgba(42,30,22,.09)";
+  c.fillStyle = P.sombre ? "rgba(0,0,0,.28)" : theme === "volcan" ? "rgba(0,0,0,.22)" : "rgba(42,30,22,.09)";
   c.fill();
   c.fillStyle = "#1a120c";
   c.beginPath();
   c.ellipse(AXE, HAUTEUR - 4, 46, 20, 0, 0, TAU);
   c.fill();
   if (theme === "ocean") margesOcean(c);
-  // le nom du thème, peint sur la table (la Fête foraine et l'Océan ont le leur : la bannière, le nom blanc et sa vague)
-  if (theme !== "foire" && theme !== "ocean") {
-    c.save();
-    c.translate(AXE, 512);
-    c.rotate(-0.06);
-    c.font = `700 28px ${police}`;
-    c.textAlign = "center";
-    c.fillStyle = P.sombre ? "rgba(255,246,224,.12)" : "rgba(42,30,22,.10)";
-    c.fillText(titre.toLocaleUpperCase(), 0, 0);
-    c.restore();
-  }
+  // le nom du thème est peint par le sol de chaque thème (la bannière, le nom blanc et sa vague, les lettres de néon, la gravure)
   // une flèche de tir devant chaque module (sauf le trou noir, qui n'est pas une cible), qui pointe vers lui depuis les batteurs
   for (const m of t.poses) {
     if (m.type === "trouNoir") continue;
@@ -676,6 +1182,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
   let sol: HTMLCanvasElement | null = null;
   const angles = t.spinners.map(() => 0);
   const decor = lampesDecor();
+  const etiquettes = placerEtiquettes(t, theme, nom);
 
   const rond = (x: number, y: number, r: number, fill: string | null, trait = 3): void => {
     g.beginPath();
@@ -712,12 +1219,9 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     }
   };
   function noms(c: CanvasRenderingContext2D): void {
-    for (const m of t.poses) {
-      const n = nom(m.type);
-      if (!n) continue;
-      const p = placeDuNom(m);
-      pastille(c, police, p.x, p.y, n.toLocaleUpperCase(), 1, styleEtiquette(theme));
-    }
+    // lot PBV2 : la même mise en place que le rendu three.js (aucune plaque n'en recouvre une autre ni un module), à 140 % de la plaque
+    // (la boîte de la mise en place est à 1,4 × 1,04 : la plaque à plat se dessine à 1,4 × sa taille, jamais plus grande que sa boîte — et jamais plus petite qu'avant le lot)
+    for (const e of etiquettes) pastille(c, police, e.x, e.y, e.texte, e.taille * 1.4, styleEtiquette(theme));
   }
 
   /** Lot PB3 : les éléments des thèmes, dessinés sous la bille, tous animés en fonction du seul pas (`tick`) ; puis les lampes de la mission. */
