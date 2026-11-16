@@ -70,6 +70,7 @@ Outil : `e2e/captures-lot-pbv4.spec.ts` (hors CI) et `e2e/catalogue-modeles.ts`.
 - Test ajouté : `test/modeles.test.ts` (3 tests, dont les 444 tables) ; `test/etiquettes.test.ts` et `test/decor.test.ts` inchangés et verts (les noms et leur place ne bougent pas).
 - Captures regardées : le catalogue (repos et contact), les quatre tables en haute et basse qualité, la table de près pendant une partie.
 - Aucun fichier de `packages/pinball-sim` ni de `apps/api` touché.
+- **CI de la PR, premier run** (43889997813) : tout vert (`zones`, `unit`, `e2e-pr`, `e2e`, **Budgets** avec la proposition) sauf **« Kit de bout en bout »** : `e2e/surimpression.spec.ts:51` d'un jeu généré (« Essaitemps », le HUD de score lu vide à 390 × 844) — hors des zones du lot (le kit et le générateur ; aucun fichier de Pinball n'y entre). Relancé une fois par ce commit, comme le veut la règle d'arrêt.
 
 ## Non vérifié
 - Un vrai téléphone (carte graphique), Firefox, WebKit.
