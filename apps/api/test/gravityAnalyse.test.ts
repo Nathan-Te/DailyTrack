@@ -115,7 +115,7 @@ describe("sur les parties du vrai serveur", () => {
     expect(json.jours[0]!.score.max).toBe(Math.max(...attendus.map((a) => a.score)));
     expect(JSON.stringify(json)).not.toMatch(/Joueur\d|player_id|replay/);
     // une base distante sans --distant : refusée, rien n'est lu
-    const distante = spawnSync("npm", ["run", "analyser", "--silent", "--", "--cible", "recette"], { cwd: racine, encoding: "utf8", env: { ...process.env, TURSO_DATABASE_URL: "libsql://dailytrack-recette-x.turso.io", TURSO_AUTH_TOKEN: "x" } });
+    const distante = spawnSync("npm", ["run", "analyser", "--silent", "--", "--cible", "recette"], { cwd: racine, encoding: "utf8", env: { ...process.env, TURSO_DATABASE_URL: "https://base-recette.example.org", TURSO_AUTH_TOKEN: "x" } });
     expect(distante.status).toBe(1);
     expect(distante.stderr).toContain("--distant");
     // une base de production nommée « recette » (ou l'inverse) est refusée, comme pour le reste des outils
