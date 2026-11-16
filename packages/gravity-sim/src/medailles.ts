@@ -4,7 +4,7 @@ import type { Contenu } from "./generateur";
 import { VARIANTE, type Medaille, type Seuils } from "./variante";
 
 // Les médailles : quatre seuils par jour, **figés avec le niveau** (`seuils.ts`, `jours.ts`). Bronze : fin du 1er thème ; argent : fin du 2e ; or : fin du 3e ; Diamant : fin de la boucle des cinq thèmes — chacun à 60 % de ce
-// que prendrait un robot parfait. En GR1 le calcul est « sur le papier » (provisoire) ; le robot arrive au lot GR2.
+// que fait le robot (`robot.ts`, `seuils.ts`).
 export type { Medaille, Seuils };
 
 export const seuilsDe = (contenu: Contenu): Seuils => seuilsDuJour(contenu);

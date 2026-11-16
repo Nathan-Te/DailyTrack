@@ -5,12 +5,14 @@
     "partie.spec.ts": 20,
     "classement.spec.ts": 30,
     "poids.spec.ts": 2,
-    "ecrans-kit.spec.ts": 12
+    "ecrans-kit.spec.ts": 12,
+    "essais.spec.ts": 14
   },
   "essentiel": {
     "determinisme.spec.ts": 3,
     "partie.spec.ts": 20,
     "classement.spec.ts": 30,
-    "poids.spec.ts": 2
+    "poids.spec.ts": 2,
+    "essais.spec.ts": 14
   }
 }

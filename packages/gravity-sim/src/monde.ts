@@ -1,4 +1,5 @@
-import { CASE, CLIGNOTANT_ALLUME, CLIGNOTANT_CYCLE, ALTERNE_BATTEMENT, LARGEUR_MORCEAU, LIGNES } from "./constantes";
+import * as K from "./constantes";
+const { CASE, CLIGNOTANT_ALLUME, CLIGNOTANT_CYCLE, ALTERNE_BATTEMENT, LARGEUR_MORCEAU, LIGNES } = K;
 import type { ThemeGravity } from "./themes";
 
 // Le monde : des colonnes de 12 cases, groupées en morceaux de 16 colonnes. Une case est un code entier. **Un morceau est une donnée** (cases, objets, chemin sûr) ; le terrain (`Terrain`) en donne le morceau

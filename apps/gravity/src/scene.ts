@@ -39,6 +39,7 @@ import {
   type ThemeGravity,
 } from "@cdj/gravity-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
+import type { EssaiRecette } from "./essai";
 
 interface Palette {
   fond: string;
@@ -90,6 +91,22 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   const terrain = terrainDuJour(contenu);
   const partie = new Partie(terrain);
   const appuis: number[] = [];
+  // Les essais de recette (lot GR2, `niveau.ts`) : le robot a déjà joué ; `?morceau=<n>` rejoue ses appuis jusqu'au pas où le joueur reprend la main, `?robot` les rejoue sous nos yeux. Jamais classé.
+  const essai = (contenu as Contenu & { essai?: EssaiRecette }).essai;
+  const appuisDuRobot = essai?.robot ? essai.appuis : null;
+  let suiteDuRobot = 0;
+  if (essai) {
+    partie.essai = true;
+    let k = 0;
+    while (partie.tick < essai.depart && !partie.finie) {
+      if (essai.appuis[k] === partie.tick) {
+        partie.appuyer();
+        k++;
+      }
+      partie.avancer();
+    }
+    suiteDuRobot = k;
+  }
   const canvas = document.createElement("canvas");
   canvas.className = "gravity-plateau";
   canvas.setAttribute("role", "img");
@@ -129,6 +146,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
 
   // --- Les entrées : un appui daté au pas de la simulation ---
   const toucher = (): void => {
+    if (appuisDuRobot) return; // `?robot` : on regarde
     if (partie.finie || appuis.length >= MAX_APPUIS || appuis[appuis.length - 1] === partie.tick) return;
     appuis.push(partie.tick);
     partie.appuyer();
@@ -574,6 +592,16 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
     g.globalAlpha = 1;
     g.restore();
     dessinerBandeauTheme();
+    if (appuisDuRobot) {
+      g.font = `600 ${Math.max(12, T * 0.34)}px ${police}`;
+      g.textAlign = "left";
+      g.textBaseline = "top";
+      g.lineWidth = 3;
+      g.strokeStyle = ENCRE;
+      g.fillStyle = PAPIER;
+      g.strokeText(o.t("essai.robot"), T * 0.4, dy + T * 0.3);
+      g.fillText(o.t("essai.robot"), T * 0.4, dy + T * 0.3);
+    }
     if (partie.mort !== 0) {
       const cause = CLE_MORT[partie.mort] ?? "vide";
       g.font = `${Math.max(18, T * 0.6)}px ${police}`;
@@ -603,6 +631,10 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   return {
     avancer() {
       if (partie.finie) return;
+      if (appuisDuRobot && appuisDuRobot[suiteDuRobot] === partie.tick) {
+        partie.appuyer();
+        suiteDuRobot++;
+      }
       partie.avancer();
       tDernierPas = performance.now();
       if (partie.finie && !mortVue) {

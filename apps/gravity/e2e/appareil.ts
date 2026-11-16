@@ -1,4 +1,4 @@
-import { dailyGravity, jouer, piloter, terrainDuJour, type Resultat } from "@cdj/gravity-sim";
+import { dailyGravity, jouer, jouerRobot, terrainDuJour, type Resultat } from "@cdj/gravity-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -53,8 +53,8 @@ export async function lancer(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu);
 }
 
-/** La partie scriptée des essais : le pilote d'essai de la simulation joue le jour pendant `pas` pas (ses appuis sont la rediffusion) ; sans l'aide du pilote une partie d'essai meurt en quelques secondes. */
-export const appuisDeLEssai = (pas = 12000): number[] => piloter(terrainDuJour(dailyGravity(parseDay(JOUR)!)), pas).appuis;
+/** La partie scriptée des essais : le robot de la simulation joue le jour pendant `pas` pas (ses appuis sont la rediffusion) ; sans l'aide du robot une partie d'essai meurt en quelques secondes. */
+export const appuisDeLEssai = (pas = 12000): number[] => jouerRobot(terrainDuJour(dailyGravity(parseDay(JOUR)!)), { maxTicks: pas }).appuis;
 
 /**
  * Joue la partie du jour à la main, pas à pas : un appui (`action("toucher")`) à chaque pas de la liste, la rediffusion du jeu est donc cette liste ; puis la partie se joue seule jusqu'à la mort. Rend ce que la

@@ -1,7 +1,8 @@
 {
-  "_": "Golden de Gravity (lot GR1). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
+  "_": "Golden de Gravity (lots GR1 et GR2). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
   "sim": 2,
-  "generateur": 2,
+  "generateur": 3,
+  "bot": 2,
   "jours": [
     {
       "date": "2026-11-02",
@@ -12,12 +13,12 @@
         "nuit",
         "neon"
       ],
-      "empreinte": "cf3b4b5b",
+      "empreinte": "72c7730d",
       "seuils": {
-        "bronze": 2250,
-        "silver": 6060,
-        "gold": 10230,
-        "author": 19810
+        "bronze": 910,
+        "silver": 1690,
+        "gold": 3490,
+        "author": 7730
       }
     },
     {
@@ -29,13 +30,7 @@
         "neon",
         "nuit"
       ],
-      "empreinte": "475c3c45",
-      "seuils": {
-        "bronze": 2490,
-        "silver": 6600,
-        "gold": 11130,
-        "author": 19750
-      }
+      "empreinte": "fb704a64"
     },
     {
       "date": "2026-11-08",
@@ -46,13 +41,7 @@
         "neon",
         "foret"
       ],
-      "empreinte": "b4fcb378",
-      "seuils": {
-        "bronze": 2970,
-        "silver": 6720,
-        "gold": 11010,
-        "author": 19540
-      }
+      "empreinte": "1f3ebec8"
     },
     {
       "date": "2026-11-11",
@@ -63,12 +52,12 @@
         "nuit",
         "glace"
       ],
-      "empreinte": "6846468e",
+      "empreinte": "9fbc948c",
       "seuils": {
-        "bronze": 3030,
-        "silver": 6330,
-        "gold": 11370,
-        "author": 20980
+        "bronze": 1130,
+        "silver": 2790,
+        "gold": 3960,
+        "author": 7670
       }
     },
     {
@@ -80,13 +69,7 @@
         "usine",
         "nuit"
       ],
-      "empreinte": "15626d78",
-      "seuils": {
-        "bronze": 3150,
-        "silver": 7080,
-        "gold": 11550,
-        "author": 21310
-      }
+      "empreinte": "3b388b5e"
     },
     {
       "date": "2026-11-17",
@@ -97,13 +80,7 @@
         "neon",
         "nuit"
       ],
-      "empreinte": "6892890a",
-      "seuils": {
-        "bronze": 2370,
-        "silver": 6330,
-        "gold": 10410,
-        "author": 19660
-      }
+      "empreinte": "68d9fc8a"
     },
     {
       "date": "2026-11-20",
@@ -114,12 +91,12 @@
         "neon",
         "usine"
       ],
-      "empreinte": "94aec3a4",
+      "empreinte": "16ea57b1",
       "seuils": {
-        "bronze": 3180,
-        "silver": 6900,
-        "gold": 10410,
-        "author": 18970
+        "bronze": 2460,
+        "silver": 3570,
+        "gold": 5670,
+        "author": 9760
       }
     },
     {
@@ -131,13 +108,7 @@
         "nuit",
         "neon"
       ],
-      "empreinte": "7338f3e2",
-      "seuils": {
-        "bronze": 3840,
-        "silver": 9330,
-        "gold": 14190,
-        "author": 21550
-      }
+      "empreinte": "ed687944"
     },
     {
       "date": "2026-11-26",
@@ -148,13 +119,7 @@
         "neon",
         "glace"
       ],
-      "empreinte": "2e625348",
-      "seuils": {
-        "bronze": 3210,
-        "silver": 6990,
-        "gold": 11310,
-        "author": 20830
-      }
+      "empreinte": "94928870"
     },
     {
       "date": "2026-11-29",
@@ -165,12 +130,12 @@
         "usine",
         "nuit"
       ],
-      "empreinte": "f6022aad",
+      "empreinte": "de433ebd",
       "seuils": {
-        "bronze": 3090,
-        "silver": 8760,
-        "gold": 13590,
-        "author": 21970
+        "bronze": 790,
+        "silver": 2750,
+        "gold": 4060,
+        "author": 8810
       }
     }
   ],
@@ -178,8 +143,8 @@
     {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 2,
-      "code": "AQICAJeiAQ",
+      "g": 3,
+      "code": "AQIDAJeiAQ",
       "resultat": {
         "score": 256,
         "distance": 66,
@@ -195,8 +160,8 @@
     {
       "nom": "reguliere",
       "date": "2026-11-02",
-      "g": 2,
-      "code": "AQICAJeiATxaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa",
+      "g": 3,
+      "code": "AQIDAJeiATxaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa",
       "resultat": {
         "score": 263,
         "distance": 113,
@@ -210,20 +175,20 @@
       }
     },
     {
-      "nom": "pilote",
-      "date": "2026-11-14",
-      "g": 2,
-      "code": "AQICAKOiAZEBkALKBNUCwQGXGb4BiAL1BIsF1QGwAXmeAbcB0AG8Ad4BiAPHAbYB9gGyBT4vLfIB_wGvAbcBtwG1AeYCsQGxAdwC1QKaAakBqAHdB6EBoAFgOy0tfxs3JS0tuAFssQZrdJEDtALEA-cB5wHHArgB6gZr_ANrZxvWBXqbAdEBggF9mQGYAdIB_gGaAZkBvAK4AWhs4gJrT7wCmgGaAbMCe9EBnAKZAbkDuAFotAJrdH1xbNsB4wNdOy0tvAFMoAKiA80DtAKaAQ",
+      "nom": "robot",
+      "date": "2026-11-05",
+      "g": 3,
+      "code": "AQIDAJqiAZQBmALAAkSQAYAB0AFcgAHwApQDFBz0BcwBUKQBQLgBkAWQC7ADqAPwAowCtAbIAbwBfKQC9AOUASiAAuAB0ALAAfACgAHEAYwD3AJ0rAGsAeABkAL8AaQBpAP4AqABrAFE7AGoAZgBTOgCgAG4B8QCeIQB0AiAAcABgAGIAbwBlAGEAbABZNABkAGgAcwEuAF4oAXMBKgB3ASgAcgCmAHYAcwCQEQYJGDwAZwBmAFU3AHEBcgBgAKAA7QDdNwBrAKQAWB4XKwBzARUwAHUAQ",
       "resultat": {
-        "score": 21250,
-        "distance": 2820,
-        "pieces": 795,
-        "gemmes": 29,
+        "score": 24348,
+        "distance": 2868,
+        "pieces": 826,
+        "gemmes": 19,
         "multMax": 5,
-        "ticks": 30785,
+        "ticks": 31250,
         "cause": 1,
-        "appuis": 120,
-        "inversions": 120
+        "appuis": 116,
+        "inversions": 116
       }
     }
   ]
