@@ -34,7 +34,7 @@ Branche `ccr-36287547-q40dui` (la branche que la session impose ne contient pas 
 - [x] **Golden inchangé** : `npm run golden:gravity` ne change aucun octet ; `golden.test.ts` ; `e2e/determinisme.spec.ts`.
 - [x] **Serveur** : rejeu, classement, copies, aperçu, effacement : `apps/api/test/gravity.test.ts` (SQLite et libSQL), `recette:seed` par `gravity-essais.ts`.
 - [x] **Son mêlé à celui du téléphone** (règle S2) : `packages/core/test/sonMelange.test.ts`.
-- [x] **Zones** : `zones-jeu.mjs` avec `jeu:gravity` : « les 58 fichiers restent dans ses zones ».
+- [x] **Zones** : `zones-jeu.mjs` avec `jeu:gravity` : « les 58 fichiers restent dans ses zones » (avant le relèvement du plafond de `ciZones.test.ts` : la PR est ensuite mixte, voir « CI de la PR »).
 - [x] **« Pour les joueurs »** : `rien` (le jeu est `off`).
 
 ## Ce que Nathan fait lui-même
@@ -55,10 +55,8 @@ Branche `ccr-36287547-q40dui` (la branche que la session impose ne contient pas 
 **Non vérifié** : la CI complète et libSQL pour `gravityAnalyse.test.ts` (en CI) ; Firefox / WebKit ; la préparation **dans la chaîne de production** (le bouton) ; l'analyse **sur une vraie base Turso** (seulement un fichier local issu du vrai serveur) ; le HUD sur un vrai téléphone (portrait 360 × 780 comparé en capture).
 **Écarts au prompt** : branche sans « gravity » (imposée), étiquette à la place ; dessins communs non adoptés (ci-dessus) ; le premier chargement a failli dépasser son plafond (+4,6 Ko) parce que le bundleur sortait `generateur-` et `couleurs-` en morceaux partagés : **ils sont nommés dans `budget.aLaDemande`** de la fiche (`+925 o` au final).
 
-## CI de la PR (#347) — un échec hors de la zone du lot
-Tout est vert **sauf un test**, `apps/web/test/ciZones.test.ts` › « une PR de DailyJump (apps/jump) … moins d'une minute de tests » : **61 s pour 60 s**. Il fait échouer `unit (3/4)`, `jeu fictif (2/3)` et `Kit de bout en bout` (le job `test` n'est que leur agrégat). **Il est rouge aussi sans ce lot** : mesuré sur `origin/main` seul (`9026429`), la même sélection donne 61 s (`scripts/unit-durees.json`, zone partagée : une durée par défaut de 5 s pour un fichier sans entrée). Règle d'arrêt : **relancé une fois (second run : le même échec, 61 s), je m'arrête et je ne le corrige pas** — Nathan ou un lot de la plateforme tranche (relever le plafond ou ajouter les durées mesurées).
-
-Le second run a aussi un `e2e-pr (3/4)` rouge : `[tower-chromium] classement.spec.ts:201` (« sans serveur : la partie reste jouable… »), **vert au premier run** et dans une zone que le lot ne touche pas : un test instable de Tower, à signaler à son lot. Tout le reste est vert (dont `Budgets`, `zones`, `api-image`, les e2e de Gravity).
+## CI de la PR (#347) — un test de la plateforme, plafond relevé sur décision de Nathan
+Seul `apps/web/test/ciZones.test.ts` › « une PR de DailyJump … moins d'une minute de tests » échouait (**61 s pour 60 s**, à deux runs de suite ; il fait échouer `unit (3/4)`, `jeu fictif (2/3)` et `Kit de bout en bout`, `test` n'est que leur agrégat). **`main` était rouge aussi** (ses deux derniers merges, #346 et #348) : aucun test de Gravity ni de Pinball n'a de durée dans `scripts/unit-durees.json` (5 s chacun par défaut). **Nathan a choisi de relever le plafond à 70 s** (`ciZones.test.ts`, fichier partagé) ; **la PR devient donc une PR mixte** : l'étiquette `jeu:gravity` est retirée (le job `zones` la refuserait), à relire par la plateforme. Le vrai remède (les durées mesurées de ces tests dans `unit-durees.json`) reste à faire par la plateforme. Un e2e instable de Tower a échoué une fois (`classement.spec.ts:201`, vert aux autres runs).
 
 ## Reste après la preview
 **Le calibrage (lot GR6)** : régler vitesse, pente, longueur d'un thème et pourcentage avec les réglages d'essai et `npm run analyser` sur de vraies parties, **puis monter les versions et régénérer le golden** ; une piste de musique ; la limite de la plateforme ci-dessus avant le premier jour figé.
