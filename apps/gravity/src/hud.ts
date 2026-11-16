@@ -1,9 +1,10 @@
 // Le HUD de la partie (lot GR3, seed § La DA) : **par-dessus le plateau**, compact, lisible sur téléphone — le score en grand au centre avec la ligne distance · pièces dessous, le multiplicateur en autocollant jaune avec sa jauge des 10 pièces,
 // la médaille visée en haut à droite (la prochaine et son seuil), les bonus actifs en haut à gauche (bouclier ; aimant et ses secondes), le nom du thème quand il change, la cause de la mort. **Il ne lit que des nombres de la simulation**
-// (`EtatHud`) ; couleurs : les jetons de la charte (`hud.css`) ; textes : les catalogues du jeu (`fr` + `en`), rien en dur. Le HUD du kit (la barre : score, distance, pause) reste en place, son texte masqué à la vue (`hud.css`) : le score et
-// la ligne du kit sont ceux que lisent la pause et les lecteurs d'écran.
+// (`EtatHud`) ; couleurs : les jetons de la charte (`hud.css`) ; textes : les catalogues du jeu (`fr` + `en`), rien en dur. **Lot GR5 : le kit pose les zones** (`hud: "surimpression"`, `OptionsPartie.zones` : haut-gauche, centre, haut-droite,
+// annonce) et masque le texte de sa barre (le score et la ligne du kit sont ceux que lisent la pause et les lecteurs d'écran) : ce fichier les remplit, il n'écrit plus de règle pour masquer la barre. Seuls la mort (et son bilan) et la mention
+// du robot ont leur propre calque, au-dessus du plateau : ce ne sont pas des zones du HUD.
 import { grouper, type Seuils } from "@cdj/gravity-sim";
-import type { OptionsPartie } from "@cdj/kit/jeu/types";
+import type { OptionsPartie, ZonesSurimpression } from "@cdj/kit/jeu/types";
 import "./hud.css";
 
 export interface EtatHud {
@@ -53,6 +54,7 @@ const svg = (d: string): SVGSVGElement => {
 };
 
 export class Hud {
+  /** Le calque de la mort et de la mention du robot (le reste du HUD est dans les zones du kit). */
   private readonly racine = el("div", "g-hud");
   private readonly score = el("b", "g-score__nombre", "0");
   private readonly ligne = el("span", "g-score__ligne");
@@ -78,7 +80,13 @@ export class Hud {
     hote: HTMLElement,
     private readonly o: OptionsPartie,
   ) {
-    if (o.reduit) this.racine.classList.add("g-hud--reduit");
+    const zones: ZonesSurimpression = o.zones!; // `hud: "surimpression"` (definition.ts) : le kit les donne toujours
+    if (o.reduit) {
+      this.racine.classList.add("g-hud--reduit");
+      zones.centre.classList.add("g-hud--reduit"); // les transitions du HUD s'éteignent (hud.css) : le thème est dans l'annonce, la jauge dans le centre
+      zones.annonce.classList.add("g-hud--reduit");
+      zones.hautGauche.classList.add("g-hud--reduit");
+    }
     this.racine.setAttribute("aria-hidden", "true"); // le score et la ligne du kit disent la même chose aux lecteurs d'écran
     this.puceBouclier.querySelector(".g-bonus__texte")!.textContent = o.t("hud.bouclier");
     this.puceBouclier.hidden = true;
@@ -91,7 +99,11 @@ export class Hud {
     const noms = ["bilan.distance", "bilan.pieces", "bilan.gemmes", "bilan.theme", "bilan.mult"] as const;
     this.mort.append(el("div", "g-bilan", ...noms.map((n, i) => el("div", "g-bilan__case", this.bilanValeurs[i]!, el("span", "g-bilan__nom", o.t(n))))));
     this.medaille.hidden = true;
-    this.racine.append(el("div", "g-score", this.score, this.ligne, this.mult), this.medaille, this.bonus, this.theme, this.robot, this.mort);
+    zones.centre.append(el("div", "g-score", this.score, this.ligne, this.mult));
+    zones.hautDroite.append(this.medaille);
+    zones.hautGauche.append(this.bonus);
+    zones.annonce.append(this.theme);
+    this.racine.append(this.robot, this.mort);
     this.mult.addEventListener("animationend", () => this.mult.classList.remove("g-mult--chute"));
     hote.append(this.racine);
   }
@@ -176,5 +188,7 @@ export class Hud {
 
   detruire(): void {
     this.racine.remove();
+    // les zones du kit sont vidées à chaque partie (`surimpression.vider`) ; on retire pourtant ce qu'on y a posé : la scène peut être détruite avant
+    for (const e of [this.score.parentElement, this.medaille, this.bonus, this.theme]) e?.remove();
   }
 }

@@ -47,9 +47,6 @@ import { musique } from "./musiqueDuJeu";
 import { Sons } from "./sons";
 import { sonsDuPas, type Photo } from "./sonsLogique";
 
-// Le panneau « Aujourd'hui » de l'accueil (lot GR4) vit avec la scène : le kit l'appelle une fois le contenu du jour lu, donc quand la scène est chargée (`definition.ts`).
-export { remplirAujourdhui } from "./panneau";
-
 /** Les textes de mort du catalogue, par cause. */
 const CLE_MORT: Record<number, string> = { [MORT_VIDE]: "vide", [MORT_PIQUE]: "pique", [MORT_BORD]: "bord", [MORT_TEMPS]: "temps" };
 /** Combien de temps (ms) la mort se montre avant l'écran de fin ; rien avec « réduire les animations ». */

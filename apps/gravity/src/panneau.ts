@@ -1,7 +1,7 @@
 // Le panneau « Aujourd'hui » de l'accueil de « Gravity » (lot GR4, charte rév. 18 § 9) : l'ordre des cinq thèmes du jour, en tuiles à la couleur du thème avec leur mécanique, puis les seuils des médailles.
 // **Les thèmes s'affichent tout de suite** (ils sont dans le contenu du jour). **Les seuils s'affichent quand ils sont prêts** : `pretSeuils()` (jamais `seuilsFiges`, qui forcerait le calcul du robot d'un trait) ; un jour sans fichier
 // figé les calcule en arrière-plan (`niveau.ts`), le panneau les attend en lisant `pretSeuils()` toutes les demi-secondes, avec une mention discrète. Un jour figé les a d'emblée.
-// Chargé avec la scène (`scene-` : le kit appelle le panneau quand le contenu du jour est lu, donc après elle) : rien de plus au premier chargement. Textes : catalogues du jeu ; couleurs : jetons de la charte et couleurs
+// Lot GR5 : il a son propre morceau (`panneau-`, chargé par `definition.ts` quand le kit l'appelle, le contenu du jour lu) — la scène, elle, n'est plus demandée qu'à JOUER (`chargerPartie`) : rien de plus au premier chargement. Textes : catalogues du jeu ; couleurs : jetons de la charte et couleurs
 // des thèmes de `@cdj/visuels/plateformes` ; jamais de HTML injecté (tout se pose en `textContent`).
 import { MORCEAUX_PAR_THEME, LARGEUR_MORCEAU, grouper, type Contenu, type Seuils } from "@cdj/gravity-sim";
 import type { ContexteAujourdhui } from "@cdj/kit/jeu/types";

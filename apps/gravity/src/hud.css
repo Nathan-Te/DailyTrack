@@ -1,15 +1,6 @@
-/* Le HUD de la partie de « Gravity » (lot GR3) : par-dessus le plateau, compact, lisible sur téléphone. Couleurs et traits : les jetons de la charte (`--dj-*`, `--jump-jaune`), la police du jeu (`--jeu-police`). Chargé avec la partie
-   (jamais au premier chargement). Marges de sécurité sur tout ce qui touche un bord. Le texte de la barre du kit (score, ligne) est masqué à la vue : le HUD ci-dessous le remplace, la pause et les lecteurs d'écran le lisent. */
-.jeu-hud__principal,
-.jeu-hud__secondaire {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
+/* Le HUD de la partie de « Gravity » (lot GR3, lot GR5 : dans les zones du kit) : par-dessus le plateau, compact, lisible sur téléphone. Couleurs et traits : les jetons de la charte (`--dj-*`, `--jump-jaune`), la police du jeu
+   (`--jeu-police`). Chargé avec la partie (jamais au premier chargement). **Le kit pose les zones (haut-gauche, centre, haut-droite, annonce), leurs marges de sécurité et masque le texte de sa barre** (`hud: "surimpression"`) :
+   ici seulement le dessin de ce qu'on y met, et le calque de la mort et du robot. */
 .g-hud {
   position: absolute;
   inset: 0;
@@ -20,16 +11,13 @@
   -webkit-user-select: none;
   user-select: none;
 }
-.g-hud [hidden] {
+.g-hud [hidden],
+.jeu-surimpression [hidden] {
   display: none;
 }
 
-/* le score en grand au centre, la ligne distance · pièces dessous */
+/* le score en grand au centre (la zone du kit), la ligne distance · pièces dessous */
 .g-score {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -110,9 +98,9 @@
 
 /* la médaille visée, en haut à droite */
 .g-medaille {
-  position: absolute;
-  top: 8px;
-  right: max(8px, env(safe-area-inset-right));
+  margin: 2px 2px 0 0; /* la zone du kit est à 6 px du bord : la médaille reste à 8 px */
+  text-align: left; /* la zone du kit aligne à droite : le texte de la médaille, lui, reste à gauche (deux lignes en portrait) */
+  width: max-content; /* sa largeur est celle de son texte (plafonnée par `max-width`), pas celle de la colonne du kit : même rendu qu'avant les zones */
   display: flex;
   align-items: center;
   gap: 6px;
@@ -138,9 +126,7 @@
 
 /* les bonus actifs, en haut à gauche */
 .g-bonus {
-  position: absolute;
-  top: 8px;
-  left: max(8px, env(safe-area-inset-left));
+  margin: 2px 0 0 2px; /* idem : 8 px du bord */
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -177,9 +163,6 @@
 
 /* le nom du thème et sa mécanique, quand il change */
 .g-theme {
-  position: absolute;
-  top: 34%;
-  left: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -189,7 +172,7 @@
   border: var(--dj-trait, 3px) solid var(--dj-encre);
   border-radius: 6px;
   box-shadow: inset 8px 0 0 var(--g-accent, var(--dj-encre)), var(--dj-ombre-cartouche, 4px 4px 0 var(--dj-encre));
-  transform: translateX(-50%) rotate(-2deg);
+  transform: rotate(-2deg); /* l'annonce du kit le centre à 34 % */
   opacity: 0;
   transition: opacity 0.3s;
   white-space: nowrap;
