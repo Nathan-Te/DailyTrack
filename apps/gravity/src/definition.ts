@@ -1,10 +1,10 @@
 import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, TICKS_PAR_SECONDE, VARIANTE, numeroGravity, themeDuJour, type Contenu } from "@cdj/gravity-sim";
 import type { DefinitionJeu } from "@cdj/kit/jeu/types";
 import { lireEssais } from "./essai";
-import { nouvellePartieGravity } from "./scene";
 
-// La définition de « Gravity » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le niveau (générateur, morceaux, seuils) est chargé à la demande** (`niveau.ts`) : le premier chargement
-// est l'accueil seul (ligne de budget `gravity.jsCss`). La scène (`scene.ts`) est dans le morceau de la partie, chargé par le kit au clic sur JOUER.
+// La définition de « Gravity » pour `brancherJeu` : sa simulation, son rendu, son aide. Tout le reste est le kit. **Le niveau (générateur, morceaux, seuils) et la scène (Three.js, `scene.ts`) sont chargés à la demande** : le premier
+// chargement est l'accueil seul (ligne de budget `gravity.jsCss`). `contenuDuJour` charge les deux ensemble pendant que l'accueil s'affiche ; `nouvellePartie` ne vient qu'après (comme Vertige).
+let corps: typeof import("./scene") | null = null;
 export const DEFINITION: DefinitionJeu<Contenu> = {
   ticksParSeconde: TICKS_PAR_SECONDE,
   versions: { simVersion: GRAVITY_SIM_VERSION, generatorVersion: GRAVITY_GENERATOR_VERSION },
@@ -12,11 +12,15 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   actions: [{ id: "toucher", clavier: ["Space", "ArrowUp", "ArrowDown", "KeyW", "KeyS"], manette: "b0" }],
   themeDuJour,
   numero: numeroGravity,
-  contenuDuJour: async (jour, base, theme) => (await import("./niveau")).contenuDuJour(jour, base, theme),
+  async contenuDuJour(jour, base, theme) {
+    const [contenu, scene] = await Promise.all([import("./niveau").then((n) => n.contenuDuJour(jour, base, theme)), corps ? Promise.resolve(corps) : import("./scene")]);
+    corps = scene;
+    return contenu;
+  },
   // Les seuils sont écrits dans le contenu quand il est lu (`niveau.ts`) : ceux du fichier de jour figé, sinon le calcul provisoire.
   seuils: (c) => c.seuilsFiges!,
   medaille: (score, s) => VARIANTE.medaille(score, s),
-  nouvellePartie: nouvellePartieGravity,
+  nouvellePartie: (c, hote, o) => corps!.nouvellePartieGravity(c, hote, o),
   // Pas de fantôme ni de Diamant (le robot du lot GR2 sert aux seuils et aux essais de recette ; un fantôme est un lot de la plateforme et de Nathan).
   sansFantome: true,
   rediffusionDiamant: () => "",

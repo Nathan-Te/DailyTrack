@@ -10,7 +10,7 @@ const name = (browser: string) => (CI ? `gravity-${browser}` : browser);
 const projects: Project[] = [
   {
     name: name("chromium"),
-    use: { ...devices["Desktop Chrome"], launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] } },
+    use: { ...devices["Desktop Chrome"], launchOptions: { executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox"] } }, // lot GR3 : la scène est en WebGL (Three.js), logiciel dans le conteneur
   },
 ];
 if (process.env.E2E_ALL_BROWSERS) {

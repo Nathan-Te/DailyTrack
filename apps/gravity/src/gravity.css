@@ -1,4 +1,4 @@
-/* « Gravity » : seulement ce qui est propre au jeu — le plateau en Canvas, plein cadre (provisoire : le rendu de `@cdj/visuels` viendra au lot GR3). Les écrans sont ceux du kit (`@cdj/kit/jeu.css`). */
+/* « Gravity » : seulement ce qui est propre au jeu — le plateau (un canvas WebGL plein cadre : `scene.ts`) ; le HUD de la partie est `hud.css`, chargé avec la partie. Les écrans sont ceux du kit (`@cdj/kit/jeu.css`). */
 .gravity-plateau {
   display: block;
   touch-action: none;

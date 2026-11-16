@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2880 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2886 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3628,6 +3628,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `hud.detail` | {m} m · ×{mult} | {m} m · ×{mult} |
+| `hud.pieces.une` | {n} pièce | {n} coin |
+| `hud.pieces.autres` | {n} pièces | {n} coins |
+| `hud.mult.aria` | Multiplicateur ×{mult} | Multiplier ×{mult} |
+| `hud.medaille` | {medaille} · {seuil} | {medaille} · {seuil} |
+| `hud.bouclier` | Bouclier | Shield |
+| `hud.aimant` | Aimant · {s} s | Magnet · {s} s |
 
 ### scene (`scene.*`, `apps/gravity/src/catalogue.*.ts`)
 

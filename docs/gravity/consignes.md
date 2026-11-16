@@ -2,15 +2,16 @@
 
 Chargé par lecture des fichiers du jeu (zone `docs/gravity/**`). Réponses et docs en français. **Créé par `npm run nouveau-jeu -- --id gravity --classement score`** (lot K4g) à partir du jeu témoin « Cibles » ; vision : `docs/gravity/seed.md` (**ne pas modifier**, c'est Nathan qui le fait) ; à coller dans une conversation d'orchestration : `docs/gravity/passation.md`.
 
-## État (lots GR1 : le cœur jouable, et GR2 : le robot)
+## État (lots GR1 : le cœur jouable, GR2 : le robot, GR3 : la scène et le HUD)
 - **Le squelette « Cibles » est remplacé** par le vrai jeu : un coureur sans fin en une touche (simulation entière à 120 pas/s, générateur infini des cinq thèmes de Jump, rediffusion = les pas des appuis, rejeu par le serveur, classement au score ↓ puis durée ↑). Le vocabulaire « cibles / touches » a disparu du code. Règles : `packages/gravity-sim/CLAUDE.md` et `apps/gravity/CLAUDE.md` ; compte rendu et défauts connus : `docs/gravity/lots/lot-GR1-coeur-jouable.md`.
 - **Il est `off`** (`etatDepart` de la fiche) : absent de l'accueil, « Bientôt » sur sa page ; Nathan le passe en `preview` puis `on` depuis `/admin/` › Jeux. `temoin: false`.
 - **Lot GR2 : le robot** (`packages/gravity-sim/src/robot.ts`) joue la vraie simulation comme un humain (12 pas entre deux appuis, 8 pas de fenêtre, jamais le bouclier) : il **prouve que chaque morceau se passe** (30 jours, première boucle et moitié de la seconde ; `GRAVITY_GENERATOR_VERSION` 3 : îlots, étages et néon suivent la vitesse) et **donne les seuils définitifs des médailles** (60 % de son score, `GRAVITY_BOT_VERSION` 2, figés avec le niveau). Essais de recette : `?robot` et `?morceau=<n>`. Compte rendu, mesures et liens : `docs/gravity/lots/lot-GR2-robot-franchissabilite.md`.
-- **Provisoire** : le rendu (`scene.ts`, avant `@cdj/visuels` au GR3), les textes (courts, complets au GR4), l'identité de la fiche (`identite` « à choisir », au GR5) et la teinte de l'étiquette (à choisir par Nathan).
+- **Lot GR3 : la scène et le HUD définitifs** — la DA de Jump par `@cdj/visuels/plateformes` (cinq thèmes, tuiles à bord clair, fonds en parallaxe, cube jaune) en **Three.js**, plus le héros à bandeau, l'inverseur, les objets, les bonus, les sensations et le HUD propres à Gravity. Règles : `apps/gravity/CLAUDE.md` ; compte rendu, poids, captures et ce qui manque au kit : `docs/gravity/lots/lot-GR3-scene-et-hud.md`.
+- **Provisoire** : les textes (courts, complets au GR4), l'identité de la fiche (`identite` « à choisir », au GR5) et la teinte de l'étiquette (à choisir par Nathan).
 
 ## Où est quoi
 - `packages/gravity-sim` : la simulation (pure, entière : `partie.ts`), le monde et ses cases (`monde.ts`), le générateur du jour et le chemin sûr (`generateur.ts`), la rediffusion, les seuils et les jours figés, le robot (`robot.ts`) et son rapport (`npm run robot:gravity`) ; **`src/variante.ts` : le seul endroit qui sait comment le jeu se classe**. Golden : `npm run golden:gravity -w @cdj/gravity-sim`, **jamais sans monter la version concernée**.
-- `apps/gravity` : `main.ts` (`brancherJeu`), `definition.ts` (la glue), `scene.ts` (le rendu Canvas 2D provisoire et les entrées), `niveau.ts` (le niveau, à la demande), catalogues, `e2e/` (Playwright, ports 4188 et 8798 dans `playwright.config.ts`).
+- `apps/gravity` : `main.ts` (`brancherJeu`), `definition.ts` (la glue), `scene.ts` (l'orchestre du rendu Three.js et les entrées), `monde3d.ts`, `heros.ts`, `effets.ts`, `hud.ts`, `dessins.ts`, `couleurs.ts` (le rendu, à la demande avec la scène), `niveau.ts` (le niveau, à la demande), catalogues, `e2e/` (Playwright, ports 4188 et 8798 dans `playwright.config.ts`).
 - `apps/api/src/gravity.ts` (le contrat minimal : `definirJeuNeuf`, le rejeu des appuis), `apps/api/scripts/gravity-essais.ts` (le module d'essais de `smoke` et `recette:seed`), `apps/api/scripts/gravity-empreintes.ts`, `apps/api/test/gravity.test.ts`.
 
 ## Règles
