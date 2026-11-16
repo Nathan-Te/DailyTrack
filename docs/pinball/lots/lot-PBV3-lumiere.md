@@ -55,10 +55,17 @@ Les deux thèmes se rapprochent de la cible sur les quatre mesures. Ce qui reste
 
 ## Mesures
 - **Premier chargement** : `pinball.jsCss` **43,73 Ko** sur 48 Ko, rien ajouté.
-- **Rendu à la demande** : `pinball.rendu` **168,85 Ko** sur 172 Ko (MAIN_RENDU au PBV2), sous le plafond. Ligne `pinball.demande` : **210,56 Ko** sur 213 Ko (MAIN_DEMANDE). **La marge est faible** (2,4 Ko) : un prochain lot de rendu devra en retirer ailleurs ou demander à Nathan de relever ce plafond.
+- **Rendu à la demande** : `pinball.rendu` **168,85 Ko** sur 172 Ko (166,63 Ko sur `main` : +2,2 Ko), sous le plafond. Ligne `pinball.demande` : **210,56 Ko** sur 213 Ko (208,31 Ko sur `main`). **La marge est faible** (2,4 Ko) : un prochain lot de rendu devra en retirer ailleurs ou demander à Nathan de relever ce plafond.
 - **Fluidité**, mesurée comme au PBV1 et au PBV2 : Chromium de Playwright, 390 × 844, bille en jeu, processeur ralenti ×4, WebGL logiciel, médiane du fil principal par image. La mesure varie d'environ ±2 ms d'une passe à l'autre.
 
-FLUIDITE
+  | fil principal | avant (`main`) | après | après, sans bloom | après, sans tone mapping ni étalonnage |
+  |---|---|---|---|---|
+  | Fête foraine | 11,5 ms | 10,6 ms | 9,6 ms | 10,1 ms |
+  | Océan | 9,8 ms | 10,1 ms | 8,4 ms | 9,6 ms |
+  | Espace | 10,6 ms | 10,2 ms | 9,0 ms | 10,8 ms |
+  | Volcan | 11,2 ms | 10,7 ms | 11,2 ms | 9,6 ms |
+
+  Tout est **sous 16,7 ms**. **Le coût du tone mapping et de l'étalonnage** (« après » moins « sans ») va de −0,6 à +1,1 ms : c'est dans le bruit de la mesure, comme on l'attend d'une fonction de couleur sans passe. Une passe de couleur plein écran, elle, aurait coûté plusieurs ms (PBV1). Une mesure faite plus tôt, avec le cadre à 4 segments d'arrondi, donnait 11,9 à 13,6 ms. Le cadre est revenu à 3 segments (−3 000 triangles), d'où les chiffres ci-dessus. +1 300 triangles et +2 appels de dessin par rapport à `main` (coins en laiton, liseré, halos des lampes ; le calque d'ombres en moins).
 
 ## Vérifié
 - **`npm run verifier` : tout vert** (typecheck, tests unitaires SQLite et libSQL, construction, e2e Pinball 8 specs dont le cadrage, budgets) ; `npm run consignes` vert. Tests ajoutés : `test/couleurs.test.ts`. `test/etiquettes.test.ts` et `test/decor.test.ts` restent verts et inchangés.
