@@ -55,7 +55,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, type Partie, type ThemePinball } from "@cdj/pinball-sim";
-import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Palette, type Rendu, type Surimpression } from "./dessin";
+import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 import { creerModules } from "./modeles/trois";
 
@@ -204,8 +204,8 @@ export interface OptionsCorps {
 export interface RenduTrois extends Rendu {
   /** Change la vue (caméra, lumière, étiquettes) tout de suite : le panneau des réglages. */
   regler(v: Vue): void;
-  /** Ce que mesure `?debug&fps` et que les essais lisent : les appels de dessin et les triangles de la dernière image, et, pour les essais, où tombent les points du terrain à l'écran (`cadre` : le plus grand |x| et les y extrêmes, en coordonnées d'écran de −1 à 1 : tout est à l'image si |x| ≤ 1 et −1 ≤ y ≤ 1) ; `ms` : le temps moyen que le fil principal y passe (la mise à jour de la scène et l'envoi des commandes à la carte graphique, pas le travail de la carte). */
-  info(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] };
+  /** Ce que mesure `?debug&fps` et que les essais lisent : les appels de dessin et les triangles de la dernière image, et, pour les essais, où tombent les points du terrain à l'écran (`cadre` : le plus grand |x| et les y extrêmes, **dans la zone libre entre les bandes du HUD** (lot PB5b : de -1 à 1 = son bord) ; `libre` : cette zone, en pixels du canvas ; en coordonnées d'écran de −1 à 1 : tout est à l'image si |x| ≤ 1 et −1 ≤ y ≤ 1) ; `ms` : le temps moyen que le fil principal y passe (la mise à jour de la scène et l'envoi des commandes à la carte graphique, pas le travail de la carte). */
+  info(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; libre: Libre; table: [number, number][] };
 }
 
 /** Crée le rendu three.js d'une partie sur `canvas` (qui reste à l'appelant). Lève une erreur si le navigateur n'a pas de WebGL : l'appelant retombe alors sur le rendu à plat. */
@@ -1184,6 +1184,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   // --- La caméra : elle cadre toute la table
   let L = 1;
   let H = 1;
+  /** Lot PB5b : la zone du canvas où la table tient en entier (entre les bandes du HUD en surimpression) ; `null` : tout le canvas. La caméra cadre la table dans CETTE zone, puis `setViewOffset` la place dans le canvas. */
+  let libre: Libre | null = null;
   /** Les points du terrain de jeu qui doivent toujours être à l'image : les coins bas, les épaules de l'arc (y = 205) et son sommet (y = 29), les rails. */
   const CADRE: readonly (readonly [number, number, number])[] = [
     [-LARGEUR / 2 - 4, 0, Z(760) + 4], [LARGEUR / 2 + 4, 0, Z(760) + 4], [-LARGEUR / 2 - 4, 24, Z(760) + 4], [LARGEUR / 2 + 4, 24, Z(760) + 4],
@@ -1207,10 +1209,24 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const base = new Vector3();
   const cible = new Vector3();
   let secouee = false;
+  /** Le cadre de la table, mesuré dans la zone libre (de -1 à 1 : son bord) — la caméra sans décalage. */
+  const cadreLibre = (): { x: number; y0: number; y1: number } => {
+    if (!libre) return extremes();
+    camera.clearViewOffset();
+    const e = extremes();
+    decaler();
+    return e;
+  };
+  /** La zone libre prend sa place dans le canvas : une fenêtre de la taille du canvas, décalée de l'origine de la zone. */
+  const decaler = (): void => {
+    if (libre) camera.setViewOffset(libre.l, libre.h, -libre.x, -libre.y, L, H);
+    else camera.clearViewOffset();
+  };
   const cadrer = (): void => {
     const el = rad(vue.angle);
     camera.fov = vue.champ;
-    camera.aspect = L / H;
+    camera.clearViewOffset();
+    camera.aspect = libre ? libre.l / libre.h : L / H;
     camera.updateProjectionMatrix();
     let d = 900;
     let tz = 0;
@@ -1228,6 +1244,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     d *= vue.distance / 100;
     camera.position.set(0, d * Math.sin(el), tz + d * Math.cos(el));
     camera.lookAt(0, 0, tz);
+    decaler();
     camera.updateMatrixWorld(true);
     base.copy(camera.position);
     cible.set(0, 0, tz);
@@ -1375,9 +1392,10 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     }
   }
 
-  function redimensionner(l: number, h: number): void {
+  function redimensionner(l: number, h: number, zone?: Libre): void {
     L = Math.max(1, Math.floor(l));
     H = Math.max(1, Math.floor(h));
+    libre = zone && zone.l >= 8 && zone.h >= 8 ? { ...zone } : null;
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, o.tactile ? 1.5 : 2));
     renderer.setSize(L, H);
     const tampon = renderer.getDrawingBufferSize(new Vector2());
@@ -1405,7 +1423,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       cadrer();
     },
     // lot PBV3 : `table`, la zone de la table à l'écran (px CSS du canvas) — les épaules de l'arc et le bas du terrain, rails compris — où l'outil des couleurs mesure la capture (`test/couleurs.ts`)
-    info: () => ({ appels: renderer.info.render.calls, triangles: renderer.info.render.triangles, ms: msImage, cadre: extremes(), table: ([[20, 205], [348, 205], [348, 740], [20, 740]] as const).map(([x, y]) => { const p = ecranDe(x, y); return [p.x, p.y] as [number, number]; }) }),
+    info: () => ({ appels: renderer.info.render.calls, triangles: renderer.info.render.triangles, ms: msImage, cadre: cadreLibre(), libre: libre ?? { x: 0, y: 0, l: L, h: H }, table: ([[20, 205], [348, 205], [348, 740], [20, 740]] as const).map(([x, y]) => { const p = ecranDe(x, y); return [p.x, p.y] as [number, number]; }) }),
     detruire(): void {
       canvas.removeEventListener("webglcontextlost", surPerte);
       surcouche.remove();

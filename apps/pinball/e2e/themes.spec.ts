@@ -1,19 +1,19 @@
 import { expect, test, type Page } from "@playwright/test";
-import { EV_MISSION, Partie, dailyPinball, jouerRobot, type ThemePinball } from "@cdj/pinball-sim";
+import { EV_MISSION, Partie, dailyPinball, grouper, jouerRobot, type ThemePinball } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import { appareil, JOUR, lancer } from "./appareil";
 
-// « Pinball » (lot PB3) — LES THÈMES ET LES MISSIONS : chaque lien `?theme=` joue la table de son thème avec son élément et sa mission ; la pastille de la mission dit la phrase avant le premier lancer, puis « n / but » avec sa
-// jauge ; `?essai=mission` met la partie au but moins un et le moment fort (message, score, multiplicateur) est celui que la simulation calcule. Rendu de secours (à plat) : rapide, et la mission ne dépend pas du rendu.
-const MISSIONS: Record<ThemePinball, { phrase: string; compteur: string; but: number }> = {
-  foire: { phrase: "Fais 5 tours de manège", compteur: "Manège 0 / 5", but: 5 },
-  ocean: { phrase: "Plonge 3 fois dans le tourbillon", compteur: "Tourbillon 0 / 3", but: 3 },
-  espace: { phrase: "Passe 3 fois par le portail", compteur: "Portail 0 / 3", but: 3 },
-  volcan: { phrase: "Déclenche 4 geysers", compteur: "Geysers 0 / 4", but: 4 },
+// « Pinball » (lot PB3, HUD du lot PB5b) — LES THÈMES ET LES MISSIONS : chaque lien `?theme=` joue la table de son thème avec son élément et sa mission ; la plaque de la mission du HUD dit son nom, sa jauge à cases et « n/but » ;
+// `?essai=mission` met la partie au but moins un et le moment fort (« +10 000 » dans l'afficheur, plaque en moutarde, multiplicateur) est celui que la simulation calcule. Rendu de secours (à plat) : rapide, et la mission ne dépend pas du rendu.
+const MISSIONS: Record<ThemePinball, { nom: string; but: number }> = {
+  foire: { nom: "Manège", but: 5 },
+  ocean: { nom: "Tourbillon", but: 3 },
+  espace: { nom: "Portails", but: 3 },
+  volcan: { nom: "Geysers", but: 4 },
 };
 const chiffres = (t: string | null): number => Number((t ?? "").replace(/\D/g, ""));
 
-/** Lance la première bille (le lanceur tenu puis relâché) : la pastille passe de la phrase à la jauge. */
+/** Lance la première bille (le lanceur tenu puis relâché) : la plaque passe de « avant le lancer » à « en cours », l'aide d'avant le lancer s'en va. */
 async function lancerLaBille(page: Page): Promise<void> {
   await page.evaluate(() => {
     window.__pinball!.regler(2, true);
@@ -25,30 +25,35 @@ async function lancerLaBille(page: Page): Promise<void> {
 
 test.describe("Pinball : les thèmes et les missions", () => {
   for (const [theme, m] of Object.entries(MISSIONS) as [ThemePinball, (typeof MISSIONS)[ThemePinball]][]) {
-    test(`${theme} : la pastille dit la mission avant le lancer, puis « ${m.compteur} » et sa jauge de ${m.but} lampes`, async ({ browser }) => {
+    test(`${theme} : la plaque dit « ${m.nom} », « 0/${m.but} » et sa jauge de ${m.but} cases, avant puis après le lancer`, async ({ browser }) => {
       const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&theme=${theme}&qualite=basse`);
       await lancer(page);
-      const pastille = page.locator(".pinball-mission");
-      await expect(pastille).toHaveText(m.phrase);
-      await expect(pastille).toHaveAttribute("data-etat", "debut");
+      const plaque = page.locator(".pinball-mission");
+      await expect(plaque.locator(".pinball-mission__nom")).toHaveText(m.nom);
+      await expect(plaque.locator(".pinball-mission__val")).toHaveText(`0/${m.but}`);
+      await expect(plaque).toHaveAttribute("data-etat", "debut");
+      await expect(page.locator(".pinball-hud__aide")).toBeVisible();
       await lancerLaBille(page);
-      await expect(pastille).toHaveText(m.compteur);
-      await expect(pastille).toHaveAttribute("data-etat", "en-cours");
-      await expect(pastille.locator(".pinball-mission-jauge i")).toHaveCount(m.but);
-      await expect(pastille.locator('.pinball-mission-jauge i[data-plein="1"]')).toHaveCount(0);
+      await expect(plaque).toHaveAttribute("data-etat", "en-cours");
+      await expect(plaque.locator(".pinball-mission__jauge i")).toHaveCount(m.but);
+      await expect(plaque.locator('.pinball-mission__jauge i[data-plein="1"]')).toHaveCount(0);
+      await expect(page.locator(".pinball-hud__aide")).toBeHidden(); // l'aide part au premier lancer
       await context.close();
     });
   }
 
-  test("l'anglais : la phrase et le compteur de la mission passent par le catalogue", async ({ browser }) => {
+  test("l'anglais : le nom de la mission et l'aide du HUD passent par le catalogue", async ({ browser }) => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&theme=espace&qualite=basse");
     await page.evaluate(() => localStorage.setItem("cdj:langue", "en"));
     await page.reload();
     await page.waitForSelector("#jeu-jouer", { state: "attached" });
     await lancer(page);
-    await expect(page.locator(".pinball-mission")).toHaveText("Go through the portal 3 times");
+    await expect(page.locator(".pinball-mission__nom")).toHaveText("Portals");
+    await expect(page.locator(".pinball-mission__val")).toHaveText("0/3");
+    await expect(page.locator(".pinball-hud__aide")).toHaveText("Hold, then release to launch");
+    await expect(page.locator("#pinball-pause")).toHaveAttribute("aria-label", "Pause");
     await lancerLaBille(page);
-    await expect(page.locator(".pinball-mission")).toHaveText("Portal 0 / 3");
+    await expect(page.locator(".pinball-mission__val")).toHaveText("0/3");
     await context.close();
   });
 
@@ -69,8 +74,7 @@ test.describe("Pinball : les thèmes et les missions", () => {
       }
       expect(p.ev & EV_MISSION, "le pilote d'essai réussit la mission sur cette table").toBeTruthy();
       const pas = p.tick;
-      const message = page.locator(".pinball-mission-reussie");
-      await expect(message).toBeHidden();
+      const afficheur = page.locator(".pinball-hud__chiffres");
       // la page joue les mêmes événements, aux mêmes pas, jusqu'à un pas avant la mission
       await page.evaluate(
         ({ evenements, pas }) => {
@@ -85,15 +89,18 @@ test.describe("Pinball : les thèmes et les missions", () => {
         },
         { evenements, pas },
       );
-      await expect(page.locator(".pinball-mission")).toHaveText(MISSIONS[theme].compteur.replace(" 0 /", ` ${but - 1} /`));
-      await expect(message).toBeHidden();
+      await expect(page.locator(".pinball-mission__val")).toHaveText(`${but - 1}/${but}`);
+      await expect(page.locator(".pinball-mission")).toHaveAttribute("data-etat", "en-cours");
       await page.evaluate(() => window.__jeu.avancer(1));
-      await expect(message).toBeVisible();
-      await expect(message).toHaveText(`Mission réussie ! ×${p.mult}`);
+      // le moment fort : « +10 000 » (au multiplicateur d'avant) dans l'afficheur, la plaque en moutarde (« Réussie », cases pleines), le multiplicateur monte d'un cran
+      await expect(afficheur).toHaveText(`+${grouper(10000 * (p.mult - 1), "fr")}`);
       await expect(page.locator(".pinball-mission")).toHaveAttribute("data-etat", "reussie");
-      await expect(page.locator(".pinball-mission")).toHaveText("Mission réussie");
-      await expect(page.locator('.pinball-mission-jauge i[data-plein="1"]')).toHaveCount(but);
+      await expect(page.locator(".pinball-mission__val")).toHaveText("Réussie");
+      await expect(page.locator('.pinball-mission__jauge i[data-plein="1"]')).toHaveCount(but);
+      await expect(page.locator(".pinball-hud__mult")).toHaveText(`×${p.mult}`);
+      await expect(page.locator(".pinball-hud__mult")).toHaveAttribute("data-haut", "1");
       expect(chiffres(await page.locator("#jeu-hud-score").textContent()), "le score de la page est celui de la simulation").toBe(p.score);
+      await expect(afficheur, "deux secondes plus tard, l'afficheur montre de nouveau le score").toHaveText(grouper(p.score, "fr"), { timeout: 4000 });
       await expect(page.locator("#jeu-hud-temps")).toContainText(`×${p.mult}`);
       expect(p.score).toBeGreaterThanOrEqual(10000);
       await context.close();
@@ -104,7 +111,7 @@ test.describe("Pinball : les thèmes et les missions", () => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&theme=foire&qualite=basse");
     await lancer(page);
     await lancerLaBille(page);
-    await expect(page.locator(".pinball-mission")).toHaveText("Manège 0 / 5");
+    await expect(page.locator(".pinball-mission__val")).toHaveText("0/5");
     await context.close();
   });
 });

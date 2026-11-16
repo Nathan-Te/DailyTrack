@@ -16,7 +16,7 @@ test.describe("Pinball : une partie", () => {
     await expect(page.locator("#jeu-hud-score")).toHaveText("0");
     await expect(page.locator("#jeu-hud-temps")).toHaveText("×1 · Billes : 3");
     // La pause arrête le temps : aucun pas n'est joué, la reprise le relance.
-    await page.locator("#jeu-hud-pause").click();
+    await page.locator("#pinball-pause").click();
     await expect(page.locator("#jeu-pause")).toBeVisible();
     expect(await page.evaluate(() => window.__jeu.phase())).toBe("pause");
     await page.locator("#jeu-reprendre").click();

@@ -1,0 +1,333 @@
+/* Le HUD en surimpression de « Pinball » (lot PB5b ; maquettes `docs/pinball/maquettes/pinball-hud-*.html`, charte « Cartouches » § 5 et § 9). Chargé avec la scène, jamais au premier chargement. Jetons de la charte seulement
+   (`--dj-*`), sauf le gris d'acier de la bille (`--p-acier`, celui de l'illustration de Rush) ; marges de sécurité sur tout ce qui touche un bord.
+   **Trois dispositions, une grille** (la mise en page ne se calcule pas en script) :
+   · portrait : en haut pause · plein écran · afficheur · multiplicateur, en bas la mission et les billes (les deux bandes que le meuble laisse libres) ;
+   · paysage de téléphone (hauteur ≤ 520 px) : tout dans la marge de gauche (pause, afficheur, multiplicateur, billes, mission en bas), le plein écran à droite ;
+   · ordinateur et tablette en paysage : comme le paysage, la mission en haut à droite sous le plein écran, l'aide du clavier en bas à gauche.
+   **`.pinball-hud__libre` est le gabarit de la table** : un cadre invisible dont les quatre bords sont les marges que chaque disposition laisse au HUD ; `hud.ts` le mesure et la scène y fait tenir la table. Les valeurs
+   ci-dessous (`--l-*`) disent la même chose que la grille. **Aucune plaque ne prend de toucher** : seuls les deux boutons ont `pointer-events: auto`. */
+
+/* La barre crème du kit n'a plus lieu d'être : le HUD ci-dessous la remplace (pause et plein écran y sont). Elle reste dans la page : la pause du kit s'ouvre par son bouton (`#jeu-hud-pause`), qui n'est plus visible. */
+.jeu-scene--surimpression > .jeu-hud {
+  display: none;
+}
+
+.pinball-hud {
+  --p-bord: 12px;
+  --p-cible: 44px;
+  --p-acier: #c9d2de;
+  --h-haut: max(env(safe-area-inset-top, 0px), 0px);
+  --h-bas: max(env(safe-area-inset-bottom, 0px), 0px);
+  --h-gauche: max(env(safe-area-inset-left, 0px), 0px);
+  --h-droite: max(env(safe-area-inset-right, 0px), 0px);
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: var(--p-cible) minmax(0, 1fr) var(--p-cible);
+  gap: var(--dj-espace-2);
+  padding: calc(var(--h-haut) + var(--p-bord)) max(var(--h-droite), var(--p-bord)) calc(var(--h-bas) + var(--p-bord)) max(var(--h-gauche), var(--p-bord));
+  pointer-events: none;
+  font-family: var(--dj-police-texte, sans-serif);
+  color: var(--dj-encre);
+  -webkit-user-select: none;
+  user-select: none;
+  /* le gabarit de la table (portrait) : sous la bande du haut, au-dessus de celle du bas */
+  --l-haut: calc(var(--h-haut) + var(--p-bord) + var(--p-cible) + var(--dj-espace-2));
+  --l-bas: calc(var(--h-bas) + var(--p-bord) + var(--p-cible) + var(--dj-espace-2));
+  --l-gauche: 0px;
+  --l-droite: 0px;
+}
+.pinball-hud__libre {
+  position: absolute;
+  top: var(--l-haut);
+  bottom: var(--l-bas);
+  left: var(--l-gauche);
+  right: var(--l-droite);
+  pointer-events: none;
+  visibility: hidden;
+}
+.pinball-hud [hidden] {
+  display: none !important;
+}
+
+/* --- Les plaques : bordure 2 px, ombre nette 2 px (charte § 9) --- */
+.pinball-hud__bouton,
+.pinball-hud__mult,
+.pinball-hud__plaque {
+  box-sizing: border-box;
+  height: var(--p-cible);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.pinball-hud__bouton {
+  grid-row: 1;
+  width: var(--p-cible);
+  min-width: var(--p-cible);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.pinball-hud__bouton:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.pinball-hud__bouton:focus-visible {
+  outline: var(--dj-trait-fort) solid var(--dj-encre);
+  outline-offset: 2px;
+}
+.pinball-hud__pause {
+  grid-column: 1;
+}
+.pinball-hud__plein {
+  grid-column: 2;
+}
+
+/* --- L'afficheur encastré (charte § 5) : fond d'écran, chiffres ambre --- */
+.pinball-hud__afficheur {
+  grid-row: 1;
+  grid-column: 3;
+  box-sizing: border-box;
+  height: var(--p-cible);
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 12px;
+  overflow: hidden;
+  background: var(--dj-ecran);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-afficheur);
+  box-shadow: var(--dj-ombre-afficheur), var(--dj-ombre-bouton);
+}
+.pinball-hud__chiffres {
+  font: 700 24px/1 var(--dj-police-chiffres);
+  color: var(--dj-ambre);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.pinball-hud__afficheur[data-long="1"] .pinball-hud__chiffres {
+  font-size: 19px;
+}
+
+/* --- Le multiplicateur : papier à ×1, moutarde dès ×2 --- */
+.pinball-hud__mult {
+  grid-row: 1;
+  grid-column: 4;
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 18px var(--dj-police-chiffres);
+}
+.pinball-hud__mult[data-haut="1"] {
+  background: var(--dj-moutarde);
+  border-width: var(--dj-trait-fort);
+}
+
+/* --- La mission : nom, jauge à cases, « 3/5 » ; réussie, la plaque passe en moutarde et les cases s'encrent --- */
+.pinball-mission {
+  grid-row: 3;
+  grid-column: 1 / span 3;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  margin-top: 2px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+.pinball-mission__nom {
+  font: 700 13px var(--dj-police-texte, sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pinball-mission__jauge {
+  display: inline-flex;
+  gap: 3px;
+}
+.pinball-mission__jauge i {
+  width: 16px;
+  height: 12px;
+  box-sizing: border-box;
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--dj-creme-2);
+}
+.pinball-mission__jauge i[data-plein="1"] {
+  background: var(--dj-moutarde);
+}
+.pinball-mission__val {
+  font: 700 14px var(--dj-police-chiffres);
+}
+.pinball-mission[data-etat="reussie"] {
+  background: var(--dj-moutarde);
+  border-width: var(--dj-trait-fort);
+}
+.pinball-mission[data-etat="reussie"] .pinball-mission__jauge i[data-plein="1"] {
+  background: var(--dj-encre);
+}
+.pinball-mission[data-etat="reussie"] .pinball-mission__val {
+  font-family: var(--dj-police-texte, sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* --- Les billes : rondes en acier ; une bille perdue : un rond en pointillés --- */
+.pinball-hud__billes {
+  grid-row: 3;
+  grid-column: 3 / span 2;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+}
+.pinball-hud__bille {
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--p-acier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  box-shadow: inset 3px 3px 0 -1px #ffffff;
+}
+.pinball-hud__bille[data-perdue="1"] {
+  background: var(--dj-creme-2);
+  border: var(--dj-trait) dashed var(--dj-encre-douce);
+  box-shadow: none;
+}
+
+/* --- L'aide d'avant le lancer : une ligne sur le haut du meuble, qui part au premier lancer --- */
+.pinball-hud__aide {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  align-self: start;
+  justify-self: start;
+  margin: 4px 0 0;
+  padding: 6px 12px;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border-radius: var(--dj-rayon-bouton);
+  font: 600 13px/1.25 var(--dj-police-texte, sans-serif);
+}
+.pinball-hud[data-lancee="1"] .pinball-hud__aide,
+.pinball-hud[data-lancee="1"] .pinball-hud__clavier {
+  display: none;
+}
+
+/* --- L'aide du clavier (ordinateur, à la première partie) : en bas à gauche, ailleurs rien --- */
+.pinball-hud__clavier {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  grid-row: 4;
+  grid-column: 1 / span 3;
+  align-self: end;
+  justify-self: start;
+}
+.pinball-hud__touche {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  margin: 0;
+  padding: 0 12px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border-radius: var(--dj-rayon-bouton);
+  font: 600 13px var(--dj-police-texte, sans-serif);
+  white-space: nowrap;
+}
+.pinball-hud__touche kbd {
+  padding: 2px 6px;
+  border: var(--dj-trait) solid var(--dj-papier);
+  border-radius: var(--dj-rayon-bouton);
+  font: 700 12px var(--dj-police-chiffres);
+}
+
+/* --- Paysage : tout dans la marge de gauche (téléphone) --- */
+@media (min-aspect-ratio: 1/1) {
+  .pinball-hud {
+    grid-template-columns: auto 140px auto minmax(0, 1fr) auto;
+    grid-template-rows: var(--p-cible) var(--p-cible) minmax(0, 1fr) 40px;
+    --l-haut: 0px;
+    --l-bas: 0px;
+    /* la marge de gauche : l'espace de sécurité, la pause, l'afficheur de 140 px, le multiplicateur, et un bord */
+    --l-gauche: calc(max(var(--h-gauche), var(--p-bord)) + var(--p-cible) + 140px + 48px + 3 * var(--dj-espace-2) + var(--p-bord));
+  }
+  .pinball-hud__pause {
+    grid-column: 1;
+  }
+  .pinball-hud__afficheur {
+    grid-column: 2;
+  }
+  .pinball-hud__chiffres {
+    font-size: 20px;
+  }
+  .pinball-hud__afficheur[data-long="1"] .pinball-hud__chiffres {
+    font-size: 16px;
+  }
+  .pinball-hud__mult {
+    grid-column: 3;
+  }
+  .pinball-hud__plein {
+    grid-column: 5;
+    justify-self: end;
+  }
+  .pinball-hud__billes {
+    grid-row: 2;
+    grid-column: 1 / span 3;
+    justify-self: start;
+  }
+  .pinball-hud__aide {
+    grid-row: 3;
+    grid-column: 1 / span 3;
+    max-width: 252px;
+  }
+  .pinball-mission {
+    grid-row: 4;
+    grid-column: 1 / span 3;
+    margin-top: 0;
+  }
+}
+
+/* --- Ordinateur et tablette en paysage : la mission en haut à droite, l'aide du clavier en bas à gauche --- */
+@media (min-aspect-ratio: 1/1) and (min-height: 521px) {
+  .pinball-hud {
+    --p-bord: 24px;
+    grid-template-columns: auto 190px auto minmax(0, 1fr) auto;
+    --l-gauche: calc(max(var(--h-gauche), var(--p-bord)) + var(--p-cible) + 190px + 48px + 3 * var(--dj-espace-2) + var(--p-bord));
+    --l-droite: calc(max(var(--h-droite), var(--p-bord)) + 280px);
+  }
+  .pinball-hud__chiffres {
+    font-size: 24px;
+  }
+  .pinball-hud__afficheur[data-long="1"] .pinball-hud__chiffres {
+    font-size: 19px;
+  }
+  .pinball-mission {
+    grid-row: 2;
+    grid-column: 4 / span 2;
+    justify-self: end;
+    margin-top: 0;
+  }
+  .pinball-hud__aide {
+    max-width: 320px;
+  }
+  .pinball-hud__clavier {
+    display: flex;
+  }
+}

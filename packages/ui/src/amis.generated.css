@@ -25,7 +25,7 @@
   --sel-actif-texte: #FFB892;
 }
 .dj-amis-selecteur.dj-amis-selecteur--pinball {
-  --sel-fond: #C9B6F2;
+  --sel-fond: #F6A2D8;
   --sel-actif-fond: var(--dj-encre);
-  --sel-actif-texte: #C9B6F2;
+  --sel-actif-texte: #F6A2D8;
 }
