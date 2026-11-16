@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { DUREE_PARTIE_ROBOT, VARIANTE, dailyPinball, graineDuRobot, jouerRobot } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
+import { EXEMPLES } from "../src/tune-sons";
 import { appareil, JOUR, lancer } from "./appareil";
 
 // « Pinball » (lot PB4) — LES ESSAIS DE RECETTE `?robot` : on regarde le robot jouer la table du jour avec la mention « Le robot joue » ; `?jour=AAAA-MM-JJ&robot` pour un autre jour. La page rejoue les événements
@@ -73,6 +74,64 @@ test.describe("Pinball : le robot joue (?robot)", () => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse");
     await lancer(page);
     await expect(page.locator(".pinball-robot")).toHaveCount(0);
+    await context.close();
+  });
+});
+
+// Lot PBS1 — LES SONS : `?debug&sons` ouvre la table des sons (un bouton par son), aucun son avant le premier geste, et la partie joue ses sons sans toucher à la simulation. **L'écoute ne se vérifie pas ici** (le navigateur de test n'a pas de
+// haut-parleur) : on lit ce que la scène a décidé de jouer (`__pinball.sons()`).
+test.describe("Pinball : les sons (?debug&sons)", () => {
+  test("la table des sons : un bouton par son, un par thème pour les bumpers, et un bouton joue son son", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&sons");
+    await lancer(page);
+    await page.locator(".pinball-sons > button").click();
+    const attendu = Object.values(EXEMPLES).reduce((n, l) => n + l.length, 0);
+    // les boutons des sons, plus les trois actions du bas (le spinner qui tourne, la rafale, fermer)
+    await expect(page.locator(".pinball-sons button")).toHaveCount(attendu + 3 + 1);
+    for (const nom of ["pomme d'amour", "bulle", "planète", "braise"]) await expect(page.getByRole("button", { name: `Bumper ${nom}` })).toBeVisible();
+    // un bouton est un geste : le premier crée le contexte audio, le suivant joue
+    await page.getByRole("button", { name: "Lance-pierre" }).click();
+    await page.waitForFunction(() => window.__pinball!.sons().pret);
+    await page.waitForTimeout(150);
+    await page.getByRole("button", { name: "Lance-pierre" }).click();
+    expect(await page.evaluate(() => window.__pinball!.sons().joues.some((j) => j.son === "sling" && j.joue))).toBe(true);
+    await context.close();
+  });
+
+  test("sans `&sons`, ni panneau ni bouton", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse");
+    await lancer(page);
+    await expect(page.locator(".pinball-sons")).toHaveCount(0);
+    await context.close();
+  });
+
+  test("aucun son avant le premier geste ; le premier appui de touche ouvre le contexte audio, et le batteur est décidé", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse");
+    await lancer(page);
+    await page.evaluate(() => window.__jeu.avancer(30));
+    expect((await page.evaluate(() => window.__pinball!.sons())).pret).toBe(false);
+    await page.keyboard.down("KeyQ");
+    await page.evaluate(() => window.__jeu.avancer(30));
+    await page.keyboard.up("KeyQ");
+    await page.evaluate(() => window.__jeu.avancer(30));
+    const sons = await page.evaluate(() => window.__pinball!.sons());
+    expect(sons.pret).toBe(true);
+    // l'appui du batteur est un son (joué si le contexte tournait déjà à cet instant, sinon perdu : jamais mis en file) ; la relâche aussi
+    expect(sons.joues.filter((j) => j.son === "batteur").length).toBeGreaterThanOrEqual(1);
+    await context.close();
+  });
+
+  test("le robot joue 9 000 pas : la partie décide des sons de la table, jamais le contraire (la rediffusion est celle de la simulation)", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&robot");
+    await lancer(page);
+    await page.keyboard.press("Shift"); // un geste : le son s'ouvre
+    await page.waitForFunction(() => window.__pinball!.sons().pret);
+    await page.evaluate(() => window.__jeu.avancer(9000));
+    const sons = await page.evaluate(() => window.__pinball!.sons());
+    expect(sons.stats.appels).toBeGreaterThan(5);
+    expect(sons.joues.some((j) => j.son === "batteur")).toBe(true);
+    // la simulation n'a rien su des sons : les événements sont ceux du robot, au pas près
+    expect(await page.evaluate(() => window.__pinball!.evenements())).toEqual(robot(JOUR).evenements.filter((e) => e.tick < 9000));
     await context.close();
   });
 });

@@ -38,6 +38,8 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   classable: (adresse) => !lireEssai(adresse, BUILD_RESTRICTED).essai,
   // Lot PB2 : une vibration courte quand un batteur frappe la bille (le réglage « Vibration » du kit apparaît dans les Réglages).
   vibration: true,
+  // Lot PBS1 : les effets sonores (`sons.ts`, procéduraux) — le réglage « Volume des effets » du kit apparaît dans les Réglages du jeu.
+  effets: true,
   // **Pas de fantôme Diamant en partie** (lot PB4) : une bille fantôme sur la table serait illisible. Le robot donne les seuils des médailles et se regarde avec `?robot` (hors production), jamais autre chose.
   sansFantome: true,
   rediffusionDiamant: () => "",

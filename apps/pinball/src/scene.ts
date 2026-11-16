@@ -9,7 +9,7 @@
 // ce que la rediffusion exige. Hors production, `?debug` montre les contours de collision, le compteur de pas et le score de chaque contact, et pose `window.__pinball` (les essais e2e y dictent leurs appuis) ;
 // `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`). **Lot PB4 : `?robot`** — le robot de
 // la simulation joue sa partie (calculée par `niveau.ts`), la scène en rejoue les événements à leur pas ; la mention « Le robot joue » le dit, le toucher et le clavier ne changent rien.
-import { EV_LANCE, EV_MISSION, EV_SAUVEE, MAX_EVENEMENTS, NB_BILLES, POINTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
+import { DROITE, EV_BUMPER, EV_CIBLE, EV_LANCE, EV_MISSION, EV_SAUVEE, EV_SPINNER, GAUCHE, LANCEUR, MAX_EVENEMENTS, NB_BILLES, POINTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
 import { DetecteurBridage } from "@cdj/core/bridage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -19,10 +19,13 @@ import { ACTIONS } from "./commandes";
 import { nomDuModule } from "./noms";
 import { creerRendu, type Rendu } from "./dessin";
 import { creerHud } from "./hud";
+import { Sons } from "./sons";
+import { Cliquetis, photoVide, sonsDuPas, type Photo } from "./sonsLogique";
 import { reglagesDe, vueDe, type Vue } from "./bornes";
 import { lireEssai, type Qualite } from "./essai";
 import type { RenduTrois } from "./corps";
 import type { Tune } from "./tune";
+import type { TableSons } from "./tune-sons";
 import type { RobotDuJour } from "./niveau";
 
 const IDS = ["gauche", "droite", "lanceur"] as const;
@@ -55,7 +58,7 @@ function commandes(): Commandes {
 declare global {
   interface Window {
     /** Hors production, avec `?debug` : les essais e2e dictent leurs changements de commandes (`c` : 0 gauche, 1 droite, 2 lanceur). */
-    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] } | null; vibrations(): number; contours(oui: boolean): void };
+    __pinball?: { regler(c: number, enfonce: boolean): void; tick(): number; evenements(): Evenement[]; qualite(): Qualite; trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] } | null; vibrations(): number; contours(oui: boolean): void; sons(): { pret: boolean; joues: { son: string; joue: boolean }[]; stats: { appels: number; ms: number; pire: number; refuses: number } } };
   }
 }
 
@@ -244,13 +247,16 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   addEventListener("keyup", surRelache);
   addEventListener("blur", toutLacher);
   const surVisibilite = (): void => {
-    if (document.hidden) toutLacher();
+    if (document.hidden) {
+      toutLacher();
+      sons.silence();
+    }
   };
   document.addEventListener("visibilitychange", surVisibilite);
 
   // L'écran tactile : la moitié gauche lève le batteur gauche, la droite le droit ; tant que la bille attend dans le couloir, un toucher tenu est le lanceur.
   const surPointeur = (e: PointerEvent): void => {
-    if ((e.target as HTMLElement).closest("button, input, textarea, .pinball-tune")) return; // le HUD du kit et le panneau des réglages ont leurs propres commandes
+    if ((e.target as HTMLElement).closest("button, input, textarea, .pinball-tune, .pinball-sons")) return; // le HUD du kit et le panneau des réglages ont leurs propres commandes
     e.preventDefault();
     try {
       hote.setPointerCapture(e.pointerId);
@@ -282,14 +288,55 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       if ((pad.axes[0] ?? 0) < -0.5 || pad.buttons[14]?.pressed) tenu[0] = true;
       if ((pad.axes[0] ?? 0) > 0.5 || pad.buttons[15]?.pressed) tenu[1] = true;
     }
+    if (tenu[0] || tenu[1] || tenu[2]) geste(); // une manette réveille le son quand le navigateur le permet
     for (const c of [0, 1, 2] as const) {
       if (tenu[c]) tenir(c, "pad");
       else lacher(c, "pad");
     }
   };
 
+  // --- Les sons (lot PBS1, `sons.ts` et `sonsLogique.ts`) : la scène les déduit de l'état de la partie entre deux pas, comme la vibration — la simulation ne sait rien d'eux. Règle S2 : le contexte s'ouvre par `ouvrirContexteAudio` ; aucun son
+  // avant le premier geste (les écouteurs sont en capture : ils passent avant ceux de la partie, le premier batteur s'entend) ; le volume est celui des Réglages du kit.
+  const sons = new Sons({ niveau: o.volumeEffets });
+  const geste = (): void => sons.deverrouiller();
+  const GESTES = ["pointerdown", "pointerup", "touchend", "keydown", "click"] as const;
+  for (const g of GESTES) addEventListener(g, geste, { passive: true, capture: true });
+  const avantPas = photoVide();
+  const apresPas = photoVide();
+  /** L'état que les sons comparent avant et après un pas ; ce qui ne se lit que quand l'événement a eu lieu (le bumper, la cible, le spinner) ne se cherche que alors. */
+  const prendre = (p: Photo, ev: number): void => {
+    p.gauche = partie.tenue(GAUCHE);
+    p.droite = partie.tenue(DROITE);
+    p.lanceur = partie.tenue(LANCEUR);
+    p.charge = partie.charge;
+    p.dansLanceur = partie.dansLanceur;
+    p.captif = partie.captif;
+    p.captifTb = partie.captifTb;
+    p.mult = partie.mult;
+    p.compteur = partie.compteur;
+    let voies = 0;
+    for (const v of partie.voiesAllumees) if (v) voies++;
+    p.voies = voies;
+    p.bumper = ev & EV_BUMPER ? partie.choc.indexOf(40) : -1;
+    p.cible = 0;
+    if (ev & EV_CIBLE) for (const b of partie.table.banques) p.cible = Math.max(p.cible, b.reduce((n, k) => n + (partie.bas[k] ? 1 : 0), 0));
+    p.spin = 0;
+    if (ev & EV_SPINNER) for (const s of partie.spin) p.spin = Math.max(p.spin, s);
+  };
+  const cliquetis = new Cliquetis();
+  let tickSon = -1;
+  let tImageSon = performance.now();
+  const trouNoirSon = { distance: 0, rayon: 0 };
+  let tableSons: TableSons | null = null;
+  if (essai.sons) {
+    void import("./tune-sons").then((m) => {
+      if (detruite) return;
+      tableSons = m.monterTableSons(hote, { langue: o.langue, sons, theme: contenu.theme });
+    });
+  }
+
   let vibrations = 0;
-  if (essais && debug) window.__pinball = { regler: (c, enfonce) => (enfonce ? tenir(c as Cmd, "essai") : lacher(c as Cmd, "essai")), tick: () => partie.tick, evenements: () => journal, qualite: () => qualite, trois: () => trois?.info() ?? null, vibrations: () => vibrations, contours: (oui) => (contours = oui) };
+  if (essais && debug) window.__pinball = { regler: (c, enfonce) => (enfonce ? tenir(c as Cmd, "essai") : lacher(c as Cmd, "essai")), tick: () => partie.tick, evenements: () => journal, qualite: () => qualite, trois: () => trois?.info() ?? null, vibrations: () => vibrations, contours: (oui) => (contours = oui), sons: () => ({ pret: sons.pret, joues: sons.joues.slice(), stats: { ...sons.stats } }) };
 
   /** Une partie neuve avec les réglages d'essai du panneau (jamais classée) : même table, autres sensations ; les rendus la lisent par `vivante`. */
   const relancer = (): void => {
@@ -346,6 +393,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         return;
       }
       if (partie.tick % 6 === 0) lirePad();
+      prendre(avantPas, 0); // l'état d'avant les commandes de ce pas : un appui de batteur est un changement entre cette photo et celle d'après
       if (robot) {
         // les événements du robot, à leur pas (un par commande et par pas : ce sont ceux d'une rediffusion)
         while (robotSuivant < robot.evenements.length && robot.evenements[robotSuivant]!.tick === partie.tick) {
@@ -358,6 +406,8 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       const multAvant = partie.mult;
       partie.avancer();
       tDernierPas = performance.now();
+      prendre(apresPas, partie.ev);
+      for (const e of sonsDuPas(partie.ev, avantPas, apresPas, contenu.theme)) sons.jouer(e);
       if (tDernierPas - tVibration > PAUSE_VIBRATION_MS && batteurFrappe(vx, vy)) {
         tVibration = tDernierPas;
         vibrations++;
@@ -378,6 +428,21 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     dessiner(): void {
       const maintenant = performance.now();
       majHud();
+      // les sons continus : le roulement de la bille, le ressort du lanceur, le grondement du trou noir, le cliquetis des spinners — seulement si la partie avance (en pause, tout s'éteint)
+      const dt = (maintenant - tImageSon) / 1000;
+      tImageSon = maintenant;
+      const avance = partie.tick !== tickSon && !arretee();
+      tickSon = partie.tick;
+      const enJeu = avance && !partie.dansLanceur && partie.captif === 0;
+      const zone = partie.table.trousNoirs[0];
+      if (enJeu && zone) {
+        trouNoirSon.distance = Math.hypot(partie.x - zone.x, partie.y - zone.y) / UNITE;
+        trouNoirSon.rayon = zone.r / UNITE;
+      }
+      sons.continu(enJeu ? Math.hypot(partie.vx, partie.vy) / UNITE : 0, avance && partie.dansLanceur && partie.tenue(LANCEUR) ? partie.charge : 0, enJeu && zone ? trouNoirSon : null);
+      let spin = 0;
+      if (avance) for (const s of partie.spin) spin = Math.max(spin, s);
+      for (let i = cliquetis.avancer(dt, spin); i > 0; i--) sons.jouer({ son: "spinner", spin });
       while (gains.length > 0 && gains[0]!.fin < partie.tick) gains.shift();
       const avant = performance.now();
       rendu.dessiner({
@@ -399,6 +464,9 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     fantome: () => undefined,
     detruire(): void {
       detruite = true;
+      for (const g of GESTES) removeEventListener(g, geste, { capture: true });
+      tableSons?.detruire();
+      sons.dispose();
       hud.detruire();
       mentionRobot?.remove();
       tune?.detruire();
