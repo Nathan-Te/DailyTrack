@@ -1,11 +1,16 @@
-import {
-  AXE, DROITE, DUREE_MAX_TICKS, EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS,
-  RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, type Controle,
-} from "./constantes";
-import { cosinus, div, racine, sinus, unitaire } from "./entiers";
+import * as K from "./constantes";
+import type { Controle } from "./constantes";
+import * as E from "./entiers";
 import { MISSION_DU_THEME, type Contenu, type Mission } from "./generateur";
 import { deriver, REGLAGES, type Derives, type Reglages } from "./reglages";
 import { construireTable, type Segment, type Table } from "./table";
+// Les constantes et les fonctions chaudes sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, deux à trois fois plus lent dans une boucle de millions de pas (le robot du
+// lot PB4 en joue des dizaines de millions). Rien ne change pour le jeu ni le serveur.
+const {
+  AXE, DROITE, DUREE_MAX_TICKS, EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS,
+  RAYON, TICKS_PAR_SECONDE, TOUR, UNITE,
+} = K;
+const { cosinus, div, racine, sinus, unitaire } = E;
 
 // La partie (lot PB1) : la physique de la maquette portée en entiers, au pas de 1/600 s. **Trois commandes seulement** (`regler`) : le batteur gauche, le batteur droit, le lanceur — tenues ou relâchées ; une partie
 // est la suite des instants où l'une change (la rediffusion). Le temps avance d'un pas par `avancer()`, qui lit l'état des commandes à cet instant. Tout est entier : positions en unités (4 096 par pixel), vitesses
@@ -107,6 +112,8 @@ export class Partie {
   /** Les événements du pas (bits `EV_*`) et ses gains de points. */
   ev = 0;
   readonly gains: Gain[] = [];
+  /** Lot PB4 : vrai pour une copie d'essai du robot (`copier(true)`) : les gains de points ne sont pas gardés (le score, lui, compte). Aucun effet sur la partie. */
+  sansGains = false;
   /** **Lot PB3 : la mission du thème.** Ce qu'il faut faire (`MISSION_DU_THEME`), le but (un réglage), le compteur, et si elle est réussie (**une seule fois par partie**, d'une bille à l'autre). */
   readonly mission: Mission;
   readonly but: number;
@@ -127,32 +134,78 @@ export class Partie {
   constructor(
     readonly contenu: Contenu,
     reglages: Reglages = REGLAGES,
+    /** Lot PB4 : une partie à copier (`copier`) ; sans elle, une partie neuve. */
+    modele?: Partie,
+    sansGains = false,
   ) {
     this.reglages = reglages;
-    this.d = deriver(reglages);
-    this.table = construireTable(contenu, reglages);
-    this.a = [this.d.repos, this.d.repos];
-    this.aAvant = [this.d.repos, this.d.repos];
-    this.bas = this.table.murs.map(() => false);
-    this.banqueDans = this.table.banques.map(() => 0);
-    this.voiesAllumees = this.table.voies.map(() => false);
-    this.trouPause = this.table.trous.map(() => 0);
-    this.spin = this.table.spinners.map(() => 0);
-    this.choc = this.table.bumpers.map(() => 0);
+    this.d = modele ? modele.d : deriver(reglages);
+    const m = modele;
+    // la table : construite pour une partie neuve ; pour une copie, la même, dont seuls les bumpers mobiles sont recopiés (leur position est un état de la partie)
+    this.table = m ? { ...m.table, bumpers: m.table.bumpers.some((b) => b.mobile) ? m.table.bumpers.map((b) => (b.mobile ? { ...b, mobile: b.mobile } : b)) : m.table.bumpers } : construireTable(contenu, reglages);
+    this.a = m ? [m.a[0], m.a[1]] : [this.d.repos, this.d.repos];
+    this.aAvant = m ? [m.aAvant[0], m.aAvant[1]] : [this.d.repos, this.d.repos];
     const tb = this.table;
+    this.bas = m ? m.bas.slice() : tb.murs.map(() => false);
+    this.banqueDans = m ? m.banqueDans.slice() : tb.banques.map(() => 0);
+    this.voiesAllumees = m ? m.voiesAllumees.slice() : tb.voies.map(() => false);
+    this.trouPause = m ? m.trouPause.slice() : tb.trous.map(() => 0);
+    this.spin = m ? m.spin.slice() : tb.spinners.map(() => 0);
+    this.choc = m ? m.choc.slice() : tb.bumpers.map(() => 0);
     this.mission = MISSION_DU_THEME[contenu.theme];
     this.but = { manege: reglages.butManege, tourbillon: reglages.butTourbillon, portail: reglages.butPortail, geyser: reglages.butGeyser }[this.mission];
-    this.manegeSecteur = tb.plateaux.map(() => -1);
-    this.manegeAvance = tb.plateaux.map(() => 0);
-    this.tourbillonPause = tb.tourbillons.map(() => 0);
-    this.portailPause = tb.portails.map(() => 0);
-    this.geyserAttente = tb.geysers.map(() => 0);
-    this.geyserJet = tb.geysers.map(() => 0);
-    this.couleeDedans = tb.coulees.map(() => false);
+    this.manegeSecteur = m ? m.manegeSecteur.slice() : tb.plateaux.map(() => -1);
+    this.manegeAvance = m ? m.manegeAvance.slice() : tb.plateaux.map(() => 0);
+    this.tourbillonPause = m ? m.tourbillonPause.slice() : tb.tourbillons.map(() => 0);
+    this.portailPause = m ? m.portailPause.slice() : tb.portails.map(() => 0);
+    this.geyserAttente = m ? m.geyserAttente.slice() : tb.geysers.map(() => 0);
+    this.geyserJet = m ? m.geyserJet.slice() : tb.geysers.map(() => 0);
+    this.couleeDedans = m ? m.couleeDedans.slice() : tb.coulees.map(() => false);
+    this.sansGains = sansGains;
+    if (!m) return;
+    this.tick = m.tick;
+    this.score = m.score;
+    this.mult = m.mult;
+    this.multMax = m.multMax;
+    this.billes = m.billes;
+    this.x = m.x;
+    this.y = m.y;
+    this.vx = m.vx;
+    this.vy = m.vy;
+    this.px = m.px;
+    this.py = m.py;
+    this.captifDe = m.captifDe;
+    this.captifTb = m.captifTb;
+    this.captif = m.captif;
+    this.dansLanceur = m.dansLanceur;
+    this.charge = m.charge;
+    this.entree = m.entree;
+    this.sauvee = m.sauvee;
+    this.appui[0] = m.appui[0];
+    this.appui[1] = m.appui[1];
+    this.appuiLanceur = m.appuiLanceur;
+    this.voiesDans = m.voiesDans;
+    this.chocSling[0] = m.chocSling[0];
+    this.chocSling[1] = m.chocSling[1];
+    this.ev = m.ev;
+    this.compteur = m.compteur;
+    this.missionFaite = m.missionFaite;
+    this.geyserJets = m.geyserJets;
+    this.fin = m.fin;
   }
 
   get finie(): boolean {
     return this.fin;
+  }
+
+  /**
+   * **Une copie indépendante de l'état** (lot PB4) : le robot y essaie ses coups sans toucher à la vraie partie ; la copie joue exactement comme l'original (même simulation, même résultat pas à pas). Les tableaux sont
+   * recopiés, **la table aussi pour ses bumpers mobiles** (l'astéroïde garde sa position et sa vitesse dans la table : deux copies à des pas différents ne doivent pas se les partager). `sansGains` : la copie ne
+   * garde pas la liste des gains du pas (le rendu n'en a pas besoin), ce qui ne change ni le score ni rien d'autre. **Elle passe par le constructeur** (même forme d'objet que l'original : une copie faite autrement
+   * se joue six fois plus lentement).
+   */
+  copier(sansGains = false): Partie {
+    return new Partie(this.contenu, this.reglages, this, sansGains);
   }
 
   /** Une commande tenue (`enfonce`) ou relâchée à ce pas, avant que le pas ne se joue. */
@@ -171,7 +224,7 @@ export class Partie {
   private points(n: number, x = this.x, y = this.y): void {
     const p = n * this.mult;
     this.score += p;
-    this.gains.push({ points: p, x, y });
+    if (!this.sansGains) this.gains.push({ points: p, x, y });
   }
 
   /** Un pas de plus vers le but de la mission (une seule fois par partie : 10 000 points, au multiplicateur d'avant, puis le multiplicateur monte d'un cran). `quoi` : l'élément qui vient de servir. */

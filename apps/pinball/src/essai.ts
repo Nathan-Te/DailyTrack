@@ -3,7 +3,8 @@
 //   · `?qualite=haute|basse` : le niveau de rendu (haute : three.js ; basse : le rendu à plat de secours, sans three.js). Sans le paramètre : haute, avec un passage automatique en basse si l'appareil est lent (jamais s'il est
 //     seulement bridé à 30 images par seconde : `@cdj/core/bridage`) ;
 //   · `?debug&fps` : l'affichage des images par seconde et de la durée d'une image ;
-//   · `?essai=mission` (lot PB3) : la partie commence au but de la mission moins un, pour voir tout de suite le moment fort (jamais classée).
+//   · `?essai=mission` (lot PB3) : la partie commence au but de la mission moins un, pour voir tout de suite le moment fort (jamais classée) ;
+//   · `?robot` (lot PB4) : on regarde le robot jouer la table du jour (sa première partie ; `?robot=2` : la troisième) avec la mention « Le robot joue » ; `?jour=AAAA-MM-JJ&robot` pour un autre jour (jamais classé).
 // Ce fichier est dans le premier chargement (la définition y lit `classable`) : **il ne fait que lire l'adresse**, tout le reste (bornes, validation, panneau) est à la demande.
 export type Qualite = "haute" | "basse";
 
@@ -16,12 +17,14 @@ export interface Essai {
   reglages: unknown;
   /** `?essai=mission` : la mission commence au but moins un. */
   mission: boolean;
+  /** `?robot` (lot PB4) : le rang de la partie du robot qu'on regarde (0 : la première), ou `null`. */
+  robot: number | null;
   /** Vrai dès qu'une option change la partie : elle n'est alors pas classable. */
   essai: boolean;
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { tune: false, fps: false, qualite: null, reglages: null, mission: false, essai: false };
+  const vide: Essai = { tune: false, fps: false, qualite: null, reglages: null, mission: false, robot: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const debug = q.has("debug");
@@ -37,5 +40,9 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   const niveau = q.get("qualite");
   const tune = debug && q.has("tune");
   const mission = q.get("essai") === "mission";
-  return { tune, fps: debug && q.has("fps"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, essai: tune || reglages !== null || mission };
+  // `?robot` seul : sa première partie ; `?robot=2` : la troisième ; une valeur qui n'est pas un petit entier : la première
+  const brutRobot = q.get("robot");
+  const rang = brutRobot === null || brutRobot === "" ? 0 : Number(brutRobot);
+  const robot = q.has("robot") ? (Number.isInteger(rang) && rang >= 0 && rang < 100 ? rang : 0) : null;
+  return { tune, fps: debug && q.has("fps"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, robot, essai: tune || reglages !== null || mission || robot !== null };
 }

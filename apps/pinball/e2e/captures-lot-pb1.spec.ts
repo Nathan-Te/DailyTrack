@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { dailyPinball, piloter } from "@cdj/pinball-sim";
+import { dailyPinball, jouerRobot } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import { appareil, JOUR, lancer } from "./appareil";
 
@@ -23,7 +23,7 @@ test("une partie en cours, avec les contours de ?debug", async ({ browser }) => 
   const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1");
   await page.setViewportSize({ width: 390, height: 844 });
   await lancer(page);
-  const evenements = piloter(contenu, 4000).evenements;
+  const evenements = jouerRobot(contenu, 1, { maxTicks: 4000 }).evenements;
   await page.evaluate((evenements) => {
     let t = 0;
     for (const e of evenements) {

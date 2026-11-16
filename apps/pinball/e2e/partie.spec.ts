@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { dailyPinball, medailleDe, seuilsDe, VARIANTE } from "@cdj/pinball-sim";
-import { parseDay } from "@cdj/core";
-import { appareil, jouerLeJour, JOUR, lancer } from "./appareil";
+import { medailleDe, VARIANTE } from "@cdj/pinball-sim";
+import { appareil, jouerLeJour, lancer, SEUILS_ESSAI } from "./appareil";
 
 // « Pinball » — LE parcours de joueur, sans serveur : l'accueil (l'étiquette, JOUER, les plaques Discord et Ko-fi), une partie jouée commande par commande, le HUD (score, multiplicateur, billes), la pause (le temps
 // s'arrête), l'arrivée avec son score et sa médaille, « Rejouer ». Le classement avec le vrai serveur est dans `classement.spec.ts`. Les règles de la partie sont dans `packages/pinball-sim/test` : ici, seulement ce que
@@ -33,7 +32,7 @@ test.describe("Pinball : une partie", () => {
     const score = VARIANTE.score(attendu);
     await expect(page.locator("#jeu-fin-score")).toHaveText(VARIANTE.formatScore(score, "fr"));
     expect(await page.evaluate(() => window.__jeu.score())).toEqual(score);
-    const medaille = medailleDe(score, seuilsDe(dailyPinball(parseDay(JOUR)!)));
+    const medaille = medailleDe(score, SEUILS_ESSAI); // le jour d'essai est servi comme un jour figé
     if (medaille) await expect(page.locator("#jeu-fin .dj-medaille--pastille.dj-medaille--obtenue")).toBeVisible();
     // La rediffusion du jeu est celle de la simulation : le serveur la rejouera à l'identique (voir `classement.spec.ts` et `determinisme.spec.ts`).
     expect(await page.evaluate(() => window.__jeu.rediffusion())).toBeTruthy();

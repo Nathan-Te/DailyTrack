@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { EV_MISSION, Partie, dailyPinball, piloter, type ThemePinball } from "@cdj/pinball-sim";
+import { EV_MISSION, Partie, dailyPinball, jouerRobot, type ThemePinball } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import { appareil, JOUR, lancer } from "./appareil";
 
@@ -59,7 +59,7 @@ test.describe("Pinball : les thèmes et les missions", () => {
       const but = MISSIONS[theme].but;
       // la même simulation, à Node : la partie du pilote d'essai, au but moins un, jusqu'au pas de la mission réussie
       const contenu = dailyPinball(parseDay(JOUR)!, undefined, theme);
-      const evenements = piloter(contenu, 60000).evenements;
+      const evenements = jouerRobot(contenu, 1, { maxTicks: 60000 }).evenements;
       const p = new Partie(contenu);
       p.compteur = p.but - 1;
       let k = 0;

@@ -1,17 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { PINBALL_BOT_VERSION, dailyPinball, figerJour, lireJourFige, medailleDe, seuilsDe, seuilsDuJour, seuilsSurLePapier, seuilsValides } from "../src/index";
+import { PINBALL_BOT_VERSION, dailyPinball, figerJour, lireJourFige, medailleDe, seuilsDe, seuilsDuJour, seuilsDuRobot, seuilsValides } from "../src/index";
 
 const JOUR = daysFromCivil(2026, 11, 9);
 
-describe("les seuils provisoires", () => {
-  it("quatre entiers strictement croissants, les mêmes tous les jours (le robot du lot PB4 les remplace)", () => {
-    for (let i = 0; i < 40; i++) {
-      const s = seuilsSurLePapier(dailyPinball(JOUR + i));
-      expect(seuilsValides(s)).toBe(true);
-      expect(s).toEqual(seuilsSurLePapier(dailyPinball(JOUR)));
-    }
-  });
+describe("les seuils des médailles", () => {
   it("la médaille d'un score : la plus haute dont le seuil est atteint", () => {
     const s = { bronze: 1000, silver: 3000, gold: 6000, author: 12000 };
     expect([999, 1000, 3000, 6000, 12000, 99999].map((v) => medailleDe([v, 0], s))).toEqual([null, "bronze", "silver", "gold", "author", "author"]);
@@ -19,10 +12,11 @@ describe("les seuils provisoires", () => {
 });
 
 describe("un jour figé fige ses seuils", () => {
-  it("le fichier porte le jour, les versions, les seuils et l'empreinte ; il se relit", () => {
-    const f = figerJour(JOUR);
+  it("le fichier porte le jour, les versions, les seuils du robot et l'empreinte ; il se relit", () => {
+    const f = figerJour(JOUR); // les seuils du robot (quelques secondes)
     expect(f).toMatchObject({ format: 1, jeu: "pinball", date: formatDay(JOUR), bot: PINBALL_BOT_VERSION });
     expect(seuilsValides(f.seuils)).toBe(true);
+    expect(f.seuils).toEqual(seuilsDuRobot(dailyPinball(JOUR)));
     const lu = lireJourFige(JSON.parse(JSON.stringify(f)));
     expect(lu).not.toBeNull();
     expect(lu!.theme).toBe(dailyPinball(JOUR).theme);
@@ -33,10 +27,16 @@ describe("un jour figé fige ses seuils", () => {
     const f = figerJour(JOUR, { bronze: 111, silver: 222, gold: 333, author: 444 });
     const lu = lireJourFige(f)!;
     expect(seuilsDe(lu)).toEqual({ bronze: 111, silver: 222, gold: 333, author: 444 });
-    expect(seuilsDe(dailyPinball(JOUR))).toEqual(seuilsSurLePapier(dailyPinball(JOUR))); // sans fichier : le calcul
+    expect(seuilsDe(dailyPinball(JOUR))).toEqual(seuilsDuRobot(dailyPinball(JOUR))); // sans fichier : le robot
+  });
+  it("lot PB4 : les seuils figés l'emportent sur le robot, qui ne se lance pas (une table que le robot ne saurait pas jouer ne l'arrête pas)", () => {
+    const f = { bronze: 5, silver: 6, gold: 7, author: 8 };
+    const piege = { ...dailyPinball(JOUR), modules: ["inconnu"], seuilsFiges: f } as unknown as Parameters<typeof seuilsDuJour>[0];
+    expect(seuilsDuJour(piege)).toEqual(f);
+    expect(() => seuilsDuJour({ ...piege, seuilsFiges: undefined })).toThrow(/module inconnu/); // sans seuils figés, le robot joue : et la table piégée l'arrête
   });
   it("le fichier ne contient aucune date de calendrier hors la sienne, et se relit identique après JSON", () => {
-    const texte = JSON.stringify(figerJour(JOUR));
+    const texte = JSON.stringify(figerJour(JOUR, { bronze: 111, silver: 222, gold: 333, author: 444 }));
     expect(texte.match(/\d{4}-\d{2}-\d{2}/g)).toEqual([formatDay(JOUR)]);
     expect(lireJourFige(JSON.parse(texte))!.jour).toBe(JOUR);
   });

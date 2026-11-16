@@ -108,3 +108,20 @@
     opacity: 0;
   }
 }
+
+/* Lot PB4 : la mention de l'essai `?robot` (hors production) — le robot joue, le toucher ne change rien. Sous la pastille de la mission, aux couleurs de la table. */
+.pinball-robot {
+  position: absolute;
+  top: calc(max(4px, var(--dj-apercu-reserve, 0px)) + 34px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 2px 10px;
+  border: 2px solid #2a1e16;
+  border-radius: 999px;
+  background: #e8b23a;
+  color: #2a1e16;
+  font: 700 12px/1.2 var(--jeu-police, sans-serif);
+  white-space: nowrap;
+  pointer-events: none;
+}

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { NORME, QUART, TOUR, dailyPinball, piloter, racine, sinus, cosinus } from "../src/index";
+import { NORME, QUART, TOUR, dailyPinball, jouerRobot, racine, sinus, cosinus } from "../src/index";
 
 // **Pas un seul flottant dans la simulation** (règle du lot PB1) : la partie, le générateur et la rediffusion ne manient que des entiers. Deux gardes : (1) le code — aucun littéral décimal, aucune racine ni transcendante,
 // aucun arrondi de flottant, aucun texte converti en nombre décimal (`describePurity` interdit déjà `Math.sin`…, le hasard, les dates et `**`) ; (2) l'état — après une vraie partie, chaque nombre de la partie est un entier.
@@ -30,8 +30,8 @@ describe("aucun flottant dans le code de la simulation", () => {
 });
 
 describe("tout l'état d'une partie est entier", () => {
-  it.each(["foire", "ocean", "espace", "volcan"] as const)("après une vraie partie sur la table du thème %s (le pilote d'essai, 20 000 pas, tous les champs, éléments des thèmes compris)", (theme) => {
-    const { partie } = piloter(dailyPinball(daysFromCivil(2026, 11, 9), undefined, theme), 20000);
+  it.each(["foire", "ocean", "espace", "volcan"] as const)("après une vraie partie sur la table du thème %s (le robot, 20 000 pas, tous les champs, éléments des thèmes compris)", (theme) => {
+    const { partie } = jouerRobot(dailyPinball(daysFromCivil(2026, 11, 9), undefined, theme), 1, { maxTicks: 20000 });
     const nombres: [string, unknown][] = [];
     const visiter = (nom: string, v: unknown): void => {
       if (typeof v === "number") nombres.push([nom, v]);

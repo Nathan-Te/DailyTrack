@@ -1,6 +1,7 @@
 import { mixSeed, Rng } from "@cdj/core";
 import { PINBALL_GENERATOR_VERSION } from "./constantes";
-import { themeDuJour, type ThemePinball } from "./themes";
+import { TABLES_REFUSEES } from "./refusees";
+import { themeDuJour, THEMES_PINBALL, type ThemePinball } from "./themes";
 
 // La table du jour (lot PB1). **Le bas de la table ne change jamais** (deux batteurs, deux lance-pierres, deux couloirs de retour, le couloir du lanceur, les trois couloirs du haut : `table.ts`) ; le haut est tiré
 // de la graine du jour : un thème, puis le module de chacun des six emplacements, dans la liste permise de l'emplacement. Le contenu est minuscule (six petits entiers) : le jeu, le serveur et le fichier du jour
@@ -68,12 +69,13 @@ export class ErreurGenerateur extends Error {
 /** Sel de la graine de Pinball (propre au jeu). */
 const SEL = 0x50494e;
 
-/** Le contenu d'un jour. Les anciennes versions du générateur restent appelables tant qu'un jour figé les nomme (ici : la courante seulement). */
-export function dailyPinball(jour: number, version: number = PINBALL_GENERATOR_VERSION, themeImpose?: ThemePinball): Contenu {
-  if (version !== PINBALL_GENERATOR_VERSION) throw new ErreurGenerateur(`version de générateur inconnue : ${version}`);
-  // `themeImpose` : un essai (`?theme=` hors production, jamais classé) joue la table d'un autre thème ce jour-là, avec ses éléments ; le serveur ne l'appelle jamais ainsi.
-  const theme = themeImpose ?? themeDuJour(jour);
-  const rng = new Rng(mixSeed(jour, SEL));
+/** La clé d'une table : son thème et ses six modules. **Le verdict de la validation et les seuils ne dépendent que d'elle** (`validation.ts`, `seuils.ts`), jamais du jour. */
+export const cleDeTable = (c: Pick<Contenu, "theme" | "modules">): string => `${c.theme}:${c.modules.join(",")}`;
+
+/** Les tirages possibles d'une graine : le thème imposé ou du jour, puis les modules des six emplacements. */
+function tirer(jour: number, essai: number, theme: ThemePinball): Module[] {
+  // la graine de l'essai 0 est celle de toujours ; les suivantes (une table refusée est retirée : lot PB4) en dérivent, fixées d'avance
+  const rng = new Rng(mixSeed(jour, essai === 0 ? SEL : (SEL ^ Math.imul(essai, 2654435761)) >>> 0));
   // La maquette : S2 est un trio de bumpers trois fois sur quatre, sinon une paire ; les autres piochent dans leur liste commune, dans l'ordre S1, S3, S4, S5. **Les tirages ne dépendent pas du thème** (ils sont faits
   // dans tous les cas, puis l'élément du thème prend sa place) : le volcan tire en plus l'emplacement de son geyser, S4 ou S5.
   const modules: Module[] = Array<Module>(NB_EMPLACEMENTS);
@@ -85,7 +87,56 @@ export function dailyPinball(jour: number, version: number = PINBALL_GENERATOR_V
     if (permis.length === 1) modules[i] = permis[0]!;
   }
   if (theme === "volcan") modules[geyserEn] = "geyser";
-  return { jour, g: version, theme, modules };
+  return modules;
+}
+
+/** Combien de graines au plus on essaie pour un jour (aucun jour n'en demande plus de quelques-unes : voir le README du lot PB4). */
+export const ESSAIS_MAX = 64;
+
+/** Le contenu d'un jour. Les anciennes versions du générateur restent appelables tant qu'un jour figé les nomme (ici : la courante seulement). */
+export function dailyPinball(jour: number, version: number = PINBALL_GENERATOR_VERSION, themeImpose?: ThemePinball): Contenu {
+  return dailyPinballAvec(jour, REFUSEES, version, themeImpose);
+}
+
+/** `dailyPinball` avec la liste des tables refusées qu'on donne (les tests y posent la leur ; l'outil de validation, aucune). */
+export function dailyPinballAvec(jour: number, refusees: ReadonlySet<string>, version: number = PINBALL_GENERATOR_VERSION, themeImpose?: ThemePinball): Contenu {
+  if (version !== PINBALL_GENERATOR_VERSION) throw new ErreurGenerateur(`version de générateur inconnue : ${version}`);
+  // `themeImpose` : un essai (`?theme=` hors production, jamais classé) joue la table d'un autre thème ce jour-là, avec ses éléments ; le serveur ne l'appelle jamais ainsi.
+  const theme = themeImpose ?? themeDuJour(jour);
+  // **Une table refusée par la validation est retirée** (lot PB4, `refusees.ts`, produit par `npm run valider:pinball`) : le générateur passe à la graine suivante, fixée.
+  for (let essai = 0; essai < ESSAIS_MAX; essai++) {
+    const modules = tirer(jour, essai, theme);
+    if (!refusees.has(cleDeTable({ theme, modules }))) return { jour, g: version, theme, modules };
+  }
+  throw new ErreurGenerateur(`aucune table valide en ${ESSAIS_MAX} essais pour le jour ${jour}`);
+}
+const REFUSEES: ReadonlySet<string> = new Set(TABLES_REFUSEES);
+
+/** **Toutes les tables que le générateur peut tirer** (avant refus) : chaque thème, chaque combinaison de modules permis aux emplacements, le geyser du volcan en S4 ou en S5. 444 tables (216 + 72 + 12 + 144). `jour` vaut 0 : une table de référence. */
+export function toutesLesTables(): Contenu[] {
+  const sorties: Contenu[] = [];
+  for (const theme of THEMES_PINBALL) {
+    const choix: (readonly Module[])[] = EMPLACEMENTS.map((e, i) => {
+      const fixe = permisDe(theme, i);
+      return fixe.length === 1 ? fixe : (e.permis as readonly Module[]);
+    });
+    const rec = (i: number, acc: Module[]): void => {
+      if (i === NB_EMPLACEMENTS) {
+        if (theme !== "volcan") sorties.push({ jour: 0, g: PINBALL_GENERATOR_VERSION, theme, modules: [...acc] });
+        else {
+          // le geyser en S4 (le S5 tiré dans sa liste commune) ou en S5 (le S4 tiré dans la sienne)
+          sorties.push({ jour: 0, g: PINBALL_GENERATOR_VERSION, theme, modules: acc.map((m, k) => (k === 3 ? "geyser" : m)) });
+          sorties.push({ jour: 0, g: PINBALL_GENERATOR_VERSION, theme, modules: acc.map((m, k) => (k === 4 ? "geyser" : m)) });
+        }
+        return;
+      }
+      for (const m of choix[i]!) rec(i + 1, [...acc, m]);
+    };
+    rec(0, []);
+  }
+  // le volcan compte deux fois chaque combinaison ; le geyser écrase un emplacement : on garde chaque table une fois
+  const vues = new Set<string>();
+  return sorties.filter((c) => !vues.has(cleDeTable(c)) && vues.add(cleDeTable(c)));
 }
 
 /** L'empreinte du contenu (FNV-1a 32 bits sur ses entiers) : un texte de huit hexadécimaux. */
@@ -101,4 +152,4 @@ export function empreinteContenu(contenu: Contenu): string {
   }
   return h.toString(16).padStart(8, "0");
 }
-const THEMES_INDEX = (t: ThemePinball): number => ["foire", "ocean", "espace", "volcan"].indexOf(t);
+const THEMES_INDEX = (t: ThemePinball): number => THEMES_PINBALL.indexOf(t);

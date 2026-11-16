@@ -1,15 +1,15 @@
-import { dailyPinball, enregistrer, jouer, piloter, scoreParColonnes, type Contenu, type Evenement } from "@cdj/pinball-sim";
+import { dailyPinball, enregistrer, jouer, jouerRobot, scoreParColonnes, type Contenu, type Evenement } from "@cdj/pinball-sim";
 import type { ModuleEssais } from "./essais";
 
-// Le module d'essais de « Pinball » (voir `essais.ts`). Une partie d'essai est celle du **pilote d'essai** de la simulation (le robot de la maquette : il lance, puis frappe quand la bille arrive sur un batteur)
-// arrêtée plus ou moins tôt — la variante 0 le laisse jouer 6 000 pas (10 secondes), la variante n le laisse jouer 6 000 + 4 000 n pas, jusqu'à 12 variantes — et qui lance sa première bille un peu plus tard à chaque
+// Le module d'essais de « Pinball » (voir `essais.ts`). Une partie d'essai est celle du **robot** de la simulation (lot PB4 : il lance, puis vise et frappe comme un joueur, avec sa graine d'imprécision)
+// arrêtée plus ou moins tôt — la variante 0 le laisse jouer 6 000 pas (10 secondes), la variante n le laisse jouer 6 000 + 4 000 n pas, jusqu'à 12 variantes — et qui joue avec une graine différente à chaque
 // variante : chacune a donc ses propres événements (le serveur refuse une copie : deux joueurs ne peuvent pas envoyer les mêmes). Pur : aucune base, aucun réseau ; le serveur rejoue la rediffusion pour de vrai.
 const memoire = new Map<string, Evenement[]>();
-function evenementsDe(contenu: Contenu, pas: number, retard: number): Evenement[] {
-  const cle = `${contenu.jour}:${contenu.g}:${pas}:${retard}`;
+function evenementsDe(contenu: Contenu, pas: number, graine: number): Evenement[] {
+  const cle = `${contenu.jour}:${contenu.g}:${pas}:${graine}`;
   let e = memoire.get(cle);
   if (!e) {
-    e = piloter(contenu, pas, retard).evenements;
+    e = jouerRobot(contenu, graine, { maxTicks: pas }).evenements;
     if (memoire.size > 64) memoire.clear();
     memoire.set(cle, e);
   }
