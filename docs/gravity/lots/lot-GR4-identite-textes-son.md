@@ -1,6 +1,6 @@
 # Lot GR4 — Gravity : identité, textes complets, son
 
-Branche `ccr-8d3a28ac-3cdm03`, PR brouillon. Sim, générateur et golden **inchangés** (versions 1 et 3 et 2 comme avant le lot). « Pour les joueurs » : `rien` (le jeu est `off`).
+Branche `ccr-8d3a28ac-3cdm03`, PR brouillon. Sim, générateur et golden **inchangés** (versions sim 2, générateur 3, robot 2 : comme avant le lot). « Pour les joueurs » : `rien` (le jeu est `off`).
 
 ## Ce qui est livré
 1. **Identité** (`config/jeux/gravity.json`, puis `npm run fiches`) : police **Lilita One**, motif **`lignes`** (des bandes horizontales : le sol et le plafond, les deux strates entre lesquelles on court), `aujourdhui: true`, illustration `apps/gravity/public/illustration.svg` (96 × 80 : cube à bandeau au sol, son reflet pâle aux tirets au plafond, arc en tirets de l'inversion, gemme ; aplats bordés d'encre, aucune opacité). Étiquette `#FFB892` / `#C9622E` inchangée (provisoire). **Le test des fiches voit une identité complète, sans exemption.**
@@ -14,7 +14,7 @@ Remplace `<clé>` par la clé d'aperçu (elle se range dans le stockage local, p
 - **Accueil** (identité, panneau, seuils après quelques secondes) : `https://recette.playdujour.com/gravity/?apercu=<clé>`
 - **En anglais** : le même lien, après avoir mis la langue en anglais dans ton profil Du Jour (il n'y a pas de paramètre d'adresse pour la langue) ou avec un navigateur en anglais.
 - **Comment jouer** : le même lien, bouton « Comment jouer » (il s'ouvre seul au tout premier JOUER d'un navigateur neuf : fenêtre privée).
-- **Écran de fin en quelques secondes** : `https://recette.playdujour.com/gravity/?apercu=<clé>&morceau=11` — JOUER puis ne touche à rien : tu tombes dans le vide en quelques secondes, le bilan s'affiche, puis l'écran de fin (« Partie d'essai : non classée »). Pour voir le thème changer (son et musique) : `&theme=glace`, touche **T**.
+- **Écran de fin en quelques secondes** : `https://recette.playdujour.com/gravity/?apercu=<clé>&morceau=34` — JOUER puis ne touche à rien : tu meurs en 5 secondes environ (mesuré : mort entre 2,5 et 5 s de jeu ; avec `morceau=11` ou sans paramètre, 5 à 10 s), le bilan s'affiche 1,5 s, puis l'écran de fin (« Partie d'essai : non classée »). Pour voir le thème changer (son et musique) : `&theme=glace`, touche **T**.
 
 ## Vérifié
 - `npm run typecheck` ; tests unitaires de `apps/gravity` (44), des fiches et de l'identité, de `packages/ui`, `packages/musique`, `packages/kit`, de `apps/portail` (mentions comprises), `sonMelange` (S2).
