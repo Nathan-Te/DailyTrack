@@ -7,8 +7,8 @@ import { construireTable, type Porte, type Segment, type Table } from "./table";
 // Les constantes et les fonctions chaudes sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, deux à trois fois plus lent dans une boucle de millions de pas (le robot du
 // lot PB4 en joue des dizaines de millions). Rien ne change pour le jeu ni le serveur.
 const {
-  AXE, DROITE, DUREE_MAX_TICKS, EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_COMBO, EV_ORBITE, EV_RAIL, EV_RAMPE, EV_RECUL, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS,
-  RAYON, TICKS_PAR_SECONDE, TOUR, UNITE,
+  AXE, DROITE, DUREE_MAX_TICKS, EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_COMBO, EV_ORBITE, EV_RAIL, EV_RAMPE, EV_RECUL, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE,
+  EV_JACKPOT, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_VERROU_ALLUME, EV_VERROUILLEE, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, VERROU_BILLES,
 } = K;
 const { cosinus, div, racine, sinus, unitaire } = E;
 
@@ -70,6 +70,56 @@ export function pointeDuBatteur(i: number, a: number): { px: number; py: number;
   return { px, py: PIVOT_Y, tx: px + sens * div(cosinus(a) * LONGUEUR, NORME), ty: PIVOT_Y + div(sinus(a) * LONGUEUR, NORME) };
 }
 
+/**
+ * **Une bille** (lot PBG2) : tout ce qui est propre à une bille. La bille principale vit dans les champs de `Partie` (`x`, `y`, `vx`… : tout ce qui a été écrit avant la multibille les lit) ; **les autres billes de la multibille**
+ * sont des `Bille` (`Partie.autres`). Pour jouer une autre bille, la partie **échange** ses champs avec ceux de la `Bille` (`echanger`), joue le pas de la bille, puis les échange de nouveau : une seule physique pour
+ * toutes les billes, sans la copier. L'ordre est fixe (la principale, puis `autres` dans l'ordre où elles sont entrées en jeu) : la partie reste déterministe.
+ */
+export interface Bille {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  px: number;
+  py: number;
+  captifDe: number;
+  captifTb: number;
+  captif: number;
+  dansLanceur: boolean;
+  charge: number;
+  entree: number;
+  sauvee: boolean;
+  geyserJets: number;
+  manegeSecteur: number[];
+  couleeDedans: boolean[];
+  couche: 0 | 1;
+  rail: number;
+  railS: number;
+  railV: number;
+  railDepuis: number;
+  railBout: 0 | 1;
+}
+/** Ce que le rendu et le robot lisent d'une bille. */
+export interface BilleVue {
+  id: number;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  vx: number;
+  vy: number;
+  couche: 0 | 1;
+  captif: number;
+  dansLanceur: boolean;
+  charge: number;
+}
+
+const billeVide = (id: number, nbPlateaux: number, nbCoulees: number): Bille => ({
+  id, x: 0, y: 0, vx: 0, vy: 0, px: 0, py: 0, captifDe: -1, captifTb: -1, captif: 0, dansLanceur: false, charge: 0, entree: 0, sauvee: false, geyserJets: 0,
+  manegeSecteur: new Array<number>(nbPlateaux).fill(-1), couleeDedans: new Array<boolean>(nbCoulees).fill(false), couche: 0, rail: -1, railS: 0, railV: 0, railDepuis: 0, railBout: 0,
+});
+
 export class Partie {
   readonly table: Table;
   readonly reglages: Reglages;
@@ -120,18 +170,53 @@ export class Partie {
   sansGains = false;
   /** **Lot PB3 : la mission du thème.** Ce qu'il faut faire (`MISSION_DU_THEME`), le but (un réglage), le compteur, et si elle est réussie (**une seule fois par partie**, d'une bille à l'autre). */
   readonly mission: Mission;
-  readonly but: number;
+  /** Le but de la mission **du niveau en cours** (lot PBG2 : il monte à chaque niveau, `missionButPas` %). */
+  but: number;
   compteur = 0;
   missionFaite = false;
+  /**
+   * **Lot PBG2 : la boucle mission, verrou, multibille, mission du niveau suivant.** `niveau` : le niveau de la mission (1, puis 2…). La mission réussie allume le verrou (`verrouAllume`, le trou du plan : `Table.verrou`) ;
+   * une bille qui y entre y est verrouillée (`verrouillees`, 0 à `VERROU_BILLES`), sans coûter de bille de la partie ; la deuxième lance la multibille (`multibille`) : les billes verrouillées sont lâchées l'une après
+   * l'autre par le trou (`aLacher`, `lacherDans`), `sauveeMulti` pas de bille sauvée au départ ; les billes perdues pendant la multibille ne coûtent rien ; elle finit quand il ne reste qu'une bille sur la table, et la
+   * mission revient au niveau suivant. `jackpots` : ceux de la multibille en cours (le prochain vaut plus), `dernierJackpot` sa valeur ; `multibilles` : les multibilles lancées dans la partie.
+   */
+  niveau = 1;
+  verrouAllume = false;
+  verrouillees = 0;
+  /** Les billes verrouillées dans la partie (le robot note chaque verrouillage). */
+  verrouTotal = 0;
+  multibille = false;
+  multibilles = 0;
+  aLacher = 0;
+  lacherDans = 0;
+  sauveeMulti = 0;
+  jackpots = 0;
+  dernierJackpot = 0;
+  /** Les billes perdues pendant une multibille, qui ne coûtent rien (le robot les compte) ; le jackpot cumulé de la partie. */
+  perduesMulti = 0;
+  jackpotsPartie = 0;
+  /** Les points que les jackpots ont rapportés dans la partie (multiplicateur compris : les mesures du README du lot). */
+  jackpotPoints = 0;
+  /** **La bille principale est absente** (perdue pendant la multibille alors que d'autres attendent de revenir par le trou) : ses champs ne valent rien tant qu'elle ne revient pas. */
+  vide = false;
+  /** Les autres billes de la multibille (jamais plus de `VERROU_BILLES`), dans l'ordre où elles sont entrées en jeu. */
+  autres: Bille[] = [];
+  /** L'identifiant de la bille principale (un nouveau à chaque bille : le robot suit « sa » bille), et le prochain à donner. */
+  id = 0;
+  private suivantId = 1;
+  /** Vrai quand la bille qui vient de jouer son pas a quitté la table (multibille) : à retirer. */
+  private sortie = false;
+  /** Une bille de passage pour les collisions entre billes. */
+  private lue: Bille | null = null;
   /** Le manège : le secteur de la bille (−1 : hors du plateau) et l'avance en huitièmes de tour depuis le dernier tour compté (huit font un tour de manège ; elle se garde d'une bille à l'autre), par plateau. */
-  readonly manegeSecteur: number[];
+  manegeSecteur: number[];
   readonly manegeAvance: number[];
   /** Les pas avant que chaque tourbillon, chaque portail et chaque geyser puissent servir de nouveau ; pour le rendu, les pas qu'il reste au jet de chaque geyser ; la bille est-elle dans la coulée ; les jets de la bille courante. */
   readonly tourbillonPause: number[];
   readonly portailPause: number[];
   readonly geyserAttente: number[];
   readonly geyserJet: number[];
-  readonly couleeDedans: boolean[];
+  couleeDedans: boolean[];
   geyserJets = 0;
   /** **Lot PBG1 : la couche de la bille.** 0 : le plateau ; 1 : un rail (`rail` : son rang dans `table.rails`), où elle suit le tracé (`railS` : l'abscisse curviligne, en unités ; `railV` : sa vitesse le long du tracé, en unités par seconde, négative quand elle redescend) et ne touche plus rien. `railDepuis` : les pas passés sur ce rail. */
   couche: 0 | 1 = 0;
@@ -170,7 +255,7 @@ export class Partie {
     this.spin = m ? m.spin.slice() : tb.spinners.map(() => 0);
     this.choc = m ? m.choc.slice() : tb.bumpers.map(() => 0);
     this.mission = MISSION_DU_THEME[contenu.theme];
-    this.but = { manege: reglages.butManege, tourbillon: reglages.butTourbillon, portail: reglages.butPortail, geyser: reglages.butGeyser }[this.mission];
+    this.but = m ? m.but : { manege: reglages.butManege, tourbillon: reglages.butTourbillon, portail: reglages.butPortail, geyser: reglages.butGeyser }[this.mission];
     this.manegeSecteur = m ? m.manegeSecteur.slice() : tb.plateaux.map(() => -1);
     this.manegeAvance = m ? m.manegeAvance.slice() : tb.plateaux.map(() => 0);
     this.tourbillonPause = m ? m.tourbillonPause.slice() : tb.tourbillons.map(() => 0);
@@ -219,6 +304,25 @@ export class Partie {
     this.comboFin = m.comboFin;
     this.comboMaxPartie = m.comboMaxPartie;
     this.fin = m.fin;
+    this.niveau = m.niveau;
+    this.verrouAllume = m.verrouAllume;
+    this.verrouillees = m.verrouillees;
+    this.verrouTotal = m.verrouTotal;
+    this.multibille = m.multibille;
+    this.multibilles = m.multibilles;
+    this.aLacher = m.aLacher;
+    this.lacherDans = m.lacherDans;
+    this.sauveeMulti = m.sauveeMulti;
+    this.jackpots = m.jackpots;
+    this.dernierJackpot = m.dernierJackpot;
+    this.perduesMulti = m.perduesMulti;
+    this.jackpotsPartie = m.jackpotsPartie;
+    this.jackpotPoints = m.jackpotPoints;
+    this.vide = m.vide;
+    this.id = m.id;
+    this.suivantId = m.suivantId;
+    this.sortie = m.sortie;
+    if (m.autres.length > 0) this.autres = m.autres.map((b) => ({ ...b, manegeSecteur: b.manegeSecteur.slice(), couleeDedans: b.couleeDedans.slice() }));
   }
 
   /** La bille est-elle sur un rail ? (Un accesseur : le compilateur ne suit pas le changement de couche d'une méthode.) */
@@ -259,16 +363,230 @@ export class Partie {
     if (!this.sansGains) this.gains.push({ points: p, x, y });
   }
 
-  /** Un pas de plus vers le but de la mission (une seule fois par partie : 10 000 points, au multiplicateur d'avant, puis le multiplicateur monte d'un cran). `quoi` : l'élément qui vient de servir. */
+  /** La récompense de la mission du niveau en cours : la base (10 000), plus `missionPas` % de la base par niveau passé. */
+  recompenseMission(niveau = this.niveau): number {
+    return div(POINTS.mission * (100 + this.reglages.missionPas * (niveau - 1)), 100);
+  }
+
+  /** La valeur (avant le multiplicateur) du jackpot de rang `k` (1, 2, 3…) de la multibille : la base, plus `jackpotPas` % de la base par jackpot déjà pris. */
+  valeurJackpot(k: number): number {
+    return div(this.reglages.jackpotBase * (100 + this.reglages.jackpotPas * (k - 1)), 100);
+  }
+
+  /** Ce que rapportera **le prochain jackpot**, multiplicateur compris s'il s'applique (le HUD l'affiche). */
+  get prochainJackpot(): number {
+    return this.valeurJackpot(this.jackpots + 1) * (this.reglages.jackpotMultiplie ? this.mult : 1);
+  }
+
+  /** Un jackpot : une prise de l'élément du thème pendant la multibille. */
+  private jackpot(): void {
+    this.jackpots++;
+    this.jackpotsPartie++;
+    const v = this.valeurJackpot(this.jackpots);
+    if (this.reglages.jackpotMultiplie) this.points(v);
+    else {
+      this.score += v;
+      if (!this.sansGains) this.gains.push({ points: v, x: this.x, y: this.y });
+    }
+    this.dernierJackpot = this.reglages.jackpotMultiplie ? v * this.mult : v;
+    this.jackpotPoints += this.dernierJackpot;
+    this.ev |= EV_JACKPOT;
+  }
+
+  /**
+   * Un pas de plus vers le but de la mission : au but, la récompense du niveau (au multiplicateur d'avant), le multiplicateur monte d'un cran et **le verrou s'allume** (lot PBG2 ; un plan sans verrou — le plan d'essai —
+   * ne rejoue pas la mission). **Pendant la multibille, la même prise rapporte un jackpot.** `quoi` : l'élément qui vient de servir.
+   */
   private pourLaMission(quoi: Mission): void {
-    if (this.missionFaite || quoi !== this.mission) return;
+    if (quoi !== this.mission) return;
+    if (this.multibille) return this.jackpot();
+    if (this.missionFaite) return;
     this.compteur = Math.min(this.but, this.compteur + 1);
     if (this.compteur < this.but) return;
     this.missionFaite = true;
-    this.points(POINTS.mission);
+    this.points(this.recompenseMission());
     this.mult = Math.min(MULT_MAX, this.mult + 1);
     this.multMax = Math.max(this.multMax, this.mult);
     this.ev |= EV_MISSION | EV_MULT;
+    if (this.table.verrou >= 0) {
+      this.verrouAllume = true;
+      this.ev |= EV_VERROU_ALLUME;
+    }
+  }
+
+  /** **Une bille entre dans le verrou allumé** : elle y reste (`verrouillees`), le trou reprendra bientôt, une nouvelle bille arrive au lanceur **sans coûter de bille de la partie** ; la deuxième lance la multibille. */
+  private verrouiller(i: number, r: Reglages): void {
+    this.trouPause[i] = r.verrouPause;
+    this.verrouillees++;
+    this.verrouTotal++;
+    this.ev |= EV_VERROUILLEE;
+    this.points(r.verrouPoints);
+    this.nouvelleBille();
+    if (this.verrouillees >= VERROU_BILLES) this.demarrerMultibille();
+  }
+
+  /** La multibille part : les billes verrouillées seront lâchées l'une après l'autre, la bille du lanceur reste, `sauveeMulti` pas de bille sauvée. */
+  private demarrerMultibille(): void {
+    const r = this.reglages;
+    this.multibille = true;
+    this.multibilles++;
+    this.verrouAllume = false;
+    this.aLacher = this.verrouillees;
+    this.lacherDans = r.multibilleDepart;
+    this.sauveeMulti = r.multibilleSauvee;
+    this.jackpots = 0;
+    this.ev |= EV_MULTI;
+  }
+
+  /**
+   * **Les essais** (`?essai=verrou`, `?essai=multibille`, hors production, jamais classés) : la mission est réussie et le verrou allumé (`allumerLeVerrou`), ou la partie commence en multibille (`lancerLaMultibille` : deux
+   * billes verrouillées, lâchées l'une après l'autre, la bille du lanceur reste). Sans verrou sur le plan (le plan d'essai), rien ne se passe.
+   */
+  allumerLeVerrou(): void {
+    if (this.table.verrou < 0 || this.multibille || this.missionFaite) return;
+    this.compteur = this.but;
+    this.missionFaite = true;
+    this.verrouAllume = true;
+  }
+  lancerLaMultibille(): void {
+    if (this.table.verrou < 0 || this.multibille) return;
+    this.compteur = this.but;
+    this.missionFaite = true;
+    this.verrouillees = VERROU_BILLES;
+    this.demarrerMultibille();
+  }
+
+  /** La multibille finit (il ne reste qu'une bille sur la table) : la mission revient au niveau suivant, son but plus haut (`missionButPas` %, arrondi au-dessus). */
+  private finMultibille(): void {
+    this.multibille = false;
+    this.sauveeMulti = 0;
+    this.jackpots = 0;
+    this.niveau++;
+    this.but = div(this.but * this.reglages.missionButPas + 99, 100);
+    this.compteur = 0;
+    this.missionFaite = false;
+    this.ev |= EV_MULTI_FIN | EV_NIVEAU;
+  }
+
+  /** Le nombre de billes sur la table, ou qui y reviennent par le trou (les billes verrouillées et la bille du lanceur comprises). */
+  get surLaTable(): number {
+    return (this.vide ? 0 : 1) + this.autres.length + this.aLacher;
+  }
+
+  /** Une bille quitte la table pendant la multibille : elle revient par le trou si on est encore dans le délai de bille sauvée, sinon elle est perdue — pour rien. */
+  private perdueEnMultibille(): void {
+    if (this.sauveeMulti > 0) {
+      if (this.aLacher === 0) this.lacherDans = this.reglages.multibilleRelance;
+      this.aLacher++;
+      this.ev |= EV_SAUVEE;
+    } else {
+      this.perduesMulti++;
+      this.ev |= EV_PERDUE;
+    }
+    this.sortie = true;
+  }
+
+  /** Une bille sort du trou du verrou (le départ de la multibille, ou une bille sauvée) : elle est lâchée comme le trou lâche sa bille. */
+  private lacher(): void {
+    const r = this.reglages;
+    const tr = this.table.trous[this.table.verrou]!;
+    const co = cosinus(ANGLE_TROU);
+    const si = sinus(ANGLE_TROU);
+    const sortie = div(tr.r * 2, 5) + 14 * UNITE;
+    const b = billeVide(this.suivantId++, this.table.plateaux.length, this.table.coulees.length);
+    b.x = tr.x + div(co * sortie, NORME);
+    b.y = tr.y + div(si * sortie, NORME);
+    b.px = b.x;
+    b.py = b.y;
+    b.vx = div(co * r.trouVitesse * UNITE, NORME);
+    b.vy = div(si * r.trouVitesse * UNITE, NORME);
+    b.entree = this.tick;
+    b.sauvee = true; // jamais deux fois sauvée : la bille sauvée de la multibille est celle du départ (`sauveeMulti`)
+    if (this.vide) {
+      this.echanger(b);
+      this.vide = false;
+    } else this.autres.push(b);
+    this.aLacher--;
+    if (this.verrouillees > 0) this.verrouillees--;
+  }
+
+  /** Échange tous les champs de la bille principale avec ceux de `b` : la partie joue alors la bille `b` avec la même physique que la principale, puis les échange de nouveau. */
+  private echanger(b: Bille): void {
+    let n: number;
+    let o: boolean;
+    n = this.id; this.id = b.id; b.id = n;
+    n = this.x; this.x = b.x; b.x = n;
+    n = this.y; this.y = b.y; b.y = n;
+    n = this.vx; this.vx = b.vx; b.vx = n;
+    n = this.vy; this.vy = b.vy; b.vy = n;
+    n = this.px; this.px = b.px; b.px = n;
+    n = this.py; this.py = b.py; b.py = n;
+    n = this.captifDe; this.captifDe = b.captifDe; b.captifDe = n;
+    n = this.captifTb; this.captifTb = b.captifTb; b.captifTb = n;
+    n = this.captif; this.captif = b.captif; b.captif = n;
+    n = this.charge; this.charge = b.charge; b.charge = n;
+    n = this.entree; this.entree = b.entree; b.entree = n;
+    n = this.geyserJets; this.geyserJets = b.geyserJets; b.geyserJets = n;
+    n = this.rail; this.rail = b.rail; b.rail = n;
+    n = this.railS; this.railS = b.railS; b.railS = n;
+    n = this.railV; this.railV = b.railV; b.railV = n;
+    n = this.railDepuis; this.railDepuis = b.railDepuis; b.railDepuis = n;
+    o = this.dansLanceur; this.dansLanceur = b.dansLanceur; b.dansLanceur = o;
+    o = this.sauvee; this.sauvee = b.sauvee; b.sauvee = o;
+    const c = this.couche; this.couche = b.couche; b.couche = c;
+    const bo = this.railBout; this.railBout = b.railBout; b.railBout = bo;
+    const ms = this.manegeSecteur; this.manegeSecteur = b.manegeSecteur; b.manegeSecteur = ms;
+    const cd = this.couleeDedans; this.couleeDedans = b.couleeDedans; b.couleeDedans = cd;
+  }
+
+  /** La bille principale, retirée de la table (perdue pendant la multibille) : la suivante la remplace, ou la table est vide en attendant qu'une bille revienne par le trou. */
+  private retirerPrincipale(): void {
+    if (this.autres.length > 0) {
+      this.echanger(this.autres[0]!);
+      this.autres.shift();
+    } else this.vide = true;
+  }
+
+  /** Les billes sur la table (la principale d'abord), pour le rendu : un instantané. */
+  billesDeLaTable(): BilleVue[] {
+    const v: BilleVue[] = [];
+    if (!this.vide) v.push({ id: this.id, x: this.x, y: this.y, px: this.px, py: this.py, vx: this.vx, vy: this.vy, couche: this.couche, captif: this.captif, dansLanceur: this.dansLanceur, charge: this.charge });
+    for (const b of this.autres) v.push({ id: b.id, x: b.x, y: b.y, px: b.px, py: b.py, vx: b.vx, vy: b.vy, couche: b.couche, captif: b.captif, dansLanceur: b.dansLanceur, charge: b.charge });
+    return v;
+  }
+
+  /** Lit la bille `id` dans `sortie` (le robot suit « sa » bille sans rien allouer). Faux si elle n'est plus sur la table. */
+  lire(id: number, sortie: BilleVue): boolean {
+    if (!this.vide && this.id === id) {
+      sortie.id = id;
+      sortie.x = this.x;
+      sortie.y = this.y;
+      sortie.px = this.px;
+      sortie.py = this.py;
+      sortie.vx = this.vx;
+      sortie.vy = this.vy;
+      sortie.couche = this.couche;
+      sortie.captif = this.captif;
+      sortie.dansLanceur = this.dansLanceur;
+      sortie.charge = this.charge;
+      return true;
+    }
+    for (const b of this.autres) {
+      if (b.id !== id) continue;
+      sortie.id = id;
+      sortie.x = b.x;
+      sortie.y = b.y;
+      sortie.px = b.px;
+      sortie.py = b.py;
+      sortie.vx = b.vx;
+      sortie.vy = b.vy;
+      sortie.couche = b.couche;
+      sortie.captif = b.captif;
+      sortie.dansLanceur = b.dansLanceur;
+      sortie.charge = b.charge;
+      return true;
+    }
+    return false;
   }
 
   private nouvelleBille(): void {
@@ -286,6 +604,7 @@ export class Partie {
     this.sauvee = false;
     this.geyserJets = 0;
     this.manegeSecteur.fill(-1);
+    this.id = this.suivantId++;
     this.couche = 0;
     this.rail = -1;
     this.railS = 0;
@@ -335,6 +654,43 @@ export class Partie {
       this.aAvant[i] = this.a[i]!;
       this.a[i] = this.a[i]! + Math.sign(diff) * Math.min(Math.abs(diff), vit);
     }
+    // lot PBG2 : la bille principale joue son pas, puis chacune des autres (la partie échange ses champs avec elle) ; les billes qui se touchent rebondissent ; la multibille lâche ses billes et s'arrête quand il n'en reste qu'une
+    if (!this.vide) {
+      this.pasDeBille(true);
+      if (this.sortie) {
+        this.sortie = false;
+        this.retirerPrincipale();
+      }
+    }
+    for (let i = 0; i < this.autres.length; i++) {
+      const b = this.autres[i]!;
+      this.echanger(b);
+      this.pasDeBille(false);
+      const sortie = this.sortie;
+      this.sortie = false;
+      this.echanger(b);
+      if (sortie) this.autres.splice(i--, 1);
+    }
+    if (this.autres.length > 0) this.collisionsDesBilles();
+    if (this.aLacher > 0 && --this.lacherDans <= 0) {
+      this.lacher();
+      if (this.aLacher > 0) this.lacherDans = r.multibilleLacher;
+    }
+    if (this.multibille) {
+      if (this.sauveeMulti > 0) this.sauveeMulti--;
+      if (this.surLaTable <= 1) this.finMultibille();
+    }
+    this.finDuPas();
+  }
+
+  /**
+   * **Le pas d'une bille** (la principale, ou une autre échangée avec elle) : le trou ou le tourbillon qui la garde, le rail, le lanceur, la pente, les forces des éléments, le déplacement, les collisions, les capteurs, le
+   * retour au lanceur, la bille perdue. `principale` : le décompte de la pause des trous ne se fait qu'une fois par pas.
+   */
+  private pasDeBille(principale: boolean): void {
+    const d = this.d;
+    const r = this.reglages;
+    const t = this.table;
     this.px = this.x;
     this.py = this.y;
     if (this.captif > 0) {
@@ -365,12 +721,12 @@ export class Partie {
         this.px = this.x;
         this.py = this.y;
       }
-      return this.finDuPas();
+      return;
     }
-    for (let i = 0; i < this.trouPause.length; i++) this.trouPause[i] = this.trouPause[i]! - 1;
+    if (principale) for (let i = 0; i < this.trouPause.length; i++) this.trouPause[i] = this.trouPause[i]! - 1;
     if (this.couche === 1) {
       this.surRail(d, r, t);
-      return this.finDuPas();
+      return;
     }
     if (this.dansLanceur) {
       if (this.appuiLanceur) this.charge = Math.min(CHARGE_MAX, this.charge + d.chargeParPas);
@@ -385,7 +741,7 @@ export class Partie {
         this.vx = 0;
         this.vy = 0;
         this.y = LANCE_Y * UNITE;
-        return this.finDuPas();
+        return;
       }
     }
     this.vy += d.graviteParPas;
@@ -404,7 +760,7 @@ export class Partie {
     // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
     for (const g of t.portes) {
       this.porte(g, d);
-      if (this.surUnRail) return this.finDuPas();
+      if (this.surUnRail) return;
     }
     for (const p of t.poteaux) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0);
     for (let i = 0; i < t.bumpers.length; i++) {
@@ -462,6 +818,8 @@ export class Partie {
       const dx = this.x - tr.x;
       const dy = this.y - tr.y;
       if (this.trouPause[i]! <= 0 && dx * dx + dy * dy < 121 * UNITE * UNITE && this.vx * this.vx + this.vy * this.vy < d.trouVitesseMax2) {
+        // lot PBG2 : le verrou allumé garde la bille pour de bon
+        if (this.verrouAllume && i === t.verrou) return this.verrouiller(i, r);
         this.captif = r.trouGarde;
         this.captifDe = i;
         this.x = tr.x;
@@ -475,12 +833,13 @@ export class Partie {
     }
     this.elements(r);
     // --- le retour dans le couloir du lanceur, puis la bille perdue
-    if (this.x > 350 * UNITE && this.y > 690 * UNITE && Math.abs(this.vy) < 60 * UNITE) {
+    if (this.x > 350 * UNITE && this.y > 690 * UNITE && Math.abs(this.vy) < 60 * UNITE && !this.couloirPris()) {
       this.dansLanceur = true;
       this.x = LANCE_X2 * UNITE / 2;
     }
     if (this.y > PERDUE_Y * UNITE) {
-      if (r.sauvee > 0 && !this.sauvee && this.tick - this.entree <= r.sauvee) {
+      if (this.multibille) this.perdueEnMultibille();
+      else if (r.sauvee > 0 && !this.sauvee && this.tick - this.entree <= r.sauvee) {
         this.nouvelleBille();
         this.sauvee = true;
         this.ev |= EV_SAUVEE;
@@ -492,7 +851,76 @@ export class Partie {
         } else this.nouvelleBille();
       }
     }
-    this.finDuPas();
+  }
+
+  /** Une autre bille attend-elle déjà dans le couloir du lanceur ? (Une seule y tient : la suivante reste posée sur elle jusqu'à son départ.) */
+  private couloirPris(): boolean {
+    for (const b of this.autres) if (b.dansLanceur) return true;
+    return false;
+  }
+
+  /**
+   * **Les billes se touchent** (lot PBG2) : deux billes qui se recouvrent sont écartées chacune d'une moitié du recouvrement, et si elles se rapprochent elles se renvoient leur vitesse selon la normale (`rebondBille` ‰ :
+   * 1 000, élastique, à masses égales : elles échangent leurs vitesses normales). **L'ordre est fixe** (la principale, puis `autres`, les paires dans l'ordre) : la partie reste déterministe. Une bille captive, sur un rail
+   * ou dans le couloir du lanceur ne touche à rien. Au plus 5 px de recouvrement par pas (2,5 px chacune) : **aucune bille ne passe à travers une autre** (`test/billes.test.ts`).
+   */
+  private collisionsDesBilles(): void {
+    const lue = (this.lue ??= billeVide(-1, 0, 0));
+    const tous: Bille[] = [];
+    if (!this.vide) {
+      lue.x = this.x;
+      lue.y = this.y;
+      lue.vx = this.vx;
+      lue.vy = this.vy;
+      lue.captif = this.captif;
+      lue.couche = this.couche;
+      lue.dansLanceur = this.dansLanceur;
+      tous.push(lue);
+    }
+    for (const b of this.autres) tous.push(b);
+    const e = this.reglages.rebondBille;
+    const mur = 2 * RU;
+    for (let i = 0; i < tous.length; i++) {
+      const a = tous[i]!;
+      if (a.captif > 0 || a.couche === 1 || a.dansLanceur) continue;
+      for (let j = i + 1; j < tous.length; j++) {
+        const b = tous[j]!;
+        if (b.captif > 0 || b.couche === 1 || b.dansLanceur) continue;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= mur * mur) continue;
+        let nx = NORME;
+        let ny = 0;
+        let dd = 0;
+        if (d2 > 0) {
+          dd = racine(d2);
+          nx = unitaire(dx, dd);
+          ny = unitaire(dy, dd);
+        }
+        const rec = mur - dd;
+        const ma = div(rec, 2);
+        const mb = rec - ma;
+        a.x -= div(nx * ma, NORME);
+        a.y -= div(ny * ma, NORME);
+        b.x += div(nx * mb, NORME);
+        b.y += div(ny * mb, NORME);
+        const vn = div((a.vx - b.vx) * nx + (a.vy - b.vy) * ny, NORME);
+        if (vn > 0) {
+          const j2 = div((1000 + e) * vn, 2000);
+          a.vx -= div(j2 * nx, NORME);
+          a.vy -= div(j2 * ny, NORME);
+          b.vx += div(j2 * nx, NORME);
+          b.vy += div(j2 * ny, NORME);
+        }
+      }
+    }
+    if (!this.vide) {
+      this.x = lue.x;
+      this.y = lue.y;
+      this.vx = lue.vx;
+      this.vy = lue.vy;
+    }
   }
 
   /**

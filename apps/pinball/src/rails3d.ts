@@ -410,23 +410,28 @@ export interface Rails3d {
   liberables: { dispose(): void }[];
   /** La force de la lueur (le curseur « bandes » de la vue, 1 à 100 %). */
   lueur(k: number): void;
-  /** Une image : la bille (centre, scène) ou `null` quand elle est sur un rail ou cachée ; `camera` : celle de l'image. */
-  fenetre(bille: Vector3 | null, camera: Camera): void;
+  /** Une image : les billes qui sont sur le plateau (les `n` premiers centres, scène ; `FENETRES` au plus, les autres restent sous les rails) — aucune quand elles sont sur un rail ou cachées ; `camera` : celle de l'image. */
+  fenetre(billes: readonly Vector3[], n: number, camera: Camera): void;
   /** Les triangles posés (pour les mesures). */
   triangles: number;
 }
 
 const GAIN_RAILS = 3;
-/** La fenêtre sur la bille : l'uniforme partagé de tous les matériaux de rail. */
+/** Lot PBG2 : le nombre de billes à la fois qui voient à travers les rails (la bille du lanceur et celles de la multibille : trois au plus sur le plateau). */
+export const FENETRES = 3;
+/** La fenêtre sur la bille : l'uniforme partagé de tous les matériaux de rail (une fenêtre par bille du plateau). */
 const FENETRE = `
-  if ( cdjBille.w > 0.0 ) {
-    vec3 cdjP = - vViewPosition;
-    vec2 cdjD = cdjP.xy / - cdjP.z - cdjBille.xy / - cdjBille.z;
-    float cdjRayon = cdjBille.w / - cdjBille.z;
-    float cdjDist = length( cdjD ) / cdjRayon;
-    if ( cdjDist < 1.0 && cdjP.z > cdjBille.z + 3.0 ) {
-      float cdjSeuil = fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
-      if ( cdjSeuil >= clamp( ( cdjDist - 0.55 ) / 0.45, 0.0, 1.0 ) ) discard;
+  for ( int cdjI = 0; cdjI < ${FENETRES}; cdjI ++ ) {
+    vec4 cdjB = cdjBille[ cdjI ];
+    if ( cdjB.w > 0.0 ) {
+      vec3 cdjP = - vViewPosition;
+      vec2 cdjD = cdjP.xy / - cdjP.z - cdjB.xy / - cdjB.z;
+      float cdjRayon = cdjB.w / - cdjB.z;
+      float cdjDist = length( cdjD ) / cdjRayon;
+      if ( cdjDist < 1.0 && cdjP.z > cdjB.z + 3.0 ) {
+        float cdjSeuil = fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
+        if ( cdjSeuil >= clamp( ( cdjDist - 0.55 ) / 0.45, 0.0, 1.0 ) ) discard;
+      }
     }
   }`;
 
@@ -445,10 +450,10 @@ export function creerRails3d(theme: ThemePinball, table: Table): Rails3d {
   for (const porte of table.portes) portique(t3, theme, porte);
 
   const liberables: { dispose(): void }[] = [];
-  const fenetre = { value: new Vector4(0, 0, 0, 0) };
+  const fenetre = { value: Array.from({ length: FENETRES }, () => new Vector4(0, 0, 0, 0)) };
   const crochet = (sh: { uniforms: Record<string, unknown>; fragmentShader: string }): void => {
     sh.uniforms.cdjBille = fenetre;
-    sh.fragmentShader = sh.fragmentShader.replace("void main() {", "uniform vec4 cdjBille;\nvoid main() {").replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\n${FENETRE}`);
+    sh.fragmentShader = sh.fragmentShader.replace("void main() {", `uniform vec4 cdjBille[${FENETRES}];\nvoid main() {`).replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\n${FENETRE}`);
   };
   const marquer = <M extends Material>(m: M): M => {
     m.userData.crochet = crochet;
@@ -483,13 +488,17 @@ export function creerRails3d(theme: ThemePinball, table: Table): Rails3d {
     lueur(k: number): void {
       rayon.color.setScalar(0.35 + 1.6 * k);
     },
-    fenetre(bille: Vector3 | null, camera: Camera): void {
-      if (!bille) {
-        fenetre.value.w = 0;
-        return;
+    fenetre(billes: readonly Vector3[], n: number, camera: Camera): void {
+      for (let i = 0; i < FENETRES; i++) {
+        const w = fenetre.value[i]!;
+        const bille = i < n ? billes[i] : undefined;
+        if (!bille) {
+          w.w = 0;
+          continue;
+        }
+        v.copy(bille).applyMatrix4(camera.matrixWorldInverse);
+        w.set(v.x, v.y, v.z, RAYON * 2.4);
       }
-      v.copy(bille).applyMatrix4(camera.matrixWorldInverse);
-      fenetre.value.set(v.x, v.y, v.z, RAYON * 2.4);
     },
   };
 }

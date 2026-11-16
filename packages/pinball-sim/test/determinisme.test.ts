@@ -40,6 +40,17 @@ describe("même liste d'événements, même score", () => {
       });
     }
   }
+  // lot PBG2 : une partie qui passe par une multibille (deux billes verrouillées, trois billes en jeu, des jackpots, la mission du niveau suivant) se rejoue au bit près, par le jeu comme par le serveur ; le robot y joue 6 minutes
+  it.each([["espace", "doublette"], ["foire", "boucle"]] as const)("lot PBG2 : une partie avec multibille (%s, plan %s) : le jeu, le robot et le serveur donnent le même résultat", (theme, plan) => {
+    const c = dailyPinball(JOUR + 3, undefined, theme, plan);
+    const { evenements, partie } = jouerRobot(c, 1, { maxTicks: 216000 });
+    expect(partie.multibilles, "la partie passe par au moins une multibille").toBeGreaterThanOrEqual(1);
+    expect(partie.jackpotsPartie).toBeGreaterThanOrEqual(1);
+    expect(pasAPas(c, evenements, 216000)).toEqual(partie.resultat());
+    const fin = pasAPas(c, evenements, DUREE_MAX_TICKS);
+    expect(rejouer(c, enregistrer(c, evenements))).toEqual(fin);
+    expect(jouer(c, evenements)).toEqual(fin);
+  }, 120000);
   it("répétée cent fois (la même partie d'une minute) : toujours la même", () => {
     const c = dailyPinball(JOUR);
     const { evenements } = jouerRobot(c, 1, { maxTicks: 36000 });

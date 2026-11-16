@@ -61,6 +61,19 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   comboDelai: [600, 12000],
   comboMax: [1, 10],
   comboPas: [0, 200],
+  // lot PBG2 : le verrou, la multibille, le jackpot et les niveaux de la mission
+  verrouPoints: [0, 20000],
+  verrouPause: [60, 1800],
+  multibilleDepart: [60, 2400],
+  multibilleLacher: [60, 3000],
+  multibilleSauvee: [0, 18000],
+  multibilleRelance: [60, 1800],
+  rebondBille: [0, 1000],
+  jackpotBase: [0, 50000],
+  jackpotPas: [0, 300],
+  jackpotMultiplie: [0, 1],
+  missionButPas: [100, 400],
+  missionPas: [0, 300],
 };
 
 /** Ce que le joueur d'essai règle sur la vue (rien de cela n'entre dans la simulation). */

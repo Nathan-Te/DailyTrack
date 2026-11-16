@@ -14,11 +14,14 @@ interface Resume {
   scores: number[];
   pire: number;
   secondes: number;
+  /** Lot PBG2 : le robot a verrouillé une bille / lancé une multibille sur cette table. */
+  verrou: boolean;
+  multibille: boolean;
 }
 const travail = (c: Contenu): Resume => {
   const t0 = performance.now();
   const a = analyserTable(c);
-  return { cle: cleDeTable(c), ok: a.ok!, raisons: a.raisons!, scores: a.scores, pire: a.billes!.pire, secondes: (performance.now() - t0) / 1000 };
+  return { cle: cleDeTable(c), ok: a.ok!, raisons: a.raisons!, scores: a.scores, pire: a.billes!.pire, secondes: (performance.now() - t0) / 1000, verrou: a.verrou!, multibille: a.multibille! };
 };
 
 if (enFil) repondre(travail);
@@ -41,6 +44,9 @@ else {
   const secondes = resumes.map((r) => r.secondes);
   console.log(`${resumes.length - refusees.length} valides, ${refusees.length} refusée(s) sur ${resumes.length} ; la bille lâchée la plus lente met ${pire} pas (${(pire / 600).toFixed(0)} s) ; ${(secondes.reduce((a, b) => a + b, 0) / secondes.length).toFixed(1)} s par table en moyenne, ${Math.max(...secondes).toFixed(1)} s au pire ; ${((performance.now() - t0) / 1000).toFixed(0)} s en tout.`);
   for (const [m, n] of motifs) console.log(`  ${n} × ${m}`);
+  const sansVerrou = resumes.filter((r) => !r.verrou).map((r) => r.cle);
+  const sansMulti = resumes.filter((r) => !r.multibille).map((r) => r.cle);
+  console.log(`Lot PBG2 : le robot a verrouillé une bille sur ${resumes.length - sansVerrou.length} tables sur ${resumes.length} et lancé une multibille sur ${resumes.length - sansMulti.length}.${sansMulti.length ? ` Sans multibille : ${sansMulti.slice(0, 12).join(" ; ")}${sansMulti.length > 12 ? " …" : ""}` : ""}`);
   if (valeur("jours")) {
     const n = Number(valeur("jours"));
     const premier = daysFromCivil(2026, 11, 2);

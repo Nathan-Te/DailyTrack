@@ -19,9 +19,9 @@ import { billesCoincees, SuiviModules, tirsDisperses, type RapportBilles } from 
 // (un jour d'archive, d'essai, de recette) est calculé **une fois** par table (`cleDeTable` : le résultat ne dépend que d'elle) : par le serveur (le module des jeux garde le niveau d'un jour) et, côté jeu, **en
 // arrière-plan** pendant la première partie (`seuilsEnTranches`, `apps/pinball/src/niveau.ts`).
 
-/** Le robot joue 4 parties par table, de 2 minutes chacune au plus (72 000 pas) : le coût d'une table est celui de 8 minutes de jeu (≈ 4 secondes). Mesures et justification : README du lot PB4. */
+/** Le robot joue 4 parties par table, de 6 minutes chacune au plus (216 000 pas : lot PBG2, avec la boucle mission-verrou-multibille une bonne partie dure bien plus que les 2 minutes du lot PB4 ; le coût d'une table est celui de 24 minutes de jeu, ≈ 12 secondes). Mesures et justification : README du lot PBG2. */
 export const PARTIES_DU_ROBOT = 4;
-export const DUREE_PARTIE_ROBOT = 120 * TICKS_PAR_SECONDE;
+export const DUREE_PARTIE_ROBOT = 360 * TICKS_PAR_SECONDE;
 /**
  * **Les pourcentages du meilleur score du robot** (Diamant) que valent les trois autres médailles. **Nathan les règle** (ils montent `PINBALL_BOT_VERSION`). Valeurs de départ : Bronze 15 % (la partie d'un joueur
  * qui sait à peine viser, sans mission), Argent 35 % (une bonne partie sans mission), Or 60 % (la mission et une partie propre) — justifiées par la répartition des scores du robot dans le README du lot PB4.
@@ -71,6 +71,9 @@ export interface AnalyseTable {
   manquants?: string[];
   missionRobot?: boolean;
   mission?: boolean;
+  /** Lot PBG2 : le robot a verrouillé une bille / lancé une multibille sur cette table (rapporté, pas exigé). */
+  verrou?: boolean;
+  multibille?: boolean;
   ok?: boolean;
   raisons?: string[];
 }
@@ -88,7 +91,7 @@ function* partiesDuRobot(contenu: Contenu, suivi?: SuiviModules, reglages: Regla
     const r = yield* jouerRobotEnTranches(contenu, graineDuRobot(k), { maxTicks: DUREE_PARTIE_ROBOT, reglages, ...(suivi ? { surPas: (p) => suivi.pas(p) } : {}) });
     scores.push(r.partie.score);
     ticks.push(r.partie.tick);
-    missions.push(r.partie.missionFaite);
+    missions.push(r.partie.missionFaite || r.partie.niveau > 1);
     pasSimules += r.pasSimules;
   }
   return { scores, ticks, missions, seuils: seuilsDesScores(scores), pasSimules };
@@ -132,7 +135,7 @@ export function* analyserTableEnTranches(contenu: Contenu, reglages: Reglages = 
   if (billes.coincee) raisons.push(`bille coincée : lâchée en (${billes.coincee.x}, ${billes.coincee.y}) à (${billes.coincee.vx}, ${billes.coincee.vy}) px/s`);
   for (const m of manquants) raisons.push(`module jamais touché : ${m}`);
   if (!suivi.mission) raisons.push("mission jamais réussie");
-  return { ...a, billes, manquants, missionRobot, mission: suivi.mission, ok: raisons.length === 0, raisons };
+  return { ...a, billes, manquants, missionRobot, mission: suivi.mission, verrou: suivi.verrou, multibille: suivi.multibille, ok: raisons.length === 0, raisons };
 }
 
 /** `analyserTableEnTranches` d'un trait. */

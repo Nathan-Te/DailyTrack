@@ -8,7 +8,13 @@ import { appareil, JOUR, lancer } from "./appareil";
 
 // « Pinball » (lot PB4) — LES ESSAIS DE RECETTE `?robot` : on regarde le robot jouer la table du jour avec la mention « Le robot joue » ; `?jour=AAAA-MM-JJ&robot` pour un autre jour. La page rejoue les événements
 // que la simulation (Node, la même) calcule pour la partie du robot : le jeu ne décide rien. Hors production seulement, jamais classé (la production n'a aucune de ces options : `test/essai.test.ts`).
-const robot = (jour: string, k = 0) => jouerRobot(dailyPinball(parseDay(jour)!), graineDuRobot(k), { maxTicks: DUREE_PARTIE_ROBOT });
+// lot PBG2 : une partie du robot dure 6 minutes de jeu (≈ 3 s de calcul) : chaque partie n'est calculée qu'une fois par fichier
+const parties = new Map<string, ReturnType<typeof jouerRobot>>();
+const robot = (jour: string, k = 0) => {
+  const cle = `${jour}:${k}`;
+  if (!parties.has(cle)) parties.set(cle, jouerRobot(dailyPinball(parseDay(jour)!), graineDuRobot(k), { maxTicks: DUREE_PARTIE_ROBOT }));
+  return parties.get(cle)!;
+};
 
 test.describe("Pinball : le robot joue (?robot)", () => {
   test("la mention « Le robot joue », et la page rejoue les événements de la partie du robot au pas près", async ({ browser }) => {

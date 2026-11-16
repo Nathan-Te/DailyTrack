@@ -1,4 +1,4 @@
-import { dailyPinball, figerJour, jouer, jouerRobot, type Evenement, type Resultat, type Seuils } from "@cdj/pinball-sim";
+import { dailyPinball, figerJour, jouer, jouerRobot, type Evenement, type Partie, type Resultat, type Seuils } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -24,8 +24,8 @@ export interface PorteScene {
   evenements(): Evenement[];
   /** Le rendu qui est à l'écran, ce que dessine le rendu three.js (appels, triangles, ms de fil principal par image, où tombent les points du terrain à l'écran : tout est à l'image si |x| ≤ 1 et −1 ≤ y ≤ 1), les vibrations demandées. */
   qualite(): "haute" | "basse";
-  /** Lot PBG1 : la partie en cours (les essais de l'interface y posent un combo sans jouer un rail). */
-  partie(): { combo: number; comboFin: number; tick: number };
+  /** Lot PBG1 : la partie en cours (les essais de l'interface y posent un combo sans jouer un rail ; lot PBG2 : le verrou, la multibille). */
+  partie(): Partie;
   trois(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] } | null;
   vibrations(): number;
   /** Lot PBV1 : allume ou éteint les contours de collision, le compteur de pas et les gains (les captures les éteignent). */

@@ -57,7 +57,8 @@
   border: var(--dj-trait) solid var(--dj-encre);
   background: var(--dj-papier);
 }
-.p-mission__gain {
+.p-mission__gain,
+.p-mission__boucle {
   margin: 0;
   font-size: var(--dj-taille-12);
   line-height: 1.3;

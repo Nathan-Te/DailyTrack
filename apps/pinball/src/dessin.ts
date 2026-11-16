@@ -1682,11 +1682,20 @@ export interface Surimpression {
   /** Le texte de « Bille sauvée ! » (déjà traduit). */
   texteSauvee: string;
   /** Les points marqués récemment (`?debug`) : où, combien, et leur vie restante de 0 à 1. */
-  gains: readonly { x: number; y: number; points: number; vie: number }[];
+  gains: readonly { x: number; y: number; points: number; vie: number; texte?: string }[];
   /** La part de pas écoulée depuis le dernier pas joué, de 0 à 1 (interpolation de la bille). */
   alpha: number;
   /** Lot PB3 : l'éclat de la mission réussie, de 0 à 1 (1 : vient d'être réussie) ; sur la table, un éclat doré (et, en three.js seulement, une brève secousse de caméra). */
   eclat: number;
+  /** Lot PBG2 : l'éclat du départ de la multibille, de 1 (elle vient de partir) à 0 ; un éclat sur la table, comme `eclat` (et la secousse de caméra en three.js seulement). */
+  multi: number;
+  /** Lot PBG2 : un message court au milieu de la table (« MULTIBILLE ! », « VERROU ALLUMÉ », « BILLE VERROUILLÉE »…, déjà traduit), sa vie de 1 à 0 ; `null` : aucun. */
+  message: { texte: string; vie: number } | null;
+  /** Lot PBG2 : la secousse de caméra de 1 à 0 (three.js seulement, jamais avec le mouvement réduit : la scène donne 0). */
+  secousse: number;
+  /** Lot PBG2 : les mots écrits sur les plaques — « VERROU » sur la plaque du trou quand le verrou est allumé, « JACKPOT » sur celle de l'élément du thème pendant la multibille (déjà traduits). */
+  plaqueVerrou: string;
+  plaqueJackpot: string;
 }
 
 /** Lot PB5b : la zone du canvas où la table doit tenir en entier, en pixels CSS depuis son coin haut gauche — **entre les deux bandes du HUD en surimpression** (`hud.ts`), marges de sécurité comprises. Le canvas, lui, garde tout l'écran : le décor passe sous le HUD. */
@@ -1746,10 +1755,50 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     f();
     g.restore();
   };
-  function noms(c: CanvasRenderingContext2D): void {
+  const styleDesPlaques = styleEtiquette(theme);
+  /** Lot PBG2 : le trou-verrou (null : le plan n'en a pas) et, par plaque, ce qu'elle nomme — le verrou, ou l'élément du thème (la plaque dit « JACKPOT » pendant la multibille). */
+  const verrou = t.verrou >= 0 ? t.trous[t.verrou]! : null;
+  const roleDesPlaques = etiquettes.map((e) => {
+    const a = e.ancres[0];
+    if (verrou && e.module === "trou" && a && Math.abs(a.x - px(verrou.x)) < 0.01 && Math.abs(a.y - px(verrou.y)) < 0.01) return 1;
+    return comptePourLaMission(theme, e.module) ? 2 : 0;
+  });
+  /** Les largeurs mesurées d'un texte de plaque (sa plus longue ligne), gardées : on ne mesure un texte qu'une fois. */
+  const largeursMesurees = new Map<string, number>();
+  const majuscules = new Map<string, string>();
+  function largeurMesuree(c: CanvasRenderingContext2D, texte: string): number {
+    let w = largeursMesurees.get(texte);
+    if (w === undefined) {
+      c.save();
+      c.font = `700 9.8px ${police}`;
+      w = Math.max(...texte.split("\n").map((l) => c.measureText(l).width));
+      c.restore();
+      largeursMesurees.set(texte, w);
+    }
+    return w;
+  }
+  const enMajuscules = (texte: string): string => {
+    let m = majuscules.get(texte);
+    if (m === undefined) majuscules.set(texte, (m = texte.toLocaleUpperCase()));
+    return m;
+  };
+  function noms(c: CanvasRenderingContext2D, s: Surimpression): void {
     // lot PBV2 : la même mise en place que le rendu three.js (aucune plaque n'en recouvre une autre ni un module), à 140 % de la plaque
     // (la boîte de la mise en place est à 1,4 × 1,04 : la plaque à plat se dessine à 1,4 × sa taille, jamais plus grande que sa boîte — et jamais plus petite qu'avant le lot)
-    for (const e of etiquettes) pastille(c, police, e.x, e.y, e.texte, e.taille * 1.4, styleEtiquette(theme));
+    for (let i = 0; i < etiquettes.length; i++) {
+      const e = etiquettes[i]!;
+      let texte = e.texte;
+      let k = e.taille * 1.4;
+      // lot PBG2 : « VERROU » sur la plaque du trou-verrou tant qu'il est allumé, « JACKPOT » sur celle de l'élément du thème pendant la multibille ; la plaque ne grandit jamais : le texte neuf est réduit pour tenir dans la largeur de l'ancien
+      const mot = roleDesPlaques[i] === 1 ? (partie.verrouAllume ? s.plaqueVerrou : "") : roleDesPlaques[i] === 2 ? (partie.multibille ? s.plaqueJackpot : "") : "";
+      if (mot) {
+        const neuf = enMajuscules(mot);
+        const marge = MARGE_PLAQUE[styleDesPlaques];
+        k *= Math.min(1, (largeurMesuree(c, e.texte) + marge) / (largeurMesuree(c, neuf) + marge));
+        texte = neuf;
+      }
+      pastille(c, police, e.x, e.y, texte, k, styleDesPlaques);
+    }
   }
 
   /** Lot PB3 : les éléments des thèmes, dessinés sous la bille, tous animés en fonction du seul pas (`tick`) ; puis les lampes de la mission. */
@@ -1886,12 +1935,25 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     if (clignote(tick)) for (const f of fleches) fleche(g, P, f.x, f.y, f.a, couleurDeBouche(theme));
   }
 
-  /** La bille à l'image : sa place interpolée, sa hauteur au-dessus du plateau (px : celle du rail sur lequel elle roule) et son grossissement. `null` quand elle n'est pas à voir. */
-  function positionDeLaBille(alpha: number): { x: number; y: number; h: number; k: number } | null {
-    if (partie.finie || partie.captif !== 0) return null;
-    const rail = partie.couche === 1 ? t.rails[partie.rail] : undefined;
-    const h = rail ? hauteurRail(rail, partie.railS) : 0;
-    return { x: px(partie.px) + (px(partie.x) - px(partie.px)) * alpha, y: px(partie.py) + (px(partie.y) - px(partie.py)) * alpha, h, k: 1 + h / 160 };
+  /** Lot PBG2 : les billes à l'image — celles de la table (la principale, si elle n'est pas absente, puis `partie.autres`), chacune à sa place interpolée, à sa hauteur au-dessus du plateau (px : celle du rail sur lequel elle roule)
+   *  et à son grossissement. Une bille gardée par un trou ou un tourbillon n'est pas à voir. Les objets sont réutilisés d'une image à l'autre (rien n'est alloué par image). */
+  const billes: { x: number; y: number; h: number; k: number }[] = [];
+  let nbBilles = 0;
+  function ajouterBille(ax: number, ay: number, x: number, y: number, couche: number, rang: number, s: number, alpha: number): void {
+    const rail = couche === 1 ? t.rails[rang] : undefined;
+    const h = rail ? hauteurRail(rail, s) : 0;
+    const b = (billes[nbBilles] ??= { x: 0, y: 0, h: 0, k: 1 });
+    nbBilles++;
+    b.x = px(ax) + (px(x) - px(ax)) * alpha;
+    b.y = px(ay) + (px(y) - px(ay)) * alpha;
+    b.h = h;
+    b.k = 1 + h / 160;
+  }
+  function billesDeLImage(alpha: number): void {
+    nbBilles = 0;
+    if (partie.finie) return;
+    if (!partie.vide && partie.captif === 0) ajouterBille(partie.px, partie.py, partie.x, partie.y, partie.couche, partie.rail, partie.railS, alpha);
+    for (const b of partie.autres) if (b.captif === 0) ajouterBille(b.px, b.py, b.x, b.y, b.couche, b.rail, b.railS, alpha);
   }
   /** L'ombre de la bille sur le plateau : décalée d'autant plus qu'elle est haute (la lumière vient du haut gauche). */
   function ombreBille(b: { x: number; y: number; h: number }): void {
@@ -1926,6 +1988,78 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     g.strokeStyle = ENCRE;
     g.stroke();
     rond(x0, y0, 4, P.bumper, 2);
+  }
+
+  /** Lot PBG2 : l'élément du thème (ce qui rapporte un jackpot pendant la multibille) : ses disques sur la table. */
+  const elementsDuTheme: { x: number; y: number; r: number }[] = [];
+  for (const [type, liste] of [["manege", t.plateaux], ["tourbillon", t.tourbillons], ["portailA", t.portails], ["geyser", t.geysers]] as const) {
+    if (comptePourLaMission(theme, type)) for (const z of liste) elementsDuTheme.push({ x: px(z.x), y: px(z.y), r: px(z.r) });
+  }
+  /** Un halo qui clignote autour d'un disque : `fort` allumé (le clignotement des flèches, `clignote`), sinon une trace pour qu'on le retrouve. Deux anneaux, aucune ombre portée : rien de coûteux. */
+  function halo(x: number, y: number, r: number, fort: boolean, couleur: string, remplir: boolean): void {
+    if (remplir) {
+      g.globalAlpha = fort ? 0.4 : 0.1;
+      rond(x, y, r, couleur, 0);
+    }
+    g.strokeStyle = couleur;
+    g.globalAlpha = fort ? 0.95 : 0.3;
+    g.lineWidth = 4;
+    g.beginPath();
+    g.arc(x, y, r + 4, 0, TAU);
+    g.stroke();
+    g.globalAlpha = fort ? 0.4 : 0.1;
+    g.lineWidth = 7;
+    g.beginPath();
+    g.arc(x, y, r + 10, 0, TAU);
+    g.stroke();
+    g.globalAlpha = 1;
+  }
+  /** Lot PBG2 : le trou-verrou clignote tant qu'il est allumé ; l'élément du thème clignote pendant la multibille (le jackpot). */
+  function halos(tick: number): void {
+    const fort = clignote(tick);
+    if (verrou && partie.verrouAllume) halo(px(verrou.x), px(verrou.y), px(verrou.r), fort, MOUTARDE, true);
+    if (partie.multibille) for (const z of elementsDuTheme) halo(z.x, z.y, z.r, fort, fort ? MOUTARDE : PAPIER, false);
+  }
+  /** Lot PBG2 : les billes verrouillées (0 à 2), au fond du trou-verrou : de petites billes d'acier côte à côte. Elles disparaissent quand le trou les lâche. */
+  function billesVerrouillees(): void {
+    const n = partie.verrouillees;
+    if (!verrou || n <= 0) return;
+    const x = px(verrou.x);
+    const y = px(verrou.y);
+    for (let k = 0; k < n; k++) {
+      const bx = n === 1 ? x : x + (k === 0 ? -5.6 : 5.6);
+      rond(bx, y, 5.2, "#C9CED6", 1.6);
+      g.beginPath();
+      g.arc(bx - 1.5, y - 1.8, 1.7, 0, TAU);
+      g.fillStyle = "#fff";
+      g.fill();
+    }
+  }
+  /** Lot PBG2 : un message court au milieu de la table, en fondu (« MULTIBILLE ! »…) : grand, mais jamais plus large que la table. */
+  function message(m: { texte: string; vie: number }): void {
+    const texte = enMajuscules(m.texte);
+    const k = Math.min(2.3, 292 / largeurPlaque(texte, "encre"));
+    g.globalAlpha = Math.min(1, m.vie * 2.5);
+    pastille(g, police, AXE, 296 - (1 - m.vie) * 22, texte, k);
+    g.globalAlpha = 1;
+  }
+  /** Lot PBG2 : un gain qui a un texte (« JACKPOT +7 500 ») : toujours dessiné, il flotte vers le haut en s'effaçant, au point de la prise ; le texte reste dans la table. */
+  function gainAvecTexte(gain: { x: number; y: number; vie: number; texte?: string }): void {
+    const texte = gain.texte!;
+    const demi = (largeurTexte(texte) * 1.5) / 2 + 4;
+    const x = Math.min(344 - demi, Math.max(24 + demi, px(gain.x)));
+    g.globalAlpha = Math.min(1, gain.vie * 2.5);
+    g.font = `800 15px ${police}`;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.lineJoin = "round";
+    g.lineWidth = 4.5;
+    g.strokeStyle = ENCRE;
+    const y = px(gain.y) - 18 - (1 - gain.vie) * 46;
+    g.strokeText(texte, x, y);
+    g.fillStyle = MOUTARDE;
+    g.fillText(texte, x, y);
+    g.globalAlpha = 1;
   }
 
   function redimensionner(largeur: number, hauteur: number, libre?: Libre): void {
@@ -1995,6 +2129,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     elements(s.tick);
     modules.trous(g, s.tick); // lot PBV4 : les trous du thème (`modeles/plat.ts`)
     portailsEtFleches(s.tick);
+    halos(s.tick); // lot PBG2 : le verrou allumé et l'élément du thème en jackpot clignotent
     // les murs : des rails, avec leur ombre
     g.lineCap = "round";
     const tracer = (couleur: string, largeur: number, filtre: (i: number) => boolean = () => true): void => {
@@ -2067,10 +2202,10 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     g.globalAlpha = 1;
     modules.dessus(g); // lot PBV4 : les spinners, les cibles et les bumpers du thème (`modeles/plat.ts`)
     // lot PBG1 : les rails passent par-dessus le sol et les modules ; la bille qui roule dessus a son ombre portée sur le plateau, sous eux
-    const bille = positionDeLaBille(s.alpha);
-    if (bille && bille.h > 0) ombreBille(bille);
+    billesDeLImage(s.alpha);
+    for (let i = 0; i < nbBilles; i++) if (billes[i]!.h > 0) ombreBille(billes[i]!);
     if (rails) g.drawImage(rails, 0, 0, LARGEUR, HAUTEUR);
-    noms(g);
+    noms(g, s);
     // les batteurs : corps clair, caoutchouc d'encre ; lot PBG1 : le mini-batteur, plus court, suit l'angle du batteur du même côté
     for (const i of [GAUCHE, DROITE]) {
       const { px: bx, py: by, tx, ty } = pointeDuBatteur(i, partie.a[i]!);
@@ -2096,8 +2231,11 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.lineTo(368, y);
       g.stroke();
     }
-    // la bille : chrome, avec son ombre (cachée quand un trou la garde) ; lot PBG1 : posée sur un rail, elle est dessinée par-dessus les rails et les modules, un peu plus grande, son ombre décalée sur le plateau
-    if (bille) {
+    // les billes verrouillées dans le trou-verrou (lot PBG2) : de petites billes d'acier au fond du trou, sous les billes qui roulent
+    if (verrou) billesVerrouillees();
+    // les billes : chrome, avec leur ombre (cachée quand un trou les garde) ; lot PBG1 : posée sur un rail, une bille est dessinée par-dessus les rails et les modules, un peu plus grande, son ombre décalée sur le plateau ; lot PBG2 : toutes les billes de la table
+    for (let i = 0; i < nbBilles; i++) {
+      const bille = billes[i]!;
       if (bille.h === 0) ombreBille(bille);
       g.save();
       g.translate(bille.x, bille.y);
@@ -2119,11 +2257,27 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.fillStyle = `rgba(232,178,58,${s.eclat * 0.42})`;
       g.fillRect(0, 0, LARGEUR, HAUTEUR);
     }
+    if (s.multi > 0) {
+      // lot PBG2 : le départ de la multibille : un éclat clair sur toute la table (sans secousse : celle-ci est réservée au rendu three.js) et une onde qui part du trou-verrou
+      g.fillStyle = `rgba(150,230,255,${s.multi * 0.4})`;
+      g.fillRect(0, 0, LARGEUR, HAUTEUR);
+      if (verrou) {
+        g.beginPath();
+        g.arc(px(verrou.x), px(verrou.y), 10 + (1 - s.multi) * 240, 0, TAU);
+        g.strokeStyle = MOUTARDE;
+        g.globalAlpha = s.multi;
+        g.lineWidth = 6;
+        g.stroke();
+        g.globalAlpha = 1;
+      }
+    }
     if (s.sauvee > 0) {
       g.globalAlpha = Math.min(1, s.sauvee * 2);
       pastille(g, police, AXE, 520 - (1 - s.sauvee) * 16, s.texteSauvee.toLocaleUpperCase());
       g.globalAlpha = 1;
     }
+    if (s.message && s.message.vie > 0) message(s.message);
+    for (const gain of s.gains) if (gain.texte) gainAvecTexte(gain);
     if (s.debug) debogage(s);
     g.restore();
   }
@@ -2197,15 +2351,18 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       g.stroke();
     }
     g.strokeStyle = "#FFFF00";
-    g.beginPath();
-    g.arc(px(partie.x), px(partie.y), RAYON, 0, TAU);
-    g.stroke();
+    for (const b of partie.billesDeLaTable()) {
+      g.beginPath();
+      g.arc(px(b.x), px(b.y), RAYON, 0, TAU);
+      g.stroke();
+    }
     g.font = `700 11px ${police}`;
     g.textAlign = "left";
     g.fillStyle = "#FFFF00";
     g.fillText(`pas ${s.tick}`, 26, 222);
     g.textAlign = "center";
     for (const gain of s.gains) {
+      if (gain.texte) continue; // dessiné par `gainAvecTexte`, toujours
       g.globalAlpha = gain.vie;
       g.fillStyle = "#FFFFFF";
       g.fillText(`+${gain.points}`, px(gain.x), px(gain.y) - 14 - (1 - gain.vie) * 18);

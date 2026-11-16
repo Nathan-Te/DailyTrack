@@ -1,5 +1,5 @@
 import { mixSeed, Rng } from "@cdj/core";
-import { AXE, EV_GEYSER, EV_PORTAIL, EV_SPINNER, LANCEUR, NB_BILLES, NORME, TOUR, UNITE } from "./constantes";
+import { AXE, EV_GEYSER, EV_PORTAIL, EV_SPINNER, EV_VERROUILLEE, LANCEUR, NB_BILLES, NORME, TOUR, UNITE } from "./constantes";
 import { cosinus, div, sinus } from "./entiers";
 import type { Contenu, Module } from "./generateur";
 import { Partie } from "./partie";
@@ -156,6 +156,9 @@ export function billesCoincees(contenu: Contenu, base: Reglages = REGLAGES): Rap
 export class SuiviModules {
   readonly touches = new Set<string>();
   mission = false;
+  /** Lot PBG2 : une partie a verrouillé une bille, une partie est allée jusqu'à la multibille (rapportés, pas exigés). */
+  verrou = false;
+  multibille = false;
   private readonly poses: readonly { pose: Poser; nom: string }[];
   /** Les rangs (dans `poses`) des modules pas encore touchés : la boucle de chaque pas n'a plus qu'eux à regarder. */
   private readonly restants: number[];
@@ -173,7 +176,9 @@ export class SuiviModules {
   }
 
   pas(p: Partie): void {
-    if (p.missionFaite) this.mission = true;
+    if (p.missionFaite || p.niveau > 1) this.mission = true;
+    if (p.verrouTotal > 0) this.verrou = true;
+    if (p.multibilles > 0) this.multibille = true;
     for (let q = this.railsRestants.length - 1; q >= 0; q--) {
       const i = this.railsRestants[q]!;
       if (p.railsFaits[i]! > 0) {
@@ -203,7 +208,7 @@ export class SuiviModules {
           break;
         }
         case "trou":
-          touche = p.captifDe === r;
+          touche = p.captifDe === r || ((p.ev & EV_VERROUILLEE) !== 0 && r === t.verrou); // lot PBG2 : le verrou allumé garde la bille sans la rendre captive
           break;
         case "manege":
           touche = p.manegeSecteur[r]! >= 0;

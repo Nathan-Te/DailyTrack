@@ -55,10 +55,10 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, type Partie, type ThemePinball } from "@cdj/pinball-sim";
-import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
+import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, empreinteDuModule, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 import { creerModules } from "./modeles/trois";
-import { creerRails3d, hauteurBille, hauteurVue } from "./rails3d";
+import { FENETRES, creerRails3d, hauteurBille, hauteurVue } from "./rails3d";
 import { hauteurRail } from "./rails";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
@@ -1143,15 +1143,9 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   groupe.add(ressort);
   const tete = ombrageur(new Mesh(geo(new BoxGeometry(18, 14, 10)), mat("#9AA1AC", { metalness: 0.6, roughness: 0.3 })));
   groupe.add(tete);
-  const bille = new Mesh(geo(new SphereGeometry(RAYON, 32, 24)), mat("#B4BBC4", { metalness: 1, roughness: 0.1, envMapIntensity: 1.05, unique: true }));
-  bille.castShadow = true;
-  // un contour d'encre (la coque inversée) : la bille se détache de tous les sols, même du sable et du bois clair
-  const coque = new MeshBasicMaterial({ color: ENCRE, side: BackSide });
-  aLiberer.push(coque);
-  const contourBille = new Mesh(bille.geometry, coque);
-  contourBille.scale.setScalar(1.14);
-  bille.add(contourBille);
-  groupe.add(bille);
+  // lot PBG2 : jusqu'à quatre billes à l'écran (la principale, celles de la multibille, la marge d'une bille au lanceur) — un petit lot de maillages réutilisés (jamais d'allocation par image), même métal, même contour d'encre, même ombre
+  const geoBille = geo(new SphereGeometry(RAYON, 32, 24));
+  const metalBille = (): MeshStandardMaterial => mat("#B4BBC4", { metalness: 1, roughness: 0.1, envMapIntensity: 1.05, unique: true });
   // lot PBG1 : la bille sur un rail est dessinée par-dessus tout (ni le plateau ni les modules en dessous ne la coupent) ; son ombre, elle, reste dessous : un disque sombre sur le rail et un autre, plus large, sur le plateau
   // (la vraie ombre de la lumière tomberait à côté de sa place : elle est éteinte tant que la bille roule sur un rail)
   const tacheOmbre = toile(64, 64, (c) => {
@@ -1162,28 +1156,113 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     c.fillStyle = g;
     c.fillRect(0, 0, 64, 64);
   });
-  const matOmbre = new MeshBasicMaterial({ map: tacheOmbre, transparent: true, depthWrite: false });
+  const matOmbre = new MeshBasicMaterial({ map: tacheOmbre, transparent: true, depthWrite: false, opacity: 0.9 });
   aLiberer.push(matOmbre);
   const geoOmbre = geo(new PlaneGeometry(1, 1).rotateX(-Math.PI / 2));
-  const ombreRail = new Mesh(geoOmbre, matOmbre);
-  const ombrePlateau = new Mesh(geoOmbre, matOmbre);
-  ombreRail.visible = ombrePlateau.visible = false;
-  ombreRail.renderOrder = ombrePlateau.renderOrder = 1;
-  groupe.add(ombreRail, ombrePlateau);
-  let billeSurRail = false;
-  /** La fenêtre des rails sur la bille : seulement quand elle est sur le plateau, où un rail peut la cacher. */
-  let fenetreBille = false;
-  const centreBille = new Vector3();
+  /** Une bille de la table : son maillage (et son contour d'encre, la coque inversée), ses deux ombres de rail, et si elle est dessinée sur un rail (matériaux sans test de profondeur). */
+  interface BilleDessinee {
+    bille: Mesh;
+    coque: MeshBasicMaterial;
+    contour: Mesh;
+    ombreRail: Mesh;
+    ombrePlateau: Mesh;
+    surRail: boolean;
+  }
+  const NB_BILLES_VUES = 4;
+  const billes: BilleDessinee[] = [];
+  for (let k = 0; k < NB_BILLES_VUES; k++) {
+    const bille = new Mesh(geoBille, metalBille());
+    bille.castShadow = true;
+    // un contour d'encre (la coque inversée) : la bille se détache de tous les sols, même du sable et du bois clair
+    const coque = new MeshBasicMaterial({ color: ENCRE, side: BackSide });
+    aLiberer.push(coque);
+    const contour = new Mesh(geoBille, coque);
+    contour.scale.setScalar(1.14);
+    bille.add(contour);
+    bille.visible = false;
+    groupe.add(bille);
+    const ombreRail = new Mesh(geoOmbre, matOmbre);
+    const ombrePlateau = new Mesh(geoOmbre, matOmbre);
+    ombreRail.visible = ombrePlateau.visible = false;
+    ombreRail.renderOrder = ombrePlateau.renderOrder = 1;
+    groupe.add(ombreRail, ombrePlateau);
+    billes.push({ bille, coque, contour, ombreRail, ombrePlateau, surRail: false });
+  }
+  /** Ce que le rendu lit d'une bille : la partie elle-même (la bille principale) ou une bille de `Partie.autres`. */
+  type BilleLue = Pick<Partie, "x" | "y" | "px" | "py" | "couche" | "rail" | "railS" | "railV" | "captif">;
+  const lesBilles: BilleLue[] = [];
+  /** La fenêtre des rails sur les billes : seulement celles qui sont sur le plateau, où un rail peut les cacher (`FENETRES` au plus). */
+  const centresBilles = Array.from({ length: FENETRES }, () => new Vector3());
+  let fenetresBilles = 0;
+  /** Lot PBG2 : les billes verrouillées, posées dans le trou-verrou (deux petites billes d'acier ; elles disparaissent quand le trou les lâche). */
+  const matVerrouillee = metalBille();
+  const coqueVerrouillee = new MeshBasicMaterial({ color: ENCRE, side: BackSide });
+  aLiberer.push(coqueVerrouillee);
+  const verrouillees = [0, 1].map(() => {
+    const b = new Mesh(geoBille, matVerrouillee);
+    const c = new Mesh(geoBille, coqueVerrouillee);
+    c.scale.setScalar(1.14);
+    b.add(c);
+    b.castShadow = true;
+    b.visible = false;
+    groupe.add(b);
+    return b;
+  });
+
+  // --- Lot PBG2 : les halos qui clignotent — le trou-verrou quand le verrou est allumé, l'élément du thème (manège, tourbillon, portails, geyser) pendant la multibille (« JACKPOT ») : un disque d'une lueur, posé sur la table
+  // un anneau lumineux (un cœur plein puis un fondu vers l'extérieur) : en mélange normal et teinté, il se voit aussi bien sur le sable clair d'une table de foire que sur le noir de l'espace (une lueur additive s'y noierait)
+  const lueurDisque = toile(128, 128, (c) => {
+    const g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, "rgba(255,255,255,0.30)");
+    g.addColorStop(0.5, "rgba(255,255,255,0.40)");
+    g.addColorStop(0.72, "rgba(255,255,255,0.95)");
+    g.addColorStop(0.86, "rgba(255,255,255,0.55)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = g;
+    c.fillRect(0, 0, 128, 128);
+  });
+  const halo = (x: number, y: number, rayon: number, couleur: string): Mesh => {
+    const m = new MeshBasicMaterial({ map: lueurDisque, color: couleur, transparent: true, depthWrite: false, opacity: 0.9 });
+    aLiberer.push(m);
+    const h = new Mesh(geoOmbre, m);
+    h.scale.setScalar(rayon * 2);
+    h.position.set(X(x), 1.6, Z(y));
+    h.renderOrder = 1;
+    h.visible = false;
+    groupe.add(h);
+    return h;
+  };
+  const trouVerrou = t.verrou >= 0 ? t.trous[t.verrou]! : null;
+  const haloVerrou = trouVerrou ? halo(px(trouVerrou.x), px(trouVerrou.y), px(trouVerrou.r) * 3.2, "#B8F6FF") : null;
+  const halosJackpot = t.poses.filter((m) => comptePourLaMission(o.theme, m.type)).map((m) => halo(px(m.x), px(m.y), empreinteDuModule(m.type) * 1.7, "#FFF3A8"));
 
   // --- Les étiquettes des modules : des plaques à part, tournées vers le joueur et grossies (voir `majEtiquettes`)
-  const etiquettes: { plaque: Mesh; x: number; y: number; taille: number }[] = [];
+  /** Lot PBG2 : une plaque peut changer de mot — « VERROU » sur celle du trou-verrou quand il est allumé (`verrou`), « JACKPOT » sur celle de l'élément du thème pendant la multibille (`jackpot`) ; ses textures de rechange sont dessinées une fois, par mot. */
+  interface PlaqueEtiquette {
+    plaque: Mesh;
+    x: number;
+    y: number;
+    taille: number;
+    special: "verrou" | "jackpot" | null;
+    matiere: MeshBasicMaterial;
+    normale: Texture;
+    /** Le mot écrit en ce moment (`""` : le nom du module). */
+    mot: string;
+    autres: Map<string, Texture>;
+    /** La largeur estimée de la plaque du nom (le mot de rechange ne la dépasse jamais) et la taille de la toile. */
+    largeurNom: number;
+    l: number;
+    hPlan: number;
+  }
+  const etiquettes: PlaqueEtiquette[] = [];
   const style = styleEtiquette(o.theme);
+  const ECHELLE_PLAQUE = 6;
   // lot PBV2 : la mise en place est celle de `placerEtiquettes` (aucune plaque n'en recouvre une autre ni un module : décalée, sur deux lignes ou réduite), la même que celle du rendu à plat
   for (const e of placerEtiquettes(t, o.theme, o.nom)) {
     const lignes = e.texte.split("\n").length;
     const l = largeurPlaque(e.texte, style) + 6;
     const hPlan = hauteurPlaque(lignes) + 4;
-    const echelle = 6;
+    const echelle = ECHELLE_PLAQUE;
     const tex = toile(l * echelle, hPlan * echelle, (c) => {
       c.scale(echelle, echelle);
       pastille(c, o.police, l / 2, hPlan / 2, e.texte, 1, style);
@@ -1192,9 +1271,32 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     aLiberer.push(mat2);
     const plaque = new Mesh(geo(new PlaneGeometry(l, hPlan)), mat2);
     plaque.renderOrder = 5;
-    etiquettes.push({ plaque, x: e.x, y: e.y, taille: e.taille });
+    // le trou-verrou : la plaque du trou dont le centre est celui du verrou ; l'élément du thème : un module qui compte pour la mission
+    const ancre = e.ancres[0];
+    const special = e.module === "trou" && trouVerrou && ancre && Math.hypot(ancre.x - px(trouVerrou.x), ancre.y - px(trouVerrou.y)) < 1 ? "verrou" : comptePourLaMission(o.theme, e.module) ? "jackpot" : null;
+    etiquettes.push({ plaque, x: e.x, y: e.y, taille: e.taille, special, matiere: mat2, normale: tex, mot: "", autres: new Map(), largeurNom: largeurPlaque(e.texte, style), l, hPlan });
     groupe.add(plaque);
   }
+  /** La plaque dit `mot` (ou son nom si `mot` est vide). Le mot est réduit pour tenir dans la largeur de la plaque du nom : jamais plus grande que celle de `placerEtiquettes`. */
+  const dire = (e: PlaqueEtiquette, mot: string): void => {
+    if (mot === e.mot) return;
+    e.mot = mot;
+    if (!mot) {
+      e.matiere.map = e.normale;
+      return;
+    }
+    let tex = e.autres.get(mot);
+    if (!tex) {
+      const texte = mot.toLocaleUpperCase();
+      const k = Math.min(1, e.largeurNom / largeurPlaque(texte, style));
+      tex = toile(e.l * ECHELLE_PLAQUE, e.hPlan * ECHELLE_PLAQUE, (c) => {
+        c.scale(ECHELLE_PLAQUE, ECHELLE_PLAQUE);
+        pastille(c, o.police, e.l / 2, e.hPlan / 2, texte, k, style);
+      });
+      e.autres.set(mot, tex);
+    }
+    e.matiere.map = tex;
+  };
 
   // --- Les contours de collision de `?debug`
   let debogage: { groupe: Group; batteurs: BufferGeometry; bille: Mesh } | null = null;
@@ -1336,6 +1438,45 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   let msMoy = 0;
   let msImage = 0;
 
+  /** Pose une bille de la table (ou la cache : `b` est `null`) : sa place interpolée, sa hauteur sur un rail, ses ombres, et sa fenêtre dans les rails quand elle est sur le plateau. */
+  function poserBille(sl: BilleDessinee, b: BilleLue | null, a: number): void {
+    const cache = !b || partie.finie || b.captif > 0;
+    sl.bille.visible = !cache;
+    if (!b || cache) {
+      sl.ombreRail.visible = sl.ombrePlateau.visible = false;
+      return;
+    }
+    const bx = px(b.px) + (px(b.x) - px(b.px)) * a;
+    const by = px(b.py) + (px(b.y) - px(b.py)) * a;
+    // lot PBG1 : sur un rail, la bille est à la hauteur du rail à son abscisse (interpolée entre deux pas : `railV` est en unités par seconde) ; sa place sur le plateau reste (x, y)
+    const rl = b.couche === 1 ? t.rails[b.rail] : undefined;
+    let hBille = RAYON;
+    let hRail = 0;
+    if (rl) {
+      const sBille = Math.max(0, Math.min(rl.len, b.railS + (b.railV * a) / TICKS_PAR_SECONDE));
+      hBille = hauteurBille(rl, sBille);
+      hRail = hauteurVue(hauteurRail(rl, sBille));
+    }
+    if (!!rl !== sl.surRail) {
+      sl.surRail = !!rl;
+      sl.bille.castShadow = !rl;
+      // sur un rail : sans test de profondeur et dans la file des objets translucides (derrière le toboggan et le tube de verre qui l'enveloppent, la bille resterait voilée)
+      for (const m of [sl.bille.material as Material, sl.coque]) {
+        m.depthTest = !rl;
+        m.transparent = !!rl;
+      }
+      sl.bille.renderOrder = rl ? 4 : 0;
+      sl.contour.renderOrder = rl ? 3 : 0;
+    }
+    sl.bille.position.set(X(bx), hBille, Z(by));
+    sl.ombreRail.visible = sl.ombrePlateau.visible = !!rl;
+    if (rl) {
+      sl.ombreRail.position.set(X(bx), hRail + 0.45, Z(by));
+      sl.ombreRail.scale.setScalar(RAYON * 2.3);
+      sl.ombrePlateau.position.set(X(bx), 0.35, Z(by));
+      sl.ombrePlateau.scale.setScalar(RAYON * 2.6 + hRail * 0.5);
+    } else if (fenetresBilles < FENETRES) centresBilles[fenetresBilles++]!.set(X(bx), RAYON, Z(by));
+  }
   /** Lot PBV1 : une partie finie ne bouge plus (l'écran de fin la couvre) : sa dernière image reste au canvas, on ne la redessine que si l'écran change de taille. Mesuré avec le rendu logiciel des essais : redessiner
    *  la table derrière l'écran de fin retardait son apparition de plusieurs secondes ; sur un téléphone, c'est de la batterie. */
   let figee = false;
@@ -1352,42 +1493,22 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       batteurs[i]!.rotation.y = i === 0 ? -ang : -(Math.PI - ang);
       if (mini && miniBatteur && mini.cote === i) miniBatteur.rotation.y = i === 0 ? -ang : -(Math.PI - ang); // le mini-batteur : le même angle que le grand du même côté
     }
-    // la bille
-    const cache = partie.finie || partie.captif > 0;
-    bille.visible = !cache;
-    const bx = px(partie.px) + (px(partie.x) - px(partie.px)) * a;
-    const by = px(partie.py) + (px(partie.y) - px(partie.py)) * a;
-    // lot PBG1 : sur un rail, la bille est à la hauteur du rail à son abscisse (interpolée entre deux pas : `railV` est en unités par seconde) ; sa place sur le plateau reste (x, y)
-    const rl = partie.couche === 1 ? t.rails[partie.rail] : undefined;
-    let hBille = RAYON;
-    let hRail = 0;
-    if (rl) {
-      const sBille = Math.max(0, Math.min(rl.len, partie.railS + (partie.railV * a) / TICKS_PAR_SECONDE));
-      hBille = hauteurBille(rl, sBille);
-      hRail = hauteurVue(hauteurRail(rl, sBille));
-    }
-    if (!!rl !== billeSurRail) {
-      billeSurRail = !!rl;
-      bille.castShadow = !rl;
-      // sur un rail : sans test de profondeur et dans la file des objets translucides (derrière le toboggan et le tube de verre qui l'enveloppent, la bille resterait voilée)
-      for (const m of [bille.material as Material, coque]) {
-        m.depthTest = !rl;
-        m.transparent = !!rl;
-      }
-      bille.renderOrder = rl ? 4 : 0;
-      contourBille.renderOrder = rl ? 3 : 0;
-    }
-    bille.position.set(X(bx), hBille, Z(by));
-    ombreRail.visible = ombrePlateau.visible = !!rl && !cache;
-    if (rl) {
-      ombreRail.position.set(X(bx), hRail + 0.45, Z(by));
-      ombreRail.scale.setScalar(RAYON * 2.3);
-      ombrePlateau.position.set(X(bx), 0.35, Z(by));
-      ombrePlateau.scale.setScalar(RAYON * 2.6 + hRail * 0.5);
-      matOmbre.opacity = 0.9;
-    }
-    centreBille.set(X(bx), RAYON, Z(by));
-    fenetreBille = !cache && !rl;
+    // les billes (lot PBG2 : toutes celles de la table — la principale, si elle y est, puis celles de la multibille), chacune interpolée entre deux pas
+    let n = 0;
+    lesBilles.length = 0;
+    if (!partie.vide) lesBilles[n++] = partie;
+    for (let k = 0; k < partie.autres.length && n < NB_BILLES_VUES; k++) lesBilles[n++] = partie.autres[k]!;
+    fenetresBilles = 0;
+    for (let k = 0; k < NB_BILLES_VUES; k++) poserBille(billes[k]!, k < n ? lesBilles[k]! : null, a);
+    // lot PBG2 : les billes verrouillées, posées dans le trou-verrou (une seule : au centre ; deux : côte à côte, plus petites)
+    const nVerrouillees = trouVerrou && !partie.finie ? Math.min(verrouillees.length, partie.verrouillees) : 0;
+    verrouillees.forEach((b, i) => {
+      b.visible = i < nVerrouillees;
+      if (!b.visible) return;
+      const petit = nVerrouillees > 1 ? 0.52 : 0.68;
+      b.scale.setScalar(petit);
+      b.position.set(X(px(trouVerrou!.x)) + (nVerrouillees > 1 ? (i === 0 ? -1 : 1) * RAYON * 0.6 : 0), RAYON * petit * 0.8, Z(px(trouVerrou!.y)));
+    });
     // le lanceur : le ressort se comprime avec la charge
     const haut = 709 + (partie.charge * 22) / 1000;
     const long = Math.max(1, 718 - haut);
@@ -1400,6 +1521,14 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     lampesM.forEach((m, i) => (m.emissiveIntensity = i < partie.compteur ? 1.4 : 0));
     const clignotante = !partie.missionFaite && clignote(s.tick);
     for (const f of flechesM) f.visible = clignotante;
+    // lot PBG2 : le verrou allumé (le trou clignote, sa plaque dit « VERROU ») ; la multibille (l'élément du thème clignote, sa plaque dit « JACKPOT »)
+    const clignotePBG2 = clignote(s.tick);
+    if (haloVerrou) haloVerrou.visible = partie.verrouAllume && clignotePBG2;
+    for (const h of halosJackpot) h.visible = partie.multibille && clignotePBG2;
+    for (const e of etiquettes) {
+      if (e.special === "verrou") dire(e, partie.verrouAllume ? s.plaqueVerrou : "");
+      else if (e.special === "jackpot") dire(e, partie.multibille ? s.plaqueJackpot : "");
+    }
     // les modules communs : les bumpers s'enfoncent et leur socle s'allume, les cibles tombent, les spinners tournent, les trous s'allument quand ils gardent la bille
     modules.maj(partie, dt, sec);
     caoutchoucs.forEach((m, k) => ((m.material as MeshStandardMaterial).emissiveIntensity = Math.min(1, partie.chocSling[k]! / 40) * 1.2));
@@ -1416,14 +1545,15 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         for (let k = 0; k < 6; k++) attr.array[i * 6 + k] = p[k]!;
         attr.needsUpdate = true;
       }
-      debogage!.bille.position.set(X(bx), 20, Z(by));
+      debogage!.bille.position.set(billes[0]!.bille.position.x, 20, billes[0]!.bille.position.z);
     }
     if (debogage) debogage.groupe.visible = s.debug;
 
-    // la mission réussie : une brève secousse de la caméra, qui s'éteint avec l'éclat (jamais si le joueur préfère moins de mouvement)
-    if (s.eclat > 0.35 && !o.reduit) {
-      const e = (s.eclat - 0.35) / 0.65;
-      camera.position.set(base.x + Math.sin(s.tick * 0.9) * 3 * e * e, base.y + Math.cos(s.tick * 1.3) * 2 * e * e, base.z);
+    // la mission réussie, puis le départ de la multibille : une brève secousse de la caméra, qui s'éteint avec l'éclat (jamais si le joueur préfère moins de mouvement)
+    const eMission = s.eclat > 0.35 ? (s.eclat - 0.35) / 0.65 : 0;
+    const force = Math.max(3 * eMission * eMission, 4 * s.secousse * s.secousse);
+    if (force > 0 && !o.reduit) {
+      camera.position.set(base.x + Math.sin(s.tick * 0.9) * force, base.y + Math.cos(s.tick * 1.3) * force * 0.67, base.z);
       camera.lookAt(cible);
       camera.updateMatrixWorld(true);
       secouee = true;
@@ -1437,13 +1567,14 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const kb = vue.bandes / 100;
     for (let i = 0; i < decor.length; i++) lampes.setColorAt(i, teinte.copy(couleurLampe).multiplyScalar((0.25 + 2.6 * kb) * lueurLampe(i, s.tick)));
     if (lampes.instanceColor) lampes.instanceColor.needsUpdate = true;
-    rails.fenetre(fenetreBille ? centreBille : null, camera);
+    rails.fenetre(centresBilles, fenetresBilles, camera);
     renderer.info.reset();
     composition.dessiner(scene, camera, (vue.bloom / 100) * 1.6, sceneLueur);
     msImage += (performance.now() - debut - msImage) * 0.05;
 
-    // la surcouche : « Bille sauvée ! », et pour `?debug` le compteur de pas et les gains
-    const dessus = s.sauvee > 0 || s.eclat > 0 || s.debug || o.fps;
+    // la surcouche : « Bille sauvée ! », le message court, l'éclat de la multibille, les jackpots pris (lot PBG2), et pour `?debug` le compteur de pas et les gains
+    const gainsTexte = s.gains.some((g) => !!g.texte);
+    const dessus = s.sauvee > 0 || s.eclat > 0 || s.multi > 0 || !!s.message || gainsTexte || s.debug || o.fps;
     if (dessus || !surcoucheVide) {
       const dpr = Math.min(2, devicePixelRatio || 1);
       sc.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1454,11 +1585,43 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         sc.fillStyle = `rgba(232,178,58,${s.eclat * 0.38})`;
         sc.fillRect(0, 0, L, H);
       }
+      if (s.multi > 0) {
+        // lot PBG2 : l'éclat du départ de la multibille, d'une autre teinte (turquoise clair), sur tout l'écran
+        sc.fillStyle = `rgba(110,226,255,${s.multi * 0.34})`;
+        sc.fillRect(0, 0, L, H);
+      }
       if (s.sauvee > 0) {
         const c = ecranDe(AXE, 520);
         sc.globalAlpha = Math.min(1, s.sauvee * 2);
         pastille(sc, o.police, c.x, c.y - (1 - s.sauvee) * 20, s.texteSauvee.toLocaleUpperCase(), (L / LARGEUR) * 1.6 * (vue.etiquettes / 170));
         sc.globalAlpha = 1;
+      }
+      if (s.message) {
+        // lot PBG2 : un message court au milieu de la table, grand, qui apparaît d'un coup (un léger gonflement) puis s'efface ; jamais plus large que l'écran
+        const texte = s.message.texte.toLocaleUpperCase();
+        const c = ecranDe(AXE, 330);
+        const vie = Math.max(0, Math.min(1, s.message.vie));
+        const gonfle = 1 + 0.18 * Math.max(0, (vie - 0.85) / 0.15);
+        const voulu = (L / LARGEUR) * 2.5 * (vue.etiquettes / 170) * gonfle;
+        sc.globalAlpha = Math.min(1, vie * 3);
+        pastille(sc, o.police, c.x, c.y - (1 - vie) * 14, texte, Math.min(voulu, (L * 0.92) / largeurPlaque(texte, "encre")));
+        sc.globalAlpha = 1;
+      }
+      if (gainsTexte) {
+        // lot PBG2 : « JACKPOT +7 500 » : là où la bille a pris l'élément, flottant vers le haut, en fondu (toujours dessiné : le texte vient de la scène)
+        for (const g of s.gains) {
+          if (!g.texte) continue;
+          const c = ecranDe(px(g.x), px(g.y));
+          const texte = g.texte.toLocaleUpperCase();
+          const vie = Math.max(0, Math.min(1, g.vie));
+          const voulu = (L / LARGEUR) * 1.5 * (vue.etiquettes / 170);
+          sc.globalAlpha = Math.min(1, vie * 2.5);
+          const k = Math.min(voulu, (L * 0.9) / largeurPlaque(texte, "encre"));
+          // le centre reste dans l'écran : la plaque ne sort jamais par les côtés
+          const demi = (largeurPlaque(texte, "encre") * k) / 2;
+          pastille(sc, o.police, Math.max(demi, Math.min(L - demi, c.x)), c.y - 16 - (1 - vie) * 46, texte, k);
+          sc.globalAlpha = 1;
+        }
       }
       if (s.debug) {
         sc.font = `700 11px ${o.police}`;
@@ -1467,6 +1630,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         sc.fillText(`pas ${s.tick}`, 8, 14);
         sc.textAlign = "center";
         for (const g of s.gains) {
+          if (g.texte) continue; // déjà dessiné, en grand
           const c = ecranDe(px(g.x), px(g.y));
           sc.globalAlpha = g.vie;
           sc.fillStyle = "#FFFFFF";

@@ -4,7 +4,7 @@
 //
 // **Ajouter un son (le lot de gameplay qui suit)** : une ligne dans `Evenement` (son nom et ses paramètres), la règle qui le déclenche dans `sonsDuPas` (un bit `EV_*` ou un changement de `Photo`), sa recette dans `recetteDe`, son
 // délai dans `DELAIS_S` s'il peut s'enchaîner ; le test `sons.test.ts` échoue tant que sa recette n'est pas propre (attaque, fin sans clic, niveau borné) et `tune-sons.ts` (`?debug&sons`) en veut un exemple (le type l'impose).
-import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_ORBITE, EV_PERDUE, EV_PORTAIL, EV_RAIL, EV_RAMPE, EV_RECUL, EV_COMBO, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE, NB_VOIES, type ThemePinball } from "@cdj/pinball-sim";
+import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_ORBITE, EV_PERDUE, EV_PORTAIL, EV_RAIL, EV_RAMPE, EV_RECUL, EV_COMBO, EV_JACKPOT, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VERROU_ALLUME, EV_VERROUILLEE, EV_VOIE, NB_VOIES, type ThemePinball } from "@cdj/pinball-sim";
 
 /** Une couche d'un son : une note (oscillateur) ou un bruit filtré, avec son enveloppe (attaque brève, décroissance exponentielle, fin à zéro : jamais de clic). */
 export interface Couche {
@@ -49,6 +49,13 @@ export type Evenement =
   | { son: "mult"; mult: number; retard: number }
   | { son: "missionPas"; compteur: number }
   | { son: "mission" }
+  // lot PBG2 : la boucle — le verrou s'allume, une bille y est verrouillée (la première, la deuxième), la multibille part, un jackpot (le rang de la prise, plus aigu à chaque fois), la multibille finit, la mission revient (niveau)
+  | { son: "verrouAllume" }
+  | { son: "verrouillee"; n: number }
+  | { son: "multibille" }
+  | { son: "jackpot"; rang: number }
+  | { son: "multibilleFin" }
+  | { son: "niveau"; n: number }
   | { son: "sauvee" }
   | { son: "perdue" }
   | { son: "fin" };
@@ -74,10 +81,14 @@ export interface Photo {
   cible: number;
   /** Lot PBG1 : le rang du combo en cours (0 : aucun). */
   combo: number;
+  /** Lot PBG2 : les billes verrouillées, le rang du dernier jackpot de la multibille et le niveau de la mission. */
+  verrouillees: number;
+  jackpots: number;
+  niveau: number;
   /** La vitesse de rotation la plus grande des spinners (`Partie.spin`), lue quand un spinner vient de tourner. */
   spin: number;
 }
-export const photoVide = (): Photo => ({ gauche: false, droite: false, lanceur: false, charge: 0, dansLanceur: true, captif: 0, captifTb: -1, mult: 1, compteur: 0, voies: 0, bumper: -1, cible: 0, combo: 0, spin: 0 });
+export const photoVide = (): Photo => ({ gauche: false, droite: false, lanceur: false, charge: 0, dansLanceur: true, captif: 0, captifTb: -1, mult: 1, compteur: 0, voies: 0, bumper: -1, cible: 0, combo: 0, verrouillees: 0, jackpots: 0, niveau: 1, spin: 0 });
 
 const AUCUN: Evenement[] = [];
 
@@ -120,6 +131,13 @@ export function sonsDuPas(ev: number, avant: Photo, apres: Photo, theme: ThemePi
     if (pas) sons.push({ son: "missionPas", compteur: apres.compteur });
     if (cran) sons.push({ son: "mult", mult: apres.mult, retard: ev & EV_VOIE ? RETARD_APRES_ARPEGE_S : 0 });
   }
+  // lot PBG2 : la boucle — la multibille qui part remplace « bille verrouillée » (la deuxième) ; le verrou s'allume après la fanfare de la mission
+  if (ev & EV_VERROU_ALLUME) sons.push({ son: "verrouAllume" });
+  if (ev & EV_MULTI) sons.push({ son: "multibille" });
+  else if (ev & EV_VERROUILLEE) sons.push({ son: "verrouillee", n: Math.max(1, apres.verrouillees) });
+  if (ev & EV_JACKPOT) sons.push({ son: "jackpot", rang: Math.max(1, apres.jackpots) });
+  if (ev & EV_MULTI_FIN) sons.push({ son: "multibilleFin" });
+  if (ev & EV_NIVEAU) sons.push({ son: "niveau", n: apres.niveau });
   if (ev & EV_SAUVEE) sons.push({ son: "sauvee" });
   if (ev & EV_FIN) sons.push({ son: "fin" });
   else if (ev & EV_PERDUE) sons.push({ son: "perdue" });
@@ -289,6 +307,35 @@ export function recetteDe(e: Evenement, variation = 0.5): Recette {
         ...[0, 4, 7, 12, 7, 12, 16].map((d, i) => note("sine", 1046 * 2 ** (d / 12), i === 6 ? 0.45 : 0.1, 0.06, i * 0.1)),
         bruit(6000, 0.5, 0.05, 0.6, 9000, "highpass", 0.8),
       ]);
+    case "verrouAllume":
+      // Le verrou s'allume (après la fanfare de la mission) : un déclic de serrure et deux notes claires qui montent.
+      return recette("verrouAllume", 2, apres([bruit(2400, 0.05, 0.14, 0, 900, "bandpass", 2), note("square", 196, 0.07, 0.07, 0, 150), note("triangle", 698, 0.12, 0.15, 0.08), note("triangle", 988, 0.3, 0.16, 0.18), note("sine", 1976, 0.2, 0.04, 0.18)], 0.9));
+    case "verrouillee": {
+      // Une bille verrouillée : un « clac » métallique sourd, un peu plus haut pour la deuxième.
+      const k = e.n >= 2 ? 1.19 : 1;
+      return recette("verrouillee", 2, [note("sine", 170 * k, 0.12, 0.24, 0, 70), bruit(3000, 0.04, 0.14, 0, 1200, "bandpass", 2), note("triangle", 523 * k, 0.16, 0.12, 0.07), note("triangle", 784 * k, 0.24, 0.12, 0.13)]);
+    }
+    case "multibille":
+      // Le départ de la multibille : une fanfare qui monte, un roulement de billes qui s'envolent, la plus pleine des sons de la boucle.
+      return recette("multibille", 3, [
+        bruit(500, 0.5, 0.16, 0, 5000, "bandpass", 1.3),
+        ...[0, 4, 7, 12, 16, 19, 24].map((d, i) => note("triangle", 392 * 2 ** (d / 12), i === 6 ? 0.5 : 0.1, 0.17, 0.05 + i * 0.075)),
+        ...[0, 7, 12, 19].map((d, i) => note("sine", 784 * 2 ** (d / 12), 0.35, 0.05, 0.3 + i * 0.075)),
+        note("sine", 98, 0.5, 0.2, 0, 60),
+      ]);
+    case "jackpot": {
+      // Un jackpot : une cloche brillante, deux tons plus haute à chaque prise (la huitième s'arrête là).
+      const f = 880 * 2 ** ((2 * (borne(e.rang, 1, 8) - 1)) / 12);
+      return recette("jackpot", 2, [note("sine", f, 0.4, 0.17), note("sine", f * 2.76, 0.25, 0.06), note("triangle", f * 1.5, 0.3, 0.09, 0.06), bruit(6000, 0.08, 0.06, 0, 9000, "highpass", 0.8)]);
+    }
+    case "multibilleFin":
+      // La multibille s'arrête : trois notes qui redescendent doucement.
+      return recette("multibilleFin", 2, [0, -5, -9].map((d, i) => note("triangle", 698 * 2 ** (d / 12), i === 2 ? 0.35 : 0.12, 0.14, i * 0.1)));
+    case "niveau": {
+      // La mission revient, plus haut : une petite fanfare qui monte d'un ton à chaque niveau (au plus cinq tons de plus).
+      const f = 523 * 2 ** ((2 * (borne(e.n, 2, 7) - 2)) / 12);
+      return recette("niveau", 3, [0, 4, 7, 12].map((d, i) => note("triangle", f * 2 ** (d / 12), i === 3 ? 0.4 : 0.1, 0.16, i * 0.09)));
+    }
     case "sauvee":
       // La bille est sauvée : un petit jingle qui monte, rassurant.
       return recette("sauvee", 2, [0, 7, 12, 16].map((d, i) => note("triangle", 440 * 2 ** (d / 12), i === 3 ? 0.3 : 0.1, 0.15, i * 0.075)));

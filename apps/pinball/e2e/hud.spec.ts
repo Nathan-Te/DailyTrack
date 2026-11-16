@@ -14,12 +14,12 @@ test.describe("Pinball : le HUD en surimpression", () => {
       const pe = (s: string): string => getComputedStyle(document.querySelector(s)!).pointerEvents;
       return {
         racine: pe(".pinball-hud"),
-        plaques: [".pinball-hud__afficheur", ".pinball-hud__mult", ".pinball-mission", ".pinball-hud__billes", ".pinball-hud__aide", ".pinball-combo"].map(pe),
+        plaques: [".pinball-hud__afficheur", ".pinball-hud__mult", ".pinball-mission", ".pinball-hud__billes", ".pinball-hud__aide", ".pinball-combo", ".pinball-verrou"].map(pe),
         boutons: [".pinball-hud__pause", ".pinball-hud__plein"].map((s) => { const e = document.querySelector<HTMLElement>(s); return e && !e.hidden ? { pe: pe(s), l: e.getBoundingClientRect().width, h: e.getBoundingClientRect().height } : null; }),
       };
     });
     expect(evenements.racine).toBe("none");
-    expect(evenements.plaques).toEqual(["none", "none", "none", "none", "none", "none"]);
+    expect(evenements.plaques).toEqual(["none", "none", "none", "none", "none", "none", "none"]);
     expect(evenements.boutons[0]).toEqual({ pe: "auto", l: 44, h: 44 });
     for (const b of evenements.boutons) if (b) expect(b.pe).toBe("auto");
     // le toucher sur la plaque de la mission traverse jusqu'à la table : la bille attend dans le lanceur, un toucher tenu est le lanceur
@@ -179,6 +179,57 @@ test.describe("Pinball : le HUD en surimpression", () => {
     await page.evaluate((pas) => window.__jeu.avancer(pas), combo!.pas - premier!.pas);
     await expect(page.locator(".pinball-combo__texte")).toHaveText(`Combo ×${combo!.rang}`);
     await expect(page.locator(".pinball-combo")).toHaveAttribute("data-haut", "1");
+    await context.close();
+  });
+
+  // --- Lot PBG2 : le verrou, la multibille et le niveau de la mission dans le HUD.
+  test("le verrou : deux billes à verrouiller et le niveau, « Verrou allumé » en moutarde quand la mission est réussie ; pendant la multibille la bande du bas dit « MULTIBILLE » et le prochain jackpot ; ensuite la mission revient au niveau 2", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1&qualite=basse&essai=verrou&plan=doublette&theme=espace");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await lancer(page);
+    const verrou = page.locator(".pinball-verrou");
+    await expect(verrou).toBeHidden(); // avant le premier lancer : l'aide d'avant le lancer a sa place
+    await page.evaluate(() => {
+      window.__pinball!.regler(2, true);
+      window.__jeu.avancer(300);
+      window.__pinball!.regler(2, false);
+      window.__jeu.avancer(5);
+    });
+    await expect(verrou).toBeVisible();
+    await expect(verrou).toHaveAttribute("data-etat", "allume");
+    await expect(verrou.locator(".pinball-verrou__texte")).toHaveText("Verrou allumé");
+    await expect(page.locator(".pinball-mission")).toHaveAttribute("data-etat", "reussie");
+    expect(await verrou.evaluate((e) => getComputedStyle(e).pointerEvents)).toBe("none");
+    expect(await verrou.locator(".pinball-verrou__billes i").count()).toBe(2);
+    // une bille verrouillée : une petite bille pleine
+    await page.evaluate(() => {
+      const p = window.__pinball!.partie();
+      p.verrouillees = 1;
+      p.verrouAllume = false;
+      window.__jeu.avancer(1);
+    });
+    await expect(verrou).toHaveAttribute("data-etat", "plein");
+    await expect(verrou.locator(".pinball-verrou__billes i[data-plein='1']")).toHaveCount(1);
+    await expect(verrou.locator(".pinball-verrou__texte")).toHaveText("Niv. 1");
+    // la multibille : la bande du bas
+    await page.evaluate(() => {
+      window.__pinball!.partie().lancerLaMultibille();
+      window.__jeu.avancer(2);
+    });
+    const mission = page.locator(".pinball-mission");
+    await expect(mission).toHaveAttribute("data-etat", "multibille");
+    await expect(mission.locator(".pinball-mission__nom")).toHaveText("MULTIBILLE");
+    await expect(mission.locator(".pinball-mission__val")).toHaveText(/Jackpot 5\s?000/);
+    await expect(mission.locator(".pinball-mission__jauge")).toBeHidden();
+    // la multibille finie : la mission est revenue, au niveau 2, et son but est plus haut
+    await page.evaluate(() => {
+      const p = window.__pinball!.partie();
+      p.autres.length = 0;
+      p.aLacher = 0;
+      window.__jeu.avancer(2);
+    });
+    await expect(mission).not.toHaveAttribute("data-etat", "multibille");
+    await expect(verrou.locator(".pinball-verrou__texte")).toHaveText("Niv. 2");
     await context.close();
   });
 });

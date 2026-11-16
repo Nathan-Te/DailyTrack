@@ -37,7 +37,7 @@ describe("golden de Pinball", () => {
     expect(long!.score).toBeGreaterThan(court!.score);
   });
   it("lots PB3 et PB4 : les rediffusions du robot jouent les quatre thèmes, leurs éléments et leurs missions", () => {
-    const refs = golden.rediffusions.filter((r) => r.nom.startsWith("robot-") && r.nom !== "robot-30-secondes");
+    const refs = golden.rediffusions.filter((r) => r.nom.startsWith("robot-") && r.nom !== "robot-30-secondes" && !r.nom.startsWith("robot-multibilles"));
     const themes = refs.map((r) => dailyPinball(parseDay(r.date)!, r.g).theme).sort();
     expect(themes).toEqual(["espace", "foire", "ocean", "volcan"]);
     for (const r of refs) expect(r.resultat.score, r.nom).toBeGreaterThan(2000);
@@ -50,12 +50,12 @@ describe("golden de Pinball", () => {
         while (k < ev.length && ev[k]!.tick === p.tick) p.regler(ev[k]!.c, ev[k++]!.enfonce);
         p.avancer();
       }
-      return p.missionFaite;
+      return p.missionFaite || p.niveau > 1; // lot PBG2 : la mission revient après la multibille
     });
     expect(missions.length, "la mission est réussie par le robot sur les quatre tables").toBe(4);
   });
   it("lot PBG1 : les rediffusions du robot jouent quatre plans différents, et y réussissent des rails et un combo", () => {
-    const refs = golden.rediffusions.filter((r) => r.nom.startsWith("robot-") && r.nom !== "robot-30-secondes");
+    const refs = golden.rediffusions.filter((r) => r.nom.startsWith("robot-") && r.nom !== "robot-30-secondes" && !r.nom.startsWith("robot-multibilles"));
     expect(refs.map((r) => dailyPinball(parseDay(r.date)!, r.g).plan).sort()).toEqual(["boucle", "bretelle", "doublette", "tremplin"]);
     let combo = 0;
     for (const r of refs) {
@@ -70,6 +70,26 @@ describe("golden de Pinball", () => {
       combo = Math.max(combo, p.comboMaxPartie);
     }
     expect(combo, "un combo d'au moins deux rails").toBeGreaterThanOrEqual(2);
+  });
+  it("lot PBG2 : des rediffusions du robot passent par des multibilles — verrou, trois billes, jackpots, niveaux de la mission suivants — et se rejouent au bit près", () => {
+    const refs = golden.rediffusions.filter((r) => r.nom.startsWith("robot-multibilles"));
+    expect(refs.length).toBeGreaterThanOrEqual(2);
+    for (const r of refs) {
+      const p = new Partie(dailyPinball(parseDay(r.date)!, r.g));
+      const ev = decoderRediffusion(r.code).evenements;
+      let k = 0;
+      let billesMax = 0;
+      while (!p.finie) {
+        while (k < ev.length && ev[k]!.tick === p.tick) p.regler(ev[k]!.c, ev[k++]!.enfonce);
+        p.avancer();
+        billesMax = Math.max(billesMax, p.autres.length + (p.vide ? 0 : 1));
+      }
+      expect(p.multibilles, `${r.nom} : multibilles`).toBeGreaterThanOrEqual(1);
+      expect(p.jackpotsPartie, `${r.nom} : jackpots`).toBeGreaterThanOrEqual(1);
+      expect(billesMax, `${r.nom} : trois billes en jeu à la fois`).toBe(3);
+      expect(p.niveau, `${r.nom} : la mission du niveau suivant est revenue`).toBeGreaterThanOrEqual(2);
+      expect(p.score).toBe(r.resultat.score);
+    }
   });
   it("le golden porte les quatre plans dans ses jours", () => {
     expect(new Set(golden.jours.map((j) => j.plan)).size).toBeGreaterThanOrEqual(3);

@@ -109,7 +109,7 @@ describe("le robot vise : la mission du jour compte en premier", () => {
   it.each(THEMES_PINBALL)("%s : il réussit la mission en deux minutes de jeu", (theme) => {
     const c = dailyPinball(JOUR + 4, undefined, theme, "doublette"); // lot PBG1 : un plan fixé (la validation éprouve les 500 tables)
     const r = jouerRobot(c, graineDuRobot(0), { maxTicks: 72000 });
-    expect(r.partie.missionFaite, `${theme} : mission ${r.partie.compteur} / ${r.partie.but}`).toBe(true);
+    expect(r.partie.missionFaite || r.partie.niveau > 1, `${theme} : mission ${r.partie.compteur} / ${r.partie.but}`).toBe(true); // lot PBG2 : la mission revient après la multibille
     expect(r.partie.score).toBeGreaterThan(20000);
   });
   it("lot PBG1 : il vise les rails — sur chaque plan, ses quatre parties de deux minutes (celles des seuils) mènent chaque rail à son bout au moins une fois, avec un combo", () => {
@@ -172,4 +172,34 @@ describe("la copie d'une partie", () => {
     expect(b.score).toBe(a.score);
     expect(b.gains).toHaveLength(0);
   });
+});
+
+describe("lot PBG2 : le robot en multibille", () => {
+  const c = dailyPinball(JOUR + 3, undefined, "espace", "doublette");
+  it("il vise le verrou allumé, lance la multibille et y joue la bille la plus menacée : des frappes tant que plusieurs billes sont en jeu, un jackpot au moins ; rejouée, c'est la même partie", () => {
+    let pasMulti = 0;
+    let maxBilles = 0;
+    let frappesMulti = 0;
+    let avant = 0;
+    const r = jouerRobot(c, graineDuRobot(0), {
+      maxTicks: 216000,
+      surPas: (p) => {
+        if (p.autres.length > 0) pasMulti++;
+        maxBilles = Math.max(maxBilles, p.autres.length + (p.vide ? 0 : 1));
+        const n = (p.tenue(0) ? 1 : 0) + (p.tenue(1) ? 1 : 0);
+        if (p.autres.length > 0 && n > avant) frappesMulti++;
+        avant = n;
+      },
+    });
+    expect(r.partie.verrouTotal, "des billes verrouillées").toBeGreaterThanOrEqual(2);
+    expect(r.partie.multibilles).toBeGreaterThanOrEqual(1);
+    expect(r.partie.jackpotsPartie).toBeGreaterThanOrEqual(1);
+    expect(maxBilles).toBe(3);
+    expect(pasMulti).toBeGreaterThan(2000);
+    expect(frappesMulti, "le robot frappe pendant la multibille").toBeGreaterThanOrEqual(10);
+    expect(r.partie.billes, "les billes perdues pendant la multibille ne coûtent rien").toBeGreaterThanOrEqual(1);
+    const encore = jouerRobot(c, graineDuRobot(0), { maxTicks: 216000 });
+    expect(encore.evenements).toEqual(r.evenements);
+    expect(encore.partie.resultat()).toEqual(r.partie.resultat());
+  }, 60000);
 });
