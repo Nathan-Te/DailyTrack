@@ -2,6 +2,7 @@ import * as Cam from "./camera";
 const { avancerCamera, vitesseCamera } = Cam;
 // Les constantes de la boucle de pas sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, 3 fois plus lent dans une boucle de millions de pas (le robot).
 import * as K from "./constantes";
+import { REGLES_COURANTES, type Regles } from "./regles";
 const {
   AIMANT_PART,
   AIMANT_RAYON,
@@ -17,11 +18,9 @@ const {
   AVANCE_MAX,
   GEMME_PORTEE,
   GRACE,
-  GRAVITE,
   INVULNERABILITE,
   LARGEUR_MORCEAU,
   LIGNES,
-  MORCEAUX_PAR_THEME,
   MULT_MAX,
   PIECE_MANQUEE,
   PIECE_PORTEE,
@@ -41,7 +40,6 @@ const {
   TAPIS_DEN,
   TAPIS_NUM,
   TICKS_PAR_SECONDE,
-  VENT_GRAVITE,
   VENT_POUSSEE,
   VENT_VY_MIN,
   VIDE_BAS,
@@ -166,7 +164,11 @@ export class Partie {
   private hCy = 0;
   private hType = 0;
 
-  constructor(readonly terrain: Terrain) {}
+  /** Les règles sous lesquelles la partie se joue : celles du terrain (la version de la simulation du jour, lot GR5), sinon la version courante. */
+  readonly regles: Regles;
+  constructor(readonly terrain: Terrain) {
+    this.regles = terrain.regles ?? REGLES_COURANTES;
+  }
 
   get finie(): boolean {
     return this.mort !== 0;
@@ -180,7 +182,7 @@ export class Partie {
   }
   /** Le numéro du thème en cours (0 à 4 dans l'ordre du jour, puis la boucle). */
   get rangDuTheme(): number {
-    return idiv(idiv(this.x, CASES_PAR_MORCEAU), MORCEAUX_PAR_THEME);
+    return idiv(idiv(this.x, CASES_PAR_MORCEAU), this.regles.morceauxParTheme);
   }
   /** L'appui est-il pris en compte maintenant (une surface sous les pieds ou quittée à l'instant, et pas de glace) ? */
   get peutInverser(): boolean {
@@ -308,8 +310,8 @@ export class Partie {
 
   private pas(): void {
     // La caméra : sa vitesse monte avec la distance.
-    const vitesse = vitesseCamera(this.cam);
-    this.cam = avancerCamera(this.cam);
+    const vitesse = vitesseCamera(this.cam, this.regles);
+    this.cam = avancerCamera(this.cam, this.regles);
 
     // L'inversion : seulement au contact d'une surface (le tampon garde l'appui, la grâce le laisse passer après un bord), jamais sur la glace.
     // **Défaut de la maquette (a)** : elle donnait `vy = −g × 2` (un élan vers la surface qu'on quitte) que le sol annulait aussitôt. L'élan est donc nul ici : même jeu, sans un pas perdu.
@@ -339,7 +341,7 @@ export class Partie {
 
     // Le vertical : la gravité (ou le vent, qui porte vers le haut et allège la gravité), puis la collision.
     const dansVent = this.typeEn(enCases(this.x + DEMI_JOUEUR), enCases(this.y + DEMI_JOUEUR)) === VENT;
-    this.vy += (dansVent ? -VENT_POUSSEE : 0) + this.g * (dansVent ? VENT_GRAVITE : GRAVITE);
+    this.vy += (dansVent ? -VENT_POUSSEE : 0) + this.g * (dansVent ? this.regles.ventGravite : this.regles.gravite);
     if (dansVent && this.vy < VENT_VY_MIN) this.vy = VENT_VY_MIN;
     if (this.vy > VY_MAX) this.vy = VY_MAX;
     else if (this.vy < -VY_MAX) this.vy = -VY_MAX;
@@ -498,7 +500,8 @@ export class Partie {
   sauterAuThemeSuivant(): void {
     if (this.mort !== 0) return;
     const colonne = idiv(this.x, CASE);
-    const prochain = (idiv(idiv(colonne, LARGEUR_MORCEAU), MORCEAUX_PAR_THEME) + 1) * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU;
+    const parTheme = this.regles.morceauxParTheme;
+    const prochain = (idiv(idiv(colonne, LARGEUR_MORCEAU), parTheme) + 1) * parTheme * LARGEUR_MORCEAU;
     this.x = (prochain + 2) * CASE;
     this.y = DEPART_Y;
     this.g = 1;

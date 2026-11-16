@@ -20,7 +20,7 @@ for (const [theme, morceau, pas] of THEMES) {
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&jour=${JOUR}&morceau=${morceau}`);
     await page.setViewportSize({ width: 1280, height: 720 });
     await lancer(page);
-    await page.waitForTimeout(3500); // les seuils du jour (le robot, en arrière-plan) sont prêts : la médaille visée s'affiche
+    await page.waitForSelector(".g-medaille:not([hidden])", { timeout: 30000 }); // les seuils du jour (le robot, en arrière-plan) sont prêts : la médaille visée s'affiche (lot GR5 : on l'attend, au lieu d'un délai)
     await page.evaluate((n) => window.__jeu.avancer(n), pas);
     await page.waitForTimeout(300);
     await page.screenshot({ path: `${DOSSIER}/${theme}.png` });
@@ -33,7 +33,7 @@ test("capture — le HUD en portrait au téléphone (360 × 780)", async ({ brow
   const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&jour=${JOUR}&morceau=42`);
   await page.setViewportSize({ width: 360, height: 780 });
   await lancer(page);
-  await page.waitForTimeout(3500);
+  await page.waitForSelector(".g-medaille:not([hidden])", { timeout: 30000 });
   await page.evaluate(() => window.__jeu.avancer(260));
   await page.waitForTimeout(300);
   await page.screenshot({ path: `${DOSSIER}/hud-portrait.png` });

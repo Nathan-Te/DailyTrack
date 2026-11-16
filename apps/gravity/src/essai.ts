@@ -32,3 +32,14 @@ export function lireEssais(adresse: string, production: boolean): Essais {
 
 /** La distance (mètres) à laquelle la partie du joueur commence avant le morceau `n` : douze colonnes avant lui, en comptant les trois colonnes du départ. */
 export const distanceAvantMorceau = (n: number): number => Math.max(1, n * LARGEUR_MORCEAU - 3 - COLONNES_AVANT_MORCEAU);
+
+/**
+ * Lot GR5 — **un réglage d'essai est-il dans l'adresse ?** (`?vitesse=`, `?plafond=`, `?pente=`, `?gravite=`, `?longueur=`, `?medailles=` : `reglagesEssai.ts`). Seul ce test est du premier chargement (`classable`, `definition.ts`) :
+ * **rien en production**, et hors production un paramètre de réglage, même illisible, rend la page non classable (la lecture et la validation des valeurs sont dans `reglagesEssai.ts`, à la demande, avec le niveau).
+ */
+export const NOMS_DES_REGLAGES = ["vitesse", "plafond", "pente", "gravite", "longueur", "medailles"] as const;
+export const aUnReglageDEssai = (adresse: string, production: boolean): boolean => {
+  if (production) return false;
+  const p = new URLSearchParams(adresse);
+  return NOMS_DES_REGLAGES.some((n) => p.has(n));
+};

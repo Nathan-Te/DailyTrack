@@ -2,7 +2,7 @@
 // (propre à Gravity). Il **se retourne avec la gravité** (le corps pivote autour du centre de sa boîte) et **s'écrase à l'atterrissage** (le ressort de `@cdj/visuels`). Autour de lui : l'aura du bouclier et le cercle de l'aimant.
 // **Ce fichier ne lit que des nombres de la simulation** (position, gravité, bouclier…) ; rien du jeu n'y est décidé.
 import { BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial } from "three";
-import { LOOK, animateLook, restLook, squashScale, type Look } from "@cdj/visuels/plateformes";
+import { LOOK, animateLook, restLook, type Look } from "@cdj/visuels/plateformes";
 import { artGeometry, creerPersonnage } from "@cdj/visuels/plateformes/three";
 import type { CouleursGravity } from "./couleurs";
 import { BANDEAU, dessinAnneau, dessinDisque, dessinPan, dessinRuban, dessinTirets } from "./dessins";
@@ -61,14 +61,15 @@ export class Heros {
     const opaque = mat(new MeshBasicMaterial({ vertexColors: true, side: DoubleSide }));
     this.perso = creerPersonnage({ couleur: c.jaune, largeur: TAILLE_HEROS, hauteur: TAILLE_HEROS });
     this.corps.add(this.perso.groupe);
-    // le bandeau : le ruban sur le corps, les deux pans qui flottent derrière (chacun pivote autour de son attache)
+    // le bandeau (lot GR5 : l'accroche d'accessoire du personnage, `accessoire`, origine = bas-milieu de la boîte) : le ruban sur le corps, les deux pans qui flottent derrière (chacun pivote autour de son attache). Il suit
+    // l'écrasement, le rebond, le penché, la respiration et le retournement du personnage : le jeu n'a plus d'écrasement propre.
     const ruban = new Mesh(geo(dessinRuban(c.encre)), opaque);
-    this.corps.add(ruban);
+    this.perso.accessoire.add(ruban);
     for (const haut of [true, false]) {
       const pivot = new Group();
       pivot.position.set(BANDEAU.attacheX, BANDEAU.attacheY, 0);
       pivot.add(new Mesh(geo(dessinPan(c.encre, haut)), opaque));
-      this.corps.add(pivot);
+      this.perso.accessoire.add(pivot);
       this.pans.push(pivot);
     }
     this.corps.position.y = -TAILLE_HEROS / 2;
@@ -105,10 +106,8 @@ export class Heros {
     // le mouvement vu du héros : « vers le haut » est à l'opposé de la gravité
     const dt = Math.min(0.05, p.dt);
     this.look = animateLook(this.look, dt, { vx: p.vx, vyUp: -p.chute, ground: p.sol, slide: 0, runSpeed: 12.5, fallSpeed: 17 }, p.reduit ? 0 : 1);
-    // l'écrasement est appliqué au corps entier (le bandeau avec lui) ; le personnage ne reçoit pas le sien
-    const { sx, sy } = squashScale(this.look.squash, p.reduit ? 0.5 : 1);
-    this.corps.scale.set(sx, sy, 1);
-    this.perso.poser({ look: { ...this.look, squash: 0 }, blink: p.tick % 420 < 12 ? 1 : 0 });
+    // l'écrasement est celui du personnage (`squashAmount` : moitié avec « réduire les animations »), que le bandeau suit par l'accroche d'accessoire
+    this.perso.poser({ look: this.look, squashAmount: p.reduit ? 0.5 : 1, blink: p.tick % 420 < 12 ? 1 : 0 });
     // les pans : ils flottent derrière, et se couchent à la course
     const k = p.reduit ? 0 : 1;
     this.pans.forEach((pan, i) => {

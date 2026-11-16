@@ -3,8 +3,7 @@ import { CATALOGUE_KIT_FR } from "@cdj/kit/jeu/catalogue";
 // Le catalogue français de « Gravity » : le vocabulaire des écrans (le kit) et ce qui est propre au jeu (lot GR4 : les textes complets). **Les clés se rangent par famille** : `page.*` et `scene.*` (la page), `theme.<id>` et `.meca`
 // (les cinq thèmes), `accueil.phrase.<thème>` (la réplique du thème du jour : une seule par écran), `aide.*` (« Comment jouer »), `aujourdhui.*` (le panneau de l'accueil), `hud.*` (le HUD de la partie), `bilan.*` et `mort.*`
 // (la mort : sa cause et son bilan), `commandes.action.*` (le nom d'une commande), `essai.*` (les essais de recette). Le ton : tutoiement, court, un peu cruel ; une réplique par écran au plus.
-// **« À remplacer » reste ici à dessein** : tant qu'il est dans ce fichier, le test des mentions légales (`apps/portail/test/mentions.test.ts`) traite le jeu comme un squelette. Les mentions de Gravity (les clés de son
-// navigateur) sont un lot de la plateforme, à faire avant la publication (README du lot GR1) ; ce marqueur part avec elles. Aucun texte visible n'est plus à remplacer (lot GR4).
+// Lot GR5 : le marqueur du squelette n'est plus dans ce fichier — les mentions légales de Gravity (les clés de son navigateur) sont dans les deux pages (lot PG1), donc le test de `apps/portail/test/mentions.test.ts` traite le jeu comme livré.
 export const CATALOGUE_FR = {
   ...CATALOGUE_KIT_FR,
   "page.titre": "Gravity — Du Jour",
@@ -49,6 +48,13 @@ export const CATALOGUE_FR = {
   "hud.bouclier": "Bouclier",
   "hud.aimant": "Aimant · {s} s",
   "essai.robot": "Le robot joue",
+  "essai.reglage": "Réglage d'essai · {liste}",
+  "essai.reglage.vitesse": "départ {v} m/s",
+  "essai.reglage.plafond": "plafond {v} m/s",
+  "essai.reglage.pente": "+1 m/s tous les {v} m",
+  "essai.reglage.gravite": "gravité {v}",
+  "essai.reglage.longueur": "{v} morceaux par thème",
+  "essai.reglage.medailles": "médailles à {v} %",
   "bilan.distance": "Distance",
   "bilan.metres": "{m} m",
   "bilan.pieces": "Pièces × 10",

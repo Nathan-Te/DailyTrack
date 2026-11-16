@@ -1,7 +1,8 @@
 import { CodecError, pushVarint, readVarint } from "@cdj/core";
 import { decoderEnveloppe, encoderEnveloppe, ErreurEnveloppe, type ContenuEnveloppe } from "@cdj/core/enveloppe";
-import { DUREE_MAX_TICKS, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, MAX_APPUIS } from "./constantes";
-import { dailyGravity, terrainDuJour, type Contenu } from "./generateur";
+import { DUREE_MAX_TICKS, GRAVITY_SIM_VERSION, MAX_APPUIS } from "./constantes";
+import { dailyGravity, terrainDuJour, versionsGenerateur, type Contenu } from "./generateur";
+import { versionsSimJouables } from "./regles";
 import { jouer, type Resultat } from "./partie";
 
 // La rediffusion d'une partie de Gravity : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe` : format, versions, jour) et, pour charge, **la liste des pas où le joueur a touché l'écran**, en deltas : le premier appui
@@ -10,7 +11,16 @@ import { jouer, type Resultat } from "./partie";
 
 /** Au plus 4 000 appuis de 3 octets, en base64url, plus l'en-tête : au-delà, le texte n'est pas lu. */
 export const MAX_CARACTERES = 16100;
-export const LIMITES = { maxCaracteres: MAX_CARACTERES, sims: [GRAVITY_SIM_VERSION], generateurs: [GRAVITY_GENERATOR_VERSION] } as const;
+/** Les versions lues sont celles que ce code sait jouer (lot GR5 : une rediffusion d'un jour figé sous une version passée se décode tant qu'on la garde, `regles.ts` et `generateur.ts`). */
+export const LIMITES = {
+  maxCaracteres: MAX_CARACTERES,
+  get sims(): readonly number[] {
+    return versionsSimJouables();
+  },
+  get generateurs(): readonly number[] {
+    return versionsGenerateur();
+  },
+};
 
 export type CodeRefus = "format_illisible" | "version_inconnue" | "trop_longue" | "contenu_different";
 export class ErreurRediffusion extends Error {
@@ -81,16 +91,16 @@ export function decoderRediffusion(texte: unknown): Rediffusion {
   }
 }
 
-/** Rejoue une rediffusion sur le contenu donné : le même code que le jeu. Un autre jour ou une autre version du générateur est refusé (`contenu_different`). */
+/** Rejoue une rediffusion sur le contenu donné : le même code que le jeu. Un autre jour, une autre version du générateur ou de la simulation est refusé (`contenu_different`) : le contenu dit sous quelles versions il se joue (lot GR5). */
 export function rejouer(contenu: Contenu, rediffusion: string | Rediffusion): Resultat {
   const r = typeof rediffusion === "string" ? decoderRediffusion(rediffusion) : rediffusion;
-  if (!("jour" in r.contenu) || r.contenu.jour !== contenu.jour || r.g !== contenu.g) throw new ErreurRediffusion("contenu_different", "cette rediffusion n'est pas celle de ce jour");
+  if (!("jour" in r.contenu) || r.contenu.jour !== contenu.jour || r.g !== contenu.g || r.sim !== (contenu.sim ?? GRAVITY_SIM_VERSION)) throw new ErreurRediffusion("contenu_different", "cette rediffusion n'est pas celle de ce jour");
   return jouer(terrainDuJour(contenu), r.appuis);
 }
 
 /** La rediffusion d'une partie du jour (le texte à envoyer). */
 export function enregistrer(contenu: Contenu, appuis: readonly number[]): string {
-  return encoderRediffusion({ sim: GRAVITY_SIM_VERSION, g: contenu.g, contenu: { jour: contenu.jour }, appuis: [...appuis] });
+  return encoderRediffusion({ sim: contenu.sim ?? GRAVITY_SIM_VERSION, g: contenu.g, contenu: { jour: contenu.jour }, appuis: [...appuis] });
 }
 
 export { dailyGravity };

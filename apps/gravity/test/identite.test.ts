@@ -24,8 +24,9 @@ describe("« Gravity » : le panneau « Aujourd'hui »", () => {
     const fond = { bronze: "--dj-bronze", argent: "--dj-argent", or: "--dj-or", diamant: "--dj-diamant" } as const;
     for (const m of MEDAILLES_DU_PANNEAU) expect(contraste(jeton(fond[m.classe]), jeton(m.classe === "diamant" ? "--dj-diamant-texte" : "--dj-encre")), m.classe).toBeGreaterThanOrEqual(4.5);
   });
-  it("il ne fait rien de plus au premier chargement : la scène l'exporte, le premier chargement ne l'importe pas", () => {
-    expect(lire("../src/scene.ts")).toContain('from "./panneau"');
+  it("lot GR5 : il ne fait rien de plus au premier chargement : son morceau est demandé par `import()` quand le kit l'appelle, jamais importé en tête, et la scène ne le lit plus", () => {
+    expect(lire("../src/definition.ts")).toContain('import("./panneau")');
+    expect(lire("../src/scene.ts")).not.toMatch(/from ["']\.\/panneau["']/);
     for (const f of ["main.ts", "definition.ts", "fiche.ts"]) expect(lire(`../src/${f}`), f).not.toMatch(/from ["']\.\/panneau["']/);
     expect(lire("../src/panneau.ts")).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML/);
   });
@@ -70,8 +71,8 @@ describe("« Gravity » : les textes", () => {
     }
     expect(Object.keys(fr).filter((k) => /^bilan\./.test(k))).toHaveLength(6);
   });
-  it("« À remplacer » reste dans le fichier français (le test des mentions légales traite le jeu en squelette tant que ses mentions ne sont pas faites) mais dans aucun texte visible", () => {
-    expect(lire("../src/catalogue.fr.ts")).toMatch(/À remplacer/);
+  it("lot GR5 : « À remplacer » n'est plus ni dans le fichier français ni dans un texte visible (le test des mentions légales traite Gravity comme livré : `apps/portail/test/mentions.test.ts`)", () => {
+    expect(lire("../src/catalogue.fr.ts")).not.toMatch(/À remplacer/);
     for (const v of Object.values(CATALOGUE_GRAVITY.fr)) expect(v).not.toMatch(/À remplacer/);
   });
 });

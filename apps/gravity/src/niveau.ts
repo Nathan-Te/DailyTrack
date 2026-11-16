@@ -2,6 +2,7 @@ import { GRAVITY_GENERATOR_VERSION, THEMES_GRAVITY, dailyGravity, jouerRobot, li
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { DISTANCE_DU_ROBOT, distanceAvantMorceau, lireEssais, type EssaiRecette } from "./essai";
+import { lireReglagesEssai } from "./reglagesEssai";
 
 // Le niveau du jour, chargé À LA DEMANDE (`import()` de `definition.ts`) : le générateur, les morceaux, le robot et le calcul des seuils ne sont pas dans le premier chargement (l'accueil). Le contenu rendu porte ses
 // seuils (`seuilsFiges` : ceux du fichier de jour figé s'il y en a un ; sinon ceux du robot, calculés **en arrière-plan** — voir `seuilsEnArrierePlan` — et lus par `DEFINITION.seuils` à l'écran de fin).
@@ -60,6 +61,9 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   }
   contenu ??= dailyGravity(jour, GRAVITY_GENERATOR_VERSION);
   if (theme !== contenu.ordre[0] && (THEMES_GRAVITY as readonly string[]).includes(theme)) contenu = { ...contenu, ordre: ordreCommencantPar(contenu.ordre, theme as ThemeGravity), seuilsFiges: undefined };
+  // Les réglages d'essai (lot GR5, `?vitesse=`… hors production, jamais classés) : le contenu porte les règles de l'essai ; les seuils du fichier ne valent plus, le robot les recalcule avec ces règles.
+  const reglages = lireReglagesEssai(typeof location === "undefined" ? "" : location.search, production);
+  if (reglages) contenu = { ...contenu, reglages, seuilsFiges: undefined };
   const calcul = contenu.seuilsFiges ? null : seuilsEnArrierePlan(contenu);
   const rendu: Contenu & { essai?: EssaiRecette; pretSeuils: () => Seuils | null } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? calcul!.seuils, pretSeuils: calcul ? calcul.pret : () => contenu.seuilsFiges ?? null };
   // Les essais de recette (`?robot`, `?morceau=<n>`, hors production) : le robot joue ici, avant la partie (une à deux secondes), et la scène rejoue ses appuis.

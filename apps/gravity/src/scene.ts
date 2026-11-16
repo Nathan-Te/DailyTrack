@@ -18,7 +18,6 @@ import {
   LARGEUR_MORCEAU,
   LIGNES,
   MAX_APPUIS,
-  MORCEAUX_PAR_THEME,
   MORT_BORD,
   MORT_PIQUE,
   MORT_TEMPS,
@@ -40,15 +39,13 @@ import { THEMES } from "@cdj/visuels/plateformes";
 import { couleursGravity, enCss } from "./couleurs";
 import { Effets } from "./effets";
 import type { EssaiRecette } from "./essai";
+import { libellesDesReglages } from "./reglagesEssai";
 import { Heros, TAILLE_HEROS } from "./heros";
 import { Hud } from "./hud";
 import { Monde } from "./monde3d";
 import { musique } from "./musiqueDuJeu";
 import { Sons } from "./sons";
 import { sonsDuPas, type Photo } from "./sonsLogique";
-
-// Le panneau « Aujourd'hui » de l'accueil (lot GR4) vit avec la scène : le kit l'appelle une fois le contenu du jour lu, donc quand la scène est chargée (`definition.ts`).
-export { remplirAujourdhui } from "./panneau";
 
 /** Les textes de mort du catalogue, par cause. */
 const CLE_MORT: Record<number, string> = { [MORT_VIDE]: "vide", [MORT_PIQUE]: "pique", [MORT_BORD]: "bord", [MORT_TEMPS]: "temps" };
@@ -66,6 +63,11 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   const appuis: number[] = [];
   // Les essais de recette (lot GR2, `niveau.ts`) : le robot a déjà joué ; `?morceau=<n>` rejoue ses appuis jusqu'au pas où le joueur reprend la main, `?robot` les rejoue sous nos yeux. Jamais classé.
   const essai = (contenu as ContenuDeScene).essai;
+  // Les réglages d'essai du lot GR5 (`contenu.reglages`, hors production) : la partie est un essai, jamais classée ni envoyée ; la mention dit ce qui a changé.
+  const reglagesDEssai = contenu.reglages ?? null;
+  if (reglagesDEssai) partie.essai = true;
+  /** La mention discrète des réglages (« Réglage d'essai · départ 8 m/s · gravité 40 ») : ce qui a changé par rapport à la version courante. */
+  const mentionDesReglages = reglagesDEssai ? o.t("essai.reglage", { liste: libellesDesReglages(reglagesDEssai).map((l) => o.t(`essai.reglage.${l.cle}`, { v: l.valeur })).join(" · ") || "—" }) : null;
   const appuisDuRobot = essai?.robot ? essai.appuis : null;
   let suiteDuRobot = 0;
   if (essai) {
@@ -154,7 +156,8 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   addEventListener("keydown", surTouche);
 
   // --- L'état du rendu ---
-  const themeDe = (cx: number): ThemeGravity => contenu.ordre[Math.trunc(Math.trunc(cx / LARGEUR_MORCEAU) / MORCEAUX_PAR_THEME) % NB_THEMES]!;
+  const morceauxParTheme = terrain.regles!.morceauxParTheme; // lot GR5 : les règles du contenu (un essai règle la longueur d'un thème)
+  const themeDe = (cx: number): ThemeGravity => contenu.ordre[Math.trunc(Math.trunc(cx / LARGEUR_MORCEAU) / morceauxParTheme) % NB_THEMES]!;
   let themeVu: ThemeGravity | null = null;
   let themeDepuis = -1000;
   let tMort = 0;
@@ -252,6 +255,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       mort: partie.mort !== 0 ? (CLE_MORT[partie.mort] ?? "vide") : null,
       bilan: partie.mort !== 0 ? { distance: partie.distance, pieces: partie.pieces, gemmes: partie.gemmes, theme: themeVu ? o.t(`theme.${themeVu}`) : "", mult: partie.multMax } : null,
       robot: appuisDuRobot !== null,
+      reglage: mentionDesReglages,
     });
   }
 

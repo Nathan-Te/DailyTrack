@@ -1,5 +1,6 @@
-import { LARGEUR_MORCEAU, MORCEAUX_PAR_THEME, NB_THEMES } from "./constantes";
+import { LARGEUR_MORCEAU, MORCEAUX_PAR_THEME, NB_THEMES, POURCENT_DU_ROBOT } from "./constantes";
 import { terrainDuJour, type Contenu } from "./generateur";
+import { cleDesRegles, type Regles } from "./regles";
 import { jouerRobotEnTranches } from "./robot";
 import type { Seuils } from "./types";
 
@@ -11,8 +12,7 @@ import type { Seuils } from "./types";
 // code alors en production) écrit les seuils dans le fichier de chaque jour protégé : le serveur et le jeu les y lisent. (2) Un jour sans fichier est calculé **une fois** : par le serveur (le module des jeux garde le
 // niveau d'un jour en mémoire, `niveauDuJour`) et, côté jeu, **à la fin de la première partie** seulement (`apps/gravity/src/niveau.ts`) — pas en production une fois la fiche munie de `preparer` (voir le README du lot GR2).
 
-/** Le pourcentage du score du robot que vaut un seuil (seed : « 60 % »). **Il se règle par Nathan** (lot GR4). */
-export const POURCENT_DU_ROBOT = 60;
+// `POURCENT_DU_ROBOT` (60 %, **réglé par Nathan**, lot GR4) est dans `constantes.ts` (lot GR5 : le premier chargement du jeu le lit sans le robot).
 /**
  * Les points d'arrêt, en nombre de thèmes parcourus : bronze au bout du 1er thème, argent du 2e, or du 3e, Diamant de la boucle des cinq. **Nathan les règle aussi** (lot GR4) ; la distance de chacun en mètres est
  * `thèmes × MORCEAUX_PAR_THEME × LARGEUR_MORCEAU` (304, 608, 912 et 1 520).
@@ -26,10 +26,18 @@ export const DISTANCES_D_ARRET = {
   author: THEMES_D_ARRET.author * MORCEAUX_PAR_THEME * LARGEUR_MORCEAU,
 } as const;
 
+/** Lot GR5 : les distances d'arrêt sous des règles données (la longueur d'un thème peut être réglée par un essai) ; celles des règles de la version courante sont `DISTANCES_D_ARRET`. */
+export const distancesDArret = (r: Pick<Regles, "morceauxParTheme">): Record<keyof typeof THEMES_D_ARRET, number> => ({
+  bronze: THEMES_D_ARRET.bronze * r.morceauxParTheme * LARGEUR_MORCEAU,
+  silver: THEMES_D_ARRET.silver * r.morceauxParTheme * LARGEUR_MORCEAU,
+  gold: THEMES_D_ARRET.gold * r.morceauxParTheme * LARGEUR_MORCEAU,
+  author: THEMES_D_ARRET.author * r.morceauxParTheme * LARGEUR_MORCEAU,
+});
+
 const MEMOIRE = new Map<string, Seuils>();
 
-/** Le pourcentage d'un score, arrondi à 10 près (comme au lot GR1). */
-const pourcentDe = (score: number): number => Math.trunc((score * POURCENT_DU_ROBOT + 500) / 1000) * 10;
+/** Le pourcentage d'un score, arrondi à 10 près (comme au lot GR1) ; `pourcent` : celui de la version, ou celui d'un essai (`ReglagesEssai.pourcent`). */
+const pourcentDe = (score: number, pourcent: number): number => Math.trunc((score * pourcent + 500) / 1000) * 10;
 
 /**
  * Les seuils d'un jour d'après le robot, **en tranches** (`yield` après chaque plan du robot : un navigateur le fait tourner en arrière-plan) : il joue jusqu'au dernier point d'arrêt (diagnostic permis : un passage sans
@@ -37,19 +45,22 @@ const pourcentDe = (score: number): number => Math.trunc((score * POURCENT_DU_RO
  * Gardé en mémoire (huit jours) : un jour n'est joué qu'une fois par processus.
  */
 export function* seuilsEnTranches(contenu: Contenu): Generator<void, Seuils, undefined> {
-  const cle = `${contenu.jour}:${contenu.g}:${contenu.ordre.join(",")}`;
+  const terrain = terrainDuJour(contenu);
+  const distances = distancesDArret(terrain.regles!);
+  const pourcent = contenu.reglages?.pourcent ?? POURCENT_DU_ROBOT;
+  const cle = `${contenu.jour}:${contenu.g}:${cleDesRegles(terrain.regles!)}:${pourcent}:${contenu.ordre.join(",")}`;
   const connu = MEMOIRE.get(cle);
   if (connu) return { ...connu };
   const noms = ["bronze", "silver", "gold", "author"] as const;
   const scores: number[] = [];
-  const jeu = jouerRobotEnTranches(terrainDuJour(contenu), { strict: false, maxDistance: DISTANCES_D_ARRET.author, arrets: noms.map((n) => DISTANCES_D_ARRET[n]), surPoint: (_d, p) => void scores.push(p.score) });
+  const jeu = jouerRobotEnTranches(terrain, { strict: false, maxDistance: distances.author, arrets: noms.map((n) => distances[n]), surPoint: (_d, p) => void scores.push(p.score) });
   let r = jeu.next();
   while (!r.done) {
     yield;
     r = jeu.next();
   }
   while (scores.length < noms.length) scores.push(r.value.partie.score);
-  const valeurs = scores.map(pourcentDe);
+  const valeurs = scores.map((v) => pourcentDe(v, pourcent));
   for (let i = 0; i < valeurs.length; i++) valeurs[i] = Math.max(valeurs[i]!, i === 0 ? 10 : valeurs[i - 1]! + 10);
   const s: Seuils = { bronze: valeurs[0]!, silver: valeurs[1]!, gold: valeurs[2]!, author: valeurs[3]! };
   if (MEMOIRE.size >= 8) MEMOIRE.delete(MEMOIRE.keys().next().value!);
