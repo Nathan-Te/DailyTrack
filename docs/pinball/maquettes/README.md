@@ -1,6 +1,11 @@
 # Lot PB5a — maquettes de l'identité, du HUD et de l'accueil de Pinball
 
-**État : en attente du choix de Nathan.** Ce lot n'écrit que dans `docs/pinball/maquettes/` : aucun code de jeu ni d'interface. « Pour les joueurs » : `rien`.
+**État : identité choisie par Nathan le 16/11/2026 — étiquette B (« Néon ») et illustration 3 (« la table »).** Le HUD, le panneau « Aujourd'hui » et l'écran de fin attendent encore sa réponse (questions en bas). Ce lot n'écrit que dans `docs/pinball/maquettes/` : aucun code de jeu ni d'interface. « Pour les joueurs » : `rien`.
+
+## Le choix, à reporter dans la fiche au PB5b
+- `etiquette` : `fond` `#F6A2D8`, `coque` `#962170`, `police` `"Barlow Condensed", "Archivo", sans-serif` (titres et boutons du jeu en 800 italique, comme Track).
+- `identite` : `police` `Barlow Condensed`, `motif` `rayures`, `illustration` `apps/pinball/public/illustration.svg` (copie de `illustration-3-la-table.svg`), `aujourdhui` `true` (proposé, à confirmer).
+- Coût : rien hors des zones du jeu (police hébergée et déjà chargée par le portail, motif existant). L'accueil et la fin (`pinball-accueil.*`, `pinball-fin.*`) sont redessinés avec ce choix.
 
 ## À regarder, dans cet ordre (les PNG s'ouvrent sur le téléphone)
 | # | Quoi | Capture | Page |
@@ -56,7 +61,7 @@ Score de la partie, ce qu'il vaut (« Nouveau record » / « Pas mieux que ton r
 - Rappel (déjà au `docs/pinball/consignes.md`) : les mentions légales doivent nommer les clés `pinball:*` avant que le catalogue perde son dernier « À remplacer » — un lot de plateforme.
 
 ## Questions pour Nathan
-1. Étiquette **A, B ou C** (et, pour C, motif « pastilles » ou « uni ») ?
-2. Illustration **1, 2 ou 3** ?
+1. ~~Étiquette~~ : **B** (16/11). ~~Illustration~~ : **3** (16/11).
+2. Le panneau « Aujourd'hui » activé, et l'écran de fin : d'accord ?
 3. Le HUD portrait te va-t-il ? En particulier : **la mission en bas** (loin du score) ; **les billes en ronds** plutôt qu'un chiffre « Billes : 2 ».
 4. Le plein écran : en paysage et sur bureau seulement (comme proposé), ou aussi en portrait ?

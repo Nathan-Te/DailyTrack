@@ -27,7 +27,7 @@
   --dj-ombre-cartouche:4px 4px 0 var(--dj-encre);--dj-ombre-bouton:2px 2px 0 var(--dj-encre);--dj-ombre-titre:4px 4px 0 var(--dj-papier);
   --dj-ombre-afficheur:inset 0 3px 0 var(--dj-ecran-ombre),inset 0 -2px 0 var(--dj-ecran-reflet);
   --dj-voile:repeating-linear-gradient(115deg,#1E1B19D9 0 5px,#1E1B19B3 5px 10px);
-  --jeu-fond:#D3E77C;--jeu-coque:#4E6B14;--jeu-police:'Lilita One','Archivo',sans-serif;--jeu-motif:radial-gradient(circle,#c7d975 0 4px,transparent 4px) 0 0/20px 20px,radial-gradient(circle,#c7d975 0 4px,transparent 4px) 10px 10px/20px 20px,#d3e77c;
+  --jeu-fond:#F6A2D8;--jeu-coque:#962170;--jeu-police:'Barlow Condensed','Archivo',sans-serif;--jeu-motif:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--dj-creme);color:var(--dj-encre);font-family:var(--dj-police-texte)}
@@ -45,7 +45,7 @@ h1{font:400 24px/1.1 var(--dj-police-marque);margin:0 0 6px}
 .deux{grid-template-columns:1fr 1fr;gap:20px;align-items:start}
 .col{display:flex;flex-direction:column;gap:12px}
 .titre{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.titre h2{margin:0;font:400 38px/.95 var(--jeu-police);text-shadow:var(--dj-ombre-titre)}
+.titre h2{margin:0;font:italic 800 44px/.95 var(--jeu-police);text-shadow:var(--dj-ombre-titre)}
 .titre img{height:76px}
 .num{display:block;margin-top:8px;font:700 13px var(--dj-police-chiffres)}
 .replique{margin:0;font-weight:700;font-size:15px;line-height:1.35}
@@ -54,7 +54,7 @@ h1{font:400 24px/1.1 var(--dj-police-marque);margin:0 0 6px}
 .tuile.sombre{background:var(--dj-encre);color:var(--dj-papier)}
 .leg{display:block;font:700 11px var(--dj-police-texte);letter-spacing:.6px;text-transform:uppercase}
 .val{display:block;margin-top:4px;font:700 21px var(--dj-police-chiffres)}
-.jouer{height:58px;display:flex;align-items:center;justify-content:center;background:var(--dj-encre);color:var(--jeu-fond);border-radius:3px;font:400 28px var(--jeu-police);letter-spacing:1px;text-decoration:none;box-shadow:0 5px 0 var(--jeu-coque);margin-bottom:5px}
+.jouer{height:58px;display:flex;align-items:center;justify-content:center;background:var(--dj-encre);color:var(--jeu-fond);border-radius:3px;font:italic 800 32px var(--jeu-police);letter-spacing:1px;text-decoration:none;box-shadow:0 5px 0 var(--jeu-coque);margin-bottom:5px}
 .trois{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .sec{min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;background:var(--dj-papier);border:2px solid var(--dj-encre);border-radius:3px;font:700 14px/1.15 var(--dj-police-texte);color:var(--dj-encre);text-decoration:none}
 .panneau{padding:12px;background:var(--dj-papier);border:2px solid var(--dj-encre);border-radius:4px;display:flex;flex-direction:column;gap:10px}
@@ -79,7 +79,7 @@ h1{font:400 24px/1.1 var(--dj-police-marque);margin:0 0 6px}
 .note{font:600 13px/1.4 var(--dj-police-texte);margin:10px 0 0}
 
 .ecran.fin{background-image:url(fonds/fin.jpg);height:844px}
-.titrefin{margin:0;font:400 30px/1 var(--jeu-police);text-shadow:var(--dj-ombre-titre)}
+.titrefin{margin:0;font:italic 800 36px/1 var(--jeu-police);text-shadow:var(--dj-ombre-titre)}
 .resume{padding:12px 14px;background:var(--dj-papier);border:3px solid var(--dj-encre);border-radius:4px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
 .score{margin:0;font:700 52px/1 var(--dj-police-chiffres)}
 .rangfin{font-weight:700;font-size:15px}
@@ -97,6 +97,7 @@ h1{font:400 24px/1.1 var(--dj-police-marque);margin:0 0 6px}
 <body>
 <div style="padding:24px 24px 32px;width:860px">
 <h1>Pinball — l’écran de fin (390 × 844)</h1>
+<p class="sous">Avec l’identité choisie par Nathan le 16/11/2026 : étiquette B (« Néon »).</p>
 <div style="display:grid;grid-template-columns:396px 1fr;gap:28px;align-items:start">
 <div><div class="ecran fin" style="width:390px"><div class="barrejeu"><a class="retour" href="#">‹ DU JOUR</a><span class="date">Lun. 16 nov. · n° 1</span></div>
 <div class="coque"><div class="stries"></div><div class="etiq">
