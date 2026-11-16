@@ -1,0 +1,105 @@
+/* Le panneau « Aujourd'hui » de l'accueil de « Gravity » (lot GR4) : les tuiles des cinq thèmes et les cases des médailles. Couleurs, traits et espaces : les jetons de la charte (`--dj-*`) ; la couleur d'un thème arrive par
+   `--g-fond` (sa teinte sombre) et `--g-bord` (son bord clair). Chargé avec la scène, jamais au premier chargement. */
+.g-aujourdhui__legende {
+  margin: 0 0 var(--dj-espace-2);
+  font-family: var(--dj-police-texte, sans-serif);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.g-aujourdhui__boucle,
+.g-aujourdhui__attente {
+  margin: var(--dj-espace-2) 0 0;
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre);
+}
+.g-aujourdhui__attente {
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.g-themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: var(--dj-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.g-themes__tuile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+  min-width: 0;
+  padding: var(--dj-espace-2) var(--dj-espace-2) var(--dj-espace-3);
+  background: var(--g-fond);
+  color: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-top: var(--dj-espace-1) solid var(--g-bord);
+  border-radius: 4px;
+}
+.g-themes__nom {
+  font-family: var(--jeu-police, var(--dj-police-texte, sans-serif));
+  font-size: var(--dj-taille-15);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  overflow-wrap: anywhere;
+}
+.g-themes__meca {
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.g-seuils {
+  margin-top: var(--dj-espace-5);
+}
+.g-seuils:empty {
+  display: none;
+}
+.g-seuils__liste {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--dj-espace-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.g-seuils__case {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+  min-width: 0;
+  padding: var(--dj-espace-2);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.g-seuils__case--bronze {
+  background: var(--dj-bronze);
+}
+.g-seuils__case--argent {
+  background: var(--dj-argent);
+}
+.g-seuils__case--or {
+  background: var(--dj-or);
+}
+.g-seuils__case--diamant {
+  background: var(--dj-diamant);
+  color: var(--dj-diamant-texte);
+}
+.g-seuils__nom {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.g-seuils__valeur {
+  font-family: var(--dj-police-chiffres, monospace);
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+}
+@media (max-width: 420px) {
+  .g-seuils__liste {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

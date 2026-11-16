@@ -43,11 +43,17 @@ import type { EssaiRecette } from "./essai";
 import { Heros, TAILLE_HEROS } from "./heros";
 import { Hud } from "./hud";
 import { Monde } from "./monde3d";
+import { musique } from "./musiqueDuJeu";
+import { Sons } from "./sons";
+import { sonsDuPas, type Photo } from "./sonsLogique";
+
+// Le panneau « Aujourd'hui » de l'accueil (lot GR4) vit avec la scène : le kit l'appelle une fois le contenu du jour lu, donc quand la scène est chargée (`definition.ts`).
+export { remplirAujourdhui } from "./panneau";
 
 /** Les textes de mort du catalogue, par cause. */
 const CLE_MORT: Record<number, string> = { [MORT_VIDE]: "vide", [MORT_PIQUE]: "pique", [MORT_BORD]: "bord", [MORT_TEMPS]: "temps" };
 /** Combien de temps (ms) la mort se montre avant l'écran de fin ; rien avec « réduire les animations ». */
-const DELAI_MORT_MS = 900;
+const DELAI_MORT_MS = 1500;
 const MILIEU = -LIGNES / 2;
 
 /** Un contenu dont les seuils se calculent en arrière-plan (`niveau.ts`) : `pretSeuils` les rend s'ils sont prêts, **sans jamais forcer le calcul** (lire les seuils du contenu le forcerait, et gèlerait la partie). */
@@ -98,6 +104,11 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   const effets = new Effets(o.reduit);
   scene.add(monde.groupe, heros.groupe, effets.mesh);
   const hud = new Hud(hote, o);
+  // Les sons (lot GR4, règle S2 : `sons.ts` ouvre son contexte par `ouvrirContexteAudio`) : aucun avant le premier geste du joueur, le volume des effets est celui du kit.
+  const sons = new Sons({ niveau: o.volumeEffets });
+  const geste = (): void => sons.deverrouiller();
+  const GESTES = ["pointerdown", "pointerup", "touchend", "keydown", "click"] as const;
+  for (const g of GESTES) addEventListener(g, geste, { passive: true });
 
   let largeurVue = 14; // la largeur et la hauteur de la vue, en cases
   const redimensionner = (): void => {
@@ -125,6 +136,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
 
   // --- Les entrées : un appui daté au pas de la simulation ---
   const toucher = (): void => {
+    geste(); // un contexte audio créé ou réveillé au geste du joueur
     if (appuisDuRobot) return; // `?robot` : on regarde
     if (partie.finie || appuis.length >= MAX_APPUIS || appuis[appuis.length - 1] === partie.tick) return;
     appuis.push(partie.tick);
@@ -151,6 +163,9 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   let tDernierRendu = performance.now();
   /** Les pas du rendu : un par appel de `avancer`, **y compris après la mort** (la simulation s'arrête, l'éclat et la secousse continuent) ; la pause les fige, comme tout. */
   let horloge = 0;
+
+  /** L'état que les sons comparent avant et après un pas (inversion, palier ou chute du multiplicateur, bonus pris). */
+  const photo = (): Photo => ({ g: partie.g, mult: partie.mult, chaine: partie.chaine, bouclier: partie.bouclier, aimant: partie.aimant });
 
   /** Les événements du dernier pas (`EV_*`) : de quoi dessiner les sensations, rien d'autre. */
   function evenements(): void {
@@ -235,6 +250,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       seuils: prets ? prets() : (contenu.seuilsFiges ?? null),
       theme: themeVu ? { id: themeVu, nom: o.t(`theme.${themeVu}`), meca: o.t(`theme.${themeVu}.meca`), couleur: enCss(THEMES[themeVu].tiles.rimSide), age: partie.tick - themeDepuis } : null,
       mort: partie.mort !== 0 ? (CLE_MORT[partie.mort] ?? "vide") : null,
+      bilan: partie.mort !== 0 ? { distance: partie.distance, pieces: partie.pieces, gemmes: partie.gemmes, theme: themeVu ? o.t(`theme.${themeVu}`) : "", mult: partie.multMax } : null,
       robot: appuisDuRobot !== null,
     });
   }
@@ -250,6 +266,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
         partie.appuyer();
         suiteDuRobot++;
       }
+      const avant = photo();
       partie.avancer();
       tDernierPas = performance.now();
       if (partie.finie && !mortVue) {
@@ -259,11 +276,14 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       // le thème traversé : son nom s'affiche quand il change (et au départ)
       const th = themeDe(Math.trunc(partie.x / CASE));
       if (th !== themeVu) {
+        if (themeVu !== null) sons.jouer({ son: "theme" }); // pas au départ : seulement quand le décor change
         themeVu = th;
         themeDepuis = partie.tick;
+        musique.scene(`theme:${th}`); // la musique suit le thème (le kit n'annonce que celui du départ)
       }
       heros.avancerPas((partie.x - partie.precX) / CASE, partie.sol);
       evenements();
+      for (const e of sonsDuPas(partie.ev, avant, photo())) sons.jouer(e);
       effets.avancerPas();
     },
     // L'écran de fin attend un instant : on voit la mort et sa cause (rien avec « réduire les animations »).
@@ -289,6 +309,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
     detruire() {
       observateur.disconnect();
       removeEventListener("keydown", surTouche);
+      for (const g of GESTES) removeEventListener(g, geste);
       hote.removeEventListener("pointerdown", surPointeur);
       hud.detruire();
       monde.detruire();

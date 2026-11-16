@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dailyGravity, medailleDe, seuilsDe, VARIANTE } from "@cdj/gravity-sim";
+import { dailyGravity, medailleDe, ordreDesThemes, seuilsDe, VARIANTE } from "@cdj/gravity-sim";
 import { parseDay } from "@cdj/core";
 import { appareil, jouerLeJour, JOUR, lancer } from "./appareil";
 
@@ -89,4 +89,22 @@ test.describe("Gravity : une partie", () => {
       await context.close();
     });
   }
+
+  // Lot GR4 : l'identité de l'accueil (le panneau « Aujourd'hui », la réplique) et « Comment jouer » complet.
+  test("l'accueil : l'ordre des thèmes du jour, les seuils des médailles et la réplique ; « Comment jouer » dit tout", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
+    const ordre = ordreDesThemes(parseDay(JOUR)!);
+    const tuiles = page.locator(".g-themes__tuile .g-themes__nom");
+    await expect(tuiles).toHaveCount(5); // les thèmes s'affichent tout de suite
+    const noms = await tuiles.allTextContents();
+    expect(noms.map((n) => n.replace(/^\d\. /, ""))).toEqual(ordre.map((t) => ({ foret: "Forêt", usine: "Usine", glace: "Glace", nuit: "Nuit", neon: "Néon" })[t]));
+    // les seuils : quand ils sont prêts (le robot les calcule en arrière-plan, jamais d'un trait)
+    await expect(page.locator(".g-seuils__case")).toHaveCount(4, { timeout: 30000 });
+    const seuils = seuilsDe(dailyGravity(parseDay(JOUR)!));
+    const valeurs = (await page.locator(".g-seuils__valeur").allTextContents()).map((v) => Number(v.replace(/\D/g, "")));
+    expect(valeurs).toEqual([seuils.bronze, seuils.silver, seuils.gold, seuils.author]);
+    await page.locator("#jeu-bouton-aide").click();
+    await expect(page.locator("#jeu-aide .jeu-aide li")).toHaveCount(12);
+    await context.close();
+  });
 });

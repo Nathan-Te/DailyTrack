@@ -2,7 +2,8 @@ import { CATALOGUE_COMMUN_EN } from "@cdj/ui";
 import { CATALOGUE_KIT_EN } from "@cdj/kit/jeu/catalogue";
 import type { CATALOGUE_FR } from "./catalogue.fr";
 
-// L'anglais de « Gravity » (chargé à la demande) : le vocabulaire des écrans (le kit) et ce qui est propre au jeu ; avec l'anglais du catalogue commun de `@cdj/ui`. Textes courts : les complets viennent au lot GR4.
+// L'anglais de « Gravity » (chargé à la demande) : le vocabulaire des écrans (le kit) et ce qui est propre au jeu ; avec l'anglais du catalogue commun de `@cdj/ui`. Lot GR4 : les textes complets, écrits en anglais (pas traduits
+// mot à mot) : « color » à l'américaine, « coins » et « gems », « gravity switch » pour l'inverseur (« flipper » dirait un autre jeu).
 export { CATALOGUE_COMMUN_EN };
 export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string } = {
   ...CATALOGUE_KIT_EN,
@@ -18,14 +19,27 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "theme.glace.meca": "Icy floors",
   "theme.nuit.meca": "Blinking blocks",
   "theme.neon.meca": "Alternating blocks",
-  "accueil.phrase.foret": "Floor, ceiling: same fight. As long as you're touching something.",
-  "accueil.phrase.usine": "The belts push faster: flip before they run out.",
+  "accueil.phrase.foret": "Floor or ceiling, same deal. As long as you're touching something.",
+  "accueil.phrase.usine": "On the belts, everything goes faster. So do you, like it or not.",
   "accueil.phrase.glace": "You can't push off ice: flip before it, or after.",
-  "accueil.phrase.nuit": "The blocks switch on and off: cross in rhythm.",
-  "accueil.phrase.neon": "Two colours, only one solid at a time: follow the beat.",
-  "aide.point1": "An endless runner: it runs right by itself. The goal: get as far as you can, collecting coins and gems.",
-  "aide.point2": "Touch the screen (or Space, A on a controller): gravity flips, but only while you touch a surface: floor, ceiling or platform. No flipping in mid-air or on ice.",
-  "aide.point3": "To replace: coins, the multiplier and power-ups (full text in lot GR4).",
+  "accueil.phrase.nuit": "Blocks switch on and off: cross on the beat.",
+  "accueil.phrase.neon": "Two colors, only one solid at a time: follow the beat.",
+  "aide.point1": "You run on your own, to the right. Everyone gets the same path today.",
+  "aide.point2": "Touch the screen, click or press Space: gravity flips. Only while you're touching a surface: floor, ceiling or platform.",
+  "aide.point3": "Red kills. So do the void and the left edge of the screen. Grab coins (10 points) and gems (100).",
+  "aide.bloc.usine": "Factory: conveyor belts push you along faster.",
+  "aide.bloc.glace": "Ice: too slippery to push off. No flipping on it.",
+  "aide.bloc.nuit": "Night: blocks switch on and off in rhythm, and blink before they go out.",
+  "aide.bloc.neon": "Neon: two colors, and only one is solid at a time.",
+  "aide.bloc.foret": "Forest: air currents lift you up.",
+  "aide.bloc.inverseur": "Any theme: the gravity switch flips your gravity the moment you touch it.",
+  "aide.bouclier": "Shield: saves you once (a spike, a fall, the screen edge). It sits in the same spot for everyone.",
+  "aide.aimant": "Magnet: for 8 seconds, nearby coins fly to you.",
+  "aide.mult": "Multiplier: +1 every 10 coins in a row, up to ×5. Miss a coin and it drops back to ×1.",
+  "aujourdhui.ordre": "Today's theme order, the same for everyone",
+  "aujourdhui.boucle": "A new theme every {m} m, then the loop starts over, faster.",
+  "aujourdhui.seuils": "Today's medals",
+  "aujourdhui.seuils.calcul": "Today's medals: working them out…",
   "commandes.action.toucher": "Flip gravity",
   "hud.detail": "{m} m · ×{mult}",
   "hud.pieces.une": "{n} coin",
@@ -35,6 +49,12 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "hud.bouclier": "Shield",
   "hud.aimant": "Magnet · {s} s",
   "essai.robot": "The robot is playing",
+  "bilan.distance": "Distance",
+  "bilan.metres": "{m} m",
+  "bilan.pieces": "Coins × 10",
+  "bilan.gemmes": "Gems × 100",
+  "bilan.theme": "Theme reached",
+  "bilan.mult": "Max multiplier",
   "mort.vide": "Fell into the void",
   "mort.pique": "Hit a spike",
   "mort.bord": "Caught by the edge of the screen",

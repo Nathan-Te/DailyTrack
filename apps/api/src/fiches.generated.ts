@@ -590,11 +590,7 @@ export const FICHES_SERVEUR = [
     "prefixe": "gravity:",
     "reglagesGardes": [],
     "messageOu": "gravity",
-    "zoneNouveautes": "gravity",
-    "identiteManque": [
-      "motif",
-      "illustration"
-    ]
+    "zoneNouveautes": "gravity"
   },
   {
     "id": "pinball",
