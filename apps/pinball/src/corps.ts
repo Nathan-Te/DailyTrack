@@ -7,6 +7,7 @@ import {
   BackSide,
   RepeatWrapping,
   ShapeGeometry,
+  CustomToneMapping,
   CylinderGeometry,
   DirectionalLight,
   EdgesGeometry,
@@ -29,8 +30,8 @@ import {
   PlaneGeometry,
   PMREMGenerator,
   Scene,
+  ShaderChunk,
   ShaderMaterial,
-  ShadowMaterial,
   Shape,
   SphereGeometry,
   SRGBColorSpace,
@@ -43,6 +44,7 @@ import {
   Float32BufferAttribute,
   Matrix4,
   NoColorSpace,
+  NoToneMapping,
   Euler,
   Quaternion,
   type Object3D,
@@ -55,23 +57,24 @@ import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, type Partie, type ThemePinball } from "@cdj/pinball-sim";
 import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
+import { creerModules } from "./modeles/trois";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
 // Le sol de la table est le dessin à plat de `dessin.ts` (`dessinerSol`) posé en texture, avec ses bandes, ses lampes éteintes, ses flèches et le nom du thème, dans la palette du thème ; par-dessus, en volume : le meuble en
-// bois, les rails, les poteaux, les lance-pierres, les bumpers (qui s'enfoncent et s'allument au contact, avec des yeux qui suivent la bille), les cibles (qui tombent), les spinners, les trous, les batteurs, le lanceur et la
+// bois, les rails, les poteaux, les lance-pierres, les modules communs (lot PBV4 : un modèle par thème, `modeles/` : les bumpers s'enfoncent, les cibles tombent, les spinners tournent, les trous s'allument), les batteurs, le lanceur et la
 // bille en métal. Rien ici ne décide quoi que ce soit : ce fichier **lit** la partie (`Partie`) à chaque image, l'état entre deux pas étant interpolé (la bille, les batteurs). Les ombres sont celles d'une lumière directionnelle.
 // La caméra CADRE TOUTE LA TABLE (`cadrer`) : elle cherche la distance et le point visé qui font tenir le terrain de jeu dans l'image, quelle que soit la taille de l'écran ; les batteurs, au bord bas de la table, restent donc
 // toujours à l'image. Les étiquettes des modules sont des plaques à part (grossies d'autant que la perspective les rapetisse : lot PB2, le seul défaut de la maquette) et non du sol.
 // L'unité de la scène est le pixel de la table : `X(x)` et `Z(y)` centrent le plateau, +z est le bas de la table (les batteurs), y est la hauteur.
 // **Lot PBV1, la recette visuelle** (les cibles : `docs/pinball/maquettes/cibles/`) : une lumière chaude de fin d'après-midi qui vient du haut de la table (soleil bas, longues ombres douces), le motif d'une fenêtre sur le
-// parquet de la pièce autour du meuble (cuit dans sa texture, avec l'ombre du meuble), des reflets sur ce qui est verni ou en métal (le sol verni garde les couleurs exactes de sa palette : il est émissif, la lumière
-// n'y ajoute que ses reflets et les ombres) ; le meuble en bois verni orangé veiné, arêtes arrondies, vis en métal ; des bandes lumineuses sur les rails latéraux et de petites lampes allumées (couleurs du thème) ;
+// parquet de la pièce autour du meuble (cuit dans sa texture, avec l'ombre du meuble), des reflets sur ce qui est verni ou en métal (lot PBV3 : le sol est ÉCLAIRÉ — soleil, ciel, ombres —, avec l'occlusion
+// et le vignettage cuits dans sa texture ; tout passe par le tone mapping et l'étalonnage chaud, `ETALONNAGE`) ; le meuble en bois verni orangé veiné, arêtes arrondies, vis en métal ; des bandes lumineuses sur les rails latéraux et de petites lampes allumées (couleurs du thème) ;
 // poteaux en métal brossé, batteurs crème brillants sur une base de métal avec leur pastille rouge, lance-pierres à liseré clair, bumpers vernis à rivet. **Le BLOOM** des bandes et des lampes est une lueur
 // sélective au quart de la résolution (`Lueur`, plus bas) ; il n'existe qu'ici, en haute qualité (le rendu à plat de secours n'a ni bloom ni rien de coûteux). Le vignettage chaud est un dégradé CSS de la surcouche. Tout se règle en direct dans `?debug&tune` (section « Lumière » : `Vue`).
 
 const X = (x: number): number => x - LARGEUR / 2;
 const Z = (y: number): number => y - HAUTEUR / 2;
-const BOIS = "#7A3D1B"; // au-dessus de l'arc : le bois du meuble, plus sombre
+const BOIS = "#3E1E0E"; // au-dessus de l'arc : le fond du meuble, sombre (lot PBV3 : comme sur les cibles, le haut de l'arc se détache sur du bois foncé)
 const rad = (d: number): number => (d * Math.PI) / 180;
 const TEXTURE_L = 1024;
 
@@ -91,6 +94,25 @@ const FLOU = `
 const AJOUT = `
   varying vec2 vUv; uniform sampler2D tex; uniform float force;
   void main(){ gl_FragColor = vec4(texture2D(tex, vUv).rgb * force, 1.0); }`;
+
+// --- Lot PBV3 : le tone mapping et l'étalonnage chaud, en une seule fonction de couleur appliquée par chaque matériau à la fin de son calcul (le `CustomToneMapping` de three.js) : **aucune passe de plus, aucune cible de rendu**
+// (au PBV1, une cible flottante plein écran était le poste le plus cher mesuré avec le rendu logiciel). D'abord l'ACES filmique de three.js (l'exposition : `toneMappingExposure`), puis, dans la lumière déjà ramenée entre 0 et 1 :
+// la saturation (autour de la luminance), les hautes lumières dorées (rouge un peu plus, bleu moins), les ombres un peu ambrées (un relevé chaud des noirs). `cdjEtalon` : x la chaleur, y la saturation (1 : la recette), z rien.
+// Le rendu de secours a le même étalonnage cuit dans son sol (`etalonner` de `dessin.ts`).
+const ETALONNAGE = `uniform vec3 cdjEtalon;
+vec3 CustomToneMapping( vec3 color ) {
+  vec3 c = ACESFilmicToneMapping( color );
+  float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+  c = max( vec3( 0.0 ), mix( vec3( l ), c, cdjEtalon.y ) );
+  float haut = smoothstep( 0.1, 0.85, l ) * cdjEtalon.x;
+  c *= vec3( 1.0 + 0.07 * haut, 1.0 + 0.012 * haut, 1.0 - 0.16 * haut );
+  c += vec3( 0.012, 0.004, -0.002 ) * ( 1.0 - smoothstep( 0.0, 0.25, l ) ) * cdjEtalon.x;
+  return saturate( c );
+}`;
+/** L'exposition de la recette (le curseur « Exposition » à 100 %). */
+const EXPOSITION = 0.66;
+/** La saturation de la recette (le curseur « Saturation » à 100 %) : l'ACES désature les couleurs vives, on les rend, et un peu plus. */
+const SATURATION = 1.0;
 
 class Lueur {
   private a: WebGLRenderTarget | null = null;
@@ -183,7 +205,7 @@ export interface RenduTrois extends Rendu {
   /** Change la vue (caméra, lumière, étiquettes) tout de suite : le panneau des réglages. */
   regler(v: Vue): void;
   /** Ce que mesure `?debug&fps` et que les essais lisent : les appels de dessin et les triangles de la dernière image, et, pour les essais, où tombent les points du terrain à l'écran (`cadre` : le plus grand |x| et les y extrêmes, en coordonnées d'écran de −1 à 1 : tout est à l'image si |x| ≤ 1 et −1 ≤ y ≤ 1) ; `ms` : le temps moyen que le fil principal y passe (la mise à jour de la scène et l'envoi des commandes à la carte graphique, pas le travail de la carte). */
-  info(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number } };
+  info(): { appels: number; triangles: number; ms: number; cadre: { x: number; y0: number; y1: number }; table: [number, number][] };
 }
 
 /** Crée le rendu three.js d'une partie sur `canvas` (qui reste à l'appelant). Lève une erreur si le navigateur n'a pas de WebGL : l'appelant retombe alors sur le rendu à plat. */
@@ -195,6 +217,13 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFShadowMap;
   renderer.outputColorSpace = SRGBColorSpace;
+  // lot PBV3 : la fonction de couleur (tone mapping et étalonnage) ; posée une fois pour la page, avant la première compilation
+  if (!ShaderChunk.tonemapping_pars_fragment.includes("cdjEtalon")) ShaderChunk.tonemapping_pars_fragment = ShaderChunk.tonemapping_pars_fragment.replace("vec3 CustomToneMapping( vec3 color ) { return color; }", ETALONNAGE);
+  const etalon = { value: new Vector3(1, SATURATION, 0) };
+  /** Chaque matériau reçoit les réglages de l'étalonnage (un objet partagé : les curseurs agissent en direct, sans recompiler). */
+  const etalonne = (m: Material): void => {
+    m.onBeforeCompile = (sh) => void (sh.uniforms.cdjEtalon = etalon);
+  };
   renderer.info.autoReset = false; // l'image compte tout : la scène, les ombres et les passes du bloom
   const surPerte = (e: Event): void => {
     e.preventDefault();
@@ -205,12 +234,13 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   scene.background = new Color("#24170e");
   const pmrem = new PMREMGenerator(renderer);
   const env = pmrem.fromScene(new RoomEnvironment(), 0.04);
-  scene.environment = env.texture;
+  // lot PBV3 : l'environnement (les reflets de la pièce) n'est donné qu'aux matériaux « Standard », un par un (`mat`) — jamais par `scene.environment` : en three.js r186 le Phong et le Lambert l'échantillonnent aussi, à
+  // chaque pixel, comme une lumière constante (le sol, le meuble : une lumière qui ne dépendait ni du soleil ni du ciel, l'aspect délavé, et un coût sur toute la table)
   pmrem.dispose();
   const camera = new PerspectiveCamera(30, TEXTURE_L / HAUTEUR, 10, 6000);
   // la lumière chaude de fin d'après-midi : un ciel doux, un soleil bas qui vient du haut de la table (ombres longues et douces)
-  const hemi = new HemisphereLight("#ffe6c0", "#5a3a22", 0.75);
-  const soleil = new DirectionalLight("#ffc888", 1.6);
+  const hemi = new HemisphereLight("#fff4e8", "#4a2e1a", 0.75);
+  const soleil = new DirectionalLight("#ffe2bc", 1.6);
   soleil.castShadow = true;
   soleil.shadow.mapSize.set(2048, 2048);
   soleil.shadow.radius = 3;
@@ -226,10 +256,15 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const lumiere = (): void => {
     const az = rad(vue.azimut);
     const h = rad(vue.hauteur);
-    hemi.intensity = 0.55 * (vue.lumiere / 100);
-    soleil.intensity = 1.15 * (vue.soleil / 100);
+    // lot PBV3 : plus de soleil et moins de ciel (le contraste des cibles : des ombres franches), des couleurs moins orangées (la chaleur vient de l'étalonnage)
+    hemi.intensity = 0.42 * (vue.lumiere / 100);
+    soleil.intensity = 1.5 * (vue.soleil / 100);
     soleil.position.set(Math.sin(az) * Math.cos(h) * 1300, Math.sin(h) * 1300, -Math.cos(az) * Math.cos(h) * 1300);
     soleil.shadow.camera.updateProjectionMatrix();
+    // lot PBV3 : l'exposition à 0 est le rendu d'avant le lot (sans tone mapping ni étalonnage : three.js recompile les matériaux d'elle-même)
+    renderer.toneMapping = vue.exposition > 0 ? CustomToneMapping : NoToneMapping;
+    renderer.toneMappingExposure = EXPOSITION * (vue.exposition / 100);
+    etalon.value.set(vue.chaleur / 100, SATURATION * (vue.saturation / 100), 0);
   };
   lumiere();
 
@@ -240,7 +275,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const cle = `${couleur}|${opt.roughness ?? ""}|${opt.metalness ?? ""}|${opt.emissive ?? ""}|${opt.envMapIntensity ?? ""}`;
     const connu = opt.unique ? undefined : materiaux.get(cle);
     if (connu) return connu;
-    const m = new MeshStandardMaterial({ color: couleur, roughness: opt.roughness ?? 0.55, metalness: opt.metalness ?? 0, envMapIntensity: opt.envMapIntensity ?? 0.35, emissive: opt.emissive ?? "#000000" });
+    const m = new MeshStandardMaterial({ color: couleur, roughness: opt.roughness ?? 0.55, metalness: opt.metalness ?? 0, envMap: env.texture, envMapIntensity: opt.envMapIntensity ?? 0.35, emissive: opt.emissive ?? "#000000" });
     if (!opt.unique) materiaux.set(cle, m);
     aLiberer.push(m);
     return m;
@@ -277,28 +312,44 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const groupe = new Group();
   scene.add(groupe);
 
-  // --- Le sol : le dessin à plat, en texture (non éclairé : il garde les couleurs exactes de la palette) ; les ombres viennent d'un calque à part
+  // --- Le sol : le dessin à plat, en texture, avec l'occlusion et le vignettage cuits (lot PBV3 : redessiné quand leurs curseurs changent)
   const texH = Math.round((TEXTURE_L * HAUTEUR) / LARGEUR);
-  const sol = toile(TEXTURE_L, texH, (c) => {
-    c.scale(TEXTURE_L / LARGEUR, texH / HAUTEUR);
-    dessinerSol(c, { theme: o.theme, table: t, titre: o.titre, police: o.police, hors: BOIS, sansLueurBandes: true });
-  });
-  // verni : émissif (les couleurs exactes de la palette), la lumière n'y ajoute que ses reflets (l'environnement, le soleil) ; les ombres viennent du calque `ombres`
-  // (Phong et non « Standard » : le reflet du soleil sans échantillonner l'environnement à chaque pixel de la table — le poste le plus cher sur un processeur graphique faible ou logiciel)
-  const plan = new Mesh(geo(new PlaneGeometry(LARGEUR, HAUTEUR)), new MeshPhongMaterial({ color: "#000000", emissive: "#ffffff", emissiveMap: sol, specular: "#2a2620", shininess: 28 }));
-  aLiberer.push(plan.material as Material);
+  const toileSol = document.createElement("canvas");
+  toileSol.width = TEXTURE_L;
+  toileSol.height = texH;
+  const sol = new CanvasTexture(toileSol);
+  sol.colorSpace = SRGBColorSpace;
+  sol.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  aLiberer.push(sol);
+  let solCuit = "";
+  const cuireSol = (): void => {
+    const cle = `${vue.occlusion}|${vue.vignettage}`;
+    if (cle === solCuit) return;
+    solCuit = cle;
+    const c = toileSol.getContext("2d")!;
+    c.setTransform(TEXTURE_L / LARGEUR, 0, 0, texH / HAUTEUR, 0, 0);
+    dessinerSol(c, { theme: o.theme, table: t, titre: o.titre, police: o.police, hors: BOIS, sansLueurBandes: true, occlusion: vue.occlusion / 100, vignettage: vue.vignettage / 100 });
+    sol.needsUpdate = true;
+  };
+  cuireSol();
+  // lot PBV3 : **le sol est éclairé** — il reçoit le soleil, le ciel et les ombres (il n'est plus émissif : c'était la cause de l'aspect délavé et plat) ; verni, un reflet net du soleil. Phong et non « Standard » : le reflet
+  // sans échantillonner l'environnement à chaque pixel de la table (le poste le plus cher sur un processeur graphique faible ou logiciel). `GAIN_SOL` : la part de lumière que le sol renvoie (son albédo est la palette, la lumière
+  // de la pièce est faible : sans gain il serait sombre) ; les ombres tombent directement dessus (plus de calque d'ombres à part : un plan plein écran de moins).
+  // `TEINTE_SOL` compense en partie la lumière chaude sur les sols froids (l'eau, le ciel de l'espace) : sans elle, le turquoise vire au vert
+  const GAIN_SOL = 5.1;
+  const TEINTE_SOL: Readonly<Record<ThemePinball, readonly [number, number, number]>> = { foire: [1, 1, 1], ocean: [0.94, 1.02, 1.16], espace: [0.94, 1, 1.24], volcan: [1, 0.98, 0.96] };
+  const [tr, tg, tb] = TEINTE_SOL[o.theme];
+  const matSol = new MeshPhongMaterial({ map: sol, color: new Color(GAIN_SOL * tr, GAIN_SOL * tg, GAIN_SOL * tb), specular: "#5a4a38", shininess: 34 });
+  aLiberer.push(matSol);
+  const plan = new Mesh(geo(new PlaneGeometry(LARGEUR, HAUTEUR)), matSol);
   plan.rotation.x = -Math.PI / 2;
+  plan.receiveShadow = true;
   groupe.add(plan);
-  const ombres = new Mesh(geo(new PlaneGeometry(LARGEUR, HAUTEUR)), new ShadowMaterial({ opacity: 0.36, color: "#2a1405" }));
-  aLiberer.push(ombres.material as Material);
-  ombres.rotation.x = -Math.PI / 2;
-  ombres.position.y = 0.3;
-  ombres.receiveShadow = true;
-  groupe.add(ombres);
 
   // --- Le meuble : bois verni orangé, veiné, arêtes arrondies ; sa caisse descend jusqu'au parquet de la pièce
+  // lot PBV3 : un bois verni rouge-orangé, comme sur les cibles
   const veinage = toile(256, 1024, (c) => {
-    c.fillStyle = "#8C4219";
+    c.fillStyle = "#94391A";
     c.fillRect(0, 0, 256, 1024);
     let a = 4242;
     const r = (): number => ((a = (Math.imul(a, 1664525) + 1013904223) >>> 0) / 4294967296);
@@ -308,7 +359,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       const f = 0.004 + r() * 0.01;
       const ph = r() * 6;
       c.globalAlpha = 0.12 + r() * 0.3;
-      c.strokeStyle = r() < 0.65 ? "#4E1E06" : "#C7743A";
+      c.strokeStyle = r() < 0.65 ? "#561A04" : "#E08648";
       c.lineWidth = 0.8 + r() * 3;
       c.beginPath();
       for (let y = 0; y <= 1024; y += 8) c.lineTo(x0 + Math.sin(y * f + ph) * amp + Math.sin(y * f * 3.1) * amp * 0.25, y);
@@ -316,20 +367,32 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     }
   });
   // verni : un reflet net du soleil (Phong), sans échantillonner l'environnement sur ces grandes surfaces (mesuré : ~35 ms par image avec le rendu logiciel des essais)
-  const bois = new MeshPhongMaterial({ map: veinage, specular: "#4a3a2a", shininess: 42 });
+  const bois = new MeshPhongMaterial({ map: veinage, color: new Color(2.2, 2.2, 2.2), specular: "#8a6a50", shininess: 70 });
   aLiberer.push(bois);
+  // lot PBV3 : un cadre plus épais et biseauté (28 px au lieu de 20, arêtes arrondies plus larges), des coins en laiton et un liseré intérieur sombre
+  const E = 28;
   const cadre: BufferGeometry[] = [];
-  for (const [x, z, l, p] of [[-LARGEUR / 2 - 10, 0, 20, HAUTEUR + 40], [LARGEUR / 2 + 10, 0, 20, HAUTEUR + 40], [0, -HAUTEUR / 2 - 10, LARGEUR + 40, 20], [0, HAUTEUR / 2 + 10, LARGEUR + 40, 20]] as const) {
-    const g = new RoundedBoxGeometry(l, 46, p, 3, 5);
-    g.translate(x, 10, z);
+  for (const [x, z, l, p] of [[-LARGEUR / 2 - E / 2, 0, E, HAUTEUR + 2 * E], [LARGEUR / 2 + E / 2, 0, E, HAUTEUR + 2 * E], [0, -HAUTEUR / 2 - E / 2, LARGEUR + 2 * E, E], [0, HAUTEUR / 2 + E / 2, LARGEUR + 2 * E, E]] as const) {
+    const g = new RoundedBoxGeometry(l, 48, p, 3, 8);
+    g.translate(x, 11, z);
     cadre.push(g);
   }
   groupe.add(ombrageur(new Mesh(geo(mergeGeometries(cadre)!), bois)));
   for (const g of cadre) g.dispose();
+  const coins: BufferGeometry[] = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) coins.push(new RoundedBoxGeometry(E + 6, 4, E + 6, 2, 1.5).translate(sx * (LARGEUR / 2 + E / 2), 35.4, sz * (HAUTEUR / 2 + E / 2)));
+  const laiton = mat("#C8923A", { metalness: 1, roughness: 0.3, envMapIntensity: 1.3 });
+  groupe.add(ombrageur(new Mesh(geo(mergeGeometries(coins)!), laiton), false));
+  for (const g of coins) g.dispose();
+  const liseres: BufferGeometry[] = [];
+  for (const sx of [-1, 1]) liseres.push(new BoxGeometry(3, 36, HAUTEUR).translate(sx * (LARGEUR / 2 + 1.5), 17, 0));
+  liseres.push(new BoxGeometry(LARGEUR, 36, 3).translate(0, 17, -HAUTEUR / 2 - 1.5), new BoxGeometry(LARGEUR, 36, 3).translate(0, 17, HAUTEUR / 2 + 1.5));
+  groupe.add(ombrageur(new Mesh(geo(mergeGeometries(liseres)!), new MeshPhongMaterial({ color: "#24120A", specular: "#3a2a20", shininess: 30 })), false));
+  for (const g of liseres) g.dispose();
   const SOL_PIECE = -205;
   const BAS_CAISSE = -75;
   // la caisse n'a que les trois faces que la caméra peut voir (les côtés et l'avant) : son dessus, sous la table, serait éclairé pour rien à chaque pixel (le plus gros poste mesuré avec un rendu logiciel)
-  const geoCaisse = geo(new BoxGeometry(LARGEUR + 36, -13 - BAS_CAISSE, HAUTEUR + 36));
+  const geoCaisse = geo(new BoxGeometry(LARGEUR + 2 * E - 4, -13 - BAS_CAISSE, HAUTEUR + 2 * E - 4));
   geoCaisse.clearGroups();
   geoCaisse.addGroup(0, 12, 0); // +x et −x
   geoCaisse.addGroup(24, 6, 0); // +z (l'avant)
@@ -338,7 +401,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   groupe.add(caisse);
   // quatre pieds en métal, jusqu'au parquet
   const pieds: BufferGeometry[] = [];
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) pieds.push(new BoxGeometry(16, BAS_CAISSE - SOL_PIECE, 16).translate(sx * (LARGEUR / 2 + 6), (BAS_CAISSE + SOL_PIECE) / 2, sz * (HAUTEUR / 2 + 6)));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) pieds.push(new BoxGeometry(16, BAS_CAISSE - SOL_PIECE, 16).translate(sx * (LARGEUR / 2 + E - 12), (BAS_CAISSE + SOL_PIECE) / 2, sz * (HAUTEUR / 2 + E - 12)));
   const lesPieds = new Mesh(geo(mergeGeometries(pieds)!), mat("#3A3F46", { metalness: 0.9, roughness: 0.35, envMapIntensity: 1 }));
   lesPieds.renderOrder = 2;
   groupe.add(lesPieds);
@@ -354,7 +417,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const c = parquetBrut.getContext("2d")!;
     c.translate(1024, 0);
     c.rotate(Math.PI / 2);
-    planches(c, 0, 0, 1024, 1024, 22, ["#6E4326", "#76492A", "#684024", "#7C4E2C"], "#3E2312", "#2A170B", 11);
+    planches(c, 0, 0, 1024, 1024, 22, ["#5A3219", "#62381D", "#532E17", "#6A3D20"], "#2E180A", "#1C0E05", 11, 1.4);
   }
   const pieceTexture = new CanvasTexture(pieceTex);
   pieceTexture.colorSpace = SRGBColorSpace;
@@ -373,10 +436,10 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = "source-over";
     c.drawImage(parquetBrut, 0, 0);
-    c.fillStyle = "rgba(20,10,4,.42)";
+    c.fillStyle = "rgba(20,10,4,.5)";
     c.fillRect(0, 0, 1024, 1024);
     const { dx, dz, long } = directionSoleil();
-    const haut = 33 - SOL_PIECE; // la hauteur du meuble au-dessus du parquet
+    const haut = 35 - SOL_PIECE; // la hauteur du meuble au-dessus du parquet
     const ombre = Math.min(900, haut * long);
     const etire = Math.min(2.6, 0.55 + long * 0.55);
     // les bords doux : on dessine net dans une petite toile, que l'agrandissement adoucit
@@ -398,8 +461,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     });
     // l'ombre du meuble : sa forme balayée dans le sens du soleil
     doux(flouOmbre, (f) => {
-      const lx = LARGEUR / 2 + 20;
-      const lz = HAUTEUR / 2 + 20;
+      const lx = LARGEUR / 2 + E;
+      const lz = HAUTEUR / 2 + E;
       f.fillStyle = "#000";
       const k0 = (BAS_CAISSE - SOL_PIECE) / haut; // la caisse est sur des pieds : son ombre commence plus loin
       for (let k = 0; k <= 8; k++) {
@@ -410,7 +473,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     });
     c.imageSmoothingEnabled = true;
     c.globalCompositeOperation = "lighter";
-    c.globalAlpha = 0.62;
+    c.globalAlpha = 0.95;
     c.drawImage(flouLumiere, 0, 0, 1024, 1024);
     c.globalCompositeOperation = "source-over";
     c.globalAlpha = 0.62;
@@ -421,7 +484,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   cuirePiece();
   // le parquet est percé sous le meuble (sauf la bande qu'on voit entre les pieds, à l'avant) : il n'est dessiné que là où il se voit
   const contourPiece = new Shape([new Vector2(-PIECE / 2, -PIECE / 2), new Vector2(PIECE / 2, -PIECE / 2), new Vector2(PIECE / 2, PIECE / 2), new Vector2(-PIECE / 2, PIECE / 2)]);
-  const [tx, tz0, tz1] = [LARGEUR / 2 + 8, -HAUTEUR / 2 - 16, HAUTEUR / 2 - 70];
+  const [tx, tz0, tz1] = [LARGEUR / 2 + E - 20, -HAUTEUR / 2 - E + 12, HAUTEUR / 2 - 70];
   contourPiece.holes.push(new Shape([new Vector2(-tx, -tz1), new Vector2(tx, -tz1), new Vector2(tx, -tz0), new Vector2(-tx, -tz0)]));
   const geoPiece = geo(new ShapeGeometry(contourPiece));
   const uv = geoPiece.getAttribute("uv");
@@ -493,88 +556,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     caoutchoucs.push(caou);
   }
 
-  // --- Les bumpers : jupe, corps, chapeau, deux yeux qui suivent la bille
-  const bumpers = t.bumpers.map((b) => {  // (lot PB3 : `g` suit l'astéroïde, qui se déplace)
-    const r = px(b.r);
-    const g = new Group();
-    g.position.set(X(px(b.x)), 0, Z(px(b.y)));
-    const jupe = cylindre(r * 1.22, 5, P.accent);
-    jupe.position.y = 2.5;
-    const haut = new Group();
-    haut.position.y = 2;
-    const corps = cylindre(r, 20, b.mobile ? "#9AA3B5" : P.bumper, { emissive: MOUTARDE, unique: true, roughness: 0.2, envMapIntensity: 0.95 }); // l'astéroïde est gris ; vernis
-    corps.position.y = 10;
-    (corps.material as MeshStandardMaterial).emissiveIntensity = 0;
-    corps.add(contour(corps.geometry));
-    const chapeau = cylindre(r * 0.66, 4, PAPIER, { roughness: 0.22, envMapIntensity: 0.9 });
-    chapeau.position.y = 22;
-    // le rivet en métal du chapeau, derrière les yeux
-    const rivet = ombrageur(new Mesh(geo(new SphereGeometry(r * 0.1, 12, 8)), metal), false);
-    rivet.scale.y = 0.5;
-    rivet.position.set(0, 24.1, -r * 0.4);
-    haut.add(corps, chapeau, rivet);
-    const pupilles: Mesh[] = [];
-    for (const sx of [-1, 1]) {
-      const blanc = ombrageur(new Mesh(geo(new SphereGeometry(r * 0.2, 16, 12)), mat(PAPIER)), false);
-      blanc.scale.y = 0.6;
-      blanc.position.set(sx * r * 0.28, 24, r * 0.12);
-      const pupille = new Mesh(geo(new SphereGeometry(r * 0.1, 12, 8)), mat(ENCRE));
-      pupille.position.set(sx * r * 0.28, 25.5, r * 0.16);
-      haut.add(blanc, pupille);
-      pupilles.push(pupille);
-    }
-    g.add(jupe, haut);
-    groupe.add(g);
-    return { b, g, r, haut, corps, pupilles, x: px(b.x), y: px(b.y) };
-  });
-
-  // --- Les cibles : des blocs qui tombent (et leur trace pointillée au sol)
-  const cibles: { i: number; m: Mesh; trace: Mesh }[] = [];
-  t.murs.forEach((m, i) => {
-    if (m.type !== 2) return;
-    const ax = px(m.ax);
-    const ay = px(m.ay);
-    const bx = px(m.bx);
-    const by = px(m.by);
-    const l = Math.hypot(bx - ax, by - ay);
-    const b = ombrageur(new Mesh(geo(new BoxGeometry(l - 1, 18, 6)), mat(o.theme === "volcan" ? "#8a8a94" : P.cible)));
-    b.position.set(X((ax + bx) / 2), 9, Z((ay + by) / 2));
-    b.rotation.y = -Math.atan2(by - ay, bx - ax);
-    b.add(contour(b.geometry));
-    const trace = new Mesh(geo(new BoxGeometry(l - 1, 0.4, 3)), new MeshBasicMaterial({ color: ENCRE, transparent: true, opacity: 0.4 }));
-    aLiberer.push(trace.material as Material);
-    trace.position.set(X((ax + bx) / 2), 0.5, Z((ay + by) / 2));
-    trace.rotation.y = b.rotation.y;
-    trace.visible = false;
-    groupe.add(b, trace);
-    cibles.push({ i, m: b, trace });
-  });
-
-  // --- Les spinners : une plaque sur un axe
-  const roues = t.spinners.map((c) => {
-    const g = new Group();
-    g.position.set(X(px(c.x)), 14, Z(px(c.y)));
-    const l = px(c.l);
-    const plaque = ombrageur(new Mesh(geo(new BoxGeometry((l - 4) * 2, 2, 16)), mat(P.accent)));
-    plaque.add(contour(plaque.geometry));
-    const axe = new Mesh(geo(new CylinderGeometry(1.5, 1.5, l * 2 + 4, 8)), mat(ENCRE));
-    axe.rotation.z = Math.PI / 2;
-    g.add(plaque, axe);
-    groupe.add(g);
-    return { plaque, angle: 0 };
-  });
-
-  // --- Les trous : un anneau et un fond noir
-  for (const tr of t.trous) {
-    const r = px(tr.r);
-    const anneau = ombrageur(new Mesh(geo(new TorusGeometry(r + 3, 3.5, 10, 32)), mat(P.accent)));
-    anneau.rotation.x = Math.PI / 2;
-    anneau.position.set(X(px(tr.x)), 2, Z(px(tr.y)));
-    const fond = new Mesh(geo(new CircleGeometry(r, 32)), mat("#0c0806"));
-    fond.rotation.x = -Math.PI / 2;
-    fond.position.set(X(px(tr.x)), 0.6, Z(px(tr.y)));
-    groupe.add(anneau, fond);
-  }
+  // --- Lot PBV4 : les modules communs (bumpers et mini-bumpers, cibles, spinners, trous) : un modèle par type et par thème, partagé et instancié, et le même retour au contact partout (`modeles/trois.ts`)
+  const modules = creerModules(o.theme, partie, groupe);
 
   // --- Lot PB3 : les éléments des thèmes, animés en fonction du seul pas ; chaque mise à jour reçoit le pas (et la part de pas écoulée) et rien d'autre
   const C = COULEURS_ELEMENTS;
@@ -924,7 +907,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       }
     });
     tex.wrapT = RepeatWrapping;
-    const m = new MeshStandardMaterial({ map: tex, emissive: C.lave, emissiveIntensity: 0.35, roughness: 0.6 });
+    const m = new MeshStandardMaterial({ map: tex, emissive: C.lave, emissiveIntensity: 0.35, roughness: 0.6, envMap: env.texture, envMapIntensity: 0.35 });
     aLiberer.push(m);
     const coul = plat(geo(new PlaneGeometry(px(z.l) * 2, px(z.h) * 2)), 0.7, m);
     coul.position.x = X(px(z.x));
@@ -934,7 +917,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   }
   // les lampes de la mission, autour de l'élément du thème : une allumée par pas de réussi
   const lampesM = lampesMission(t, o.theme, partie.but).map((l) => {
-    const m = new MeshStandardMaterial({ color: PAPIER, emissive: MOUTARDE, emissiveIntensity: 0, roughness: 0.4 });
+    const m = new MeshStandardMaterial({ color: PAPIER, emissive: MOUTARDE, emissiveIntensity: 0, roughness: 0.4, envMap: env.texture, envMapIntensity: 0.35 });
     aLiberer.push(m);
     const s = ombrageur(new Mesh(geo(new SphereGeometry(5.5, 16, 12)), m), false);
     s.position.set(X(l.x), 6, Z(l.y));
@@ -993,9 +976,10 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const tube = new MeshBasicMaterial({ color: couleurBande.clone() });
   aLiberer.push(tube);
   const tubes: BufferGeometry[] = [];
+  // lot PBV3 : des bandes plus larges et plus présentes, comme sur les cibles
   for (const [x, y0, y1] of BANDES) {
-    const g = new BoxGeometry(3.2, 1.4, y1 - y0);
-    g.translate(X(x), 18.7, Z((y0 + y1) / 2));
+    const g = new BoxGeometry(5.6, 2.4, y1 - y0);
+    g.translate(X(x), 19.2, Z((y0 + y1) / 2));
     tubes.push(g);
   }
   const lesTubes = new Mesh(geo(mergeGeometries(tubes)!), tube);
@@ -1012,10 +996,10 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   aLiberer.push(lueursSol);
   for (const [x, y0, y1] of BANDES) {
     const cote = x < AXE ? 1 : -1;
-    const lueur = new Mesh(geo(new PlaneGeometry(18, y1 - y0)), lueursSol);
+    const lueur = new Mesh(geo(new PlaneGeometry(34, y1 - y0 + 24)), lueursSol);
     lueur.rotation.x = -Math.PI / 2;
     lueur.scale.x = cote;
-    lueur.position.set(X(x + cote * 9), 0.45, Z((y0 + y1) / 2));
+    lueur.position.set(X(x + cote * 17), 0.45, Z((y0 + y1) / 2));
     lueur.renderOrder = 1;
     groupe.add(lueur);
   }
@@ -1024,7 +1008,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   for (const g of tubes) g.dispose();
   // les petites lampes du décor, allumées : sur les flancs de l'arc et sur les lance-pierres (une seule instance de dessin ; leur lueur, une vague qui court, change chaque image)
   const decor = lampesDecor();
-  const lampes = new InstancedMesh(geo(new SphereGeometry(3.3, 14, 8)), new MeshBasicMaterial({ color: "#ffffff" }), decor.length);
+  const lampes = new InstancedMesh(geo(new SphereGeometry(4, 14, 8)), new MeshBasicMaterial({ color: "#ffffff" }), decor.length);
   aLiberer.push(lampes.material as Material);
   const placeur = new Noeud();
   decor.forEach((l, i) => {
@@ -1041,11 +1025,32 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   sceneLueur.add(lampesLueur);
   const couleurLampe = new Color(P.lampe);
   const teinte = new Color();
+  // lot PBV3 : les lampes éclairent vraiment le sol autour d'elles — un halo de leur couleur sous chacune (une seule instance de dessin ; il suit le curseur « Lueur des bandes »)
+  const tache = toile(64, 64, (c) => {
+    const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, P.lampe);
+    g.addColorStop(0.35, `${P.lampe}88`);
+    g.addColorStop(1, `${P.lampe}00`);
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 64);
+  });
+  const halos = new MeshBasicMaterial({ map: tache, transparent: true, depthWrite: false, opacity: 0.7 });
+  aLiberer.push(halos);
+  const lesHalos = new InstancedMesh(geo(new PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), halos, decor.length);
+  decor.forEach((l, i) => {
+    placeur.position.set(X(l.x), l.pierre ? 16.3 : 0.5, Z(l.y));
+    placeur.scale.setScalar(l.pierre ? 26 : 44);
+    placeur.updateMatrix();
+    lesHalos.setMatrixAt(i, placeur.matrix);
+  });
+  lesHalos.renderOrder = 1;
+  groupe.add(lesHalos);
   // les vis en métal : aux coins et le long du meuble, aux coins des lance-pierres (une seule instance de dessin)
   const vis: [number, number, number][] = [];
   for (const sx of [-1, 1]) {
-    for (const z of [-HAUTEUR / 2 - 10, -HAUTEUR / 4, 0, HAUTEUR / 4, HAUTEUR / 2 + 10]) vis.push([sx * (LARGEUR / 2 + 10), 33.2, z]);
-    vis.push([sx * (LARGEUR / 4), 33.2, -HAUTEUR / 2 - 10], [sx * (LARGEUR / 4), 33.2, HAUTEUR / 2 + 10]);
+    for (const z of [-HAUTEUR / 4, 0, HAUTEUR / 4]) vis.push([sx * (LARGEUR / 2 + E / 2), 35.2, z]);
+    vis.push([sx * (LARGEUR / 4), 35.2, -HAUTEUR / 2 - E / 2], [sx * (LARGEUR / 4), 35.2, HAUTEUR / 2 + E / 2]);
+    for (const sz of [-1, 1]) vis.push([sx * (LARGEUR / 2 + E / 2), 37.6, sz * (HAUTEUR / 2 + E / 2)]);
   }
   for (const sens of [1, -1]) {
     const x = (v: number): number => (sens > 0 ? v : 2 * AXE - v);
@@ -1064,7 +1069,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const lueurs = (): void => {
     const k = vue.bandes / 100;
     tube.color.copy(couleurBande).multiplyScalar(0.35 + 2.4 * k);
-    lueursSol.opacity = Math.min(1, 0.32 * k);
+    lueursSol.opacity = Math.min(1, 0.38 * k);
+    halos.opacity = Math.min(1, 0.7 * k);
   };
   lueurs();
 
@@ -1121,7 +1127,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       c.scale(echelle, echelle);
       pastille(c, o.police, l / 2, hPlan / 2, e.texte, 1, style);
     });
-    const mat2 = new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+    const mat2 = new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false });
     aLiberer.push(mat2);
     const plaque = new Mesh(geo(new PlaneGeometry(l, hPlan)), mat2);
     plaque.renderOrder = 5;
@@ -1153,6 +1159,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const b = new Mesh(geo(new TorusGeometry(RAYON, 0.5, 4, 24)), new MeshBasicMaterial({ color: "#FFFF00", depthTest: false }));
     b.rotation.x = Math.PI / 2;
     g.add(b);
+    g.traverse((n) => { const m = (n as Mesh).material as Material | undefined; if (m) etalonne(m); });
     groupe.add(g);
     debogage = { groupe: g, batteurs: bat, bille: b };
   };
@@ -1168,6 +1175,11 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   let surcoucheVide = true;
 
   const composition = new Lueur(renderer);
+  // lot PBV3 : chaque matériau de la scène reçoit les réglages de l'étalonnage (avant sa première compilation)
+  scene.traverse((n) => {
+    const m = (n as Mesh).material as Material | Material[] | undefined;
+    for (const x of Array.isArray(m) ? m : m ? [m] : []) etalonne(x);
+  });
 
   // --- La caméra : elle cadre toute la table
   let L = 1;
@@ -1279,34 +1291,9 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     lampesM.forEach((m, i) => (m.emissiveIntensity = i < partie.compteur ? 1.4 : 0));
     const clignotante = !partie.missionFaite && clignote(s.tick);
     for (const f of flechesM) f.visible = clignotante;
-    // les bumpers : ils s'enfoncent, s'allument et leurs yeux suivent la bille
-    t.bumpers.forEach((b, i) => {
-      const d = bumpers[i]!;
-      if (b.mobile) {
-        d.x = px(b.x);
-        d.g.position.x = X(d.x);
-      }
-      const e = partie.choc[i]! / 40;
-      d.haut.scale.set(1 + e * 0.12, 1 - e * 0.28, 1 + e * 0.12);
-      (d.corps.material as MeshStandardMaterial).emissiveIntensity = e * 1.4;
-      const dx = bx - d.x;
-      const dy = by - d.y;
-      const n = Math.hypot(dx, dy) || 1;
-      d.pupilles.forEach((p, k) => {
-        p.position.x = (k ? 1 : -1) * d.r * 0.28 + (dx / n) * d.r * 0.08;
-        p.position.z = d.r * 0.12 + (dy / n) * d.r * 0.08;
-      });
-    });
+    // les modules communs : les bumpers s'enfoncent et leur socle s'allume, les cibles tombent, les spinners tournent, les trous s'allument quand ils gardent la bille
+    modules.maj(partie, dt, sec);
     caoutchoucs.forEach((m, k) => ((m.material as MeshStandardMaterial).emissiveIntensity = Math.min(1, partie.chocSling[k]! / 40) * 1.2));
-    for (const c of cibles) {
-      const bas = partie.bas[c.i]!;
-      c.m.position.y += ((bas ? -9 : 9) - c.m.position.y) * Math.min(1, dt * 18);
-      c.trace.visible = bas;
-    }
-    roues.forEach((r, i) => {
-      r.angle += (partie.spin[i]! / 1000) * dt * 60 * 0.016;
-      r.plaque.rotation.x = r.angle;
-    });
     lampesVoies.forEach((m, i) => (m.visible = !!partie.voiesAllumees[i]));
     lampesMult.forEach((m, i) => (m.visible = partie.mult >= i + 2));
     if (s.debug) {
@@ -1414,9 +1401,11 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       lumiere();
       lueurs();
       cuirePiece();
+      cuireSol();
       cadrer();
     },
-    info: () => ({ appels: renderer.info.render.calls, triangles: renderer.info.render.triangles, ms: msImage, cadre: extremes() }),
+    // lot PBV3 : `table`, la zone de la table à l'écran (px CSS du canvas) — les épaules de l'arc et le bas du terrain, rails compris — où l'outil des couleurs mesure la capture (`test/couleurs.ts`)
+    info: () => ({ appels: renderer.info.render.calls, triangles: renderer.info.render.triangles, ms: msImage, cadre: extremes(), table: ([[20, 205], [348, 205], [348, 740], [20, 740]] as const).map(([x, y]) => { const p = ecranDe(x, y); return [p.x, p.y] as [number, number]; }) }),
     detruire(): void {
       canvas.removeEventListener("webglcontextlost", surPerte);
       surcouche.remove();
@@ -1426,8 +1415,8 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         else m?.dispose();
       });
       for (const x of aLiberer) x.dispose();
+      modules.detruire();
       composition.detruire();
-      (scene.environment as Texture | null)?.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     },

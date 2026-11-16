@@ -91,6 +91,12 @@ const CURSEURS: readonly Curseur[] = [
   { cle: "lumiere", groupe: "vue", section: "Lumière", fr: "Lumière du ciel (%)", en: "Sky light (%)" },
   { cle: "bloom", groupe: "vue", section: "Lumière", fr: "Bloom : force (% ; 0 = sans)", en: "Bloom: strength (%; 0 = off)" },
   { cle: "bandes", groupe: "vue", section: "Lumière", fr: "Lueur des bandes et des lampes (%)", en: "Glow of the strips and lamps (%)" },
+  // lot PBV3 : le tone mapping, l'étalonnage chaud, l'occlusion et le vignettage cuits dans le sol
+  { cle: "exposition", groupe: "vue", section: "Lumière", fr: "Exposition (% ; 0 = sans tone mapping ni étalonnage)", en: "Exposure (%; 0 = no tone mapping or grading)" },
+  { cle: "chaleur", groupe: "vue", section: "Lumière", fr: "Chaleur de l'étalonnage (%)", en: "Grading warmth (%)" },
+  { cle: "saturation", groupe: "vue", section: "Lumière", fr: "Saturation (%)", en: "Saturation (%)" },
+  { cle: "occlusion", groupe: "vue", section: "Lumière", fr: "Ombres de contact sur le sol (%)", en: "Contact shadows on the floor (%)" },
+  { cle: "vignettage", groupe: "vue", section: "Lumière", fr: "Vignettage de la table (%)", en: "Table vignetting (%)" },
 ];
 const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", Vue: "View", "Lumière": "Light" };
 const TEXTES = {
