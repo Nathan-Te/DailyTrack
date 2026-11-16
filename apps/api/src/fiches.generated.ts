@@ -640,6 +640,12 @@ export const FICHES_SERVEUR = [
           "paquet": "@cdj/pinball-sim",
           "script": "figer:pinball",
           "forme": "jours-proteges"
+        },
+        "preparer": {
+          "paquet": "@cdj/pinball-sim",
+          "script": "preparer:pinball",
+          "joursApresBascule": 14,
+          "garde": "packages/pinball-sim/test/jours.test.ts"
         }
       }
     },

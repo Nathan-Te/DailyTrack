@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsSurLePapier, themeDuJour, type Evenement } from "@cdj/pinball-sim";
+import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsValides, themeDuJour, type Evenement } from "@cdj/pinball-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_PINBALL } from "../scripts/pinball-essais";
 import { contenuDePinball } from "../src/pinball";
@@ -37,7 +37,7 @@ describe("Pinball sur le serveur", () => {
     const jour = await t.call("GET", `/api/pinball/day/${DATE}`);
     expect(jour.status).toBe(200);
     expect(jour.body.medals).toEqual(seuilsDe(c));
-    expect(jour.body.medals).toEqual(seuilsSurLePapier(c)); // sans fichier de jour : le calcul provisoire
+    expect(seuilsValides(jour.body.medals)).toBe(true); // sans fichier de jour : ceux du robot (calculés une fois par table : quelques secondes)
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/pinball/day/2026-11-11")).status).toBe(404);
@@ -62,7 +62,9 @@ describe("Pinball sur le serveur", () => {
   });
 
   it("lot PB3 : le module d'essais joue les quatre thèmes (éléments, missions) et le serveur retrouve les mêmes scores", async () => {
-    const t = await monter();
+    // lot PB4 : les jours sont figés (leurs seuils sont ceux du fichier) : le robot ne calcule pas les seuils de seize tables à chaque jour de ce test
+    const figes = Object.fromEntries(Array.from({ length: 16 }, (_, i) => [formatDay(JOUR + i), figerJour(JOUR + i, { bronze: 1000, silver: 3000, gold: 8000, author: 20000 })]));
+    const t = await monter({ frozen: figes });
     const themes = new Set<string>();
     let n = 20;
     // les jours qui suivent : on avance l'horloge du serveur d'un jour à chaque fois (un jour n'est ouvert qu'à son jour de Paris)

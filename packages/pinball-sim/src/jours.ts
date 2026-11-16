@@ -1,13 +1,13 @@
 import { formatDay, parseDay } from "@cdj/core";
 import { PINBALL_BOT_VERSION, PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION } from "./constantes";
 import { dailyPinball, empreinteContenu, type Contenu } from "./generateur";
-import { seuilsSurLePapier, seuilsValides } from "./seuils";
+import { seuilsDuRobot, seuilsValides } from "./seuils";
 import { THEMES_PINBALL } from "./themes";
 import type { Seuils } from "./types";
 
 // Un jour figé : `apps/pinball/public/jours/AAAA-MM-JJ.json`, la table telle qu'elle a été servie, avec les versions qui l'ont produite. Un jour figé ne change plus (règle R11) ; le jeu et le serveur lisent le fichier
 // d'abord, sinon génèrent avec la version courante. **Le fichier porte aussi les SEUILS des médailles** (règle « un jour figé fige aussi ses seuils ») et la version du calcul qui les a produits : changer le calcul (le
-// robot du lot PB4) ne change jamais un jour figé, et change l'empreinte d'un jour protégé sans fichier. Pas de preuve : rien de secret dans ce fichier.
+// robot du lot PB4) ne change jamais un jour figé, et change l'empreinte d'un jour protégé sans fichier. Pas de preuve : rien de secret dans ce fichier. Le robot du lot PB4 donne les seuils (`seuils.ts`).
 
 export const FORMAT_JOUR_FIGE = 1;
 
@@ -25,10 +25,10 @@ export interface JourFige {
   contenu: { theme: string; modules: string[]; empreinte: string };
 }
 
-/** Le fichier d'un jour, avec les seuils qu'on lui donne (par défaut ceux du calcul courant). */
+/** Le fichier d'un jour, avec les seuils qu'on lui donne (par défaut ceux du robot : quelques secondes la première fois pour une table). */
 export function figerJour(jour: number, seuils?: Seuils, version: number = PINBALL_GENERATOR_VERSION): JourFige {
   const c = dailyPinball(jour, version);
-  const s = seuils ?? seuilsSurLePapier(c);
+  const s = seuils ?? seuilsDuRobot(c);
   if (!seuilsValides(s)) throw new Error("seuils invalides : quatre entiers strictement croissants attendus");
   return {
     format: FORMAT_JOUR_FIGE,

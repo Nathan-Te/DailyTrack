@@ -27,7 +27,7 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
     corps = c;
     return niveau.contenuDuJour(jour, base, theme);
   },
-  // Les seuils sont écrits dans le contenu quand il est lu (`niveau.ts`) : ceux du fichier de jour figé, sinon le calcul provisoire.
+  // Les seuils sont écrits dans le contenu quand il est lu (`niveau.ts`) : ceux du fichier de jour figé, sinon ceux du robot (calculés en arrière-plan, terminés d'un trait à l'écran de fin s'il le faut).
   seuils: (c) => c.seuilsFiges!,
   medaille: (score, s) => VARIANTE.medaille(score, s),
   nouvellePartie: (contenu, hote, options) => scene!.nouvellePartiePinball(contenu, hote, options, scene!.rendFaible() ? null : corps),
@@ -35,7 +35,7 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   classable: (adresse) => !lireEssai(adresse, BUILD_RESTRICTED).essai,
   // Lot PB2 : une vibration courte quand un batteur frappe la bille (le réglage « Vibration » du kit apparaît dans les Réglages).
   vibration: true,
-  // Pas de fantôme ni de Diamant au PB1 : le robot du jour arrive au lot PB4.
+  // **Pas de fantôme Diamant en partie** (lot PB4) : une bille fantôme sur la table serait illisible. Le robot donne les seuils des médailles et se regarde avec `?robot` (hors production), jamais autre chose.
   sansFantome: true,
   rediffusionDiamant: () => "",
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),

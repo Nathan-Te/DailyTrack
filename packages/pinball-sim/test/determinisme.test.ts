@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { DUREE_MAX_TICKS, GAUCHE, LANCEUR, Partie, dailyPinball, enregistrer, jouer, piloter, rejouer, type Contenu, type Evenement } from "../src/index";
+import { DUREE_MAX_TICKS, GAUCHE, LANCEUR, Partie, dailyPinball, enregistrer, jouer, jouerRobot, rejouer, type Contenu, type Evenement } from "../src/index";
 
 // Le déterminisme : la même liste d'événements donne toujours le même résultat — côté jeu (la partie pas à pas, comme `scene.ts`) comme côté serveur (`rejouer`) — quels que soient l'ordre des appels et le nombre de
 // parties jouées avant.
@@ -19,19 +19,19 @@ function pasAPas(c: Contenu, evenements: readonly Evenement[], maxTicks: number)
   return p.resultat();
 }
 
-// **Lot PB3 : le test durait 24 s et a dépassé son délai en CI (30 s sous charge).** Il est découpé : une table par test (chacune son propre délai), deux par thème, avec des parties plus courtes (au plus 3 minutes de jeu,
-// 108 000 pas) ; la campagne de 40 tables jouées jusqu'à la fin (15 minutes au plus) est celle de `npm run mesures:pinball -w @cdj/pinball-sim` (« déterminisme : client = serveur »), qui n'a pas de délai. Ce qui reste couvert
-// ici : le même résultat par le jeu (pas à pas), le pilote, le serveur (`rejouer`) et `jouer`, sur les quatre thèmes ; une partie sans appui qui dure les 15 minutes entières ; la partie de 8 minutes du golden (`golden.test.ts`).
-const COURT = 108000;
+// **Lot PB3 : le test durait 24 s et a dépassé son délai en CI (30 s sous charge).** Il est découpé : une table par test (chacune son propre délai), deux par thème, avec des parties plus courtes (au plus 2 minutes de jeu,
+// 72 000 pas, celles du robot) ; la campagne de 40 tables jouées jusqu'à la fin (15 minutes au plus) est celle de `npm run mesures:pinball -w @cdj/pinball-sim` (« déterminisme : client = serveur »), qui n'a pas de délai. Ce qui reste couvert
+// ici : le même résultat par le jeu (pas à pas), le robot, le serveur (`rejouer`) et `jouer`, sur les quatre thèmes ; une partie sans appui qui dure les 15 minutes entières ; les parties du golden (`golden.test.ts`).
+const COURT = 72000;
 const THEMES = ["foire", "ocean", "espace", "volcan"] as const;
 
 describe("même liste d'événements, même score", () => {
   for (const theme of THEMES) {
     for (const i of [0, 1]) {
-      it(`${theme}, table ${i + 1} : le jeu (pas à pas), le pilote et le serveur (rejouer) donnent le même résultat`, () => {
+      it(`${theme}, table ${i + 1} : le jeu (pas à pas), le robot et le serveur (rejouer) donnent le même résultat`, () => {
         const c = dailyPinball(JOUR + 9 * i + THEMES.indexOf(theme), undefined, theme);
-        const { evenements, partie } = piloter(c, COURT);
-        // le jeu (la partie pas à pas, comme `scene.ts`) retrouve ce que le pilote a joué, au même pas
+        const { evenements, partie } = jouerRobot(c, 1, { maxTicks: COURT });
+        // le jeu (la partie pas à pas, comme `scene.ts`) retrouve ce que le robot a joué, au même pas
         expect(pasAPas(c, evenements, COURT)).toEqual(partie.resultat());
         // le serveur rejoue la rediffusion décodée jusqu'à la fin de la partie, comme `jouer` et le jeu poussé jusqu'au bout
         const fin = pasAPas(c, evenements, DUREE_MAX_TICKS);
@@ -42,13 +42,13 @@ describe("même liste d'événements, même score", () => {
   }
   it("répétée cent fois (la même partie d'une minute) : toujours la même", () => {
     const c = dailyPinball(JOUR);
-    const { evenements } = piloter(c, 36000);
+    const { evenements } = jouerRobot(c, 1, { maxTicks: 36000 });
     const ref = JSON.stringify(rejouer(c, enregistrer(c, evenements)));
     for (let i = 0; i < 100; i++) expect(JSON.stringify(rejouer(c, enregistrer(c, evenements)))).toBe(ref);
   });
   it("un appui de moins change la partie : la rediffusion est bien ce qui compte (un appui et son relâchement retirés, sur dix appuis)", () => {
     const c = dailyPinball(JOUR);
-    const { evenements } = piloter(c, 60000);
+    const { evenements } = jouerRobot(c, 1, { maxTicks: 60000 });
     const a = JSON.stringify(rejouer(c, enregistrer(c, evenements)));
     let changes = 0;
     const appuis = evenements.map((e, i) => [e, i] as const).filter(([e]) => e.enfonce && e.c !== LANCEUR).slice(0, 10);

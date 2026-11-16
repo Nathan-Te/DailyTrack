@@ -13,7 +13,7 @@ describe("les options d'essai de l'adresse", () => {
     expect(lireEssai("", false)).toMatchObject({ mission: false, essai: false });
   });
   it("sur la production (`restreint`), aucune option n'existe : `?essai=mission` ne fait rien", () => {
-    expect(lireEssai("?essai=mission&debug&tune&qualite=basse", true)).toEqual({ tune: false, fps: false, qualite: null, reglages: null, mission: false, essai: false });
+    expect(lireEssai("?essai=mission&debug&tune&qualite=basse", true)).toEqual({ tune: false, fps: false, qualite: null, reglages: null, mission: false, robot: null, essai: false });
   });
 });
 

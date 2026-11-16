@@ -50,6 +50,7 @@ export const CATALOGUE_FR = {
   "mission.hud.geyser": "Geysers {n} / {but}",
   "mission.hud.reussie": "Mission réussie",
   "mission.reussie": "Mission réussie ! ×{mult}",
+  "robot.joue": "Le robot joue",
   "aide.point1": "Une table de flipper par jour, la même pour tous. Trois billes : fais le plus de points possible.",
   "aide.point2": "Batteur gauche : {gauche} ; batteur droit : {droite} (ou la moitié gauche ou droite de l'écran). Pour lancer, maintiens {lanceur} (ou touche l'écran) puis relâche : plus tu tiens, plus la bille part fort.",
   "aide.point3": "À remplacer : le multiplicateur, la bille sauvée et les missions (texte complet à venir).",

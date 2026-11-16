@@ -1,5 +1,5 @@
 import { test, type Page } from "@playwright/test";
-import { dailyPinball, piloter, type ThemePinball } from "@cdj/pinball-sim";
+import { dailyPinball, jouerRobot, type ThemePinball } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import { appareil, JOUR, lancer } from "./appareil";
 
@@ -7,16 +7,16 @@ import { appareil, JOUR, lancer } from "./appareil";
 //   CAPTURES=1 DOSSIER=/chemin npx playwright test captures-lot-pbv1            (dans `apps/pinball`, après `npm run build`)
 //   CAPTURES=1 DOSSIER=/chemin PREFIXE=tour2 npx playwright test captures-lot-pbv1 -g "table"   → les tables seulement
 //   CAPTURES=1 MESURE=1 npx playwright test captures-lot-pbv1 -g mesure                        → la fluidité (fil principal, processeur ralenti ×4), avec et sans bloom
-// Les tables sont prises sans les contours de `?debug` (`__pinball.contours(false)`), au même cadrage que les images cibles (portrait 390 × 844), la bille en jeu (le pilote d'essai, `PAS`).
+// Les tables sont prises sans les contours de `?debug` (`__pinball.contours(false)`), au même cadrage que les images cibles (portrait 390 × 844), la bille en jeu (le robot du lot PB4, `PAS`).
 const dossier = process.env.DOSSIER ?? "captures";
 const prefixe = process.env.PREFIXE ?? "pbv1";
 const THEMES: ThemePinball[] = ["foire", "ocean", "espace", "volcan"];
-/** Le pas de la capture, par thème : la bille du pilote d'essai y est en jeu, à découvert (sur la bannière, sur le sable, en plein champ). */
+/** Le pas de la capture, par thème (choisi au lot PBV1 avec le pilote d'essai, que le PB4 a remplacé par le robot : la bille peut y être ailleurs). */
 const PAS: Record<ThemePinball, number> = { foire: 1600, ocean: 2200, espace: 2200, volcan: 3000 };
 
-/** Joue le pilote d'essai de la table du thème pendant `pas` pas. */
+/** Joue le robot (lot PB4) de la table du thème pendant `pas` pas. */
 async function jouer(page: Page, theme: ThemePinball, pas: number): Promise<void> {
-  const evenements = piloter(dailyPinball(parseDay(JOUR)!, undefined, theme), pas).evenements;
+  const evenements = jouerRobot(dailyPinball(parseDay(JOUR)!, undefined, theme), 1, { maxTicks: pas }).evenements;
   await page.evaluate(
     ({ evenements, pas }) => {
       let t = 0;

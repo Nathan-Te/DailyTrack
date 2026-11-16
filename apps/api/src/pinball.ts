@@ -25,7 +25,7 @@ import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type 
 // le niveau du jour (le fichier figé de l'image s'il se relit et se régénère à l'identique, sinon le générateur courant — avec les seuils des médailles **figés dans le fichier**, jamais recalculés pour un jour figé), le
 // décodage et le rejeu de la rediffusion (la liste des instants où une commande change : le serveur rejoue la partie **jusqu'à sa fin** — dernière bille perdue ou 15 minutes — et retrouve le score **lui-même** : la plateforme
 // ne lit jamais un score annoncé par le client), les colonnes de classement de la fiche, l'empreinte des entrées (refus des copies). Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et
-// les crochets sont ceux du module des jeux (`jeux/`), la table est la table commune `resultats_jeu`. Pas de robot au PB1 : pas d'empreinte de la partie de l'auteur ; les seuils sont provisoires (`seuils.ts` de `@cdj/pinball-sim`).
+// les crochets sont ceux du module des jeux (`jeux/`), la table est la table commune `resultats_jeu`. Pas d'empreinte de la partie de l'auteur (le robot donne les seuils des médailles, pas un fantôme) ; **lot PB4 : les seuils sont ceux du fichier de jour, sinon ceux du robot** (`seuils.ts` de `@cdj/pinball-sim`, quelques secondes la première fois pour une table, gardés en mémoire : en production les jours servis ont leur fichier).
 // **Le coût d'un rejeu suit sa durée** (`rejeu.ticksParUnite` de la fiche, mesuré au README du lot PB1) : une partie de 15 minutes (540 000 pas) pèse 60 unités du plafond global.
 
 const fiche = FICHES_SERVEUR.find((f) => f.id === "pinball") as unknown as FicheServeur;

@@ -8,8 +8,9 @@ import { sha, type EmpreinteJour } from "./empreintes";
 // **L'empreinte ne dit pas d'où vient le jour** (fichier figé ou générateur) : seulement ce qui est servi — l'identifiant, la table, les seuils. Run « Mettre en production » n° 47 (09/11/2026) : l'étiquette
 // « fige » / « genere » qu'elle portait faisait toujours différer le code en production (sans fichier : « genere ») de la construction (les fichiers que le code en production vient de figer : « fige ») pour
 // les 26 jours d'un jeu devenu `on` — alors que le fichier est exactement ce que le code sert sans lui, ce que la mise en production veut vérifier.
-// **Lot PB1 : l'empreinte couvre aussi les SEUILS des médailles** (règle « un jour figé fige aussi ses seuils ») : ceux du fichier de jour s'il y en a un, sinon le calcul courant. Changer le calcul (le robot du lot PB4)
-// ne change donc jamais un jour figé, et change l'empreinte d'un jour protégé sans fichier : la mise en production s'arrête.
+// **Lot PB1 : l'empreinte couvre aussi les SEUILS des médailles** (règle « un jour figé fige aussi ses seuils ») : ceux du fichier de jour s'il y en a un, sinon le calcul courant (**lot PB4 : le robot**, quelques secondes
+// par table, une fois par table dans le processus). Changer le calcul (le robot, ses constantes, les pourcentages : `PINBALL_BOT_VERSION`) ne change donc jamais un jour figé, et change l'empreinte d'un jour protégé sans
+// fichier : la mise en production s'arrête. `preparer` de la fiche écrit à l'avance les jours à venir avec leurs seuils.
 export function empreinteJour(day: number, dossier: string | null): EmpreinteJour {
   const date = formatDay(day);
   const fichier = dossier ? join(dossier, `${date}.json`) : null;

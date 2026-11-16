@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { EV_MISSION, Partie, dailyPinball, piloter, type ThemePinball } from "@cdj/pinball-sim";
+import { EV_MISSION, Partie, dailyPinball, jouerRobot, type ThemePinball } from "@cdj/pinball-sim";
 import { parseDay } from "@cdj/core";
 import { appareil, JOUR, lancer } from "./appareil";
 
@@ -10,7 +10,7 @@ const THEMES: ThemePinball[] = ["foire", "ocean", "espace", "volcan"];
 
 /** Joue le pilote d'essai de la table du thème pendant `pas` pas. */
 async function jouer(page: import("@playwright/test").Page, theme: ThemePinball, pas: number): Promise<void> {
-  const evenements = piloter(dailyPinball(parseDay(JOUR)!, undefined, theme), pas).evenements;
+  const evenements = jouerRobot(dailyPinball(parseDay(JOUR)!, undefined, theme), 1, { maxTicks: pas }).evenements;
   await page.evaluate(
     ({ evenements, pas }) => {
       let t = 0;
@@ -53,7 +53,7 @@ for (const theme of THEMES) {
     await lancer(page);
     // le pas où le pilote d'essai réussit la mission (calculé ici par la même simulation), puis la page y est menée d'un trait
     const contenu = dailyPinball(parseDay(JOUR)!, undefined, theme);
-    const evenements = piloter(contenu, 60000).evenements;
+    const evenements = jouerRobot(contenu, 1, { maxTicks: 60000 }).evenements;
     const p = new Partie(contenu);
     p.compteur = p.but - 1;
     let k = 0;

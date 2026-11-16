@@ -1,8 +1,19 @@
 import { daysFromCivil } from "@cdj/core";
 import { Rng } from "@cdj/core";
-import { DROITE, DUREE_MAX_TICKS, GAUCHE, LANCEUR, MAX_EVENEMENTS, TICKS_PAR_SECONDE, dailyPinball, decoderRediffusion, enregistrer, jouer, piloter, rejouer, type Evenement } from "../src/index";
+import { DROITE, DUREE_MAX_TICKS, GAUCHE, LANCEUR, MAX_EVENEMENTS, Partie, TICKS_PAR_SECONDE, dailyPinball, decoderRediffusion, enregistrer, jouer, jouerRobot, rejouer, type Contenu, type Evenement } from "../src/index";
 
-// `npm run mesures:pinball -w @cdj/pinball-sim` : les chiffres du README du lot PB1 (déterminisme, coût d'un rejeu, taille d'une rediffusion, parties par seconde du pilote). Aucune base, aucun réseau.
+// `npm run mesures:pinball -w @cdj/pinball-sim` : les chiffres du README du lot PB1 (déterminisme, coût d'un rejeu, taille d'une rediffusion, parties par seconde) ; lot PB4 : le joueur est le robot (3 minutes de jeu au plus par partie, le serveur rejoue jusqu'à la fin). Aucune base, aucun réseau.
+const ROBOT_PAS = 180 * TICKS_PAR_SECONDE;
+/** La partie du jeu poussée jusqu'au bout (comme la scène) : les événements à leur pas, jusqu'à la fin de la partie. */
+const jeuJusquAuBout = (c: Contenu, evenements: readonly Evenement[]): ReturnType<Partie["resultat"]> => {
+  const p = new Partie(c);
+  let k = 0;
+  while (!p.finie) {
+    while (k < evenements.length && evenements[k]!.tick === p.tick) p.regler(evenements[k]!.c, evenements[k++]!.enfonce);
+    p.avancer();
+  }
+  return p.resultat();
+};
 const premier = daysFromCivil(2026, 11, 2);
 const ms = (f: () => void): number => {
   const t0 = performance.now();
@@ -31,25 +42,26 @@ function nerveux(minutes: number, parSeconde: number, graine: number): Evenement
   return ev.sort((a, b) => a.tick - b.tick);
 }
 
-console.log("— déterminisme : le pilote joue pas à pas (le jeu), le serveur rejoue la rediffusion décodée");
+console.log("— déterminisme : le jeu joue pas à pas les événements du robot jusqu'au bout, le serveur rejoue la rediffusion décodée");
 let egaux = 0;
 const JOURS = 40;
 for (let i = 0; i < JOURS; i++) {
   const c = dailyPinball(premier + i);
-  const { evenements, partie } = piloter(c, DUREE_MAX_TICKS);
+  const { evenements } = jouerRobot(c, 1 + i, { maxTicks: ROBOT_PAS });
   const serveur = rejouer(c, enregistrer(c, evenements));
-  const ok = JSON.stringify(serveur) === JSON.stringify(partie.resultat());
-  if (ok) egaux++;
-  else console.log("  DIFFÉRENT", i, partie.resultat(), serveur);
+  const jeu = jeuJusquAuBout(c, evenements);
+  if (JSON.stringify(serveur) === JSON.stringify(jeu)) egaux++;
+  else console.log("  DIFFÉRENT", i, jeu, serveur);
 }
 console.log(`  ${egaux} / ${JOURS} jours : même score (client = serveur)`);
 
-console.log("— coût d'un rejeu (le serveur, pilote d'essai qui survit à la bille)");
+console.log("— coût d'un rejeu (le serveur, parties du robot qui durent)");
 const longues = [] as { c: ReturnType<typeof dailyPinball>; ev: Evenement[]; ticks: number }[];
 for (let i = 0; i < 80 && longues.length < 6; i++) {
   const c = dailyPinball(premier + i);
-  const p = piloter(c, DUREE_MAX_TICKS);
-  if (p.partie.tick >= 5 * 60 * TICKS_PAR_SECONDE) longues.push({ c, ev: p.evenements, ticks: p.partie.tick });
+  const ev = jouerRobot(c, 1 + i, { maxTicks: ROBOT_PAS }).evenements;
+  const ticks = jouer(c, ev).ticks;
+  if (ticks >= 5 * 60 * TICKS_PAR_SECONDE) longues.push({ c, ev, ticks });
 }
 const msParTick: number[] = [];
 for (const l of longues) {
@@ -65,9 +77,9 @@ for (const minutes of [5, 10, 15, 20]) {
 console.log(`  ${(1 / cout / 1000).toFixed(2)} millions de pas par seconde`);
 
 console.log("— taille d'une rediffusion de 10 minutes");
-const pilote10 = piloter(dailyPinball(premier + 4), 10 * 60 * TICKS_PAR_SECONDE);
+const robot3 = jouerRobot(dailyPinball(premier + 4), 1, { maxTicks: ROBOT_PAS });
 for (const [nom, ev, jour] of [
-  ["pilote d'essai", pilote10.evenements, premier + 4],
+  ["robot (3 minutes)", robot3.evenements, premier + 4],
   ["joueur nerveux 2 appuis/s par batteur", nerveux(10, 2, 1), premier],
   ["joueur nerveux 4 appuis/s par batteur", nerveux(10, 4, 2), premier],
   ["joueur nerveux 5 appuis/s par batteur (le plus vite possible)", nerveux(10, 5, 3), premier],
@@ -76,14 +88,14 @@ for (const [nom, ev, jour] of [
   console.log(`  ${nom} : ${ev.length} événements, ${code.length} caractères (relu : ${decoderRediffusion(code).evenements.length})`);
 }
 
-console.log("— parties par seconde (le pilote d'essai, tables des 60 premiers jours, partie entière)");
+console.log("— parties par seconde (le robot, tables des 12 premiers jours, 3 minutes de jeu au plus)");
 let parties = 0;
 let pas = 0;
 const t0 = performance.now();
-for (let i = 0; i < 60; i++) {
-  const p = piloter(dailyPinball(premier + i), DUREE_MAX_TICKS);
+for (let i = 0; i < 12; i++) {
+  const p = jouerRobot(dailyPinball(premier + i), 1 + i, { maxTicks: ROBOT_PAS });
   parties++;
   pas += p.partie.tick;
 }
 const s = (performance.now() - t0) / 1000;
-console.log(`  ${parties} parties, ${pas} pas en ${s.toFixed(1)} s : ${(parties / s).toFixed(1)} parties/s, durée moyenne ${(pas / parties / TICKS_PAR_SECONDE).toFixed(0)} s de jeu, ${(pas / s / 1e6).toFixed(2)} millions de pas/s (pilote compris)`);
+console.log(`  ${parties} parties, ${pas} pas en ${s.toFixed(1)} s : ${(parties / s).toFixed(1)} parties/s, durée moyenne ${(pas / parties / TICKS_PAR_SECONDE).toFixed(0)} s de jeu, ${(pas / s / 1e6).toFixed(2)} millions de pas/s (robot compris)`);
