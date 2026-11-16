@@ -4,8 +4,8 @@
   },
   "_regression": "Lot R13 (le tri des tests, docs/tests.md) : les specs tout entiers de la famille « Régression » (mises en page, écrans secondaires, effets, Salon détaillé). Ils ne tournent que dans la CI complète (nuit, « Run workflow ») — sauf modifiés par la PR. Un test « Régression » dans un autre spec porte l'étiquette `@regression` ; un test sans étiquette est « Essentiel » (PR de sa zone et chaque fusion dans main).",
   "regression": ["web/manette.spec.ts"],
-  "_regressionUnitaires": "Lot R13 : les fichiers de tests unitaires de la famille « Régression » (jeux de données fictives de la recette) : CI complète et main seulement, sauf modifiés.",
-  "regressionUnitaires": ["apps/api/test/portailDemo.test.ts", "apps/api/test/classementDemo.test.ts"],
+  "_regressionUnitaires": "Lot R13 : les fichiers de tests unitaires de la famille « Régression » (jeux de données fictives de la recette ; lot PG1 : tout test unitaire de plus de ~10 s, comme les trente jours de franchissabilité de Gravity) : CI complète et main seulement, sauf modifiés.",
+  "regressionUnitaires": ["apps/api/test/portailDemo.test.ts", "apps/api/test/classementDemo.test.ts", "packages/gravity-sim/test/franchissabilite-30-jours.test.ts"],
   "zones": {
     "ui": { "globs": ["packages/ui/**", "packages/kit/**"] },
     "profile-pkg": { "globs": ["packages/profile/**"] },

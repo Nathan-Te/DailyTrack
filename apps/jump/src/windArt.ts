@@ -15,6 +15,7 @@ import {
   ShaderMaterial,
 } from "three";
 import type { AttemptState, Level } from "@cdj/jump-sim";
+import { ajouterFlecheDeVent } from "@cdj/visuels/plateformes"; // lot PG1 : la flèche du courant d'air est un dessin commun
 import {
   WIND_EDGE_OPACITY,
   WIND_STYLE,
@@ -109,21 +110,6 @@ export interface WindArt {
 
 const leafColors = [WIND_STYLE.leaf, WIND_STYLE.leafDark, WIND_STYLE.pollen].map((c) => new Color(c));
 
-/** Une flèche (chevron épais) centrée en (x, y), dans le sens (dx, dy) : quatre triangles. */
-function pushArrow(pos: number[], x: number, y: number, dx: number, dy: number): void {
-  // Repère de la flèche : u le long du vent, v en travers.
-  const ux = dx;
-  const uy = dy;
-  const vx = -dy;
-  const vy = dx;
-  const at = (u: number, v: number) => [x + ux * u + vx * v, y + uy * u + vy * v, 0];
-  const t = 0.13;
-  const quad = (a: number[], b: number[], c: number[], d: number[]) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
-  // Deux branches : de (−0,25, ±0,35) à la pointe (0,25, 0).
-  quad(at(-0.25, 0.35), at(-0.25 + t, 0.35), at(0.25 + t / 2, 0), at(0.25 - t / 2, 0));
-  quad(at(-0.25, -0.35), at(-0.25 + t, -0.35), at(0.25 + t / 2, 0), at(0.25 - t / 2, 0));
-}
-
 /** Le vent d'un niveau ; null s'il n'a pas de zone (rien n'est construit). */
 export function createWindArt(world: Group, level: Level, hitbox: boolean): WindArt | null {
   const zones = level.winds;
@@ -185,7 +171,7 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
   // ——— Flèches fixes : un maillage par zone (son opacité dit si elle souffle) ———
   const arrows = zones.map((z) => {
     const pos: number[] = [];
-    for (const a of arrowLayout(z)) pushArrow(pos, a.x, a.y, a.dx, a.dy);
+    for (const a of arrowLayout(z)) ajouterFlecheDeVent(pos, a.x, a.y, a.dx, a.dy);
     const g = new BufferGeometry();
     g.setAttribute("position", new Float32BufferAttribute(pos, 3));
     const mat = new MeshBasicMaterial({ color: WIND_STYLE.arrow, transparent: true, opacity: 0, side: DoubleSide, depthWrite: false });

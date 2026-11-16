@@ -248,7 +248,8 @@
   },
   "budget": {
     "lignes": [
-      "blocks.jsCss"
+      "blocks.jsCss",
+      "blocks.demande"
     ],
     "aLaDemande": [
       "partie-",

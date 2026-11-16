@@ -97,7 +97,15 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
       if (["track", "jump", "tower"].includes(f.id)) continue;
       const declarees = (f.brut.budget.demande ?? []).map((d) => `${f.id}.${d.nom}`);
       for (const cle of declarees) expect(f.brut.budget.lignes, f.id).toContain(cle);
-      for (const cle of f.brut.budget.lignes) if (!["jsCss", "anglais", "polices"].includes(cle.slice(f.id.length + 1))) expect(declarees, `${cle} : une ligne au-delà des trois d'office se déclare dans budget.demande`).toContain(cle);
+      for (const cle of f.brut.budget.lignes) if (!["jsCss", "anglais", "polices", "demande"].includes(cle.slice(f.id.length + 1))) expect(declarees, `${cle} : une ligne au-delà des quatre d'office se déclare dans budget.demande`).toContain(cle);
+    }
+    // Lot PG1 : la ligne « à la demande » de chaque jeu du kit (`<id>.demande`) : dans la fiche, au tableau (famille `demande`) et dans les mesures du job. « Cibles », le témoin et le modèle du générateur, n'en a pas (`npm run nouveau-jeu` n'écrit que `<id>.jsCss` : un jeu neuf la déclare à son premier lot, ce test nomme les jeux livrés).
+    const fiches = lireFichesBrutes(ROOT) as { id: string; brut: { temoin?: boolean; budget: { lignes: string[]; aLaDemande: string[] } } }[];
+    for (const id of ["blocks", "rush", "vertige", "gravity", "pinball"]) {
+      const f = fiches.find((x) => x.id === id)!;
+      expect(f.brut.budget.lignes, id).toContain(`${id}.demande`);
+      expect(lignes[`${id}.demande`]?.famille, `${id}.demande`).toBe("demande");
+      expect(CLES_MESUREES, id).toContain(`${id}.demande`);
     }
     expect(lignesDesJeuxNeufs()).toContain("pinball.rendu");
   });
@@ -123,6 +131,11 @@ describe("lot I6 / R17 : docs/plateforme/budgets.md, la référence et la seule 
       expect(sans.rendu).toBeUndefined();
       // `corps-` seul vaut moins que `corps-` + `dessin-` : la somme suit les préfixes.
       expect(mesureJeuNeuf({ ...fiche, budgetDemande: [{ nom: "rendu", prefixes: ["corps-"] }] }, dist).rendu).toBeLessThan(m.rendu);
+      // Lot PG1 : `demande` = tout ce que la fiche liste dans `budgetALaDemande` (ici `corps-` et `dessin-`, pas `autre-`), sans fiche `budget.demande`, et sans toucher au premier chargement.
+      expect(sans.demande).toBe(m.demande);
+      expect(sans.demande).toBeGreaterThan(m.rendu - 1); // `rendu` (mêmes préfixes) en fait partie
+      expect(mesureJeuNeuf({ id: "fictif", app: "fictif", budgetALaDemande: ["corps-"] }, dist).demande).toBeLessThan(sans.demande);
+      expect(mesureJeuNeuf({ id: "fictif", app: "fictif" }, dist).demande).toBe(0);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

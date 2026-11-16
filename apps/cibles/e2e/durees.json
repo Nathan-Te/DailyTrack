@@ -5,7 +5,9 @@
     "partie.spec.ts": 20,
     "classement.spec.ts": 30,
     "poids.spec.ts": 2,
-    "ecrans-kit.spec.ts": 12
+    "ecrans-kit.spec.ts": 12,
+    "chargement-partie.spec.ts": 3,
+    "surimpression.spec.ts": 12
   },
   "essentiel": {
     "determinisme.spec.ts": 3,

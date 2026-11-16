@@ -5,3 +5,6 @@ export * from "./parallaxe";
 export * from "./tuiles";
 export * from "./personnage";
 export * from "./dessin";
+export * from "./piques";
+export * from "./blocs";
+export * from "./tapis";

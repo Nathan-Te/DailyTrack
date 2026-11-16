@@ -33,8 +33,22 @@ export interface Seuils {
 /** Un traducteur : une clé du catalogue du jeu (celui du kit y est réuni) et ses paramètres. */
 export type Traduire = (cle: string, params?: Readonly<Record<string, string | number>>) => string;
 
+/**
+ * Lot PG1 — **les zones du HUD en surimpression** (`DefinitionJeu.hud: "surimpression"`), posées sur le plateau par le kit : trois colonnes en haut (`hautGauche`, `centre`, `hautDroite`) et l'annonce, au milieu
+ * (un nom de thème qui apparaît, un « Prêt ? »). Vides à chaque partie ; le jeu les remplit à chaque image, en `textContent` et en éléments du socle (jamais `innerHTML`), avec les classes du kit
+ * (`jeu-surimpression__valeur` : un grand nombre ; `jeu-surimpression__etiquette` : une pastille ; `jeu-surimpression__cartouche` : un cartouche de papier) ou les siennes, aux jetons `--dj-*`. Elles ne reçoivent aucun toucher.
+ */
+export interface ZonesSurimpression {
+  hautGauche: HTMLElement;
+  centre: HTMLElement;
+  hautDroite: HTMLElement;
+  annonce: HTMLElement;
+}
+
 export interface OptionsPartie {
   theme: string;
+  /** Lot PG1 — les zones du HUD en surimpression, **seulement** pour une définition qui dit `hud: "surimpression"` (sinon absent). */
+  zones?: ZonesSurimpression;
   /** `prefers-reduced-motion` ou le réglage du joueur. */
   reduit: boolean;
   tactile: boolean;
@@ -100,7 +114,14 @@ export interface DefinitionJeu<C> {
   contenuDuJour(jour: number, base: string, theme: string): Promise<C>;
   seuils(contenu: C): Seuils;
   medaille(score: readonly number[], seuils: Seuils): CodeMedaille | null;
-  /** Une partie neuve, dessinée dans `hote`. */
+  /**
+   * Lot PG1 — **le chargement asynchrone d'une partie** (facultatif). Une scène lourde (Three.js, un moteur de physique, des modèles) se charge ici, par un `import()`, et non plus par `contenuDuJour` : le kit
+   * **l'appelle et l'attend**, une fois, **avant le premier `nouvellePartie`** — au toucher de « Jouer », l'accueil encore à l'écran avec son message « Chargement du jeu… » (après 250 ms) ; une promesse refusée
+   * donne « Le jeu n'a pas pu se charger. Réessaie. » et le bouton se réarme. **Il n'est rappelé ni à « Recommencer » ni au passage à une autre partie** (la page garde ce qu'elle a chargé : `nouvellePartie` reste
+   * synchrone et rapide) ; rappelé de lui-même (deux « Jouer » de suite), il doit rendre la même promesse : un `import()` répété est déjà gardé par le navigateur. Reçoit le contenu du jour. Absent : rien ne change.
+   */
+  chargerPartie?(contenu: C): Promise<void>;
+  /** Une partie neuve, dessinée dans `hote` (synchrone : ce qui est lourd est chargé avant, par `chargerPartie`). */
   nouvellePartie(contenu: C, hote: HTMLElement, o: OptionsPartie): PartieDuJeu;
   /** La rediffusion du Diamant (la partie de l'auteur), montrée par le fantôme « Diamant ». Jamais appelée par un jeu `sansFantome`. */
   rediffusionDiamant(contenu: C): string;
@@ -132,6 +153,11 @@ export interface DefinitionJeu<C> {
   effets?: boolean;
   /** Lot B1 — le jeu fait vibrer l'appareil (`OptionsPartie.vibrer`) : le réglage « Vibration » (oui / non) apparaît dans ses Réglages. Absente : `false`. */
   vibration?: boolean;
+  /**
+   * Lot PG1 — **où est le HUD** : `"barre"` (défaut) : le score et la ligne dans la barre du haut, comme aujourd'hui ; `"surimpression"` : le jeu écrit son HUD **sur le plateau**, dans les zones que le kit pose
+   * (`OptionsPartie.zones`), et le texte de la barre (`PartieDuJeu.hud()`) n'est plus visible — il reste dans la page, lu par la pause et les lecteurs d'écran. La barre garde ses boutons (fantôme, pause).
+   */
+  hud?: "barre" | "surimpression";
   /** Lot « écrans du kit » — la peau du jeu (illustration du titre, décor du thème, accent des boutons) : voir `PeauJeu`. Absente : la peau tirée de la fiche. */
   peau?: PeauJeu;
 }

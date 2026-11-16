@@ -119,8 +119,11 @@ export const A_LA_DEMANDE_PAR_DEFAUT = ["catalogue.en-", "interrupteur-", "manet
 /**
  * Les lignes de budget qu'un jeu neuf obtient d'office (les autres demandent leur propre mesure). Lot K8 : **sa fiche peut en déclarer d'autres, « à la demande »** (`budget.demande` : `{ nom, prefixes }`,
  * la ligne `<id>.<nom>` = la somme gzip des fichiers JS et CSS dont le nom commence par l'un des préfixes) : aucune retouche de ce script pour un jeu qui charge un gros morceau à la demande.
+ * Lot PG1 : **`<id>.demande`**, la ligne « à la demande » de tout jeu du kit, se mesure d'elle-même : la somme gzip de **tout ce que sa fiche liste dans `budget.aLaDemande`** (la partie, le classement, les
+ * Réglages, la scène, le niveau…, l'exact complément du premier chargement) ; elle ne grossit pas quand un jeu déplace du code du premier chargement vers la demande, et elle dit ce qu'un joueur télécharge en jouant.
+ * Un jeu la déclare en l'écrivant dans `budget.lignes` de sa fiche (`<id>.demande`) et dans `budgets.md` (famille `demande`).
  */
-export const LIGNES_DE_JEU_NEUF = ["jsCss", "anglais", "polices"];
+export const LIGNES_DE_JEU_NEUF = ["jsCss", "anglais", "polices", "demande"];
 export function mesureJeuNeuf(fiche, dist = join(ROOT, "apps", fiche.app, "dist/assets")) {
   if (!existsSync(join(dist, "../index.html"))) return null; // pas construit : aucune mesure
   const aLaDemande = (f) => [...A_LA_DEMANDE_PAR_DEFAUT, ...(fiche.budgetALaDemande ?? [])].some((p) => f.startsWith(p));
@@ -129,8 +132,9 @@ export function mesureJeuNeuf(fiche, dist = join(ROOT, "apps", fiche.app, "dist/
   const html = readFileSync(join(dist, "../index.html"), "utf8");
   const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
   const css = readdirSync(dist).filter((f) => f.endsWith(".css") && !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  const tout = readdirSync(dist).filter((f) => /\.(js|css)$/.test(f) && (fiche.budgetALaDemande ?? []).some((p) => f.startsWith(p))).reduce((n, f) => n + gz(join(dist, f)), 0);
   const demande = Object.fromEntries((fiche.budgetDemande ?? []).map(({ nom, prefixes }) => [nom, readdirSync(dist).filter((f) => /\.(js|css)$/.test(f) && prefixes.some((p) => f.startsWith(p))).reduce((n, f) => n + gz(join(dist, f)), 0)]));
-  return { jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist), ...demande };
+  return { jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist), demande: tout, ...demande };
 }
 /** Les jeux des fiches qui se mesurent par `mesureJeuNeuf`. */
 export const jeuxNeufs = () => FICHES_CI.filter((f) => !JEUX_A_MESURE_PROPRE.includes(f.id));

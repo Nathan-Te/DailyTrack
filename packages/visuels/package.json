@@ -20,6 +20,7 @@
     "./blocs/canvas": "./src/blocs/canvas.ts",
     "./blocs/three": "./src/blocs/three.ts",
     "./plateformes": "./src/plateformes/index.ts",
-    "./plateformes/three": "./src/plateformesThree/index.ts"
+    "./plateformes/three": "./src/plateformesThree/index.ts",
+    "./plateformes/three/tapis": "./src/plateformesThree/tapis.ts"
   }
 }

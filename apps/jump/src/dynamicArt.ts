@@ -1,6 +1,8 @@
-import { BufferAttribute, BufferGeometry, Color, DoubleSide, Float32BufferAttribute, Group, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, PlaneGeometry, Sprite, SpriteMaterial, CanvasTexture } from "three";
+import { BufferAttribute, BufferGeometry, Color, Float32BufferAttribute, Group, LineBasicMaterial, LineSegments, Sprite, SpriteMaterial, CanvasTexture } from "three";
 import type { AttemptState, Level } from "@cdj/jump-sim";
-import { BLOCK_STYLE, blockLooks, type BlockLook } from "./blocks";
+import { BLOC_FORME, BLOC_OPACITES } from "@cdj/visuels/plateformes";
+import { creerBloc, geometriesDeBloc } from "@cdj/visuels/plateformes/three";
+import { blockLooks, type BlockLook } from "./blocks";
 
 // Le dessin des blocs clignotants (nuit) et alternés (néon), lot 12 — **affichage seul** : il ne lit que l'état de l'essai (`blockLooks`).
 //   - un bloc **plein** : une face colorée, un liseré clair, un repère (aucun pour un clignotant, une barre pour A, un losange pour B) ;
@@ -14,64 +16,10 @@ import { BLOCK_STYLE, blockLooks, type BlockLook } from "./blocks";
 //   - un bloc qui devrait être plein mais attend la sortie du personnage : contour épais, face absente.
 // Un matériau par bloc (l'opacité varie bloc par bloc), construits une fois ; rien n'est créé en jeu. ~100 blocs au plus par niveau du jour.
 
-/** Épaisseur du contour fin et du contour épais (tuiles). */
-const THIN = 0.05;
-const THICK = 0.14;
-/** Côté de la face et du contour (tuiles) ; tirets par côté du contour pointillé (cinq tirets, quatre vides) ; épaisseur du trait du niveau de la jauge. */
-const FACE = 0.92;
-const FRAME = 0.96;
-const DASHES = 5;
-const LEVEL_LINE = 0.05;
-/** Opacité du remplissage d'un bloc absent dont le contour se remplit (translucide : il n'est pas encore là) et du contour pointillé, au repos et plein. */
-const REFILL_FACE = 0.4;
-const DOTTED_MIN = 0.4;
-const DOTTED_MAX = 0.9;
-/** Lot 28 : l'opacité du repère d'un bloc alterné absent (en filigrane) et de la face fantôme laissée par la bascule (à l'éclat plein). */
-const MARK_GHOST = 0.55;
-const GHOST_FACE = 0.45;
-
-/** Un cadre carré de côté `size` (tuiles) d'épaisseur `t`, en 8 triangles. */
-function frameGeometry(size: number, t: number): BufferGeometry {
-  const h = size / 2;
-  const i = h - t;
-  const rects: [number, number, number, number][] = [
-    [-h, h - t, h, h], // haut
-    [-h, -h, h, -h + t], // bas
-    [-h, -i, -i, i], // gauche
-    [i, -i, h, i], // droite
-  ];
-  const pos: number[] = [];
-  for (const [x0, y0, x1, y1] of rects) pos.push(x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y0, 0, x1, y1, 0, x0, y1, 0);
-  const g = new BufferGeometry();
-  g.setAttribute("position", new Float32BufferAttribute(pos, 3));
-  return g;
-}
-
-/** Un cadre pointillé (lot 18) : `DASHES` tirets par côté, autant de vides que de tirets moins un, d'épaisseur `t`. */
-function dashedFrameGeometry(size: number, t: number): BufferGeometry {
-  const h = size / 2;
-  const part = size / (2 * DASHES - 1);
-  const pos: number[] = [];
-  const rect = (x0: number, y0: number, x1: number, y1: number) => pos.push(x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y0, 0, x1, y1, 0, x0, y1, 0);
-  for (let i = 0; i < DASHES; i++) {
-    const a = -h + 2 * i * part;
-    const b = a + part;
-    rect(a, h - t, b, h); // haut
-    rect(a, -h, b, -h + t); // bas
-    rect(-h, a, -h + t, b); // gauche
-    rect(h - t, a, h, b); // droite
-  }
-  const g = new BufferGeometry();
-  g.setAttribute("position", new Float32BufferAttribute(pos, 3));
-  return g;
-}
-
-/** Le losange du repère B (carré tourné de 45°). */
-function diamondGeometry(r: number): BufferGeometry {
-  const g = new BufferGeometry();
-  g.setAttribute("position", new Float32BufferAttribute([-r, 0, 0, 0, -r, 0, r, 0, 0, -r, 0, 0, r, 0, 0, 0, r, 0], 3));
-  return g;
-}
+// Lot PG1 : la forme des blocs (tailles, profondeurs), leurs géométries et le montage d'un bloc sont dans `@cdj/visuels` (`BLOC_FORME`, `BLOC_OPACITES`, `creerBloc`) ; ici : les états (la jauge, l'annonce, le filigrane,
+// la bascule) qui lisent la simulation, et le dessin de debug.
+const { face: FACE, cadre: FRAME, fin: THIN } = BLOC_FORME;
+const { remplissage: REFILL_FACE, pointilleMin: DOTTED_MIN, pointilleMax: DOTTED_MAX, repereAbsent: MARK_GHOST, fantome: GHOST_FACE } = BLOC_OPACITES;
 
 /** Étiquette de texte (debug) : sprite sans éclairage. */
 function labelSprite(text: string, color: string): Sprite {
@@ -137,66 +85,15 @@ export interface DynamicBlocks {
 export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean): DynamicBlocks | null {
   const total = level.blinks.length + level.alts.length;
   if (total === 0) return null;
-  const thin = frameGeometry(FRAME, THIN);
-  const thick = frameGeometry(FRAME, THICK);
-  const dashed = dashedFrameGeometry(FRAME, THIN);
-  // La face part du bas du bloc (lot 18) : sa hauteur dessinée est le niveau de la jauge.
-  const faceGeo = new PlaneGeometry(FACE, FACE).translate(0, FACE / 2, 0);
-  const lineGeo = new PlaneGeometry(FACE, LEVEL_LINE);
-  const barGeo = new PlaneGeometry(0.46, 0.11);
-  const diamond = diamondGeometry(0.17);
-  // Lot 28 : la pastille du prochain jeu, au coin d'un bloc alterné plein (une petite barre pour A, un petit losange pour B).
-  const pipBar = new PlaneGeometry(0.2, 0.06);
-  const pipDiamond = diamondGeometry(0.075);
-  const PIP = 0.32;
+  const geos = geometriesDeBloc(); // les géométries partagées par tous les blocs du niveau (lot PG1 : `@cdj/visuels/plateformes/three`)
   const cells: { col: number; row: number; kind: "blink" | "A" | "B" }[] = [
     ...level.blinks.map((b) => ({ col: b.col, row: b.row, kind: "blink" as const })),
     ...level.alts.map((a) => ({ col: a.col, row: a.row, kind: a.set === 0 ? ("A" as const) : ("B" as const) })),
   ];
-  const styleOf = (k: "blink" | "A" | "B") => (k === "blink" ? BLOCK_STYLE.blink : k === "A" ? BLOCK_STYLE.altA : BLOCK_STYLE.altB);
   const blocks = cells.map((c) => {
-    const style = styleOf(c.kind);
-    const g = new Group();
-    g.position.set(c.col + 0.5, -c.row - 0.5, 0.03);
-    const faceMat = new MeshBasicMaterial({ color: style.fill, transparent: true, side: DoubleSide });
-    const face = new Mesh(faceGeo, faceMat);
-    face.position.y = -FACE / 2;
-    const edgeMat = new MeshBasicMaterial({ color: style.edge, transparent: true, side: DoubleSide });
-    const frameThin = new Mesh(thin, edgeMat);
-    const frameThick = new Mesh(thick, edgeMat);
-    frameThin.position.z = 0.002;
-    frameThick.position.z = 0.002;
-    g.add(face, frameThin, frameThick);
-    // Lot 18 : le contour pointillé d'un clignotant absent et le trait qui marque le niveau de la jauge (seulement pour les clignotants).
-    let frameDash: Mesh | null = null;
-    let line: Mesh | null = null;
-    if (c.kind === "blink") {
-      frameDash = new Mesh(dashed, edgeMat);
-      frameDash.position.z = 0.002;
-      line = new Mesh(lineGeo, edgeMat);
-      line.position.z = 0.003;
-      line.visible = false;
-      frameDash.visible = false;
-      g.add(frameDash, line);
-    }
-    // Lot 28 : le repère du jeu (un matériau à lui : en filigrane quand le bloc est absent) et la pastille du jeu suivant (la forme et la couleur de l'autre jeu).
-    let mark: Mesh | null = null;
-    let markMat: MeshBasicMaterial | null = null;
-    let pip: Mesh | null = null;
-    let pipMat: MeshBasicMaterial | null = null;
-    if (c.kind !== "blink") {
-      markMat = new MeshBasicMaterial({ color: style.edge, transparent: true, side: DoubleSide });
-      mark = new Mesh(c.kind === "A" ? barGeo : diamond, markMat);
-      mark.position.z = 0.004;
-      const other = c.kind === "A" ? BLOCK_STYLE.altB : BLOCK_STYLE.altA;
-      pipMat = new MeshBasicMaterial({ color: other.edge, transparent: true, side: DoubleSide });
-      pip = new Mesh(c.kind === "A" ? pipDiamond : pipBar, pipMat);
-      pip.position.set(PIP, PIP, 0.005);
-      pip.visible = false;
-      g.add(mark, pip);
-    }
-    world.add(g);
-    return { g, face, faceMat, edgeMat, frameThin, frameThick, frameDash, line, mark, markMat, pip, base: new Color(style.fill), edge: new Color(style.edge), kind: c.kind };
+    const b = creerBloc(c.kind, c.col, c.row, geos);
+    world.add(b.g);
+    return b;
   });
 
   // ——— ?debug&hitbox : l'état solide (cadre vert) ou absent (croix rouge) de chaque bloc, et le jeu A ou B actif ———

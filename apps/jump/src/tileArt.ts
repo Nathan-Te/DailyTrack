@@ -1,9 +1,10 @@
-import { TILE_EMPTY, TILE_ICE, isSpikeTile, type Level } from "@cdj/jump-sim";
+import { TILE_EMPTY, TILE_ICE, TILE_SPIKE_DOWN, TILE_SPIKE_LEFT, TILE_SPIKE_RIGHT, TILE_SPIKE_UP, isSpikeTile, type Level } from "@cdj/jump-sim";
 import { CHUNK_COLUMNS, RIM, TILE_Z, TRIM_BUMP, buildTileArt as buildTileArtGrille, insideTiles as insideTilesGrille, type CodesTuiles, type TileArt, type TileChunk } from "@cdj/visuels/plateformes/three";
 import type { Art } from "./artKit";
 import { isMatterTile } from "./autotile";
 import { keepoutField, keepouts, type Keepout } from "./decor";
 import { beltDirection } from "./surfaceArt";
+import type { SensPique } from "@cdj/visuels/plateformes";
 import type { TileStyle } from "./themes";
 
 // Dessin des blocs pleins (lot 9), **pur** : chaque tuile `#` selon ses 8 voisins (`autotile.ts`) — coins extérieurs arrondis ou chanfreinés,
@@ -45,3 +46,7 @@ export function buildTileArt(level: Level, style: TileStyle, list: readonly Keep
 export function insideTiles(level: Level, art: Art, slack = TRIM_BUMP): boolean {
   return insideTilesGrille(level, art, isMatterTile, slack);
 }
+
+/** Lot PG1 — le sens d'un pic : où pointe chaque code de pic de la simulation (le dessin des piques, `creerPiques`, est dans `@cdj/visuels/plateformes/three`). `null` : une autre case. */
+const SENS_DES_PICS: Readonly<Record<number, SensPique>> = { [TILE_SPIKE_UP]: "haut", [TILE_SPIKE_DOWN]: "bas", [TILE_SPIKE_LEFT]: "gauche", [TILE_SPIKE_RIGHT]: "droite" };
+export const sensDuPic = (t: number): SensPique | null => SENS_DES_PICS[t] ?? null;

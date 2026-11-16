@@ -32,6 +32,12 @@ export interface PosePersonnage {
 export interface Personnage {
   /** Origine : bas-milieu de la boîte ; le jeu le pose (`position`) et l'ajoute à son monde. */
   groupe: Group;
+  /**
+   * Lot PG1 — **le point d'accroche d'un accessoire** (un bandeau, un chapeau, un sac) : un groupe vide, enfant du corps, que le jeu garnit comme il veut. Il **suit le corps** : l'écrasement et l'étirement (ancrés
+   * en bas), le rebond, le penché (autour du bas du corps), la respiration, et le retournement que le jeu donne au `groupe` (`groupe.scale.y = -1` : la tête en bas). **Son origine est celle du `groupe` au repos** (bas-milieu de
+   * la boîte de collision : un point à `y` = 0,7 est à 0,7 tuile au-dessus des pieds, comme les yeux à `PH × 0,62`) ; il ne se pose pas à chaque image (rien à faire : le corps l'emporte). Vide, il ne change rien au dessin.
+   */
+  accessoire: Group;
   /** Donne la pose de l'image : écrasement, rebond, penché, respiration, pieds, clignement et regard. */
   poser(pose: PosePersonnage): void;
 }
@@ -61,7 +67,10 @@ export function creerPersonnage(options: OptionsPersonnage): Personnage {
     pupils.push(pupil);
     eyes.add(white, pupil);
   }
-  torso.add(eyes);
+  // Lot PG1 : l'accroche d'un accessoire — enfant du corps, remise à l'origine de la boîte au repos (le corps est à `STEP.leg` du bas) : il suit l'écrasement, le rebond, le penché et la respiration.
+  const accessoire = new Group();
+  accessoire.position.y = -STEP.leg;
+  torso.add(eyes, accessoire);
   feet.add(torso);
   const footMat = new MeshBasicMaterial({ color: assombrir(couleur, PIEDS_ASSOMBRIS) });
   const footGeo = new PlaneGeometry(STEP.footW, STEP.footH);
@@ -74,6 +83,7 @@ export function creerPersonnage(options: OptionsPersonnage): Personnage {
 
   return {
     groupe,
+    accessoire,
     poser(pose) {
       const look = pose.look;
       const { sx, sy } = squashScale(look.squash, pose.squashAmount ?? 1);

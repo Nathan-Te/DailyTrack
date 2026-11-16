@@ -1,4 +1,4 @@
-import { COLONNES, LIGNES, MAX_TOUCHES, NB_CASES, Partie, VARIANTE, caseAuPoint, decoderRediffusion, enregistrer, type Contenu, type Touche } from "@cdj/cibles-sim";
+import { COLONNES, LIGNES, MAX_TOUCHES, NB_CASES, Partie, TICKS_PAR_SECONDE, VARIANTE, caseAuPoint, decoderRediffusion, enregistrer, type Contenu, type Touche } from "@cdj/cibles-sim";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 
 // Le rendu et les entrées de « Cibles » : un plateau de 8 × 6 cases en Canvas 2D (pas de Three.js), la cible visible, le curseur du clavier et de la manette, le fantôme. **De l'affichage seulement** : la partie est
@@ -82,6 +82,21 @@ export function nouvellePartieCibles(contenu: Contenu, hote: HTMLElement, o: Opt
       toucher(c);
     }
   });
+  // Lot PG1 — l'essai du HUD en surimpression (`?debug&hud=surimpression`) : le score en grand à gauche, la ligne au centre, le thème à droite, son nom annoncé au milieu pendant une seconde.
+  const zones = o.zones;
+  const neuf = (classe: string, zone: HTMLElement): HTMLElement => zone.appendChild(Object.assign(document.createElement("span"), { className: classe }));
+  const valeur = zones && neuf("jeu-surimpression__valeur", zones.hautGauche);
+  const ligne = zones && neuf("jeu-surimpression__etiquette", zones.centre);
+  if (zones) neuf("jeu-surimpression__cartouche", zones.hautDroite).textContent = o.t(`theme.${o.theme}`);
+  const annonce = zones && neuf("jeu-surimpression__cartouche", zones.annonce);
+  if (annonce) annonce.textContent = o.t(`theme.${o.theme}`);
+  const majZones = (): void => {
+    if (!zones) return;
+    const h = VARIANTE.hud(partie.touches, partie.tick);
+    valeur!.textContent = h.principal;
+    ligne!.textContent = h.secondaire;
+    if (annonce?.isConnected && partie.tick >= TICKS_PAR_SECONDE) annonce.remove();
+  };
   const centre = (c: number): [number, number] => [(c % COLONNES) * cote + cote / 2, Math.floor(c / COLONNES) * cote + cote / 2];
 
   return {
@@ -101,6 +116,7 @@ export function nouvellePartieCibles(contenu: Contenu, hote: HTMLElement, o: Opt
     resultat: () => ({ score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, touches) }),
     fantome: lireFantome,
     dessiner() {
+      majZones();
       g.clearRect(0, 0, canvas.width, canvas.height);
       g.fillStyle = palette.fond;
       g.fillRect(0, 0, cote * COLONNES, cote * LIGNES);

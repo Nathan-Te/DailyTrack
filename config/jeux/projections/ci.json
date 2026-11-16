@@ -1073,6 +1073,14 @@
           "ecrans-kit.spec.ts": [
             "cibles-jeu",
             "ui"
+          ],
+          "chargement-partie.spec.ts": [
+            "cibles-jeu",
+            "ui"
+          ],
+          "surimpression.spec.ts": [
+            "cibles-jeu",
+            "ui"
           ]
         },
         "parts": {
@@ -1081,7 +1089,9 @@
           "nuit": 1
         },
         "regression": [
-          "ecrans-kit.spec.ts"
+          "ecrans-kit.spec.ts",
+          "chargement-partie.spec.ts",
+          "surimpression.spec.ts"
         ]
       },
       "app": "cibles",
@@ -1240,7 +1250,8 @@
       },
       "sim": "blocks-sim",
       "budget": [
-        "blocks.jsCss"
+        "blocks.jsCss",
+        "blocks.demande"
       ],
       "budgetALaDemande": [
         "partie-",
@@ -1363,7 +1374,8 @@
       "sim": "rush-sim",
       "budget": [
         "rush.jsCss",
-        "rush.rendu"
+        "rush.rendu",
+        "rush.demande"
       ],
       "budgetALaDemande": [
         "corps-",
@@ -1489,7 +1501,8 @@
       },
       "sim": "vertige-sim",
       "budget": [
-        "vertige.jsCss"
+        "vertige.jsCss",
+        "vertige.demande"
       ],
       "budgetALaDemande": [
         "corps-",
@@ -1610,7 +1623,8 @@
       },
       "sim": "gravity-sim",
       "budget": [
-        "gravity.jsCss"
+        "gravity.jsCss",
+        "gravity.demande"
       ],
       "budgetALaDemande": [
         "partie-",
@@ -1740,7 +1754,8 @@
       "sim": "pinball-sim",
       "budget": [
         "pinball.jsCss",
-        "pinball.rendu"
+        "pinball.rendu",
+        "pinball.demande"
       ],
       "budgetALaDemande": [
         "partie-",

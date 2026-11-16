@@ -7,6 +7,7 @@ import { suivantDisponible } from "../fantome";
 import { ligneParDefaut, textePartage, adresseDePartage } from "../partage";
 import { commandesDuJeu } from "./commandes";
 import { creerFondFin } from "./fondFin";
+import { creerSurimpression } from "./surimpression";
 import { creerTenues } from "./tenues";
 import { creerVibreur, creerVolumeEffets, lireReglages } from "./reglagesJoueur";
 import type { CodeMedaille, ContextePartie, PartieDuJeu } from "./types";
@@ -57,7 +58,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const pauseBtn = el("button", { classe: "jeu-hud__bouton jeu-hud__pause", attrs: { type: "button", id: "jeu-hud-pause", "aria-label": t("kit.hud.pause") }, texte: "II" });
   pauseBtn.addEventListener("click", () => ouvrirPause());
   pauseBtn.addEventListener("pointerup", () => pauseBtn.blur());
-  const scene = el("div", { classe: "jeu-scene", attrs: { id: "jeu-scene" } }, el("div", { classe: "jeu-hud" }, el("div", { classe: "jeu-hud__gauche" }, principal), el("div", { classe: "jeu-hud__centre" }, secondaire), el("div", { classe: "jeu-hud__droite" }, ...(fantomeBtn ? [fantomeBtn] : []), pauseBtn)), plateau);
+  const surimpression = def.hud === "surimpression" ? creerSurimpression() : null; // lot PG1 : le HUD sur le plateau ; le texte de la barre n'est plus visible (`ecrans.css`), il reste lu
+  const scene = el("div", { classe: surimpression ? "jeu-scene jeu-scene--surimpression" : "jeu-scene", attrs: { id: "jeu-scene" } }, el("div", { classe: "jeu-hud" }, el("div", { classe: "jeu-hud__gauche" }, principal), el("div", { classe: "jeu-hud__centre" }, secondaire), el("div", { classe: "jeu-hud__droite" }, ...(fantomeBtn ? [fantomeBtn] : []), pauseBtn)), plateau);
   c.o.racine.append(scene);
 
   // --- Le fantôme : Aucun → Ma meilleure → Diamant ---
@@ -82,7 +84,11 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   let partie: PartieDuJeu = nouvelle();
   function nouvelle(): PartieDuJeu {
     plateau.replaceChildren();
-    return def.nouvellePartie(c.contenu, plateau, { theme: c.theme, reduit, tactile: d.tactile, libelle: t("scene.aria"), fantome: rediffusionDe(fantome), langue: c.i18n.langue, t: (cle, params) => c.i18n.t(cle, params), vibrer, volumeEffets });
+    if (surimpression) {
+      surimpression.vider();
+      plateau.append(surimpression.racine); // avant la scène du jeu, qui s'ajoute après : les zones sont dessus (z-index), sans jamais attraper un toucher
+    }
+    return def.nouvellePartie(c.contenu, plateau, { theme: c.theme, ...(surimpression ? { zones: surimpression.zones } : {}), reduit, tactile: d.tactile, libelle: t("scene.aria"), fantome: rediffusionDe(fantome), langue: c.i18n.langue, t: (cle, params) => c.i18n.t(cle, params), vibrer, volumeEffets });
   }
   majFantomeBtn();
   let phase: "jeu" | "pause" | "fin" = "jeu";

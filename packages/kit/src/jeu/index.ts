@@ -278,6 +278,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
     try {
       await prets;
       const [contenu, partie] = await Promise.all([contenuP, ctxPartie]);
+      await def.chargerPartie?.(contenu); // lot PG1 : la scène lourde du jeu, attendue avant `nouvellePartie` ; l'accueil reste à l'écran (« Chargement du jeu… ») et une panne rend « Réessaie »
       clearTimeout(lent);
       clearInterval(minuteur);
       message?.montrer(null);
