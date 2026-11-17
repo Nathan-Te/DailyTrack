@@ -67,7 +67,7 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
     try {
       const rendu = creerRendu(apercu, new Partie(contenu, REGLAGES), theme, () => null, t(`theme.${theme}`), police);
       rendu.redimensionner(LARGEUR_APERCU, HAUTEUR_APERCU);
-      rendu.dessiner({ tick: 0, debug: false, alpha: 0, sauvee: 0, eclat: 0, texteSauvee: "", gains: [], multi: 0, message: null, secousse: 0, plaqueVerrou: "", plaqueJackpot: "" });
+      rendu.dessiner({ tick: 0, debug: false, alpha: 0, sauvee: 0, eclat: 0, texteSauvee: "", gains: [], multi: 0, message: null, secousse: 0 });
     } catch {
       apercu.remove(); // pas de canvas 2D : le panneau se lit sans
     }

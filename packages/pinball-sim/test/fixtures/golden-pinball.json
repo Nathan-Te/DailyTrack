@@ -1,8 +1,8 @@
 {
   "_": "Golden de Pinball (lots PB1 à PBG3). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
-  "sim": 6,
-  "generateur": 6,
-  "bot": 5,
+  "sim": 8,
+  "generateur": 7,
+  "bot": 7,
   "jours": [
     {
       "date": "2026-11-02",
@@ -16,12 +16,12 @@
         "portailA",
         "spinner"
       ],
-      "empreinte": "28953ee3",
+      "empreinte": "4bb27bc0",
       "seuils": {
-        "bronze": 354200,
-        "silver": 826500,
-        "gold": 1416800,
-        "author": 2361300
+        "bronze": 229200,
+        "silver": 534700,
+        "gold": 916600,
+        "author": 1527700
       }
     },
     {
@@ -36,12 +36,12 @@
         "bumpers",
         "spinner"
       ],
-      "empreinte": "819c2b7b",
+      "empreinte": "7991de48",
       "seuils": {
-        "bronze": 126500,
-        "silver": 295100,
-        "gold": 505900,
-        "author": 843200
+        "bronze": 188900,
+        "silver": 440800,
+        "gold": 755600,
+        "author": 1259300
       }
     },
     {
@@ -56,12 +56,12 @@
         "cibles",
         "spinner"
       ],
-      "empreinte": "9237218a",
+      "empreinte": "d675a08d",
       "seuils": {
-        "bronze": 373500,
-        "silver": 871400,
-        "gold": 1493900,
-        "author": 2489800
+        "bronze": 472600,
+        "silver": 1102800,
+        "gold": 1890500,
+        "author": 3150800
       }
     },
     {
@@ -76,7 +76,7 @@
         "cibles",
         "mini"
       ],
-      "empreinte": "75edcfc1"
+      "empreinte": "74c25b7a"
     },
     {
       "date": "2026-11-14",
@@ -90,7 +90,7 @@
         "spinner",
         "spinner"
       ],
-      "empreinte": "eaa996f9"
+      "empreinte": "0091e762"
     },
     {
       "date": "2026-11-17",
@@ -104,7 +104,7 @@
         "portailA",
         "mini"
       ],
-      "empreinte": "583469cf"
+      "empreinte": "abe67104"
     },
     {
       "date": "2026-11-20",
@@ -118,12 +118,12 @@
         "geyser",
         "spinner"
       ],
-      "empreinte": "07fc5aba",
+      "empreinte": "31bc2195",
       "seuils": {
-        "bronze": 389600,
-        "silver": 909100,
-        "gold": 1558400,
-        "author": 2597300
+        "bronze": 175600,
+        "silver": 409800,
+        "gold": 702500,
+        "author": 1170800
       }
     },
     {
@@ -138,7 +138,7 @@
         "portailA",
         "mini"
       ],
-      "empreinte": "e70c64a1"
+      "empreinte": "3c86ab96"
     },
     {
       "date": "2026-11-26",
@@ -152,7 +152,7 @@
         "spinner",
         "spinner"
       ],
-      "empreinte": "42cb6abc"
+      "empreinte": "3a74eaef"
     },
     {
       "date": "2026-11-29",
@@ -166,15 +166,15 @@
         "cibles",
         "mini"
       ],
-      "empreinte": "c710bc65"
+      "empreinte": "e5c2377e"
     }
   ],
   "rediffusions": [
     {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 6,
-      "code": "AQYGAJeiAQ",
+      "g": 7,
+      "code": "AQgHAJeiAQ",
       "resultat": {
         "score": 0,
         "ticks": 540000,
@@ -185,8 +185,8 @@
     {
       "nom": "batteurs-tenus",
       "date": "2026-11-02",
-      "g": 6,
-      "code": "AQYGAJeiAUDRDZAcPu1FAw",
+      "g": 7,
+      "code": "AQgHAJeiAUDRDZAcPu1FAw",
       "resultat": {
         "score": 160,
         "ticks": 540000,
@@ -197,8 +197,8 @@
     {
       "nom": "robot-30-secondes",
       "date": "2026-11-20",
-      "g": 6,
-      "code": "AQYGAKmiAZIFjRSGM7kCkFOjC7oF6wK6RusB3ibbAeQuoQu0CvcBxEWtA-xMlwLaFqkCkESvArAY2wPiGo8C7BORAg",
+      "g": 7,
+      "code": "AQgHAKmiAZIFjRSGM7kCkFOjC7oF6wK6RusB3ibbAeQuoQu0CvcBxEWtA-xMlwLaFqkCkESvArAY2wPiGo8C7BORAg",
       "resultat": {
         "score": 9540,
         "ticks": 540000,
@@ -209,46 +209,46 @@
     {
       "nom": "robot-volcan",
       "date": "2026-11-10",
-      "g": 6,
-      "code": "AQYGAJ-iAZIFjRTuNcUCmj3pFpYxswKaF6EL8gfrArY5gwLiIZECzh-FAuZL0QLkHJUCmizZAaAtuQO-G5EC1Cm_FrBA7QHGDqML6gX9AuItswPCN-0BlDKhAt4K3wGAN-EBwESjAswUxQOKKeEB4iuhFuYw3wG8MaMLyAS7Apg_3wGsLuMTyDatAqobyQOiKI8C0hXvFrww6wGAF5sToAWJAtYUgwKyIaML5BChC8YXowuKIKML5gTWBNEG6wwyowviBYMC2AShC6QTowuKCKML-AmJAvYgoQOIFKELyASvCIgXoQuqBqELtgr_AfQviQLWF9sD1hvnAfAq9gT3AbMQgiHnAdgNmwLkKMsCwgWxFP4P8QHeNaML-Ab3AZwgxwLyLJUTjAbxAbgvoQvWCaMLvATlAuIhowvWBuEB1CXnAaou8QWiEPEBnhjXCL4g3QKeM5sC9AyjC_gEwQL2B-UBqhKhC-YKowuQCt8BlhrzAbQDoxWuEOsByiCDAogI6wGMG60Crg3xAbYq8QE",
+      "g": 7,
+      "code": "AQgHAJ-iAZIFjRTuNcUCmj3pFpYxswKaF6EL8gfrArY5gwLiIZECzh-FAuZL0QLkHJUCmizZAaAtuQO-G5EC1Cm_FrBA7QHGDqML6gX9AuItswPCN-0BlDKhAt4K3wGAN-EBwESjAswUxQOKKeEB4iuhFuYw3wG8MaMLyAS7Apg_3wGsLuMTyDatAqobyQOiKI8C0hXvFrww6wGAF_EMCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLrgeJAtYUgwLeHaML3A-jC8IEmwb8A6sRCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwIKCwoLCgsKCwoLCgsK9wKvEgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv4GKELhgr_AYoLhwSUP9sB0gujC-IJ4QG0B5sCuhChC-AnoQKWE5sFohDxAYwwoQucBKUDpCj1BrYG8QHkFN0GsBbzAd4ioQu6BI0JohnxAe5c6wHUTOEBwg3hAdSUAaMLkAXHApwR4QGUK80V4jKhAqQYiQLoQ7UVpkLnAZagAYEGwBThAQ",
       "resultat": {
-        "score": 2465430,
+        "score": 245720,
         "ticks": 540000,
         "billes": 2,
-        "multMax": 4
+        "multMax": 6
       }
     },
     {
       "nom": "robot-espace",
       "date": "2026-11-04",
-      "g": 6,
-      "code": "AQYGAJmiAZIFjRTqN8sCgjbtAYgxixX8N9kB5D0CiQIDkCDbAZZB5wHoXKELoAjrAY5K3wGuIuUB2CvZAZpo6wGGVI8CwhvlAcQt4QHiE88UqDqzAsI98wHaGNkBlhLjFogqiwL0CKELzgTnAc4EowuuBPEE-h0CjwID1BztAf4VoQusCu0U5BqjC8gHiwLoBdcC1C6XAvgiowu6BN8BgBKhC7wEowvSBaMLwgT9AuwH4QGeGPEB3hGjC9AXtwP8A6MVoiDnAcwWswKcKPcBugWjC8wKoQvOBIUC0A_5Aa4T2QGYBrMCsh6jC-gPowuiBaML9AajC6YjsQP4HuUB4iejC9oEkQKoEwLrAQOKNdEDjinZAa43lQLmWKMLrAapAoYi5wHsDOUB_CWnAuoi2QG8NoMC6DuhC4AK5wG4HvkB9CPZAY5f6wG-b6MLhgrhAbxH_xTaM6EL2g3nAbQf3wH2FKMLmBL9AbwoowuaC6sD",
+      "g": 7,
+      "code": "AQgHAJmiAZIFjRTqN8sCgjbtAYgxixX8N9kB5D0CiQIDkCDbAZZB5wHoXKELoAjrAY5K3wGuIuUBmiblB6gOowvmCv8B3heFAsx58QSIEqMLrgj_AbwZ4QHIE8sDhC77ArBIhwa0Q6EL0gT1CLYPgwL2hgGjC6AGqQLEGt8BsDbdArA02wHKQaEL1ATzAaxTAusBA5hXAusBA5I_pwLsMeEBuhq7AvYd4QHykAGhC6IE2QHwEpsTgjjfAdBEywL0R5UC4h0C5QEDjBTnEQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLkj2jC-4M_wHWGNsBnAuLAsQVnQK8JALrAQPgIqMLvgmjC4ASoQvUBKMLsASjC8YEuQX6Cf8BkAr1ArYQ7QGGO5sQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLcoMCzDTfAZIP2QG8BOcB4hcC6wEDmBvfAbYc4QGgEqUK0joCoQsDxgXhAdAU3wHoMKMLkAr1CIYPgwLiMqEL7gjlAYofoQU",
       "resultat": {
-        "score": 348600,
+        "score": 710320,
         "ticks": 540000,
         "billes": 2,
-        "multMax": 4
+        "multMax": 5
       }
     },
     {
       "nom": "robot-foire",
       "date": "2026-11-07",
-      "g": 6,
-      "code": "AQYGAJyiAZIFjRSGM7kCkFOjC_IE_QLWR-sBuibhAbQj4QH-LIcX2jCbAswWoQL-JZ0F6BjtAZgf2wGASeEBrAn_AewZzwTGFNMChkXxAa4jkQKsfY8C8hiDApgxkQKKGucBkBbZAeISlwLqGuEBgDnhA7ImjwLeFqcCkCajC5AF7QH-Jf8BzB3bAYpS-wLGMbMC8kKhC4gF1wLGDpcCqhvfAdoGvwLSH_EB4g6hC8QF3wG0K-8ChBzlAbgagQOSN-0BpB_bAYRb6wGOY6MLzAj5AfwmhQLKHYkC2C6hC_YIiQOWEs8UijSJApAZpwLUGIkC2lujC4IGwQKAH-cBmDyJAqI-2wHqGaMHjhehC6IEsQPONPkBtFajC9AGowLcGO0BuhWHF9YU8QHSGqML9hmHA84OnAqVAoMHoCyhC5AcAqELA7oOiwK8BOcByAeVA-oI2QKiDYMCnBTtAdgEmwL8GfEB2AipAg",
+      "g": 7,
+      "code": "AQgHAJyiAZIFjRSGM7kCkFOjC_IE_QLWR-sBuibhAbQj4QH-LIcX2jCbAswWoQL-JZ0F6BjtAdIagwP2YesBtB35AfqPAYMCtjCjB_wOowv2CJEC0CHhAeQ4owvQBoUClibnAew5owSeE5cC3iDtAeQolwS0LKML6gXbAdAUoQumDe8Tqja5Aro9gwLacsEEtCDtAfAVpxO6NJMD1iP3AfwyrwKqXqMLkBSRAvQ1pQPGRNsBslOVAtQYmwK-DOEBsF3fAa5BnQLWE8UNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvmG-UB9B2hC9oE4QSUCOsBnhKPAqAq4QGOJusBhBOhC4AJoQuuBKELtgmhC4oj_wGMN-0BtBrfBeIyoQK6GeUB3A-RApwplwLEGO0BrFPlAaQZowLsNr8CqI4B-wLoHaELnATpAg",
       "resultat": {
-        "score": 159830,
+        "score": 129150,
         "ticks": 540000,
-        "billes": 2,
+        "billes": 1,
         "multMax": 3
       }
     },
     {
       "nom": "robot-ocean",
       "date": "2026-11-06",
-      "g": 6,
-      "code": "AQYGAJuiAZIFjRSWNOUBxBqPAogqkQKAOuEBnHGpAuj-AaEL9gffAYAknwP-P7MC4B73BOYSpwL0LKELgBCFAswl2QGiIvEBvBuzBf49owukCvkBjCH3Aaw55wGqD-UB2g3hAc4kAuUBA5wm-QG8qwGhApQUAuUBA8YplwKoDeUBhi0C3wED0BGPAooRrwLOM_cBrCrrApxo4QGgGuUBng8C5QEDiBjnAcAZAtkBA8AZ6QKqGwLrAQPyNt8BhDybE_A0uQLcC_EB2Bz7AoAbAusBA5QorxWKMa0CsCqDAo42qQK0LJsDoCSXApA9xQLMF9sBqEfnBKolhQKWENkB7k7_AY5LxwjeIK8C-G_fAdQn6wGEGOMW7i_lAeoYyxOGNokCyhehC_YHAuUBA-wN8wHmD_cB",
+      "g": 7,
+      "code": "AQgHAJuiAZIFjRSWNOUBxBqPAogqkQKAOuEBnHGpAuj-AaEL9gffAYAknwP-P7MC4B73BOYSpwL0LKELgBCFAswl2QGiIvEBvBuzBf49owukCvkBjCH3Aaw55wGqD-UB2g3hAc4kAuUBA5wm-QG8qwGhApQUAuUBA8YplwKoDeUBhi0C3wED0BGPAooRrwLOM_cBrCrrApxo4QGgGuUBng8C5QEDiBjnAcAZAtkBA8AZ6QKqGwLrAQPyNt8BhDybE_A0uQLcC_EB2Bz7AoAbAusBA5QorxWKMa0CsCqDAtg1kQKIfKcTwjblAb5RowvMCPMBrES_Avwi2QHQJJcCxiSVDQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguSP6ELsmSLDAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLngHhAe448QGoDrMG8gKxFAoLCgv0BQKnAgPgHgLlAQPEEQLfAQPOEqELlA7ZBJ4TowuoDg",
       "resultat": {
-        "score": 106650,
+        "score": 211080,
         "ticks": 540000,
         "billes": 3,
         "multMax": 3
@@ -257,37 +257,37 @@
     {
       "nom": "robot-multibilles",
       "date": "2026-11-13",
-      "g": 6,
-      "code": "AQYGAKKiAZIFjRSGM7kCkFOjC94F3wKQRuUBtB3bAfY7owv8CYcXui6tArAiywPaLucBpkGJArZGlwLMGtsBjjyjC5oTixWKMZMD0ij9Ad4vhQKUWqML8AipAro38QHMT6EL_AT1ArIM5wH-N-cBnBmnAt4HoQuUCesC-g3vE6o2uQKcEOkC1jmVA_4nmwK6GaEC1BfBFZgY5QH4HgLrAQOODtUGgiChC5Ap5wGCDucD-i2jC7IGjQfYHJUCjBjlAYww5QG6HIMCuBebAvwWlQKICIMCiCr_Abw95QWGIpcCxh_ZAe4towu6BdsBrlajC8AFwQKgX-sBnCPzAZgu2wHUH6ML3g3rAe4a9QWcRKMLxgW7ArourQWgL6EC5hiVAroW3wT4P6ELlgfrAbgdgwLcFLkC1hjzAcYp2wHmH6MLwA3rAfQa7wWiRKMLxgW7AuAiwQKWEN0CojqhC9gK6wHEGt0FoimjC64E3wGwPOUBrhfbAa4i3QLKGqELogS3A7Ax1wPaLqMCohKZFMZB7QHoLMsFpBihC8wEnwO6KaMC5h7lAbII6wGmJ7cElCOhC-QE7wK-DKML3gi1Aswf6wHAHKELtASHA7wo7QHiD-0BkhbtAcRClwKSIosClCf5AYpI4xOuGd8BvBsCoQsDqBmhC6IEtwPiMKML3AajC5IHkQLiBv0ClBe5ApYa3wXKKdECghflAcQPowvACP0C5h-jC6APowvsCf0BygvlAegdpQbSQaMLiBflAdwarQLsRaEL0gSZA-QZ5QHWGocD1CGVAtgWpwKSJaMLthCXArYbxQLQF5sClgrlAdQY5QGAJKECgBW5AqQhvwKuEMsCnjqjC6IIzQKSRd8BjBydAog8owvUBA",
+      "g": 7,
+      "code": "AQgHAKKiAZIFjRSGM7kCkFOjC94F3wKQRuUBtB3bAfY7owv8CYcXui6tArAiywPaLucBpkGJArZGlwLMGtsBjjyjC5oTixWKMZMD0ij9Ad4vhQKUWqML8AipAro38QHMT6EL_AT1ArIM5wH-N-cBnBmnAt4HoQuUCesC-g3vE6o2uQKcEOkC1jmVA_4nmwK6GaEC1Bf3DwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC8Ib6wHUEOcBuA-jC84HowvABIcJnhKhC-AM5QHeFpUCghehC8oFoQvMB6ELtAShC8oRoQvgBKMLgAo",
       "resultat": {
-        "score": 1506350,
-        "ticks": 128887,
+        "score": 144340,
+        "ticks": 41696,
         "billes": 0,
-        "multMax": 6
+        "multMax": 3
       }
     },
     {
       "nom": "robot-deblocages",
       "date": "2026-11-11",
-      "g": 6,
-      "code": "AQYGAKCiAYQGlxW8SN8B0nzfAZJS2wGaRKELmgvRAs458QHkLO0BiBSDAvoo_RLqOt8B6lWhC4AJ5QHeU-EB_BfhAaAk2wGgRKEL6AubAoJN5QGIPNsB_BvvFuox3wHIUfsCgDr5AeYbvQO2MeEB4iyhC_gGuQLKLeEB9DWhC8AEoQucBIsExh_9AZob2wGYM8UC8DShC6gEoQv-Dv0S2jndAuBA4QG4E-MTtBOhC-QEoQu6BKEL2AShC7QEoQuuE5sC9A6hC9Yg0wSkE5UD6BWjC4Qj7QHeDaELrgehC9wLApUCA7BYowvMBKEL4AvFFtIx5QHiSvcB7lb3AYhK9wH6b80C1C3ZAcol4RS0N98BiC7XE6BHgwKUaPEBsBsC6wED_hntAcwv5wH4G98BnlrZAfoY4QG0I9sBmkShC9gK6QLqJr8DhiGDApo4mwK-PNsBqhyjC74GuwK6RNsBwjSFAtAg3wGeXdkBjBSNF4RJmwKAMLsEkCjrAfwl4QaWDYkCyjD_AaZEmwKuQKEL3AWnApw2mRTQEaELwAShC8oIoQvCCaEC8DujC8wEoQuuBKELzC6hC9gEoQusBQ",
+      "g": 7,
+      "code": "AQgHAKCiAYQGlxW8SN8B0nzfAZJS2wGaRKELmgvRAs458QHkLO0BiBSDAvoo_RLqOt8B6lWhC4AJ5QHeU-EB_BfhAcAatQKMKOcB_iKjC_Ih9wGoFZ0VmjK9A7Au_wHOJ6ELpAzxAZAu8QGGN4UC0BehC7wE_wGkVKEL8AflAZoTnQ8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL4BKhC6IEoQvcCKEL3gShC6YIAusBA7ooywLaHqELkAqtAoQLowuIC_0B-AYC5QED7BihC4wMlQL6KaELxAX3AdoSoQv2B_UF4CXrAvAZoQusBqML0A_bAZgl4QGACbMCjB-jC_IJsQbIIaECxgjbAZYvowvIGJUCiCffAoghowviBuEB2BmVAoAuwQKCDNsBpByjC-gMowueD98BsB_tAf4YgwKuSu0B-BCBBLQdowuqB4sC2B8C6wED8hntAeQg2wHaOf0Brg2hC_wHgwK2LeUB4FrfAd5Q7QHqKe0Bgi_9AZhAiwKeGALrAQOoIpUCwA3ZAa4gowvYBNkE5EyhC9gEoQvgBOcBthnHBYI8kQK4d-UBzGehC-gLmwKQT5sC9jvbAf4cowvCBIMDoi-7ApBMAusBA9QZ_wGoGL0XjkSVArI82wGYHKMLhgrhAZwZ6wHcKaELqgbZAe440QLUOd8B-kf3AZoJ4QGaU6EL5ASNA7KNAa0DwCjlAQ",
       "resultat": {
-        "score": 474650,
+        "score": 626770,
         "ticks": 540000,
-        "billes": 1,
-        "multMax": 5
+        "billes": 2,
+        "multMax": 3
       }
     },
     {
       "nom": "robot-multibilles-court",
       "date": "2026-11-11",
-      "g": 6,
-      "code": "AQYGAKCiAZIFjRTqN8sCgj_bAYhEoQvcC60CmEWhC5oLpwKmRKELggunAtBEoQuOC7kC0kahC-4I5QH0NfcBlh-_BcAT6wG2PN8BhBr_AcAo3wHeFOcBsBv3Ae5s-QGkHuUBpl-hC9QK7QHMFbkT5jbjAoo06wHUJ5kD5BmhC8YEqwOmL98B-lSdAt4g2wGCU98B5CGBF6oPoQusC6ELxgebAvYZoQvwBaML4AbZAYoH3wHsJIkCwCrKBQLfAQPlD64F-QHECI8CqiGhC6YLoQveCOEBvAahC-gO6wHkGqMLtAShC7AJoQvCFqML6AzhAegOrQK4I98B9hYC5QEDgk2hC4YJ3wHWadsBgCipApQs3wHMNALrAQPAIOcBrh-PApgqAusBA-gd9wH-GaMLpgb_AaQn2QGOWaEL-gjlAcw4zQKqKOEB6hblAZJMowvcCwLrAQPaGZcCkCyjC6gF4QGuWZMEuCHzAZg5ywL2N6ELzAcC6wEDhBrnAbYXiROgX5sCmjzbAcgi_wG2RqML_AcC5QED_EyVAvpL2wH2Fc0Vog2hC8wEoQuaC6ELpAbxAZgS8QGKDqML_h_zAbQynQKyGqELxgShC7AHhQKwG-sBhBYCoQsD2gzfAbwy-gnnAZ8LqDHfAZoG5wGcLtkBtBHhAbIXoQvGBKELugr3AcIH5wGQH-UBwDXBAuYWvwPGKOUBhC_hAZQU2QHANKEL0hzxAYY9owKoJdkBhhWhC4gL9wGGEqELtAehC-wEowv6CeEBkB-hC8YEoQvoC_cBihnXAq47uwX6EeUBhA6dAp4b8QGSDKELuCGrBMAg7QHEU6ELrAjlAZ5IoQv0C6cC6kOhC4YMmwLSTOsBlDgC6wED_jzrAfI9-QGSJNkBuEShC9YLpwK-RKELpguzAtJGoQvEC5sC5E-JAtYe4QHUG98B_lqhC-QKuQKgR6ELuAunAppEoQv2CtcC_Cm1BYQg_wGkNfESqjahC-4PkQLAH_0BiiihC8IJ5QHyO9EWjDa5Aq4xAuUBA4oZgwKiJ80V8jOhAsoyAusBA8xVoQvSBKEL0gTbA9gj4QHAGMMUkEyVAqA82wH4Iu0B-C7bAcZelQKwGYsC7i3nAfge9wGOC_UF1hLbAbwUoRP4EqELugShC8YEoQv-BokCxi6VC84H4QGoIqEL2gyhC44IswLmDKEL3gShC_wHmwKwGKELkgejC9ZH3wGsYqcC6BvhAawUuQLGRIsC0kmhC-ILrQKeRaELoAuzArRGoQvcC6cC3kOhC9YLpwKIRKELsguzAqJGoQu-C7kC_EahC8oLpwKaRKELyguzArpGoQviC5sCxkyDAq4v4QHoKKUUxDXrAQ",
+      "g": 7,
+      "code": "AQgHAKCiAZIFjRTqN8sCgj_bAYhEoQvcC60CmEWhC5oLpwKmRKELggunAtBEoQuOC7kC0kahC-4I5QH0NfcBlh-_BcAT6wG2PN8BhBr_AcAo3wHeFOcBsBv3Ae5s-QGkHuUBpl-hC9QK7QHMFbkT5jbjAoo06wHUJ5kD5BmhC8YEqwOmL98B-lSdAt4g2wGCU98B5CGPEwoLCgsKCwoLCgvgEqELrAuhC9IQhwbkF4sCyCShC-wboQvABKEL-A-hC_gJoQvOE98CphjtAcQkkQKaKrsCtAT9AaIL7QGIEQLrAQOEGucB3Aj9Acwg_wHSJqML3gWjC_YE3wH-GfMBohAC5QED4BntAfAroQvKCeEB3gi7As4i4QHkGqMLogTZAbIaoQvyEqELtASrA7Yk9QKyHQLrAQOCIe0BpDGTBP4k8QGEGYkCiD6VAoQUowuqBt8BghXbAbYTowuqBOcB8CmjC44F3wHwKfMBxjGhC5QYowviDOEB1GPrAaIjowusBu0BljjhAe5BoQviC5sC8E-JAoRMoQuYEa0T7DnxAYYtoQvuC5sCllmjC6wGtQLcRdsBuGmNBJYi6wGoQpsTiDjfAdgoAt8BA4YqAuUBA5KmAfkBxinbAbhEoQuUC7MC2kWhC7ILrQLWRKEL3AunArYUuRPyNoMCqljbAdwTqxEKCwoLCgsKCwoLCgsKCwoLCgvyEqELogShC8AEoQvqB5UC5jeHBPwDvxAKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL5AWjC9YM5wHGIuMC7DmhC7IJowueBKMLvATJBLwZowuOEqMLmBbnAcI5jwKuL-0B3hbfAa5JoQu4C7MC2kWhC7ILrQLERKELsgutAspEoQusC60CgEWhC7ILpwKaRKEL3grjAvQy5QHujwEC6wEDtBrnAegthQLEGJcCxiICoQsDzgubE8A63wHyFtsBhhz_Ac43owumCOsBiFmhC5QLswLURaEL3AuzAs5FoQvkCrkCoEehC7gLpwKaRKEL9grXAvwptQWEIP8B6kmVAroy-QGCG6MLwgSRArw_gwLIY6ELrAihC8wEpQOCKrUCvCrfAaoXgxacMb0D6iiJAtY4lQLEPNsBpByjC6QK4QHAMuEBqi7hAYxspwLCQ_MBghePAvYR2wH4FPcMCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC5AToQveCqEL0AXfAbIIlQLIEusBnAePApoWkgmxBQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-UEwCKhC6IEoQvOD6ELqA33AYIYowu-CecB3BGhC8YHgwK-Du8CoibtAYAP_QHUGwKhCwO2BKMLxgShC_wNoQv0Ba0CkEyhC8oIvQPaN9sBziSVAswl5QGKYaELwAShC7wJ8QHWKdkB1BCFAuAV3wHOCvMBghKjC-AE2wHKDtkB6BiFAvIejQOEPZsCzhj1Asoa8waEHaMLvASDA9Ql2wHsDeEBsB7fAcgZwQLuJ6ML0gr3AZ4PgwL6IecBvDChAvgwoQI",
       "resultat": {
-        "score": 1837150,
-        "ticks": 540000,
-        "billes": 2,
-        "multMax": 5
+        "score": 3141970,
+        "ticks": 217958,
+        "billes": 0,
+        "multMax": 6
       }
     }
   ]

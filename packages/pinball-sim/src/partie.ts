@@ -90,6 +90,8 @@ export interface Bille {
   charge: number;
   entree: number;
   sauvee: boolean;
+  /** Lot PBL1 : le poteau sauveur a déjà servi cette bille (il ne la sert plus, et elle n'allume plus ses lampes). */
+  servie: boolean;
   geyserJets: number;
   manegeSecteur: number[];
   couleeDedans: boolean[];
@@ -116,7 +118,7 @@ export interface BilleVue {
 }
 
 const billeVide = (id: number, nbPlateaux: number, nbCoulees: number): Bille => ({
-  id, x: 0, y: 0, vx: 0, vy: 0, px: 0, py: 0, captifDe: -1, captifTb: -1, captif: 0, dansLanceur: false, charge: 0, entree: 0, sauvee: false, geyserJets: 0,
+  id, x: 0, y: 0, vx: 0, vy: 0, px: 0, py: 0, captifDe: -1, captifTb: -1, captif: 0, dansLanceur: false, charge: 0, entree: 0, sauvee: false, servie: false, geyserJets: 0,
   manegeSecteur: new Array<number>(nbPlateaux).fill(-1), couleeDedans: new Array<boolean>(nbCoulees).fill(false), couche: 0, rail: -1, railS: 0, railV: 0, railDepuis: 0, railBout: 0,
 });
 
@@ -148,6 +150,8 @@ export class Partie {
   /** Le pas où la bille courante est entrée en jeu, et si elle a déjà été sauvée. */
   entree = 0;
   sauvee = false;
+  /** Lot PBL1 : le poteau sauveur a déjà servi la bille principale (une fois par bille : il ne la sert plus et elle n'allume plus ses lampes). */
+  servie = false;
   /** Les batteurs : l'angle (en angles de table), celui du pas d'avant. */
   a: [number, number];
   aAvant: [number, number];
@@ -311,6 +315,7 @@ export class Partie {
     this.charge = m.charge;
     this.entree = m.entree;
     this.sauvee = m.sauvee;
+    this.servie = m.servie;
     this.appui[0] = m.appui[0];
     this.appui[1] = m.appui[1];
     this.appuiLanceur = m.appuiLanceur;
@@ -521,6 +526,9 @@ export class Partie {
   /** La multibille finit (il ne reste qu'une bille sur la table) : la mission revient au niveau suivant, son but plus haut (`missionButPas` %, arrondi au-dessus). */
   private finMultibille(): void {
     this.multibille = false;
+    // lot PBL1 : une bille que le lanceur était en train de charger tout seul attend de nouveau le joueur (sa charge repart de zéro : jamais un départ à demi-puissance)
+    if (this.dansLanceur) this.charge = 0;
+    for (const b of this.autres) if (b.dansLanceur) b.charge = 0;
     this.sauveeMulti = 0;
     this.jackpots = 0;
     this.niveau++;
@@ -595,6 +603,7 @@ export class Partie {
     n = this.railDepuis; this.railDepuis = b.railDepuis; b.railDepuis = n;
     o = this.dansLanceur; this.dansLanceur = b.dansLanceur; b.dansLanceur = o;
     o = this.sauvee; this.sauvee = b.sauvee; b.sauvee = o;
+    o = this.servie; this.servie = b.servie; b.servie = o;
     const c = this.couche; this.couche = b.couche; b.couche = c;
     const bo = this.railBout; this.railBout = b.railBout; b.railBout = bo;
     const ms = this.manegeSecteur; this.manegeSecteur = b.manegeSecteur; b.manegeSecteur = ms;
@@ -664,6 +673,7 @@ export class Partie {
     this.dansLanceur = true;
     this.charge = 0;
     this.sauvee = false;
+    this.servie = false;
     this.geyserJets = 0;
     this.manegeSecteur.fill(-1);
     this.id = this.suivantId++;
@@ -795,8 +805,11 @@ export class Partie {
       return;
     }
     if (this.dansLanceur) {
-      if (this.appuiLanceur) this.charge = Math.min(CHARGE_MAX, this.charge + d.chargeParPas);
-      else if (this.charge > 0) {
+      // lot PBL1 : **pendant la multibille le lanceur part tout seul** — toute bille qui y attend (celle qu'amène le verrou, ou une bille revenue par le couloir) se charge d'elle-même et part à pleine puissance :
+      // le joueur n'a rien à tenir, et les commandes du lanceur n'y changent rien
+      const auto = this.multibille;
+      if (this.appuiLanceur || auto) this.charge = Math.min(CHARGE_MAX, this.charge + d.chargeParPas);
+      if (auto ? this.charge >= CHARGE_MAX : !this.appuiLanceur && this.charge > 0) {
         this.vy = -div((r.lanceurBase * CHARGE_MAX + r.lanceurPlus * this.charge) * UNITE, CHARGE_MAX);
         this.charge = 0;
         this.dansLanceur = false;
@@ -860,7 +873,7 @@ export class Partie {
     // lot PBG1 : le mini-batteur suit l'angle du batteur du même côté (le même appui : la rediffusion ne change pas de forme)
     if (t.mini) this.batteur(t.mini.cote, t.mini.x, t.mini.y, t.mini.longueur);
     // lot PBG3 : le poteau sauveur, quand il est armé, renvoie la bille vers le haut une fois
-    if (this.lampes[0] && this.lampes[1]) this.sauveur(r, t);
+    if (!this.servie && this.lampes[0] && this.lampes[1]) this.sauveur(r, t);
     // --- les capteurs
     for (let i = 0; i < t.voies.length; i++) {
       const v = t.voies[i]!;
@@ -879,7 +892,8 @@ export class Partie {
     // lot PBG3 : les lampes des couloirs de retour (la bille y descend), puis le passage de la porte
     for (let i = 0; i < 2; i++) {
       const l = t.sauveur.lampes[i]!;
-      if (!this.lampes[i] && oy < l.y && this.y >= l.y && Math.abs(this.x - l.x) < l.l) {
+      // lot PBL1 : une bille que le poteau a déjà servie n'allume plus les lampes (une fois par bille)
+      if (!this.servie && !this.lampes[i] && oy < l.y && this.y >= l.y && Math.abs(this.x - l.x) < l.l) {
         this.lampes[i] = true;
         this.ev2 |= EV2_LAMPE;
         if (this.lampes[0] && this.lampes[1]) {
@@ -924,8 +938,10 @@ export class Partie {
     if (this.y > PERDUE_Y * UNITE) {
       if (this.multibille) this.perdueEnMultibille();
       else if (r.sauvee > 0 && !this.sauvee && this.tick - this.entree <= r.sauvee) {
+        const servie = this.servie; // la même bille revient au lanceur : le poteau l'a déjà servie, ou pas
         this.nouvelleBille();
         this.sauvee = true;
+        this.servie = servie;
         this.ev |= EV_SAUVEE;
       } else {
         this.ev |= EV_PERDUE;
@@ -939,7 +955,7 @@ export class Partie {
 
   /**
    * **Le poteau sauveur** (lot PBG3). Armé (les deux lampes allumées), il sort entre les batteurs ; la première bille qui le touche est renvoyée vers le haut (`sauveurForce` px/s) et un peu de côté (`sauveurDevie` px/s, du côté où elle l'a touché : jamais droit au milieu de la table),
-   * **une seule fois** : il redescend et les lampes s'éteignent. Pendant la multibille il sert à la première bille qui le touche, quelle qu'elle soit.
+   * **une seule fois par bille** (lot PBL1) : il redescend, les lampes s'éteignent, et la bille servie (`servie`) n'allume plus rien ni n'est servie de nouveau avant la bille suivante. Pendant la multibille il sert la première bille qui le touche et que lui n'a pas encore servie.
    */
   private sauveur(r: Reglages, t: Table): void {
     const z = t.sauveur;
@@ -962,6 +978,7 @@ export class Partie {
     this.px = this.x;
     this.py = this.y;
     this.lampes = [false, false];
+    this.servie = true;
     this.sauvetages++;
     this.sauveurTick = this.tick;
     this.ev2 |= EV2_SAUVEUR;

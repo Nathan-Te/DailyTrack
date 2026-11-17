@@ -55,12 +55,13 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, type Partie, type ThemePinball } from "@cdj/pinball-sim";
-import { flechesDesRails as flechesDesRailsDe, BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, empreinteDuModule, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
+import { flechesAuSol, BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, dessinerSol, empreinteDuModule, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Etiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 import { creerModules } from "./modeles/trois";
 import { FENETRES, creerRails3d, hauteurBille, hauteurVue } from "./rails3d";
 import { hauteurRail } from "./rails";
-import { angleVise, boutLibre, couleurAiguillage, geoAiguillage, geoPorte, ouverturePorte, rapprocher, sortiePoteau } from "./deblocages";
+import { creerIndications } from "./indications";
+import { COULEURS_INTENTION, angleVise, boutLibre, couleurAiguillage, geoAiguillage, geoPorte, ouverturePorte, rapprocher, sortiePoteau } from "./deblocages";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
 // Le sol de la table est le dessin à plat de `dessin.ts` (`dessinerSol`) posé en texture, avec ses bandes, ses lampes éteintes, ses flèches et le nom du thème, dans la palette du thème ; par-dessus, en volume : le meuble en
@@ -931,32 +932,39 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     groupe.add(s);
     return m;
   });
-  // les flèches qui clignotent : celles des modules qui comptent pour la mission, tant qu'elle n'est pas réussie
+  // --- Lot PBL1 : les flèches au sol. Éteintes, elles sont peintes dans le sol (`dessinerSol`) ; **les flèches vives** — celles que `indications.ts` allume, trois au plus, dans la couleur de leur intention — sont ici, une par flèche du sol,
+  // invisibles tant qu'elles ne comptent pas : le dessus (la couleur), son cerne d'encre et un halo doux de la même couleur.
+  const indications = creerIndications(partie, flechesAuSol(t, o.theme));
   const forme = new Shape([new Vector2(13, 0), new Vector2(-7, -11), new Vector2(-3, 0), new Vector2(-7, 11)]);
-  const flechesM = t.poses
-    .filter((m) => comptePourLaMission(o.theme, m.type))
-    .map((m) => {
-      const f = flecheDe(m);
-      const g = new Group();
-      g.position.set(X(f.x), 0, Z(f.y));
-      g.rotation.y = -f.a;
-      const trait2 = new MeshBasicMaterial({ color: ENCRE, side: DoubleSide });
-      const plein = new MeshBasicMaterial({ color: couleurModule(P, o.theme, m.type), side: DoubleSide });
-      aLiberer.push(trait2, plein);
-      const geoForme = geo(new ShapeGeometry(forme));
-      geoForme.rotateX(Math.PI / 2);
-      const dessous = new Mesh(geoForme, trait2);
-      dessous.scale.setScalar(1.28);
-      dessous.position.y = 0.95;
-      dessous.renderOrder = 2;
-      const dessus = new Mesh(geoForme, plein);
-      dessus.position.y = 1.05;
-      dessus.renderOrder = 3;
-      g.add(dessous, dessus);
-      g.visible = false;
-      groupe.add(g);
-      return g;
-    });
+  const flechesVives = new Map<string, { g: Group; plein: MeshBasicMaterial; halo: MeshBasicMaterial }>();
+  for (const f of indications.sol) {
+    const g = new Group();
+    g.position.set(X(f.x), 0, Z(f.y));
+    g.rotation.y = -f.a;
+    const trait2 = new MeshBasicMaterial({ color: ENCRE, side: DoubleSide });
+    const plein = new MeshBasicMaterial({ color: COULEURS_INTENTION.mission, side: DoubleSide });
+    const lueurFleche = new MeshBasicMaterial({ color: COULEURS_INTENTION.mission, transparent: true, opacity: 0.38, depthWrite: false });
+    aLiberer.push(trait2, plein, lueurFleche);
+    const geoForme = geo(new ShapeGeometry(forme));
+    geoForme.rotateX(Math.PI / 2);
+    const lueurGeo = geo(new CircleGeometry(17, 24));
+    lueurGeo.rotateX(-Math.PI / 2);
+    const lueurM = new Mesh(lueurGeo, lueurFleche);
+    lueurM.position.y = 0.8;
+    lueurM.renderOrder = 2;
+    const dessous = new Mesh(geoForme, trait2);
+    dessous.scale.setScalar(1.25 * 1.28);
+    dessous.position.y = 0.95;
+    dessous.renderOrder = 2;
+    const dessus = new Mesh(geoForme, plein);
+    dessus.scale.setScalar(1.25);
+    dessus.position.y = 1.05;
+    dessus.renderOrder = 3;
+    g.add(lueurM, dessous, dessus);
+    g.visible = false;
+    groupe.add(g);
+    flechesVives.set(f.id, { g, plein, halo: lueurFleche });
+  }
 
   // --- Les lampes : les trois couloirs du haut et les multiplicateurs (allumées quand la partie les allume)
   const lueur = (): MeshStandardMaterial => mat(MOUTARDE, { emissive: MOUTARDE, unique: true });
@@ -1234,35 +1242,13 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     return h;
   };
   const trouVerrou = t.verrou >= 0 ? t.trous[t.verrou]! : null;
-  const haloVerrou = trouVerrou ? halo(px(trouVerrou.x), px(trouVerrou.y), px(trouVerrou.r) * 3.2, "#B8F6FF") : null;
-  const halosJackpot = t.poses.filter((m) => comptePourLaMission(o.theme, m.type)).map((m) => halo(px(m.x), px(m.y), empreinteDuModule(m.type) * 1.7, "#FFF3A8"));
+  const haloVerrou = trouVerrou ? halo(px(trouVerrou.x), px(trouVerrou.y), px(trouVerrou.r) * 3.2, COULEURS_INTENTION.verrou) : null;
+  const halosJackpot = t.poses.filter((m) => comptePourLaMission(o.theme, m.type)).map((m) => halo(px(m.x), px(m.y), empreinteDuModule(m.type) * 1.7, COULEURS_INTENTION.jackpot));
 
   // --- Lot PBG3 : la porte, le poteau sauveur et l'aiguillage. La simulation décide ; ici tout est fonction du pas (`deblocages.ts`, commun avec le rendu à plat).
   {
     const porte = geoPorte(t);
     const aig = geoAiguillage(t);
-    // une flèche posée sur la table, qui clignote (celle des modules : même forme), dont on change la couleur
-    const flecheAllumee = (x: number, y: number, a: number, couleur: string): { g: Group; plein: MeshBasicMaterial } => {
-      const g = new Group();
-      g.position.set(X(x), 0, Z(y));
-      g.rotation.y = -a;
-      const trait2 = new MeshBasicMaterial({ color: ENCRE, side: DoubleSide });
-      const plein = new MeshBasicMaterial({ color: couleur, side: DoubleSide });
-      aLiberer.push(trait2, plein);
-      const geoForme = geo(new ShapeGeometry(forme));
-      geoForme.rotateX(Math.PI / 2);
-      const dessous = new Mesh(geoForme, trait2);
-      dessous.scale.setScalar(1.28);
-      dessous.position.y = 1.15;
-      dessous.renderOrder = 3;
-      const dessus = new Mesh(geoForme, plein);
-      dessus.position.y = 1.25;
-      dessus.renderOrder = 4;
-      g.add(dessous, dessus);
-      g.visible = false;
-      groupe.add(g);
-      return { g, plein };
-    };
     // la porte : un battant (une planche de 18 px de haut) qui pivote contre le mur ; rouge fermé, moutarde ouvert
     if (porte) {
       const longueur = Math.hypot(porte.b.x - porte.a.x, porte.b.y - porte.a.y);
@@ -1278,14 +1264,12 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       axe.castShadow = false; // trop petit pour que son ombre se voie : une ombre de moins à dessiner
       axe.position.set(X(porte.a.x), 10, Z(porte.a.y));
       groupe.add(pivot, axe);
-      const fl = flecheAllumee(porte.fleche.x, porte.fleche.y, porte.fleche.a, MOUTARDE);
       maj.push((tick) => {
         const k = ouverturePorte(partie);
         const b = boutLibre(porte, k);
         pivot.rotation.y = -Math.atan2(b.y - porte.a.y, b.x - porte.a.x);
         matBattant.color.set(k > 0 ? MOUTARDE : "#C0452F");
         (matBattant as MeshStandardMaterial).emissive.set(k > 0 ? MOUTARDE : "#C0452F");
-        fl.g.visible = k > 0 && clignote(tick);
       });
     }
     // les lampes des couloirs de retour : allumées par la bille qui y descend (moutarde)
@@ -1321,7 +1305,6 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       groupe.add(lame, socle);
       let angle = aig.defaut;
       let tickAvant = 0;
-      const fleches = flechesDesRailsDe(t).filter((f) => f.rail === aig.rail).map((f) => flecheAllumee(f.x, f.y, f.a, MOUTARDE));
       maj.push((tick) => {
         const vers = partie.aiguillageVers;
         angle = rapprocher(angle, angleVise(aig, vers), 0.06 * Math.max(1, Math.min(30, tick - tickAvant)));
@@ -1330,10 +1313,6 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         const couleur = couleurAiguillage(vers);
         (matLame as MeshStandardMaterial).color.set(couleur ?? PAPIER);
         (matLame as MeshStandardMaterial).emissive.set(couleur ?? PAPIER);
-        for (const f of fleches) {
-          f.g.visible = couleur !== null;
-          if (couleur) f.plein.color.set(couleur);
-        }
       });
     }
     const haloPoteau = halo(px(t.sauveur.x), px(t.sauveur.y), px(t.sauveur.r) * 3.2, MOUTARDE);
@@ -1346,66 +1325,52 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     });
   }
 
-  // --- Les étiquettes des modules : des plaques à part, tournées vers le joueur et grossies (voir `majEtiquettes`)
-  /** Lot PBG2 : une plaque peut changer de mot — « VERROU » sur celle du trou-verrou quand il est allumé (`verrou`), « JACKPOT » sur celle de l'élément du thème pendant la multibille (`jackpot`) ; ses textures de rechange sont dessinées une fois, par mot. */
+  // --- Les plaques : trois au plus, à part, tournées vers le joueur et grossies (voir `majEtiquettes`) — lot PBL1
+  /** Lot PBL1 : une plaque (l'élément de la mission, le verrou, la porte) **collée à son élément** par une pointe ; son texte et son état changent (`dire`) : le verrou éteint puis allumé qui clignote, « JACKPOT » pendant la multibille, la porte seulement ouverte. Ses textures sont dessinées une fois par état. */
   interface PlaqueEtiquette {
     plaque: Mesh;
-    x: number;
-    y: number;
-    taille: number;
-    special: "verrou" | "jackpot" | null;
+    e: Etiquette;
     matiere: MeshBasicMaterial;
-    normale: Texture;
-    /** Le mot écrit en ce moment (`""` : le nom du module). */
-    mot: string;
-    autres: Map<string, Texture>;
-    /** La largeur estimée de la plaque du nom (le mot de rechange ne la dépasse jamais) et la taille de la toile. */
-    largeurNom: number;
+    /** La texture montrée en ce moment (sa clé), les textures déjà dessinées, la taille de la toile (px de plaque) et la largeur de la plaque (celle du plus large de ses mots). */
+    courante: string;
+    textures: Map<string, Texture>;
     l: number;
     hPlan: number;
+    largeur: number;
   }
   const etiquettes: PlaqueEtiquette[] = [];
   const style = styleEtiquette(o.theme);
   const ECHELLE_PLAQUE = 6;
-  // lot PBV2 : la mise en place est celle de `placerEtiquettes` (aucune plaque n'en recouvre une autre ni un module : décalée, sur deux lignes ou réduite), la même que celle du rendu à plat
+  // la mise en place est celle de `placerEtiquettes` (la même que celle du rendu à plat) : collée à son élément, jamais sur un rail
   for (const e of placerEtiquettes(t, o.theme, o.nom)) {
-    const lignes = e.texte.split("\n").length;
-    const l = largeurPlaque(e.texte, style) + 6;
-    const hPlan = hauteurPlaque(lignes) + 4;
-    const echelle = ECHELLE_PLAQUE;
-    const tex = toile(l * echelle, hPlan * echelle, (c) => {
-      c.scale(echelle, echelle);
-      pastille(c, o.police, l / 2, hPlan / 2, e.texte, 1, style);
-    });
-    const mat2 = new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false });
+    const largeur = Math.max(...e.mots.map((m) => largeurPlaque(m, style)));
+    // la toile garde, autour de la plaque, la place du trait qui la relie à son élément
+    const marge = Math.ceil(e.portee) + 4;
+    const l = largeur + 6 + 2 * marge;
+    const hPlan = hauteurPlaque(1) + 4 + 2 * marge;
+    const mat2 = new MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, toneMapped: false });
     aLiberer.push(mat2);
     const plaque = new Mesh(geo(new PlaneGeometry(l, hPlan)), mat2);
-    plaque.renderOrder = 5;
-    // le trou-verrou : la plaque du trou dont le centre est celui du verrou ; l'élément du thème : un module qui compte pour la mission
-    const ancre = e.ancres[0];
-    const special = e.module === "trou" && trouVerrou && ancre && Math.hypot(ancre.x - px(trouVerrou.x), ancre.y - px(trouVerrou.y)) < 1 ? "verrou" : comptePourLaMission(o.theme, e.module) ? "jackpot" : null;
-    etiquettes.push({ plaque, x: e.x, y: e.y, taille: e.taille, special, matiere: mat2, normale: tex, mot: "", autres: new Map(), largeurNom: largeurPlaque(e.texte, style), l, hPlan });
+    plaque.renderOrder = 3; // au-dessus des rails et des modules, sous la bille (4)
+    plaque.visible = e.permanente;
+    etiquettes.push({ plaque, e, matiere: mat2, courante: "", textures: new Map(), l, hPlan, largeur });
     groupe.add(plaque);
   }
-  /** La plaque dit `mot` (ou son nom si `mot` est vide). Le mot est réduit pour tenir dans la largeur de la plaque du nom : jamais plus grande que celle de `placerEtiquettes`. */
-  const dire = (e: PlaqueEtiquette, mot: string): void => {
-    if (mot === e.mot) return;
-    e.mot = mot;
-    if (!mot) {
-      e.matiere.map = e.normale;
-      return;
-    }
-    let tex = e.autres.get(mot);
+  /** La plaque dit `texte` dans l'état `etat` (`couleur` : celle de l'intention quand elle est allumée) ; la texture n'est dessinée qu'une fois par état. */
+  const dire = (p: PlaqueEtiquette, texte: string, etat: "normale" | "eteinte" | "allumee", couleur = ""): void => {
+    const cle = `${texte}|${etat}|${couleur}`;
+    if (cle === p.courante) return;
+    p.courante = cle;
+    let tex = p.textures.get(cle);
     if (!tex) {
-      const texte = mot.toLocaleUpperCase();
-      const k = Math.min(1, e.largeurNom / largeurPlaque(texte, style));
-      tex = toile(e.l * ECHELLE_PLAQUE, e.hPlan * ECHELLE_PLAQUE, (c) => {
+      tex = toile(p.l * ECHELLE_PLAQUE, p.hPlan * ECHELLE_PLAQUE, (c) => {
         c.scale(ECHELLE_PLAQUE, ECHELLE_PLAQUE);
-        pastille(c, o.police, e.l / 2, e.hPlan / 2, texte, k, style);
+        pastille(c, o.police, p.l / 2, p.hPlan / 2, texte, 1, style, { largeur: p.largeur, pointe: p.e.pointe, portee: p.e.portee, eteinte: etat === "eteinte", allumee: etat === "allumee" ? couleur : undefined });
       });
-      e.autres.set(mot, tex);
+      p.textures.set(cle, tex);
     }
-    e.matiere.map = tex;
+    p.matiere.map = tex;
+    p.matiere.needsUpdate = true;
   };
 
   // --- Les contours de collision de `?debug`
@@ -1528,13 +1493,14 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const el = rad(vue.angle);
     const reference = camera.position.distanceTo(v3.set(0, 0, 0));
     const lean = (Math.PI / 2 - el) * 0.75; // la plaque se penche vers le joueur sans se dresser tout à fait
-    for (const e of etiquettes) {
+    for (const p of etiquettes) {
+      const e = p.e;
       // la perspective rapetisse ce qui est loin : une plaque grossit avec sa distance, pour que le haut de la table se lise comme le bas
       const dist = camera.position.distanceTo(v3.set(X(e.x), 0, Z(e.y)));
       const echelle = k * (dist / reference) * e.taille;
-      e.plaque.scale.set(echelle, echelle / Math.max(0.5, Math.cos(Math.PI / 2 - el - lean)) * 0.95, 1);
-      e.plaque.rotation.x = -Math.PI / 2 + lean;
-      e.plaque.position.set(X(e.x), 1 + Math.sin(lean) * 10 * echelle, Z(e.y));
+      p.plaque.scale.set(echelle, echelle / Math.max(0.5, Math.cos(Math.PI / 2 - el - lean)) * 0.95, 1);
+      p.plaque.rotation.x = -Math.PI / 2 + lean;
+      p.plaque.position.set(X(e.x), 1 + Math.sin(lean) * 10 * echelle, Z(e.y));
     }
   }
 
@@ -1636,15 +1602,32 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const sec = (s.tick + a) / TICKS_PAR_SECONDE;
     for (const f of maj) f(s.tick, sec, dt);
     lampesM.forEach((m, i) => (m.emissiveIntensity = i < partie.compteur ? 1.4 : 0));
-    const clignotante = !partie.missionFaite && clignote(s.tick);
-    for (const f of flechesM) f.visible = clignotante;
+    // lot PBL1 : les flèches vives (trois au plus), dans la couleur de leur intention, qui clignotent
+    for (const v of flechesVives.values()) v.g.visible = false;
+    if (clignote(s.tick)) {
+      for (const a of indications.maj()) {
+        const v = flechesVives.get(a.fleche.id)!;
+        v.plein.color.set(COULEURS_INTENTION[a.intention]);
+        v.halo.color.set(COULEURS_INTENTION[a.intention]);
+        v.g.visible = true;
+      }
+    } else indications.maj();
     // lot PBG2 : le verrou allumé (le trou clignote, sa plaque dit « VERROU ») ; la multibille (l'élément du thème clignote, sa plaque dit « JACKPOT »)
     const clignotePBG2 = clignote(s.tick);
     if (haloVerrou) haloVerrou.visible = partie.verrouAllume && clignotePBG2;
     for (const h of halosJackpot) h.visible = partie.multibille && clignotePBG2;
-    for (const e of etiquettes) {
-      if (e.special === "verrou") dire(e, partie.verrouAllume ? s.plaqueVerrou : "");
-      else if (e.special === "jackpot") dire(e, partie.multibille ? s.plaqueJackpot : "");
+    for (const p of etiquettes) {
+      if (p.e.role === "porte") {
+        const ouverte = partie.passageOuvert > 0 && !partie.passageServi;
+        p.plaque.visible = ouverte;
+        if (ouverte) clignotePBG2 ? dire(p, p.e.texte, "allumee", COULEURS_INTENTION.mission) : dire(p, p.e.texte, "normale");
+      } else if (p.e.role === "verrou") {
+        if (partie.verrouAllume) clignotePBG2 ? dire(p, p.e.texte, "allumee", COULEURS_INTENTION.verrou) : dire(p, p.e.texte, "normale");
+        else dire(p, p.e.texte, "eteinte");
+      } else if (partie.multibille) {
+        const jackpot = p.e.mots[1] ?? p.e.texte;
+        clignotePBG2 ? dire(p, jackpot, "allumee", COULEURS_INTENTION.jackpot) : dire(p, jackpot, "normale");
+      } else dire(p, p.e.texte, "normale");
     }
     // les modules communs : les bumpers s'enfoncent et leur socle s'allume, les cibles tombent, les spinners tournent, les trous s'allument quand ils gardent la bille
     modules.maj(partie, dt, sec);

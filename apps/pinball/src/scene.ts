@@ -284,9 +284,9 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       /* un pointeur déjà fini : rien à capturer */
     }
     const r = hote.getBoundingClientRect();
-    // lot PBG2 : en multibille une bille peut attendre au lanceur pendant que d'autres jouent : le toucher du bord droit (le couloir) est alors le lanceur, le reste les batteurs
-    const auLanceur = partie.billesDeLaTable().some((b) => b.dansLanceur);
-    const c: Cmd = auLanceur && (partie.autres.length === 0 || e.clientX - r.left > r.width * 0.82) ? 2 : e.clientX - r.left < r.width / 2 ? 0 : 1;
+    // lot PBL1 : en multibille le lanceur part tout seul (les billes qui attendent dans le couloir se chargent d'elles-mêmes) : tout l'écran est aux batteurs ; hors multibille, un toucher tenu lance la bille qui attend
+    const auLanceur = !partie.multibille && partie.billesDeLaTable().some((b) => b.dansLanceur);
+    const c: Cmd = auLanceur ? 2 : e.clientX - r.left < r.width / 2 ? 0 : 1;
     tenir(c, `p:${e.pointerId}`);
   };
   const surLevee = (e: PointerEvent): void => {
@@ -532,8 +532,6 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         multi: Math.max(0, 1 - (maintenant - tMulti) / 1400),
         message: maintenant - tMessage < MESSAGE_MS ? { texte: message, vie: 1 - (maintenant - tMessage) / MESSAGE_MS } : null,
         secousse: o.reduit ? 0 : Math.max(0, 1 - (maintenant - tMulti) / 450),
-        plaqueVerrou: o.t("plaque.verrou"),
-        plaqueJackpot: o.t("plaque.jackpot"),
         texteSauvee: o.t("scene.sauvee"),
         gains: gains.map((g) => ({ x: g.x, y: g.y, points: g.points, vie: (g.fin - partie.tick) / (g.texte ? JACKPOT_VIE : TICKS_PAR_SECONDE), ...(g.texte ? { texte: g.texte } : {}) })),
       });

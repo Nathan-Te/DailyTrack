@@ -1,5 +1,6 @@
 import { BufferGeometry, Color, DoubleSide, Float32BufferAttribute, FrontSide, Mesh, MeshBasicMaterial, MeshPhongMaterial, Uint32BufferAttribute, Vector3, Vector4, type Camera, type Material } from "three";
 import { HAUTEUR, LARGEUR, RAYON, UNITE, type Porte, type Rail, type Table, type ThemePinball } from "@cdj/pinball-sim";
+import { largeurDuRail } from "./dessin";
 import { echantillons, hauteurRail, pointDuRail, type PointRail } from "./rails";
 
 // Les rails en volume (lot PBG1) : le rendu three.js des rampes et de l'orbite, **construits par le code** (aucun fichier 3D, aucune image) et habillés par thème — montagnes russes (foire), toboggan aquatique (océan), tube orbital
@@ -193,6 +194,8 @@ interface Tas3 {
 interface Contexte {
   rail: Rail;
   rang: number;
+  /** La demi-largeur du ruban (px) : celle de `largeurDuRail` du rail. */
+  demi: number;
   evase: (p: PointRail) => number;
 }
 
@@ -211,62 +214,61 @@ function supports(tas: Tas, rail: Rail, pas: number, fut: C3, traverse: C3, larg
   }
 }
 
+// **Lot PBL1 : les rails ne cachent plus la table.** Plus fins (la demi-largeur est celle de `largeurDuRail` : 9 px, 8 pour l'orbite, contre 12 avant), moins saturés, **en partie translucides** (un fond de plexi ou de verre à 16-30 % ; des filets, des
+// tubes et quelques traverses au lieu de rubans pleins), **sans lueur sur ceux du Volcan** (ni braise ni lampe) : **ce qui est sous un rail reste visible** (`test/rails3d.test.ts` mesure la part du plateau que les parties opaques recouvrent).
 // ---------------------------------------------------------------------------------------------------------------- foire : les montagnes russes
 function foire(t: Tas3, c: Contexte): void {
-  const { rail } = c;
+  const { rail, demi: d } = c;
   // des rayures de 11 px : un échantillon tous les 11 px, une rayure par pas
   const pts = echantillonsFixes(rail, 11);
-  const rouge = hex("#D8332A");
-  const blanc = hex("#F6F0E4");
-  const creme = hex("#EFE2C6");
-  const crememoins = hex("#DCC9A2");
+  const rouge = hex("#C25A4F");
+  const blanc = hex("#F1EBDD");
+  const sable = hex("#EBDDBF");
   const rayure = (k: number): number => k % 2;
   const bande = (k: number): C3 => (rayure(k) ? rouge : blanc);
   const autre = (k: number): C3 => (rayure(k) ? blanc : rouge);
-  const bandes: Bande[] = [
-    { a: [-12, 0], b: [12, 0], na: [0, 1], c: (k) => (rayure(k) ? creme : crememoins) },
-    // les rebords : l'intérieur, le dessus, l'extérieur ; les rayures rouges et blanches en quinconce
-    { a: [-12, 0], b: [-12, 6], na: [1, 0], c: bande },
-    { a: [-14.5, 6], b: [-12, 6], na: [0, 1], c: bande },
-    { a: [-14.5, 6], b: [-14.5, -0.5], na: [-1, 0], c: bande },
-    { a: [12, 0], b: [12, 6], na: [-1, 0], c: autre },
-    { a: [12, 6], b: [14.5, 6], na: [0, 1], c: autre },
-    { a: [14.5, 6], b: [14.5, -0.5], na: [1, 0], c: autre },
-  ];
-  balayer(t.opaque, pts, bandes, c.evase);
-  // les traverses, sous le rail
-  for (const [k, s] of repartir(rail, 20, 5, 3).entries()) {
+  // le fond : du plexi (translucide) ; les deux rebords : de fins tubes rayés rouge et blanc en quinconce (1,6 px de large, 3,4 de haut)
+  balayer(t.translucide, pts, [{ a: [-d, 0], b: [d, 0], na: [0, 1], c: sable }], c.evase);
+  for (const [u, couleur] of [[-d, bande], [d, autre]] as const) {
+    balayer(t.opaque, pts, [
+      { a: [u - 0.8, 3.4], b: [u + 0.8, 3.4], na: [0, 1], c: couleur },
+      { a: [u - 0.8, 0], b: [u - 0.8, 3.4], na: [-1, 0], c: couleur },
+      { a: [u + 0.8, 0], b: [u + 0.8, 3.4], na: [1, 0], c: couleur },
+    ], c.evase);
+  }
+  // quelques traverses fines, sous le rail (une tous les 30 px)
+  for (const [k, s] of repartir(rail, 30, 8, 6).entries()) {
     const p = pointDuRail(rail, s);
     const hv = hauteurVue(p.h);
-    boite(t.opaque, X(p.x), Z(p.y), Math.max(-1, hv - 3.4), hv - 0.3, p.dx, p.dy, 2, 15.8, k % 2 ? hex("#B8281F") : hex("#8F1F19"), k % 2 ? hex("#E7554A") : hex("#C73329"));
+    boite(t.opaque, X(p.x), Z(p.y), Math.max(-1, hv - 2.4), hv - 0.3, p.dx, p.dy, 1, d + 1.8, k % 2 ? hex("#A8483E") : hex("#8F4038"), k % 2 ? hex("#C8665B") : hex("#B05549"));
   }
-  supports(t.opaque, rail, 42, rouge, blanc, 3, blanc, 9);
-  // les ampoules sur les rebords (elles rayonnent)
-  const ampoule = hex("#FFD35C");
-  for (const s of repartir(rail, 30, 14, 14)) {
+  supports(t.opaque, rail, 62, rouge, blanc, 2.2, blanc, 9);
+  // de petites ampoules sur les rebords (elles rayonnent à peine)
+  const ampoule = hex("#F2D18A");
+  for (const s of repartir(rail, 44, 16, 16)) {
     const p = pointDuRail(rail, s);
-    for (const u of [-13.2, 13.2]) {
-      const m = monde(p, u, 7.4);
-      boite(t.rayon, m[0], m[2], m[1] - 1.1, m[1] + 1.1, p.dx, p.dy, 1.1, 1.1, ampoule);
+    for (const u of [-d - 0.4, d + 0.4]) {
+      const m = monde(p, u, 4.6);
+      boite(t.rayon, m[0], m[2], m[1] - 0.8, m[1] + 0.8, p.dx, p.dy, 0.8, 0.8, ampoule);
     }
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------- océan : le toboggan aquatique
 function ocean(t: Tas3, c: Contexte): void {
-  const { rail } = c;
+  const { rail, demi: d } = c;
   const pts = echantillonsAdaptes(rail, 14);
-  const eau = hex("#38CFD6");
-  const ecume = hex("#F4FFFF");
-  // la gouttière : une demi-ellipse (14 px de large, 8 de profond), translucide, plus claire vers les bords
+  const eau = hex("#5CC7CE");
+  const ecume = hex("#EDFAFB");
+  // la gouttière : une demi-ellipse (de la largeur du rail, 5,5 px de profond), translucide, plus claire vers les bords
   const bandes: Bande[] = [];
   const NB = 6;
-  const pointU = (th: number): [number, number] => [14 * Math.sin(th), 8 - 8 * Math.cos(th)];
+  const pointU = (th: number): [number, number] => [d * Math.sin(th), 5.5 - 5.5 * Math.cos(th)];
   const normale = (th: number): [number, number] => {
-    // vers l'intérieur : du point vers le centre (0, 8), avec les rayons de l'ellipse
+    // vers l'intérieur : du point vers le centre (0, 5,5), avec les rayons de l'ellipse
     const [u, v] = pointU(th);
-    const nu = -u / (14 * 14);
-    const nv = (8 - v) / (8 * 8);
+    const nu = -u / (d * d);
+    const nv = (5.5 - v) / (5.5 * 5.5);
     const l = Math.hypot(nu, nv) || 1;
     return [nu / l, nv / l];
   };
@@ -274,81 +276,74 @@ function ocean(t: Tas3, c: Contexte): void {
     const a = -Math.PI / 2 + (k / NB) * Math.PI;
     const b = -Math.PI / 2 + ((k + 1) / NB) * Math.PI;
     const clair = Math.abs((a + b) / 2) / (Math.PI / 2);
-    const couleur = ((): C3 => {
-      const f = 0.82 + 0.5 * clair * clair;
-      return [Math.min(1, eau[0] * f), Math.min(1, eau[1] * f), Math.min(1, eau[2] * f)];
-    })();
-    bandes.push({ a: pointU(a), b: pointU(b), na: normale(a), nb: normale(b), c: couleur });
+    const f = 0.85 + 0.45 * clair * clair;
+    bandes.push({ a: pointU(a), b: pointU(b), na: normale(a), nb: normale(b), c: [Math.min(1, eau[0] * f), Math.min(1, eau[1] * f), Math.min(1, eau[2] * f)] });
   }
   balayer(t.translucide, pts, bandes, c.evase);
-  // les bords : un tube d'écume le long de chaque rebord
-  for (const u of [-14.4, 14.4]) {
+  // les bords : un fin tube d'écume le long de chaque rebord
+  for (const u of [-d - 0.4, d + 0.4]) {
     balayer(t.opaque, pts, [
-      { a: [u - 1.7, 9.8], b: [u + 1.7, 9.8], na: [0, 1], c: ecume },
-      { a: [u - 1.7, 7.2], b: [u - 1.7, 9.8], na: [-1, 0], c: ecume },
-      { a: [u + 1.7, 7.2], b: [u + 1.7, 9.8], na: [1, 0], c: ecume },
+      { a: [u - 1, 6.6], b: [u + 1, 6.6], na: [0, 1], c: ecume },
+      { a: [u - 1, 4.6], b: [u - 1, 6.6], na: [-1, 0], c: ecume },
+      { a: [u + 1, 4.6], b: [u + 1, 6.6], na: [1, 0], c: ecume },
     ], c.evase);
   }
-  // des crêtes d'écume sur les bords (des petites pointes blanches, une sur deux de chaque côté)
-  for (const [k, s] of repartir(rail, 15, 9, 14).entries()) {
+  // quelques crêtes d'écume sur les bords (une petite pointe blanche tous les 30 px)
+  for (const [k, s] of repartir(rail, 30, 12, 14).entries()) {
     const p = pointDuRail(rail, s);
-    const u = k % 2 ? 14.6 : -14.6;
-    const m = monde(p, u, 9.8);
+    const u = k % 2 ? d + 0.6 : -d - 0.6;
+    const m = monde(p, u, 6.6);
     const a = k * 0.9;
-    boite(t.opaque, m[0], m[2], m[1] - 0.6, m[1] + 1.4 + (k % 3), Math.cos(a), Math.sin(a), 1.7, 1.2, ecume);
+    boite(t.opaque, m[0], m[2], m[1] - 0.4, m[1] + 0.9 + (k % 3) * 0.6, Math.cos(a), Math.sin(a), 1.2, 0.9, ecume);
   }
-  // des piliers de corail
-  supports(t.opaque, rail, 40, hex("#E8785F"), hex("#F7E8CC"), 3.2);
+  // quelques piliers de corail, fins
+  supports(t.opaque, rail, 64, hex("#D9917D"), hex("#F3E6CF"), 2.4);
 }
 
 // ---------------------------------------------------------------------------------------------------------------- espace : le tube orbital
 const NEON_ESPACE = "#38E4FF";
 function espace(t: Tas3, c: Contexte): void {
-  const { rail } = c;
+  const { rail, demi: d } = c;
   const pts = echantillonsAdaptes(rail, 14);
-  const verre = hex("#8FE9FF");
-  // le tube : un cylindre de verre, dont le fond touche le plateau (centre à 12,4 px, rayon de 12,4)
-  balayer(t.translucide, pts, cercle(0, 12.4, 12.4, 10, verre), c.evase);
-  // le plancher, dans le tube : une bande sombre bordée de néon (qui rayonne)
-  const sombre = hex("#262E4C");
-  const clair = hex("#35406A");
-  balayer(t.opaque, pts, [{ a: [-9.5, 0.1], b: [9.5, 0.1], na: [0, 1], c: (k) => (k % 2 ? sombre : clair) }], c.evase);
-  const neon = hex(NEON_ESPACE);
-  for (const u of [-9.9, 9.9]) balayer(t.rayon, pts, [{ a: [u - 0.9, 0.3], b: [u + 0.9, 0.3], na: [0, 1], c: neon }], c.evase);
-  // les anneaux : de fins anneaux de néon autour du tube, plus larges à la bouche
-  for (const s of repartir(rail, 46, 20, 24)) anneau(t.rayon, pointDuRail(rail, s), 12.4, 13.0, 14.7, 2.2, 10, neon);
-  // les entretoises : des fûts d'argent
-  supports(t.opaque, rail, 44, hex("#BAC6DA"), hex("#8794AE"), 2.6);
+  const verre = hex("#9ADBEA");
+  // le tube : un cylindre de verre, dont le fond touche le plateau (rayon de la demi-largeur du rail)
+  balayer(t.translucide, pts, cercle(0, d, d, 10, verre), c.evase);
+  // le fond : du verre lui aussi (translucide), deux fins filets de néon sur ses bords
+  const neon = fois(hex(NEON_ESPACE), 0.8);
+  for (const u of [-d + 0.6, d - 0.6]) balayer(t.rayon, pts, [{ a: [u - 0.6, 0.3], b: [u + 0.6, 0.3], na: [0, 1], c: neon }], c.evase);
+  // de fins anneaux de néon autour du tube, rares
+  for (const s of repartir(rail, 70, 28, 28)) anneau(t.rayon, pointDuRail(rail, s), d, d + 0.5, d + 1.6, 1.4, 10, neon);
+  // quelques entretoises : de fins fûts d'argent
+  supports(t.opaque, rail, 64, hex("#B4BFD1"), hex("#8794AE"), 2);
 }
 
 // ---------------------------------------------------------------------------------------------------------------- volcan : le rail de wagonnet
 function volcan(t: Tas3, c: Contexte): void {
-  const { rail } = c;
+  const { rail, demi: d } = c;
   const pts = echantillonsAdaptes(rail, 14);
-  const fer = hex("#2D2926");
-  const ferHaut = hex("#6A625B");
-  // les deux rails de fer : un profil carré (les côtés sombres, le dessus clair)
-  for (const u of [-8.2, 8.2]) {
+  const fer = hex("#3A3531");
+  const ferHaut = hex("#8E877F");
+  // le fond : du verre fumé (translucide) ; les deux rails de fer : de fins profils (2 × 2,2 px)
+  balayer(t.translucide, pts, [{ a: [-d, 0], b: [d, 0], na: [0, 1], c: hex("#8C8792") }], c.evase);
+  for (const u of [-d + 0.8, d - 0.8]) {
     balayer(t.opaque, pts, [
-      { a: [u - 1.5, 2.4], b: [u - 1.5, 5.1], na: [-1, 0], c: fer },
-      { a: [u + 1.5, 2.4], b: [u + 1.5, 5.1], na: [1, 0], c: fer },
-      { a: [u - 1.5, 5.1], b: [u + 1.5, 5.1], na: [0, 1], c: ferHaut },
+      { a: [u - 1, 0.6], b: [u - 1, 2.8], na: [-1, 0], c: fer },
+      { a: [u + 1, 0.6], b: [u + 1, 2.8], na: [1, 0], c: fer },
+      { a: [u - 1, 2.8], b: [u + 1, 2.8], na: [0, 1], c: ferHaut },
     ], c.evase);
   }
-  // les traverses de bois, sous les rails ; entre elles, la braise qui rougeoie
-  const bois = hex("#6A4126");
-  const boisClair = hex("#865832");
-  for (const [k, s] of repartir(rail, 13, 5, 2).entries()) {
+  // quelques traverses de bois, sous les rails (une tous les 26 px) ; **pas de braise ni de lueur**
+  const bois = hex("#6E4A32");
+  const boisClair = hex("#8A6244");
+  for (const [k, s] of repartir(rail, 26, 8, 6).entries()) {
     const p = pointDuRail(rail, s);
     const hv = hauteurVue(p.h);
-    boite(t.opaque, X(p.x), Z(p.y), Math.max(-1, hv + 0.3), hv + 2.4, p.dx, p.dy, 2.3, 13.5, k % 2 ? hex("#4D2E1A") : bois, k % 2 ? bois : boisClair);
+    boite(t.opaque, X(p.x), Z(p.y), Math.max(-1, hv - 0.4), hv + 1.2, p.dx, p.dy, 1.3, d + 1.8, k % 2 ? hex("#58392A") : bois, k % 2 ? bois : boisClair);
   }
-  const braise = fois(hex("#FF5A0E"), 0.22);
-  balayer(t.rayon, pts, [{ a: [-5.5, 0.25], b: [5.5, 0.25], na: [0, 1], c: braise }], c.evase);
-  supports(t.opaque, rail, 40, hex("#4D3220"), hex("#2F2018"), 3.6, hex("#6A4126"));
+  supports(t.opaque, rail, 64, hex("#58402E"), hex("#3A2A20"), 2.4, hex("#6E4A32"));
 }
 
-/** La bouche d'un rail : un portique propre au thème, posé de part et d'autre de l'entrée. */
+/** La bouche d'un rail : un portique propre au thème, posé de part et d'autre de l'entrée — bas et fin. */
 function portique(t: Tas3, theme: ThemePinball, porte: Porte): void {
   const x = porte.x / UNITE;
   const y = porte.y / UNITE;
@@ -358,43 +353,43 @@ function portique(t: Tas3, theme: ThemePinball, porte: Porte): void {
   const lx = -dy;
   const lz = dx;
   const poteau = (u: number, h: number, l: number, c: C3, dessus: C3 = c): void => boite(t.opaque, X(x) + lx * u, Z(y) + lz * u, 0, h, dx, dy, l, l, c, dessus);
-  const linteau = (h0: number, h1: number, c: C3, dessus: C3 = c): void => boite(t.opaque, X(x), Z(y), h0, h1, dx, dy, 1.8, w + 4.6, c, dessus);
+  const linteau = (h0: number, h1: number, c: C3, dessus: C3 = c): void => boite(t.opaque, X(x), Z(y), h0, h1, dx, dy, 1.2, w + 3.4, c, dessus);
   if (theme === "foire") {
-    const rouge = hex("#D8332A");
-    const blanc = hex("#F6F0E4");
-    poteau(-(w + 3), 7.5, 1.7, rouge);
-    poteau(-(w + 3), 15, 1.7, blanc);
-    poteau(w + 3, 7.5, 1.7, rouge);
-    poteau(w + 3, 15, 1.7, blanc);
-    linteau(15, 18.2, rouge, hex("#F0574B"));
-    for (const u of [-w, 0, w]) boite(t.rayon, X(x) + lx * u, Z(y) + lz * u, 18.4, 20.6, dx, dy, 1.1, 1.1, hex("#FFD35C"));
+    const rouge = hex("#C25A4F");
+    const blanc = hex("#F1EBDD");
+    poteau(-(w + 3), 6, 1.1, rouge);
+    poteau(-(w + 3), 12, 1.1, blanc);
+    poteau(w + 3, 6, 1.1, rouge);
+    poteau(w + 3, 12, 1.1, blanc);
+    linteau(12, 14, rouge, hex("#D87267"));
+    for (const u of [-w, w]) boite(t.rayon, X(x) + lx * u, Z(y) + lz * u, 14.2, 15.6, dx, dy, 0.8, 0.8, hex("#F2D18A"));
   } else if (theme === "ocean") {
-    const corail = hex("#E8785F");
-    const ecume = hex("#F4FFFF");
-    poteau(-(w + 3), 12, 1.8, corail, hex("#F7E8CC"));
-    poteau(w + 3, 12, 1.8, corail, hex("#F7E8CC"));
-    // l'arche d'écume : des morceaux de bord à bord
-    const N = 9;
+    const corail = hex("#D9917D");
+    const ecume = hex("#EDFAFB");
+    poteau(-(w + 3), 9, 1.2, corail, hex("#F3E6CF"));
+    poteau(w + 3, 9, 1.2, corail, hex("#F3E6CF"));
+    // l'arche d'écume : de fins morceaux de bord à bord
+    const N = 7;
     for (let k = 0; k <= N; k++) {
       const a = (k / N) * Math.PI;
       const u = -Math.cos(a) * (w + 3);
-      const h = 12 + Math.sin(a) * 6;
-      boite(t.opaque, X(x) + lx * u, Z(y) + lz * u, h - 1.4, h + 1.4, dx, dy, 1.6, 2.4, ecume);
+      const h = 9 + Math.sin(a) * 4;
+      boite(t.opaque, X(x) + lx * u, Z(y) + lz * u, h - 0.9, h + 0.9, dx, dy, 1.1, 1.8, ecume);
     }
   } else if (theme === "espace") {
-    const metal = hex("#BAC6DA");
-    poteau(-(w + 4), 8, 1.4, metal, hex("#38E4FF"));
-    poteau(w + 4, 8, 1.4, metal, hex("#38E4FF"));
+    const metal = hex("#B4BFD1");
+    poteau(-(w + 4), 6, 1, metal, hex("#38E4FF"));
+    poteau(w + 4, 6, 1, metal, hex("#38E4FF"));
     const p: PointRail = { x, y, h: 0, dx, dy, s: 0 };
-    anneau(t.rayon, p, 12.4, 15.6, 18.2, 2.8, 12, hex(NEON_ESPACE));
+    anneau(t.rayon, p, 9, 11.6, 13.2, 1.8, 12, fois(hex(NEON_ESPACE), 0.8));
   } else {
-    const bois = hex("#6A4126");
-    const fer = hex("#2D2926");
-    poteau(-(w + 3), 16, 2, bois, hex("#865832"));
-    poteau(w + 3, 16, 2, bois, hex("#865832"));
-    linteau(16, 19, bois, hex("#865832"));
-    boite(t.opaque, X(x), Z(y), 12.4, 16, dx, dy, 0.9, 0.9, fer);
-    boite(t.rayon, X(x), Z(y), 9.4, 12.4, dx, dy, 1.5, 1.5, hex("#FF7A1A"));
+    // le Volcan : un portique de bois et de fer, **sans lueur**
+    const bois = hex("#6E4A32");
+    const fer = hex("#3A3531");
+    poteau(-(w + 3), 11, 1.3, bois, hex("#8A6244"));
+    poteau(w + 3, 11, 1.3, bois, hex("#8A6244"));
+    linteau(11, 13, bois, hex("#8A6244"));
+    boite(t.opaque, X(x), Z(y), 8.4, 11, dx, dy, 0.7, 0.7, fer);
   }
 }
 
@@ -445,7 +440,7 @@ export function creerRails3d(theme: ThemePinball, table: Table): Rails3d {
       const d = rail.genre === "orbite" ? Math.min(p.s / UNITE, total - p.s / UNITE) : p.s / UNITE;
       return 1 + 0.35 * Math.max(0, 1 - d / 22);
     };
-    STYLES[theme](t3, { rail, rang, evase });
+    STYLES[theme](t3, { rail, rang, evase, demi: largeurDuRail(rail) / 2 });
   });
   for (const porte of table.portes) portique(t3, theme, porte);
 
@@ -471,7 +466,7 @@ export function creerRails3d(theme: ThemePinball, table: Table): Rails3d {
     mesh.frustumCulled = false;
     return mesh;
   };
-  const translucide = theme === "ocean" ? { opacite: 0.5, deux: true } : { opacite: 0.2, deux: false };
+  const translucide = theme === "ocean" ? { opacite: 0.32, deux: true } : { opacite: theme === "espace" ? 0.16 : 0.22, deux: false };
   const opaque = maillage(t3.opaque, marquer(new MeshPhongMaterial({ vertexColors: true, color: new Color(GAIN_RAILS, GAIN_RAILS, GAIN_RAILS), specular: "#6a5a48", shininess: 40 })), true);
   const clair = maillage(t3.translucide, marquer(new MeshPhongMaterial({ vertexColors: true, color: new Color(1.6, 1.6, 1.6), specular: "#ffffff", shininess: 90, transparent: true, opacity: translucide.opacite, depthWrite: false, side: translucide.deux ? DoubleSide : FrontSide })), false);
   if (clair) clair.renderOrder = 1;

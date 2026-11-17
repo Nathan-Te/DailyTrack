@@ -8,9 +8,16 @@ const px = (u: number): number => u / UNITE;
 export const PAS_PORTE = 30;
 export const PAS_POTEAU_SORT = 24;
 export const PAS_POTEAU_RENTRE = 30;
-/** Les couleurs de l'aiguillage : vers le verrou (le halo du verrou), vers l'élément du thème (le halo du jackpot). */
-export const COULEUR_VERS_VERROU = "#B8F6FF";
-export const COULEUR_VERS_ELEMENT = "#FFF3A8";
+/**
+ * **Une couleur par intention (lot PBL1), la même dans tous les thèmes** : ce que l'on vise maintenant. `mission` : l'élément de la mission (et la porte, qui la fait avancer) ; `verrou` : le verrou allumé et la rampe dont
+ * l'aiguillage y mène ; `jackpot` : l'élément du thème pendant la multibille (et la rampe dont l'aiguillage y mène) ; `combo` : le rail suivant quand un combo est en cours. Les flèches au sol (`indications.ts`), la lame de
+ * l'aiguillage, les halos et les plaques allumées les reprennent : le « Comment jouer » les explique.
+ */
+export const COULEURS_INTENTION = { mission: "#FFC22E", verrou: "#35D6FF", jackpot: "#FF4FB0", combo: "#7CF05A" } as const;
+export type Intention = keyof typeof COULEURS_INTENTION;
+/** Les couleurs de l'aiguillage : vers le verrou (la couleur du verrou), vers l'élément du thème (celle du jackpot). */
+export const COULEUR_VERS_VERROU: string = COULEURS_INTENTION.verrou;
+export const COULEUR_VERS_ELEMENT: string = COULEURS_INTENTION.jackpot;
 
 export interface GeoPorte {
   /** Le milieu du battant, la direction du passage (de l'entrée vers la sortie : vecteur unitaire), sa perpendiculaire, la demi-largeur (px). */
