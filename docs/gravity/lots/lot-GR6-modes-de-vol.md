@@ -47,3 +47,8 @@ Base : l'aperçu de la PR (lien commenté sur la PR) ou, après la fusion, `http
 
 ## Ce qui attend le GR7
 Le réglage des modes sur le prototype (durée des sections, fréquence, multiplicateurs des portails de vitesse, constantes de l'avion / de l'onde / du ressort : tout est nommé dans `constantes.ts`), les seuils et le pourcentage des médailles, les pièces de PG2 (ci-dessus), une piste de musique, la limite de `memeContenu` de la plateforme (README du lot GR5) avant le premier jour figé.
+
+## CI de la PR (premier run)
+- **Gravity, ma zone** : `ecrans-kit.spec.ts` (« pause et fin de partie à 2560 × 1440 ») et `partie.spec.ts` (« une partie entière ») attendaient `#jeu-fin` 5 s : l'écran de fin termine d'un trait le calcul des seuils d'un jour non figé (le robot, plus long avec les modes de vol), et la machine de CI le rend plus lent. **Corrigé** : l'attente passe à 20 s (comme `classement.spec.ts`) — rien d'affaibli, l'assertion est la même ; verts en local (21 / 21, un worker).
+- **Hors zone** : `packages/pinball-sim/test/robot.test.ts` (« le robot vise : la mission du jour… », `Test timed out in 30000ms`) a fait échouer `jeu fictif (1/3)` ; je n'y touche pas : relancé une fois par le commit suivant ; s'il échoue encore, c'est à Nathan / à la plateforme.
+

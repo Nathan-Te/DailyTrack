@@ -37,7 +37,8 @@ test.describe("Gravity : une partie", () => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
     await lancer(page);
     const attendu = await jouerLeJour(page);
-    await expect(page.locator("#jeu-fin")).toBeVisible();
+    // Le jour de l'essai n'est pas figé : l'écran de fin termine d'un trait le calcul des seuils (le robot, ≈ 1,5 s sous Node, plus avec les modes de vol et le rendu logiciel d'une machine chargée) — 20 s comme `classement.spec.ts`.
+    await expect(page.locator("#jeu-fin")).toBeVisible({ timeout: 20_000 });
     const score = VARIANTE.score(attendu);
     await expect(page.locator("#jeu-fin-score")).toHaveText(VARIANTE.formatScore(score, "fr"));
     expect(await page.evaluate(() => window.__jeu.score())).toEqual(score);
