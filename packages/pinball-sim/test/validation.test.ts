@@ -99,8 +99,32 @@ describe("le suivi des modules touchés", () => {
     expect(suivi.manquants()).toEqual([...t.poses.map(nomDuModule), ...t.rails.map((_, i) => nomDuRail(t, i))]);
     expect(t.poses.map(nomDuModule)).toEqual(c.modules.map((m, i) => `S${i + 1}:${m}`));
     expect(t.rails.map((_, i) => nomDuRail(t, i)).at(-1)).toBe("orbite");
-    expect(tirsDisperses(c, suivi)).toBe(119);
+    // 108 tirs depuis les batteurs et 11 lancers du lanceur ; lot PBG3 : les 108 tirs depuis les batteurs sont refaits la porte ouverte (essai), pour qu'une bille la franchisse
+    expect(tirsDisperses(c, suivi)).toBe(119 + (new Partie(c).table.passage ? 108 : 0));
     expect(suivi.touches.size).toBeGreaterThan(3);
+  });
+  it("lot PBG3 : le suivi voit la porte qui s'ouvre et qui est franchie, le poteau qui renvoie une bille, l'aiguillage qui dérive une bille — chacun une fois suffit", () => {
+    const p = new Partie(dailyPinball(JOUR + 1));
+    const suivi = new SuiviModules(p.table);
+    suivi.pas(p);
+    expect([suivi.porteOuverte, suivi.porteFranchie, suivi.sauveur, suivi.aiguillage]).toEqual([false, false, false, false]);
+    p.ouvertures = 1;
+    suivi.pas(p);
+    expect([suivi.porteOuverte, suivi.porteFranchie]).toEqual([true, false]);
+    p.passages = 1;
+    p.sauvetages = 1;
+    p.aiguillages = 1;
+    suivi.pas(p);
+    expect([suivi.porteOuverte, suivi.porteFranchie, suivi.sauveur, suivi.aiguillage]).toEqual([true, true, true, true]);
+  });
+  it("lot PBG3 : le tir dispersé porte ouverte franchit la porte sur la plupart des tables — il suffit à la validation quand le robot ne l'a pas fait", () => {
+    for (const plan of IDS_PLANS) {
+      const c = dailyPinball(JOUR + 1, undefined, "foire", plan);
+      const suivi = new SuiviModules(new Partie(c).table);
+      tirsDisperses(c, suivi);
+      // l'ouverture naturelle (banque ou orbite) est le travail du robot : ici les lancers n'y arrivent presque jamais ; seul le passage compte
+      expect(suivi.porteFranchie, plan).toBe(true);
+    }
   });
   it("chaque type de module se reconnaît touché sur une table qui le porte (bumpers, cibles, spinner, trou, manège, tourbillon, trou noir, portails, geyser, coulée, astéroïde)", () => {
     // l'union des modules touchés, table par table, par les seuls lancers dispersés : le robot complète (voir le test des 30 jours)

@@ -4,7 +4,7 @@
 //
 // **Ajouter un son (le lot de gameplay qui suit)** : une ligne dans `Evenement` (son nom et ses paramètres), la règle qui le déclenche dans `sonsDuPas` (un bit `EV_*` ou un changement de `Photo`), sa recette dans `recetteDe`, son
 // délai dans `DELAIS_S` s'il peut s'enchaîner ; le test `sons.test.ts` échoue tant que sa recette n'est pas propre (attaque, fin sans clic, niveau borné) et `tune-sons.ts` (`?debug&sons`) en veut un exemple (le type l'impose).
-import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_ORBITE, EV_PERDUE, EV_PORTAIL, EV_RAIL, EV_RAMPE, EV_RECUL, EV_COMBO, EV_JACKPOT, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VERROU_ALLUME, EV_VERROUILLEE, EV_VOIE, NB_VOIES, type ThemePinball } from "@cdj/pinball-sim";
+import { EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_ORBITE, EV_PERDUE, EV_PORTAIL, EV_RAIL, EV_RAMPE, EV_RECUL, EV_COMBO, EV_JACKPOT, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_SAUVEE, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VERROU_ALLUME, EV_VERROUILLEE, EV_VOIE, NB_VOIES, type ThemePinball, EV2_AIGUILLAGE, EV2_LAMPE, EV2_PORTE_FERME, EV2_PORTE_OUVRE, EV2_PORTE_PASSAGE, EV2_SAUVEUR, EV2_SAUVEUR_ARME } from "@cdj/pinball-sim";
 
 /** Une couche d'un son : une note (oscillateur) ou un bruit filtré, avec son enveloppe (attaque brève, décroissance exponentielle, fin à zéro : jamais de clic). */
 export interface Couche {
@@ -56,6 +56,14 @@ export type Evenement =
   | { son: "jackpot"; rang: number }
   | { son: "multibilleFin" }
   | { son: "niveau"; n: number }
+  // lot PBG3 : la porte (elle s'ouvre, une bille la franchit, elle se ferme), la lampe d'un couloir de retour (n : combien sont allumées), le poteau qui s'arme et celui qui renvoie la bille, l'aiguillage (1 : vers le verrou, 2 : vers l'élément du thème)
+  | { son: "porteOuvre" }
+  | { son: "passage" }
+  | { son: "porteFerme" }
+  | { son: "lampe"; n: number }
+  | { son: "sauveurArme" }
+  | { son: "sauveur" }
+  | { son: "aiguillage"; vers: 1 | 2 }
   | { son: "sauvee" }
   | { son: "perdue" }
   | { son: "fin" };
@@ -85,10 +93,13 @@ export interface Photo {
   verrouillees: number;
   jackpots: number;
   niveau: number;
+  /** Lot PBG3 : les lampes des couloirs de retour allumées (0 à 2) et ce que l'aiguillage mène (0 : le bout de la rampe, 1 : le verrou, 2 : l'élément du thème). */
+  lampes: number;
+  vers: number;
   /** La vitesse de rotation la plus grande des spinners (`Partie.spin`), lue quand un spinner vient de tourner. */
   spin: number;
 }
-export const photoVide = (): Photo => ({ gauche: false, droite: false, lanceur: false, charge: 0, dansLanceur: true, captif: 0, captifTb: -1, mult: 1, compteur: 0, voies: 0, bumper: -1, cible: 0, combo: 0, verrouillees: 0, jackpots: 0, niveau: 1, spin: 0 });
+export const photoVide = (): Photo => ({ gauche: false, droite: false, lanceur: false, charge: 0, dansLanceur: true, captif: 0, captifTb: -1, mult: 1, compteur: 0, voies: 0, bumper: -1, cible: 0, combo: 0, verrouillees: 0, jackpots: 0, niveau: 1, lampes: 0, vers: 0, spin: 0 });
 
 const AUCUN: Evenement[] = [];
 
@@ -97,12 +108,12 @@ const AUCUN: Evenement[] = [];
  * Les règles qui regroupent : la mission réussie prend la place du cran de multiplicateur qu'elle donne ; la dernière bille perdue est « fin de partie », pas « bille perdue » ; le troisième couloir allumé est l'arpège,
  * pas un « ding » (et le cran de multiplicateur qu'il donne suit l'arpège).
  */
-export function sonsDuPas(ev: number, avant: Photo, apres: Photo, theme: ThemePinball): Evenement[] {
+export function sonsDuPas(ev: number, avant: Photo, apres: Photo, theme: ThemePinball, ev2 = 0): Evenement[] {
   const batteurs = avant.gauche !== apres.gauche || avant.droite !== apres.droite;
   const relache = avant.captif > 0 && apres.captif === 0;
   const pas = apres.compteur > avant.compteur;
   const cran = apres.mult > avant.mult;
-  if (ev === 0 && !batteurs && !relache) return AUCUN;
+  if (ev === 0 && ev2 === 0 && !batteurs && !relache) return AUCUN;
   const sons: Evenement[] = [];
   if (avant.gauche !== apres.gauche) sons.push({ son: "batteur", cote: "gauche", appui: apres.gauche });
   if (avant.droite !== apres.droite) sons.push({ son: "batteur", cote: "droite", appui: apres.droite });
@@ -138,6 +149,14 @@ export function sonsDuPas(ev: number, avant: Photo, apres: Photo, theme: ThemePi
   if (ev & EV_JACKPOT) sons.push({ son: "jackpot", rang: Math.max(1, apres.jackpots) });
   if (ev & EV_MULTI_FIN) sons.push({ son: "multibilleFin" });
   if (ev & EV_NIVEAU) sons.push({ son: "niveau", n: apres.niveau });
+  // lot PBG3 : la porte, les lampes et le poteau, l'aiguillage (le second mot d'événements, `Partie.ev2`)
+  if (ev2 & EV2_PORTE_OUVRE) sons.push({ son: "porteOuvre" });
+  if (ev2 & EV2_PORTE_PASSAGE) sons.push({ son: "passage" });
+  if (ev2 & EV2_PORTE_FERME) sons.push({ son: "porteFerme" });
+  if (ev2 & EV2_LAMPE) sons.push({ son: "lampe", n: Math.max(1, apres.lampes) });
+  if (ev2 & EV2_SAUVEUR_ARME) sons.push({ son: "sauveurArme" });
+  if (ev2 & EV2_SAUVEUR) sons.push({ son: "sauveur" });
+  if (ev2 & EV2_AIGUILLAGE) sons.push({ son: "aiguillage", vers: avant.vers === 2 || apres.vers === 2 ? 2 : 1 });
   if (ev & EV_SAUVEE) sons.push({ son: "sauvee" });
   if (ev & EV_FIN) sons.push({ son: "fin" });
   else if (ev & EV_PERDUE) sons.push({ son: "perdue" });
@@ -336,6 +355,29 @@ export function recetteDe(e: Evenement, variation = 0.5): Recette {
       const f = 523 * 2 ** ((2 * (borne(e.n, 2, 7) - 2)) / 12);
       return recette("niveau", 3, [0, 4, 7, 12].map((d, i) => note("triangle", f * 2 ** (d / 12), i === 3 ? 0.4 : 0.1, 0.16, i * 0.09)));
     }
+    case "porteOuvre":
+      // La porte s'ouvre : un déclic de loquet, puis deux notes claires qui montent.
+      return recette("porteOuvre", 2, [bruit(1800, 0.06, 0.14, 0, 600, "bandpass", 2), note("square", 220, 0.08, 0.07, 0, 330), note("triangle", 523, 0.12, 0.14, 0.07), note("triangle", 784, 0.22, 0.14, 0.14)]);
+    case "passage":
+      // Un passage de la porte : une pièce qui tombe, un tintement brillant (il rapporte gros).
+      return recette("passage", 2, [note("sine", 988, 0.1, 0.16), note("sine", 1319, 0.14, 0.16, 0.07), note("triangle", 1976, 0.3, 0.1, 0.14), bruit(7000, 0.08, 0.05, 0, 10000, "highpass", 0.8)]);
+    case "porteFerme":
+      // La porte se referme : un choc sourd et un petit claquement.
+      return recette("porteFerme", 1, [note("sine", 110, 0.12, 0.18, 0.03, 70), bruit(900, 0.08, 0.12, 0, 300, "bandpass", 1.5), note("square", 330, 0.05, 0.05, 0, 150)]);
+    case "lampe":
+      // Une lampe de couloir s'allume : un « ding » discret, plus haut pour la deuxième.
+      return recette("lampe", 1, [note("triangle", e.n >= 2 ? 988 : 659, 0.16, 0.12), note("sine", e.n >= 2 ? 1976 : 1318, 0.1, 0.04)]);
+    case "sauveurArme":
+      // Le poteau s'arme : un ressort qui se tend, puis deux notes qui montent.
+      return recette("sauveurArme", 2, [bruit(500, 0.2, 0.1, 0, 2500, "bandpass", 1.3), adoucie(note("sawtooth", 110, 0.18, 0.07, 0, 220), 800), note("triangle", 784, 0.1, 0.12, 0.16), note("triangle", 1047, 0.22, 0.12, 0.24)]);
+    case "sauveur":
+      // Le poteau renvoie la bille : un grand coup sec, et une note qui s'envole.
+      return recette("sauveur", 3, [note("sine", 180, 0.14, 0.26, 0, 60), bruit(2500, 0.06, 0.16, 0, 600, "bandpass", 1.5), note("triangle", 392, 0.1, 0.14, 0.04, 784), note("triangle", 880, 0.25, 0.14, 0.12)]);
+    case "aiguillage": {
+      // L'aiguillage dérive la bille : un souffle et un claquement de bascule, plus grave vers le verrou, plus aigu vers l'élément du thème.
+      const f = e.vers === 2 ? 523 : 392;
+      return recette("aiguillage", 2, [bruit(800, 0.18, 0.12, 0, 3500, "bandpass", 1.2), note("square", f, 0.05, 0.07), note("triangle", f * 2, 0.14, 0.12, 0.08)]);
+    }
     case "sauvee":
       // La bille est sauvée : un petit jingle qui monte, rassurant.
       return recette("sauvee", 2, [0, 7, 12, 16].map((d, i) => note("triangle", 440 * 2 ** (d / 12), i === 3 ? 0.3 : 0.1, 0.15, i * 0.075)));
@@ -380,6 +422,7 @@ export const DELAIS_S: Readonly<Partial<Record<NomSon, number>>> = {
   orbite: 0.25,
   combo: 0.15,
   missionPas: 0.15,
+  lampe: 0.1,
 };
 export const DELAI_DEFAUT_S = 0.04;
 

@@ -101,6 +101,14 @@ const CURSEURS: readonly Curseur[] = [
   sim("jackpotMultiplie", "Jackpot", "Le multiplicateur s'applique (1 : oui, 0 : non)", "The multiplier applies (1: yes, 0: no)", 1),
   sim("missionButPas", "Niveaux de la mission", "But du niveau suivant (% du but du niveau)", "Next level's goal (% of this level's goal)", 10),
   sim("missionPas", "Niveaux de la mission", "Récompense en plus par niveau (% de la base)", "Extra reward per level (% of the base)", 10),
+  // lot PBG3 : la porte, le poteau sauveur et l'aiguillage
+  sim("porteDuree", "Porte", "Durée d'ouverture (pas)", "Open time (steps)", 30),
+  sim("portePoints", "Porte", "Points d'un passage", "Points for a passage", 100),
+  sim("porteApres", "Porte", "Pas ouverte encore après un passage", "Steps still open after a passage", 10),
+  sim("sauveurForce", "Poteau sauveur", "Force du renvoi (px/s)", "Kickback speed (px/s)", 10),
+  sim("sauveurDevie", "Poteau sauveur", "Déviation de côté (px/s)", "Sideways kick (px/s)", 10),
+  sim("aiguillageActif", "Aiguillage", "Actif (1 : oui, 0 : non)", "On (1: yes, 0: no)", 1),
+  sim("aiguillageVitesse", "Aiguillage", "Vitesse de la bille dérivée (px/s)", "Diverted ball speed (px/s)", 10),
   { cle: "angle", groupe: "vue", section: "Vue", fr: "Caméra : angle (°)", en: "Camera: angle (°)" },
   { cle: "distance", groupe: "vue", section: "Vue", fr: "Caméra : distance (% du cadrage)", en: "Camera: distance (% of framing)" },
   { cle: "champ", groupe: "vue", section: "Vue", fr: "Caméra : champ (°)", en: "Camera: field of view (°)" },
@@ -119,7 +127,7 @@ const CURSEURS: readonly Curseur[] = [
   { cle: "occlusion", groupe: "vue", section: "Lumière", fr: "Ombres de contact sur le sol (%)", en: "Contact shadows on the floor (%)" },
   { cle: "vignettage", groupe: "vue", section: "Lumière", fr: "Vignettage de la table (%)", en: "Table vignetting (%)" },
 ];
-const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", "Rampes et orbite": "Ramps and orbit", Combo: "Combo", Verrou: "Lock", Multibille: "Multiball", Jackpot: "Jackpot", "Niveaux de la mission": "Mission levels", Vue: "View", "Lumière": "Light" };
+const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", "Rampes et orbite": "Ramps and orbit", Combo: "Combo", Verrou: "Lock", Multibille: "Multiball", Jackpot: "Jackpot", Porte: "Gate", "Poteau sauveur": "Kickback post", Aiguillage: "Switch", "Niveaux de la mission": "Mission levels", Vue: "View", "Lumière": "Light" };
 const TEXTES = {
   fr: { ouvrir: "Réglages d'essai", titre: "Réglages d'essai", note: "Un curseur de la simulation relance la partie (non classée) ; ceux de la vue agissent en direct (rendu haute qualité).", exporter: "Exporter", copie: "Copié", lien: "Copier le lien", retablir: "Rétablir", fermer: "Fermer", json: "Les réglages, en JSON", sansTrois: "Le rendu de secours est affiché : la vue n'a pas d'effet." },
   en: { ouvrir: "Tuning", titre: "Tuning", note: "A simulation slider restarts the game (not ranked); the view sliders apply live (high quality render).", exporter: "Export", copie: "Copied", lien: "Copy link", retablir: "Reset", fermer: "Close", json: "The settings, as JSON", sansTrois: "The fallback render is showing: the view has no effect." },

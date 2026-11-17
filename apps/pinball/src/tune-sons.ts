@@ -58,6 +58,13 @@ export const EXEMPLES: Readonly<Record<NomSon, readonly Exemple[]>> = {
   jackpot: [1, 2, 4, 8].map((n) => ex(`Jackpot n° ${n}`, `Jackpot #${n}`, { son: "jackpot", rang: n })),
   multibilleFin: [ex("Fin de la multibille", "Multiball end", { son: "multibilleFin" })],
   niveau: [2, 3, 5].map((n) => ex(`Mission niveau ${n}`, `Mission level ${n}`, { son: "niveau", n })),
+  porteOuvre: [ex("Porte qui s'ouvre", "Gate opens", { son: "porteOuvre" })],
+  passage: [ex("Passage de la porte", "Gate passage", { son: "passage" })],
+  porteFerme: [ex("Porte qui se ferme", "Gate closes", { son: "porteFerme" })],
+  lampe: [1, 2].map((n) => ex(`Lampe de couloir (${n})`, `Lane lamp (${n})`, { son: "lampe", n })),
+  sauveurArme: [ex("Poteau armé", "Post armed", { son: "sauveurArme" })],
+  sauveur: [ex("Poteau qui sauve la bille", "Post saves the ball", { son: "sauveur" })],
+  aiguillage: [1, 2].map((n) => ex(n === 1 ? "Aiguillage vers le verrou" : "Aiguillage vers l'élément du thème", n === 1 ? "Switch to the lock" : "Switch to the theme element", { son: "aiguillage", vers: n as 1 | 2 })),
   sauvee: [ex("Bille sauvée", "Ball saved", { son: "sauvee" })],
   perdue: [ex("Bille perdue", "Ball lost", { son: "perdue" })],
   fin: [ex("Fin de partie", "Game over", { son: "fin" })],
@@ -70,6 +77,7 @@ const GROUPES: readonly { fr: string; en: string; sons: readonly NomSon[] }[] = 
   { fr: "Les éléments des thèmes", en: "Theme elements", sons: ["manege", "tourbillon", "portail", "geyser", "coulee"] },
   { fr: "Les rails (lot PBG1)", en: "Rails (lot PBG1)", sons: ["rail", "recul", "rampe", "orbite", "combo"] },
   { fr: "La boucle (lot PBG2)", en: "The loop (lot PBG2)", sons: ["verrouAllume", "verrouillee", "multibille", "jackpot", "multibilleFin", "niveau"] },
+  { fr: "Les déblocages (lot PBG3)", en: "Unlocks (lot PBG3)", sons: ["porteOuvre", "passage", "porteFerme", "lampe", "sauveurArme", "sauveur", "aiguillage"] },
   { fr: "Les moments", en: "Moments", sons: ["mult", "missionPas", "mission", "sauvee", "perdue", "fin"] },
 ];
 

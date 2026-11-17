@@ -2,11 +2,11 @@
 // 1/60 s) sont portés tels quels ; ce fichier ne garde que ce qui ne se règle jamais à la main. Les constantes de SENSATION (pente, rebonds, force des batteurs et du lanceur) sont dans `reglages.ts`, en un seul objet.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée (une règle, un réglage par défaut, la géométrie). */
-export const PINBALL_SIM_VERSION = 5;
+export const PINBALL_SIM_VERSION = 6;
 /** La version du générateur de la table du jour. Elle monte à tout changement de ce que `dailyPinball` produit. Jamais une date. */
-export const PINBALL_GENERATOR_VERSION = 5;
+export const PINBALL_GENERATOR_VERSION = 6;
 /** La version du calcul des seuils des médailles : le robot du lot PB4 (version 1 : les seuils provisoires du PB1, les mêmes tous les jours). Elle monte à tout changement du robot, de ses constantes ou des pourcentages (`seuils.ts`). */
-export const PINBALL_BOT_VERSION = 4;
+export const PINBALL_BOT_VERSION = 5;
 
 /** Le pas : 600 par seconde (celui de la maquette). La bille va à 1 500 px/s au plus, soit 2,5 px par pas, pour un rayon de 9 px : elle ne saute jamais un mur (`test/traversee.test.ts`). */
 export const TICKS_PAR_SECONDE = 600;
@@ -74,6 +74,26 @@ export const EV_MULTI = 33554432;
 export const EV_JACKPOT = 67108864;
 export const EV_MULTI_FIN = 134217728;
 export const EV_NIVEAU = 268435456;
+
+/**
+ * Lot PBG3 : les événements de la porte, du poteau sauveur et de l'aiguillage sont dans **un second mot** (`Partie.ev2`) : les 29 bits de `ev` sont presque pris (un entier de 32 bits). La porte qui s'ouvre, le passage, la
+ * porte qui se ferme, une lampe de couloir qui s'allume, le poteau qui s'arme, le poteau qui renvoie la bille, la bille dérivée par l'aiguillage.
+ */
+export const EV2_PORTE_OUVRE = 1;
+export const EV2_PORTE_PASSAGE = 2;
+export const EV2_PORTE_FERME = 4;
+export const EV2_LAMPE = 8;
+export const EV2_SAUVEUR_ARME = 16;
+export const EV2_SAUVEUR = 32;
+export const EV2_AIGUILLAGE = 64;
+
+/** Lot PBG3 : le poteau sauveur sort au milieu des batteurs : son centre (px), son rayon, le couloir de retour où se pose chaque lampe (le centre du couloir et la ligne qu'elle surveille). */
+export const SAUVEUR_X = 184;
+export const SAUVEUR_Y = 668;
+export const SAUVEUR_R = 8;
+export const LAMPE_Y = 505;
+export const LAMPE_DEMI = 11;
+export const LAMPE_X = 31;
 
 /** Les points de la maquette et du seed (lot PB3 : les éléments des thèmes et la mission). */
 export const POINTS = { sling: 10, spinner: 50, bumper: 100, voie: 100, cible: 250, trouVoies: 1000, trou: 1500, banque: 2000, manege: 500, coulee: 300, geyser: 750, portail: 800, tourbillon: 2000, mission: 10000 } as const;

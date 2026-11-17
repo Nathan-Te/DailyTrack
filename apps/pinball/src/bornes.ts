@@ -74,6 +74,14 @@ export const BORNES: Readonly<Record<keyof Reglages, readonly [number, number]>>
   jackpotMultiplie: [0, 1],
   missionButPas: [100, 400],
   missionPas: [0, 300],
+  // lot PBG3 : la porte, le poteau sauveur et l'aiguillage
+  porteDuree: [60, 18000],
+  portePoints: [0, 50000],
+  porteApres: [10, 1800],
+  sauveurForce: [300, 1200],
+  sauveurDevie: [0, 300],
+  aiguillageActif: [0, 1],
+  aiguillageVitesse: [200, 1200],
 };
 
 /** Ce que le joueur d'essai règle sur la vue (rien de cela n'entre dans la simulation). */

@@ -1,8 +1,8 @@
-import { AXE, NORME, UNITE } from "./constantes";
-import { racine, unitaire, div } from "./entiers";
-import type { Contenu } from "./generateur";
+import { AXE, LAMPE_DEMI, LAMPE_X, LAMPE_Y, NORME, SAUVEUR_R, SAUVEUR_X, SAUVEUR_Y, TOUR, UNITE } from "./constantes";
+import { cosinus, racine, sinus, unitaire, div } from "./entiers";
+import { MISSION_DU_THEME, MODULES_DE_MISSION, type Contenu } from "./generateur";
 import type { ThemePinball } from "./themes";
-import { planDe, type DefMini, type DefRail } from "./plans";
+import { planDe, type DefAiguillage, type DefMini, type DefPorte, type DefRail } from "./plans";
 import type { Reglages } from "./reglages";
 
 // La géométrie de la table (lot PB1), en unités (4 096 par pixel de la maquette). **Le châssis ne change jamais** : le mur gauche, l'arc du haut, le mur droit, le couloir du lanceur, les deux couloirs de retour
@@ -99,6 +99,52 @@ export interface MiniBatteur {
   y: number;
   longueur: number;
 }
+/**
+ * **La porte** (lot PBG3) : un passage incliné fermé par un battant. `x`, `y` : le milieu du battant ; `ux`, `uy` : la direction du passage (de l'entrée vers la sortie, échelle `NORME`) ; `nx`, `ny` : sa perpendiculaire ;
+ * `l` : la demi-largeur ; `battant` : le segment qui ferme le passage — **un mur quand la porte est fermée**, rien quand elle est ouverte ; `parBanque` : une banque de cibles complète l'ouvre (sinon, la table n'en ayant
+ * pas, c'est l'orbite menée à son bout). Les deux murs du passage sont dans `murs`.
+ */
+export interface Passage {
+  x: number;
+  y: number;
+  ux: number;
+  uy: number;
+  nx: number;
+  ny: number;
+  l: number;
+  battant: Segment;
+  parBanque: boolean;
+  /** Les deux bouts du battant, pour le rendu. */
+  bouts: [[number, number], [number, number]];
+  /** La longueur du passage (unités). */
+  profondeur: number;
+}
+/** **Le poteau sauveur** (lot PBG3) : entre les batteurs, il sort quand les deux lampes des couloirs de retour sont allumées. Un cercle (`x`, `y`, `r`) ; `lampes` : la ligne que la bille franchit dans chaque couloir (le centre `x`, la hauteur `y`, la demi-largeur `l`). */
+export interface Sauveur {
+  x: number;
+  y: number;
+  r: number;
+  lampes: { x: number; y: number; l: number }[];
+}
+/** Où l'aiguillage envoie la bille : un point d'arrivée et le nombre de pas du trajet ; `sortie` : où la bille ressort (l'élément du thème). */
+export interface Arrivee {
+  x: number;
+  y: number;
+  pas: number;
+}
+/**
+ * **L'aiguillage** (lot PBG3) : sur une rampe, au point `(x, y)` de son abscisse `s`. Par défaut la rampe va jusqu'au bout ; **le verrou allumé**, il envoie la bille au verrou (`versVerrou`) ; **pendant la multibille**, à
+ * l'élément du thème (`versElement`, la plongée dans l'élément rapporte un jackpot ; `type` : le module visé, `r` : son rayon).
+ */
+export interface Aiguillage {
+  rail: number;
+  s: number;
+  x: number;
+  y: number;
+  versVerrou: Arrivee | null;
+  versElement: (Arrivee & { type: string; r: number }) | null;
+}
+
 export interface Poser {
   type: string;
   emplacement: number;
@@ -133,6 +179,10 @@ export interface Table {
   mini: MiniBatteur | null;
   /** Lot PBG2 : le rang (dans `trous`) du trou qui sert de verrou — celui du deuxième emplacement du plan — ou −1 (le plan d'essai : pas de verrou, la mission ne se joue qu'une fois). */
   verrou: number;
+  /** Lot PBG3 : la porte, le poteau sauveur et l'aiguillage (`null` sur le plan d'essai pour la porte et l'aiguillage ; le poteau est partout). */
+  passage: Passage | null;
+  sauveur: Sauveur;
+  aiguillage: Aiguillage | null;
 }
 
 /** Les points de l'arc du haut (centre 196,25 × 205, rayon 176,25 : 31 points de la maquette), en unités. Calculés hors ligne, entiers. */
@@ -154,7 +204,7 @@ function segment(ax: number, ay: number, bx: number, by: number, e: number, kick
 /** La table du jour : le châssis, puis les six emplacements. */
 export function construireTable(contenu: Contenu, r: Reglages): Table {
   const plan = planDe(contenu.plan);
-  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1 };
+  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1, passage: null, sauveur: sauveurDe(), aiguillage: null };
   const mur = (ax: number, ay: number, bx: number, by: number, e: number, kick = 0, type: 0 | 1 = 0): void => void t.murs.push(segment(ax, ay, bx, by, e, kick, type));
   // --- le châssis
   mur(px(20), px(560), px(20), px(205), r.rebondMur);
@@ -179,7 +229,67 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
   contenu.modules.forEach((m, i) => poser(t, r, contenu.theme, m, i, px(plan.emplacements[i]!.x), px(plan.emplacements[i]!.y)));
   // lot PBG2 : le verrou est le trou du deuxième emplacement (celui de tous les plans du jour ; le plan d'essai n'en a pas)
   t.verrou = t.poses.find((q) => q.emplacement === 1 && q.type === "trou")?.rang ?? -1;
+  // lot PBG3 : la porte (ses murs et son battant), puis l'aiguillage d'une rampe
+  if (plan.porte) t.passage = poserPassage(t, plan.porte, r);
+  if (plan.aiguillage) t.aiguillage = poserAiguillage(t, plan.aiguillage, contenu, r);
   return t;
+}
+
+/** Le poteau sauveur : au milieu des batteurs (le bas de la table ne change pas : il n'existe que sorti), et la ligne que la bille franchit dans chaque couloir de retour, pour allumer sa lampe. */
+const sauveurDe = (): Sauveur => ({
+  x: px(SAUVEUR_X),
+  y: px(SAUVEUR_Y),
+  r: px(SAUVEUR_R),
+  lampes: [LAMPE_X, 2 * AXE - LAMPE_X].map((x) => ({ x: px(x), y: px(LAMPE_Y), l: px(LAMPE_DEMI) })),
+});
+
+/** **La porte** : deux murs parallèles de `profondeur` px, le battant à leur bout. Tout en entiers (`sinus`, `cosinus`). */
+function poserPassage(t: Table, d: DefPorte, r: Reglages): Passage {
+  const a = div(d.angle * TOUR, 360);
+  const ux = sinus(a); // la direction du passage : (sin a, −cos a) — 0° vers le haut, négatif vers le haut et la gauche
+  const uy = -cosinus(a);
+  const nx = cosinus(a); // la perpendiculaire (−uy, ux)
+  const ny = sinus(a);
+  const cx = px(d.x);
+  const cy = px(d.y);
+  const l = px(d.largeur) / 2;
+  const prof = px(d.profondeur);
+  const bout = (k: 1 | -1): [number, number] => [cx + div(k * nx * l, NORME), cy + div(k * ny * l, NORME)];
+  const [ax, ay] = bout(-1);
+  const [bx, by] = bout(1);
+  const fond = (x: number, y: number): [number, number] => [x - div(ux * prof, NORME), y - div(uy * prof, NORME)];
+  for (const [x, y] of [[ax, ay], [bx, by]] as const) {
+    const [fx, fy] = fond(x, y);
+    t.murs.push(segment(x, y, fx, fy, 400));
+  }
+  return { x: cx, y: cy, ux, uy, nx, ny, l, battant: segment(ax, ay, bx, by, r.rebondMur), parBanque: t.banques.length > 0, bouts: [[ax, ay], [bx, by]], profondeur: prof };
+}
+
+/** Le rayon de l'élément d'une mission (le disque que la bille quitte en ressortant). */
+const RAYON_ELEMENT: Readonly<Record<string, number>> = { manege: 50, tourbillon: 56, portailA: 14, portailB: 14, geyser: 22 };
+
+/** **L'aiguillage** : le point de la rampe à `partie` ‰ de sa longueur, le trajet vers le verrou et celui vers l'élément de la mission du thème. */
+function poserAiguillage(t: Table, d: DefAiguillage, contenu: Contenu, r: Reglages): Aiguillage {
+  const rail = t.rails[d.rampe]!;
+  const s = div(rail.len * d.partie, 1000);
+  let k = 0;
+  while (k < rail.ux.length - 1 && rail.cum[k + 1]! <= s) k++;
+  const x = rail.x[k]! + div(rail.ux[k]! * (s - rail.cum[k]!), NORME);
+  const y = rail.y[k]! + div(rail.uy[k]! * (s - rail.cum[k]!), NORME);
+  const vers = (ax: number, ay: number): Arrivee => {
+    const dist = racine((ax - x) * (ax - x) + (ay - y) * (ay - y));
+    return { x: ax, y: ay, pas: Math.max(30, div(dist * 600, Math.max(1, r.aiguillageVitesse) * UNITE)) };
+  };
+  const trou = t.verrou >= 0 ? t.trous[t.verrou]! : null;
+  const cible = t.poses.find((q) => (MODULES_DE_MISSION[MISSION_DU_THEME[contenu.theme]] as readonly string[]).includes(q.type));
+  return {
+    rail: d.rampe,
+    s,
+    x,
+    y,
+    versVerrou: trou ? vers(trou.x, trou.y) : null,
+    versElement: cible ? { ...vers(cible.x, cible.y), type: cible.type, r: px(RAYON_ELEMENT[cible.type] ?? 20) } : null,
+  };
 }
 
 const miniDe = (d: DefMini): MiniBatteur => ({ cote: d.cote, x: px(d.x), y: px(d.y), longueur: px(d.longueur) });

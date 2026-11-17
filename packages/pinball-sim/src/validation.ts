@@ -69,11 +69,13 @@ const distance2 = (x: number, y: number, s: Segment): number => {
 };
 
 /** La bille posée là recouvre-t-elle un mur, un bumper ou un poteau (ou en est-elle trop près pour être honnête) ? Rien d'une partie réelle ne s'y trouverait. */
-function pointOccupe(t: Table, x: number, y: number): boolean {
+export function pointOccupe(t: Table, x: number, y: number): boolean {
   const ux = x * UNITE;
   const uy = y * UNITE;
   const marge = 12 * UNITE;
   for (const s of t.murs) if (distance2(ux, uy, s) < marge * marge) return true;
+  // lot PBG3 : le battant de la porte, fermée (c'est l'état où la validation lâche ses billes)
+  if (t.passage && distance2(ux, uy, t.passage.battant) < marge * marge) return true;
   // à l'intérieur d'un lance-pierre (le triangle fermé de trois murs : sa diagonale, sa verticale à 78 px sous le sommet, son bas) la bille ne peut pas se trouver dans une partie réelle
   for (const s of t.murs) {
     if (s.type !== 1) continue;
@@ -103,7 +105,7 @@ function pointOccupe(t: Table, x: number, y: number): boolean {
 }
 
 /** La table est dans le rectangle utile : entre les murs, sous l'arc (rayon 176,25 px autour de (196,25 ; 205)), à 18 px de chaque bord. */
-const dansLaTable = (x: number, y: number): boolean => {
+export const dansLaTable = (x: number, y: number): boolean => {
   if (x < 40 || x > 330) return false;
   if (y >= 205) return true;
   const dx = x - 196;
@@ -159,6 +161,11 @@ export class SuiviModules {
   /** Lot PBG2 : une partie a verrouillé une bille, une partie est allée jusqu'à la multibille (rapportés, pas exigés). */
   verrou = false;
   multibille = false;
+  /** Lot PBG3 : la porte s'est ouverte d'elle-même dans une partie (la banque complète, ou l'orbite) / une bille l'a franchie (dans une partie du robot ou dans un lancer dispersé porte ouverte) / le poteau a renvoyé une bille / l'aiguillage a dérivé une bille. */
+  porteOuverte = false;
+  porteFranchie = false;
+  sauveur = false;
+  aiguillage = false;
   private readonly poses: readonly { pose: Poser; nom: string }[];
   /** Les rangs (dans `poses`) des modules pas encore touchés : la boucle de chaque pas n'a plus qu'eux à regarder. */
   private readonly restants: number[];
@@ -179,6 +186,10 @@ export class SuiviModules {
     if (p.missionFaite || p.niveau > 1) this.mission = true;
     if (p.verrouTotal > 0) this.verrou = true;
     if (p.multibilles > 0) this.multibille = true;
+    if (p.ouvertures > 0) this.porteOuverte = true;
+    if (p.passages > 0) this.porteFranchie = true;
+    if (p.sauvetages > 0) this.sauveur = true;
+    if (p.aiguillages > 0) this.aiguillage = true;
     for (let q = this.railsRestants.length - 1; q >= 0; q--) {
       const i = this.railsRestants[q]!;
       if (p.railsFaits[i]! > 0) {
@@ -274,6 +285,24 @@ export function tirsDisperses(contenu: Contenu, suivi: SuiviModules, base: Regla
           suivi.pas(p);
         }
         tirs++;
+      }
+    }
+  }
+  // lot PBG3 : les mêmes tirs depuis les batteurs, la porte ouverte (essai) : l'un d'eux au moins doit la franchir
+  if (new Partie(contenu, reglages).table.passage) {
+    for (const x of [104, 136, 168, 200, 232, 264]) {
+      for (let k = 0; k < 9; k++) {
+        for (const v of [850, 1300]) {
+          const angle = div((50 + 10 * k) * TOUR, 360);
+          const p = new Partie(contenu, reglages);
+          p.ouvrirLaPorte();
+          enJeu(p, x, 600, div(cosinus(angle) * v * UNITE, NORME), -div(sinus(angle) * v * UNITE, NORME));
+          for (let pas = 0; pas < 3000 && p.billes === NB_BILLES && !p.dansLanceur && !p.finie; pas++) {
+            p.avancer();
+            suivi.pas(p);
+          }
+          tirs++;
+        }
       }
     }
   }

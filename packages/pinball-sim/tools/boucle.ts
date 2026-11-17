@@ -1,7 +1,7 @@
 import { TICKS_PAR_SECONDE, copierReglages, dailyPinball, graineDuRobot, jouerRobot } from "../src/index";
 
 // `npm run boucle:pinball -w @cdj/pinball-sim -- [--jours 8] [--minutes 15] [--graines 1] [--du 20800]` (lot PBG2) : **les parties entières du robot** — combien de temps elles durent, ce qu'elles rapportent, combien de multibilles et de jackpots,
-// et ce que coûte leur calcul. Sert à choisir la durée des parties du robot pour les seuils (`seuils.ts`, `DUREE_PARTIE_ROBOT`). Aucune base, aucun réseau.
+// et ce que coûte leur calcul. Lot PBG3 : les ouvertures et les passages de la porte (et la part de ses points), les sauvetages du poteau, les billes dérivées par l'aiguillage. Sert à choisir la durée des parties du robot pour les seuils (`seuils.ts`, `DUREE_PARTIE_ROBOT`). Aucune base, aucun réseau.
 const arg = (nom: string, defaut: number): number => {
   const i = process.argv.indexOf(`--${nom}`);
   return i >= 0 ? Number(process.argv[i + 1]) : defaut;
@@ -39,7 +39,7 @@ for (let j = 0; j < jours; j++) {
     total += dt;
     scores.push(p.score);
     fins.push(p.tick);
-    lignes.push(`${c.theme}:${c.plan} g${g} fin ${(p.tick / TICKS_PAR_SECONDE / 60).toFixed(1)} min  score ${p.score}  billes ${p.billes}  niveau ${p.niveau}  multibilles ${p.multibilles}  jackpots ${p.jackpotsPartie} (${Math.round((100 * p.jackpotPoints) / Math.max(1, p.score))} % du score)  verrous ${p.verrouTotal}  perdues en multibille ${p.perduesMulti}  mult max ${p.multMax}  ${dt} ms`);
+    lignes.push(`${c.theme}:${c.plan} g${g} fin ${(p.tick / TICKS_PAR_SECONDE / 60).toFixed(1)} min  score ${p.score}  billes ${p.billes}  niveau ${p.niveau}  multibilles ${p.multibilles}  jackpots ${p.jackpotsPartie} (${Math.round((100 * p.jackpotPoints) / Math.max(1, p.score))} % du score)  verrous ${p.verrouTotal}  perdues en multibille ${p.perduesMulti}  mult max ${p.multMax}  porte ${p.ouvertures}/${p.passages} (${Math.round((100 * p.portePoints) / Math.max(1, p.score))} % du score)  poteau ${p.sauvetages}  aiguillages ${p.aiguillages}  ${dt} ms`);
   }
 }
 console.log(lignes.join("\n"));

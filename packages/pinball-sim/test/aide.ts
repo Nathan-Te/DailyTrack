@@ -1,4 +1,4 @@
-import { PINBALL_GENERATOR_VERSION, UNITE, Partie, type Contenu, type Module, type Reglages, REGLAGES, type ThemePinball } from "../src/index";
+import { PINBALL_GENERATOR_VERSION, UNITE, Partie, planDe, type Contenu, type Module, type Reglages, REGLAGES, type ThemePinball } from "../src/index";
 
 // Des aides pour les tests de règles : une table écrite à la main (les six modules, dans l'ordre des emplacements) et une bille posée où l'on veut, en pixels.
 export const JOUR_ESSAI = 20800;
@@ -53,4 +53,33 @@ export function dansLaTable(x: number, y: number, marge: number): boolean {
   if (X < 20 + marge || X > 372.5 - marge) return false;
   if (Y < 205) return Math.hypot(X - 196.25, Y - 205) <= 176.25 - marge;
   return true;
+}
+
+// --- Lot PBG3 : la porte, le poteau sauveur et l'aiguillage.
+/** Une partie du plan `plan` et du thème `theme`, aux modules par défaut de ses emplacements (l'élément du thème, le trou, puis le premier module permis) ; `modules` en remplace certains par rang (`{ 3: "cibles" }`). */
+export function partiePlan(plan: string, theme: ThemePinball = "ocean", modules: Readonly<Record<number, Module>> = {}, reglages: Reglages = REGLAGES): Partie {
+  const p = planDe(plan);
+  const liste = p.emplacements.map((e, i) => e.fixe?.[theme] ?? modules[i] ?? e.permis[0]!);
+  return new Partie({ jour: JOUR_ESSAI, g: PINBALL_GENERATOR_VERSION, theme, plan, modules: liste }, reglages);
+}
+/** Pose la bille principale sur le rail `rang`, à l'abscisse `s` (px depuis l'entrée), vers l'avant à `v` px/s. */
+export function surLeRail(p: Partie, rang: number, s: number, v: number): Partie {
+  p.dansLanceur = false;
+  p.entree = p.tick;
+  p.couche = 1;
+  p.rail = rang;
+  p.railBout = 0;
+  p.railS = Math.round(s * UNITE);
+  p.railV = Math.round(v * UNITE);
+  p.railDepuis = 0;
+  return p;
+}
+/** Avance `n` pas et rend les événements `ev2` vus pendant ces pas. */
+export function evenements2(p: Partie, n: number): number {
+  let ev = 0;
+  for (let i = 0; i < n && !p.finie; i++) {
+    p.avancer();
+    ev |= p.ev2;
+  }
+  return ev;
 }

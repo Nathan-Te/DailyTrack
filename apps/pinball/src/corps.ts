@@ -55,11 +55,12 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, type Partie, type ThemePinball } from "@cdj/pinball-sim";
-import { BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, empreinteDuModule, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
+import { flechesDesRails as flechesDesRailsDe, BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, couleurModule, dessinerSol, empreinteDuModule, flecheDe, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 import { creerModules } from "./modeles/trois";
 import { FENETRES, creerRails3d, hauteurBille, hauteurVue } from "./rails3d";
 import { hauteurRail } from "./rails";
+import { angleVise, boutLibre, couleurAiguillage, geoAiguillage, geoPorte, ouverturePorte, rapprocher, sortiePoteau } from "./deblocages";
 
 // Le rendu three.js de « Pinball » (lot PB2), l'option B de la maquette : **la même simulation 2D, vue en 3D penchée**. **Chargé à la demande** (ligne `corps-` de `budget.aLaDemande`), jamais dans le premier chargement.
 // Le sol de la table est le dessin à plat de `dessin.ts` (`dessinerSol`) posé en texture, avec ses bandes, ses lampes éteintes, ses flèches et le nom du thème, dans la palette du thème ; par-dessus, en volume : le meuble en
@@ -1236,6 +1237,115 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const haloVerrou = trouVerrou ? halo(px(trouVerrou.x), px(trouVerrou.y), px(trouVerrou.r) * 3.2, "#B8F6FF") : null;
   const halosJackpot = t.poses.filter((m) => comptePourLaMission(o.theme, m.type)).map((m) => halo(px(m.x), px(m.y), empreinteDuModule(m.type) * 1.7, "#FFF3A8"));
 
+  // --- Lot PBG3 : la porte, le poteau sauveur et l'aiguillage. La simulation décide ; ici tout est fonction du pas (`deblocages.ts`, commun avec le rendu à plat).
+  {
+    const porte = geoPorte(t);
+    const aig = geoAiguillage(t);
+    // une flèche posée sur la table, qui clignote (celle des modules : même forme), dont on change la couleur
+    const flecheAllumee = (x: number, y: number, a: number, couleur: string): { g: Group; plein: MeshBasicMaterial } => {
+      const g = new Group();
+      g.position.set(X(x), 0, Z(y));
+      g.rotation.y = -a;
+      const trait2 = new MeshBasicMaterial({ color: ENCRE, side: DoubleSide });
+      const plein = new MeshBasicMaterial({ color: couleur, side: DoubleSide });
+      aLiberer.push(trait2, plein);
+      const geoForme = geo(new ShapeGeometry(forme));
+      geoForme.rotateX(Math.PI / 2);
+      const dessous = new Mesh(geoForme, trait2);
+      dessous.scale.setScalar(1.28);
+      dessous.position.y = 1.15;
+      dessous.renderOrder = 3;
+      const dessus = new Mesh(geoForme, plein);
+      dessus.position.y = 1.25;
+      dessus.renderOrder = 4;
+      g.add(dessous, dessus);
+      g.visible = false;
+      groupe.add(g);
+      return { g, plein };
+    };
+    // la porte : un battant (une planche de 18 px de haut) qui pivote contre le mur ; rouge fermé, moutarde ouvert
+    if (porte) {
+      const longueur = Math.hypot(porte.b.x - porte.a.x, porte.b.y - porte.a.y);
+      const matBattant = mat("#C0452F", { roughness: 0.4, emissive: "#C0452F", unique: true });
+      (matBattant as MeshStandardMaterial).emissiveIntensity = 0.25;
+      const battant = ombrageur(new Mesh(geo(new BoxGeometry(longueur + 4, 17, 6)), matBattant));
+      battant.position.x = longueur / 2;
+      battant.position.y = 8.5;
+      const pivot = new Group();
+      pivot.position.set(X(porte.a.x), 0, Z(porte.a.y));
+      pivot.add(battant);
+      const axe = cylindre(4.5, 20, "#B7BCC3", { metalness: 0.9, roughness: 0.36, envMapIntensity: 1.1 });
+      axe.castShadow = false; // trop petit pour que son ombre se voie : une ombre de moins à dessiner
+      axe.position.set(X(porte.a.x), 10, Z(porte.a.y));
+      groupe.add(pivot, axe);
+      const fl = flecheAllumee(porte.fleche.x, porte.fleche.y, porte.fleche.a, MOUTARDE);
+      maj.push((tick) => {
+        const k = ouverturePorte(partie);
+        const b = boutLibre(porte, k);
+        pivot.rotation.y = -Math.atan2(b.y - porte.a.y, b.x - porte.a.x);
+        matBattant.color.set(k > 0 ? MOUTARDE : "#C0452F");
+        (matBattant as MeshStandardMaterial).emissive.set(k > 0 ? MOUTARDE : "#C0452F");
+        fl.g.visible = k > 0 && clignote(tick);
+      });
+    }
+    // les lampes des couloirs de retour : allumées par la bille qui y descend (moutarde)
+    const lampesCouloirs = t.sauveur.lampes.map((l) => {
+      const m = new MeshStandardMaterial({ color: PAPIER, emissive: MOUTARDE, emissiveIntensity: 0, roughness: 0.4, envMap: env.texture, envMapIntensity: 0.35 });
+      aLiberer.push(m);
+      const sph = ombrageur(new Mesh(geo(new SphereGeometry(5.5, 16, 12)), m), false);
+      sph.position.set(X(px(l.x)), 6, Z(px(l.y)));
+      groupe.add(sph);
+      return m;
+    });
+    // le poteau sauveur : un plot d'acier qui sort du sol entre les batteurs (rien quand il est rentré : le bas de la table ne change pas), cerné d'un halo qui clignote quand il est armé
+    const plot = cylindre(px(t.sauveur.r), 26, "#B7BCC3", { metalness: 0.9, roughness: 0.36, envMapIntensity: 1.1 });
+    plot.position.set(X(px(t.sauveur.x)), -13, Z(px(t.sauveur.y)));
+    plot.visible = false;
+    const tete = ombrageur(new Mesh(geo(new CylinderGeometry(px(t.sauveur.r) * 0.55, px(t.sauveur.r) * 0.55, 3, 24)), mat(MOUTARDE, { emissive: MOUTARDE, unique: true })), false);
+    tete.position.y = 13.6;
+    plot.add(tete);
+    groupe.add(plot);
+    // l'aiguillage : une lame sur la rampe, qui bascule vers ce qu'il mène ; la flèche de la rampe prend la couleur du trajet
+    if (aig) {
+      const rl = t.rails[aig.rail]!;
+      const sAig = t.aiguillage!.s;
+      const hLame = hauteurVue(hauteurRail(rl, sAig)) + 6;
+      const matLame = mat(PAPIER, { roughness: 0.3, emissive: PAPIER, unique: true });
+      (matLame as MeshStandardMaterial).emissiveIntensity = 0.3;
+      const lame = ombrageur(new Mesh(geo(new BoxGeometry(24, 7, 6)), matLame), false);
+      lame.position.set(X(aig.x), hLame, Z(aig.y));
+      lame.renderOrder = 4;
+      const socle = cylindre(4.5, 5, "#B7BCC3", { metalness: 0.9, roughness: 0.36, envMapIntensity: 1.1 });
+      socle.castShadow = false;
+      socle.position.set(X(aig.x), hLame, Z(aig.y));
+      groupe.add(lame, socle);
+      let angle = aig.defaut;
+      let tickAvant = 0;
+      const fleches = flechesDesRailsDe(t).filter((f) => f.rail === aig.rail).map((f) => flecheAllumee(f.x, f.y, f.a, MOUTARDE));
+      maj.push((tick) => {
+        const vers = partie.aiguillageVers;
+        angle = rapprocher(angle, angleVise(aig, vers), 0.06 * Math.max(1, Math.min(30, tick - tickAvant)));
+        tickAvant = tick;
+        lame.rotation.y = -angle;
+        const couleur = couleurAiguillage(vers);
+        (matLame as MeshStandardMaterial).color.set(couleur ?? PAPIER);
+        (matLame as MeshStandardMaterial).emissive.set(couleur ?? PAPIER);
+        for (const f of fleches) {
+          f.g.visible = couleur !== null;
+          if (couleur) f.plein.color.set(couleur);
+        }
+      });
+    }
+    const haloPoteau = halo(px(t.sauveur.x), px(t.sauveur.y), px(t.sauveur.r) * 3.2, MOUTARDE);
+    maj.push((tick) => {
+      lampesCouloirs.forEach((m, i) => (m.emissiveIntensity = partie.lampes[i] ? 1.4 : 0));
+      const sortie = sortiePoteau(partie);
+      plot.visible = sortie > 0;
+      plot.position.y = -13 + 26 * sortie * 0.92;
+      haloPoteau.visible = partie.sauveurArme && sortie >= 1 && clignote(tick);
+    });
+  }
+
   // --- Les étiquettes des modules : des plaques à part, tournées vers le joueur et grossies (voir `majEtiquettes`)
   /** Lot PBG2 : une plaque peut changer de mot — « VERROU » sur celle du trou-verrou quand il est allumé (`verrou`), « JACKPOT » sur celle de l'élément du thème pendant la multibille (`jackpot`) ; ses textures de rechange sont dessinées une fois, par mot. */
   interface PlaqueEtiquette {
@@ -1450,27 +1560,34 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const by = px(b.py) + (px(b.y) - px(b.py)) * a;
     // lot PBG1 : sur un rail, la bille est à la hauteur du rail à son abscisse (interpolée entre deux pas : `railV` est en unités par seconde) ; sa place sur le plateau reste (x, y)
     const rl = b.couche === 1 ? t.rails[b.rail] : undefined;
+    // lot PBG3 : la bille dérivée par l'aiguillage (`rail` < 0) vole en ligne droite, à 30 px au-dessus de la table, comme sur un rail
+    const vole = b.couche === 1 && !rl;
+    const surHaut = !!rl || vole;
     let hBille = RAYON;
     let hRail = 0;
+    if (vole) {
+      hRail = hauteurVue(30);
+      hBille = RAYON + hauteurVue(30);
+    }
     if (rl) {
       const sBille = Math.max(0, Math.min(rl.len, b.railS + (b.railV * a) / TICKS_PAR_SECONDE));
       hBille = hauteurBille(rl, sBille);
       hRail = hauteurVue(hauteurRail(rl, sBille));
     }
-    if (!!rl !== sl.surRail) {
-      sl.surRail = !!rl;
-      sl.bille.castShadow = !rl;
+    if (surHaut !== sl.surRail) {
+      sl.surRail = surHaut;
+      sl.bille.castShadow = !surHaut;
       // sur un rail : sans test de profondeur et dans la file des objets translucides (derrière le toboggan et le tube de verre qui l'enveloppent, la bille resterait voilée)
       for (const m of [sl.bille.material as Material, sl.coque]) {
-        m.depthTest = !rl;
-        m.transparent = !!rl;
+        m.depthTest = !surHaut;
+        m.transparent = surHaut;
       }
-      sl.bille.renderOrder = rl ? 4 : 0;
-      sl.contour.renderOrder = rl ? 3 : 0;
+      sl.bille.renderOrder = surHaut ? 4 : 0;
+      sl.contour.renderOrder = surHaut ? 3 : 0;
     }
     sl.bille.position.set(X(bx), hBille, Z(by));
-    sl.ombreRail.visible = sl.ombrePlateau.visible = !!rl;
-    if (rl) {
+    sl.ombreRail.visible = sl.ombrePlateau.visible = surHaut;
+    if (surHaut) {
       sl.ombreRail.position.set(X(bx), hRail + 0.45, Z(by));
       sl.ombreRail.scale.setScalar(RAYON * 2.3);
       sl.ombrePlateau.position.set(X(bx), 0.35, Z(by));

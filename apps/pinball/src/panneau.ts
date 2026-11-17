@@ -86,6 +86,7 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
     el("p", "p-mission__gain", t("aujourdhui.mission.gain", { points: grouper(POINTS.mission, ctx.langue) })),
     // lot PBG2 : la boucle de la partie, en une ligne
     el("p", "p-mission__boucle", t("aujourdhui.boucle")),
+    el("p", "p-mission__boucle", t("aujourdhui.debloques")),
   );
 
   const modules = modulesDeLaTable(contenu, (cle) => t(cle));

@@ -57,21 +57,24 @@ describe("le robot a des contraintes d'humain", () => {
   const c = dailyPinball(JOUR + 3);
   const coupsVus: { coup: Coup; avant: Partie }[] = [];
   const r = jouerRobot(c, 11, { maxTicks: 54000, surCoup: (coup, p) => coupsVus.push({ coup, avant: p.copier() }) });
+  // lot PBG3 : un coup décidé dans les derniers pas de la partie n'a pas le temps d'être joué avant son arrêt (réaction de 90 pas, délai choisi jusqu'à 200 pas) : il n'est pas un coup manqué, la partie est finie
+  const jouables = r.coups.filter((k) => k.decision < 54000 - 400);
   it("il y a assez de coups pour juger (la partie d'une minute et demie)", () => {
     expect(r.coups.length).toBeGreaterThan(20);
-    expect(r.coups.every((k) => k.appui >= 0)).toBe(true);
+    expect(jouables.every((k) => k.appui >= 0)).toBe(true);
+    expect(r.coups.filter((k) => k.appui < 0).length, "au plus le dernier coup, coupé par l'arrêt de la partie").toBeLessThanOrEqual(1);
   });
   it(`un temps de réaction : jamais d'appui moins de ${ROBOT_REACTION} pas après la décision`, () => {
-    for (const k of r.coups) expect(k.appui - k.decision, `décision au pas ${k.decision}`).toBeGreaterThanOrEqual(ROBOT_REACTION);
+    for (const k of jouables) expect(k.appui - k.decision, `décision au pas ${k.decision}`).toBeGreaterThanOrEqual(ROBOT_REACTION);
   });
   it(`une imprécision bornée : l'appui tombe à ${ROBOT_IMPRECISION} pas au plus du moment choisi (ou à la réaction minimale)`, () => {
     let ecarts = 0;
-    for (const k of r.coups) {
+    for (const k of jouables) {
       const ecart = k.appui - k.decision - k.delai;
       if (k.appui - k.decision !== ROBOT_REACTION) expect(Math.abs(ecart)).toBeLessThanOrEqual(ROBOT_IMPRECISION);
       if (ecart !== 0) ecarts++;
     }
-    expect(ecarts, "le robot n'appuie pas toujours au pas près : l'erreur vient de sa graine").toBeGreaterThan(r.coups.length / 3);
+    expect(ecarts, "le robot n'appuie pas toujours au pas près : l'erreur vient de sa graine").toBeGreaterThan(jouables.length / 3);
   });
   it(`un écart d'au moins ${ROBOT_ECART_MIN} pas entre deux appuis du même batteur, et un batteur tenu entre ${ROBOT_MAINTIEN_MIN} et ${ROBOT_MAINTIEN_MAX} pas`, () => {
     for (const b of [GAUCHE, DROITE]) {
@@ -87,7 +90,9 @@ describe("le robot a des contraintes d'humain", () => {
     }
   });
   it("le lanceur : une charge qui varie d'une bille à l'autre", () => {
-    const ev = r.evenements.filter((e) => e.c === LANCEUR);
+    // lot PBG3 : le poteau sauveur et la porte gardent la bille en jeu bien plus longtemps (une bille de la partie d'une minute et demie peut n'être jamais perdue) : pour voir plusieurs billes, une partie à la pente forte qui les perd vite
+    const vite = jouerRobot(c, 11, { maxTicks: 54000, reglages: { ...REGLAGES, pente: 2200, sauvee: 0 } });
+    const ev = vite.evenements.filter((e) => e.c === LANCEUR);
     const tenues = ev.filter((e) => !e.enfonce).map((e, i) => e.tick - ev.filter((x) => x.enfonce)[i]!.tick);
     expect(tenues.length).toBeGreaterThan(1);
     expect(new Set(tenues).size).toBeGreaterThan(1);
@@ -106,9 +111,10 @@ describe("le robot a des contraintes d'humain", () => {
 });
 
 describe("le robot vise : la mission du jour compte en premier", () => {
-  it.each(THEMES_PINBALL)("%s : il réussit la mission en deux minutes de jeu", (theme) => {
+  // lot PBG3 : trois minutes (au lieu de deux) — sur huit graines la mission est faite en 31 à 122 s (océan) et 32 à 95 s (foire) : la graine 0 de l'océan la fait à 122 s
+  it.each(THEMES_PINBALL)("%s : il réussit la mission en trois minutes de jeu", (theme) => {
     const c = dailyPinball(JOUR + 4, undefined, theme, "doublette"); // lot PBG1 : un plan fixé (la validation éprouve les 500 tables)
-    const r = jouerRobot(c, graineDuRobot(0), { maxTicks: 72000 });
+    const r = jouerRobot(c, graineDuRobot(0), { maxTicks: 108000 });
     expect(r.partie.missionFaite || r.partie.niveau > 1, `${theme} : mission ${r.partie.compteur} / ${r.partie.but}`).toBe(true); // lot PBG2 : la mission revient après la multibille
     expect(r.partie.score).toBeGreaterThan(20000);
   });
@@ -197,7 +203,8 @@ describe("lot PBG2 : le robot en multibille", () => {
     expect(maxBilles).toBe(3);
     expect(pasMulti).toBeGreaterThan(2000);
     expect(frappesMulti, "le robot frappe pendant la multibille").toBeGreaterThanOrEqual(10);
-    expect(r.partie.billes, "les billes perdues pendant la multibille ne coûtent rien").toBeGreaterThanOrEqual(1);
+    // lot PBG3 : le poteau et la porte changent la durée des parties (sur ces quatre graines le robot perd ses trois billes en 1,3 à 3,5 minutes) : « il reste une bille » n'est plus un fait de cette partie ; la règle (une bille perdue en multibille ne coûte rien) est celle de `verrou.test.ts`, ici on voit seulement qu'elles se perdent
+    expect(r.partie.perduesMulti, "des billes sont perdues pendant la multibille, sans rien coûter").toBeGreaterThanOrEqual(2);
     const encore = jouerRobot(c, graineDuRobot(0), { maxTicks: 216000 });
     expect(encore.evenements).toEqual(r.evenements);
     expect(encore.partie.resultat()).toEqual(r.partie.resultat());

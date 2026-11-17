@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2990 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3001 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3751,6 +3751,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `aujourdhui.boucle` | Réussis la mission, verrouille deux billes : multibille et jackpots, puis la mission revient plus haut. | Complete the mission, lock two balls: multiball and jackpots, then the mission comes back higher. |
+| `aujourdhui.debloques` | Porte (cibles ou orbite), poteau sauveur (lampes des couloirs de retour) et aiguillage de la rampe : chacun se débloque en visant. | Gate (targets or orbit), kickback post (return lane lamps) and the ramp switch: each one unlocks when you aim for it. |
 | `aujourdhui.mission` | Mission | Mission |
 | `aujourdhui.mission.gain` | +{points} et un cran de multiplicateur, de plus en plus à chaque niveau | +{points} and one step of multiplier, more at every level |
 | `aujourdhui.table` | Sur la table | On the table |
@@ -3779,6 +3780,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.point6` | Bille sauvée : une bille perdue juste après son lancer revient au lanceur, une fois par bille. Les batteurs, eux, ne pardonnent rien : à toi de viser. | Ball save: a ball lost just after launch comes back to the launcher, once per ball. The flippers forgive nothing, though: aim well. |
 | `aide.point7` | Les rampes et l'orbite se prennent en visant la flèche de leur entrée, assez vite : la bille roule au-dessus de la table et rapporte des points quand elle arrive au bout. Deux rails de suite avant que la jauge du combo ne se vide, et le combo monte : chaque rail rapporte plus. | Ramps and the orbit are taken by aiming at the arrow at their entrance, fast enough: the ball rolls above the table and scores when it reaches the end. Two rails in a row before the combo gauge runs out, and the combo goes up: each rail is worth more. |
 | `aide.point8` | La boucle : réussis la mission, le verrou s'allume sur le trou. Verrouille deux billes : c'est la multibille, trois billes en jeu, et chaque prise de l'élément du thème rapporte un jackpot de plus en plus gros. Quand il ne reste qu'une bille, la mission revient, plus haut et plus généreuse. | The loop: complete the mission and the lock lights up on the hole. Lock two balls: that is multiball, three balls in play, and every hit on the theme element earns a bigger and bigger jackpot. When one ball is left, the mission comes back, higher and more generous. |
+| `aide.point9` | Trois déblocages : la banque de cibles complète ouvre la porte (sans cibles, c'est l'orbite menée à son bout) — passe-la pour de gros points et un pas de mission ; allume les lampes des deux couloirs de retour, le poteau sort entre les batteurs et renvoie une bille ; verrou allumé, la rampe à l'aiguillage mène la bille droit au verrou (en multibille : à l'élément du thème, pour un jackpot). | Three unlocks: completing the target bank opens the gate (with no targets, ride the orbit to its end) — go through it for big points and a mission step; light the lamps of both return lanes and the post pops up between the flippers and kicks a ball back; with the lock lit, the ramp switch sends the ball straight to the lock (in multiball: to the theme element, for a jackpot). |
 
 ### kit (`kit.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3913,6 +3915,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `module.portailA` | Portail A | Portal A |
 | `module.portailB` | Portail B | Portal B |
 | `module.asteroide` | Astéroïde | Asteroid |
+| `module.porte` | Porte | Gate |
 | `module.geyser` | Geyser | Geyser |
 | `module.coulee` | Coulée | Lava flow |
 | `module.rampe.foire` | Montagnes russes | Roller coaster |
@@ -3953,6 +3956,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.niveau.aria` | Mission, niveau {n} | Mission, level {n} |
 | `hud.verrou.aria` | Billes verrouillées : {n} sur {total} | Locked balls: {n} of {total} |
 | `hud.verrou.allume` | Verrou allumé | Lock is lit |
+| `hud.poteau` | Poteau | Post |
+| `hud.poteau.arme` | Poteau armé | Post armed |
+| `hud.poteau.aria` | Poteau sauveur : {n} lampe(s) allumée(s) sur 2 | Kickback post: {n} lamp(s) lit out of 2 |
+| `hud.poteau.arme.aria` | Poteau sauveur armé | Kickback post armed |
+| `hud.porte.gain` | PORTE +{points} | GATE +{points} |
 | `hud.multibille` | MULTIBILLE | MULTIBALL |
 | `hud.multibille.aria` | Multibille : prochain jackpot {points} | Multiball: next jackpot {points} |
 | `hud.jackpot.prochain` | Jackpot {points} | Jackpot {points} |
@@ -3987,6 +3995,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `scene.aria` | La table de flipper du jour : deux batteurs en bas, trois billes | Today's pinball table: two flippers at the bottom, three balls |
 | `scene.sauvee` | Bille sauvée ! | Ball saved! |
 | `scene.multibille` | MULTIBILLE ! | MULTIBALL! |
+| `scene.porte.ouvre` | PORTE OUVERTE | GATE OPEN |
+| `scene.poteau.arme` | POTEAU ARMÉ | POST ARMED |
+| `scene.poteau.sauve` | BILLE RENVOYÉE ! | BALL KICKED BACK! |
 | `scene.verrou.allume` | VERROU ALLUMÉ | LOCK IS LIT |
 | `scene.verrouillee` | BILLE VERROUILLÉE | BALL LOCKED |
 | `scene.niveau` | MISSION NIVEAU {n} | MISSION LEVEL {n} |

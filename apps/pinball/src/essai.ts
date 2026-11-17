@@ -5,6 +5,7 @@
 //   · `?debug&fps` : l'affichage des images par seconde et de la durée d'une image ;
 //   · `?essai=mission` (lot PB3) : la partie commence au but de la mission moins un, pour voir tout de suite le moment fort (jamais classée) ;
 //   · `?essai=verrou` (lot PBG2) : la mission est réussie et le verrou allumé ; `?essai=multibille` : la partie commence en multibille (jamais classés) ;
+//   · `?essai=porte` (lot PBG3) : la porte est ouverte ; `?essai=poteau` : le poteau sauveur est armé (jamais classés) ;
 //   · `?plan=<id>` (lot PBG1) : la table de ce plan (doublette, tremplin, bretelle, boucle) ce jour-là, **combinable avec `?theme=`** (jamais classée) ; un plan inconnu est ignoré par `niveau.ts` (la table du jour) ;
 //   · `?debug&sons` (lot PBS1) : la table des sons, un panneau où chaque bouton joue un son (jamais en production) ;
 //   · `?robot` (lot PB4) : on regarde le robot jouer la table du jour (sa première partie ; `?robot=2` : la troisième) avec la mention « Le robot joue » ; `?jour=AAAA-MM-JJ&robot` pour un autre jour (jamais classé).
@@ -25,6 +26,9 @@ export interface Essai {
   /** `?essai=verrou` (lot PBG2) : la mission est réussie et le verrou allumé. `?essai=multibille` : la partie commence en multibille. */
   verrou: boolean;
   multibille: boolean;
+  /** `?essai=porte` (lot PBG3) : la porte est ouverte. `?essai=poteau` : le poteau sauveur est armé. */
+  porte: boolean;
+  poteau: boolean;
   /** `?robot` (lot PB4) : le rang de la partie du robot qu'on regarde (0 : la première), ou `null`. */
   robot: number | null;
   /** `?plan=<id>` (lot PBG1) : l'identifiant demandé (une suite de lettres), **non vérifié ici** — la liste des plans est à la demande (`niveau.ts` l'ignore s'il est inconnu) —, ou `null`. */
@@ -34,7 +38,7 @@ export interface Essai {
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, robot: null, plan: null, essai: false };
+  const vide: Essai = { tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const debug = q.has("debug");
@@ -52,6 +56,8 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   const mission = q.get("essai") === "mission";
   const verrou = q.get("essai") === "verrou";
   const multibille = q.get("essai") === "multibille";
+  const porte = q.get("essai") === "porte";
+  const poteau = q.get("essai") === "poteau";
   // `?robot` seul : sa première partie ; `?robot=2` : la troisième ; une valeur qui n'est pas un petit entier : la première
   const brutRobot = q.get("robot");
   const rang = brutRobot === null || brutRobot === "" ? 0 : Number(brutRobot);
@@ -59,5 +65,5 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   // `?plan=` : un identifiant en lettres minuscules ; autre chose est ignoré
   const brutPlan = q.get("plan");
   const plan = brutPlan !== null && /^[a-z]{1,20}$/.test(brutPlan) ? brutPlan : null;
-  return { tune, fps: debug && q.has("fps"), sons: debug && q.has("sons"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, verrou, multibille, robot, plan, essai: tune || reglages !== null || mission || verrou || multibille || robot !== null || plan !== null };
+  return { tune, fps: debug && q.has("fps"), sons: debug && q.has("sons"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, verrou, multibille, porte, poteau, robot, plan, essai: tune || reglages !== null || mission || verrou || multibille || porte || poteau || robot !== null || plan !== null };
 }

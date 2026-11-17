@@ -10,7 +10,7 @@
 // `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`). **Lot PB4 : `?robot`** — le robot de
 // la simulation joue sa partie (calculée par `niveau.ts`), la scène en rejoue les événements à leur pas ; la mention « Le robot joue » le dit, le toucher et le clavier ne changent rien.
 // **Lot PBG1 : les rails** — la scène lit `partie.combo` / `comboFin` pour le compteur de combo du HUD (la part du délai qui reste) et les événements `EV_RAMPE` / `EV_ORBITE` pour « +1 600 » à l'afficheur (le gain du pas) ; `?plan=<id>` (essai) joue un plan donné (`niveau.ts`).
-import { DROITE, EV_BUMPER, EV_CIBLE, EV_JACKPOT, EV_LANCE, EV_MISSION, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_ORBITE, EV_RAMPE, EV_SAUVEE, EV_SPINNER, EV_VERROU_ALLUME, EV_VERROUILLEE, GAUCHE, LANCEUR, MAX_EVENEMENTS, NB_BILLES, POINTS, VERROU_BILLES, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
+import { DROITE, EV_BUMPER, EV_CIBLE, EV_JACKPOT, EV_LANCE, EV_MISSION, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_ORBITE, EV_RAMPE, EV_SAUVEE, EV_SPINNER, EV_VERROU_ALLUME, EV_VERROUILLEE, EV2_PORTE_OUVRE, EV2_PORTE_PASSAGE, EV2_SAUVEUR, EV2_SAUVEUR_ARME, GAUCHE, LANCEUR, MAX_EVENEMENTS, NB_BILLES, POINTS, VERROU_BILLES, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
 import { DetecteurBridage } from "@cdj/core/bridage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -88,6 +88,9 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     if (essai.mission) p.compteur = Math.max(0, p.but - 1);
     if (essai.verrou) p.allumerLeVerrou();
     if (essai.multibille) p.lancerLaMultibille();
+    // lot PBG3 : `?essai=porte` ouvre la porte, `?essai=poteau` arme le poteau sauveur
+    if (essai.porte) p.ouvrirLaPorte();
+    if (essai.poteau) p.armerLeSauveur();
     return p;
   };
   let partie = neuve();
@@ -207,7 +210,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const majHud = (): void => {
     // lot PBG1 : le combo en cours (celui dont le délai n'est pas passé) et la part du délai qui reste
     const enCours = partie.combo > 0 && partie.tick <= partie.comboFin;
-    hud.maj({ score: grouper(partie.score, o.langue), mult: partie.mult, billes: partie.billes, mission: o.t(`hud.mission.nom.${partie.mission}`), compteur: partie.compteur, but: partie.but, faite: partie.missionFaite, lancee, combo: enCours ? partie.combo : 0, reste: enCours ? (partie.comboFin - partie.tick) / reglages.comboDelai : 0, niveau: partie.niveau, verrouillees: partie.verrouillees, verrouAllume: partie.verrouAllume, multibille: partie.multibille, prochain: partie.multibille ? grouper(partie.prochainJackpot, o.langue) : "" });
+    hud.maj({ score: grouper(partie.score, o.langue), mult: partie.mult, billes: partie.billes, mission: o.t(`hud.mission.nom.${partie.mission}`), compteur: partie.compteur, but: partie.but, faite: partie.missionFaite, lancee, combo: enCours ? partie.combo : 0, reste: enCours ? (partie.comboFin - partie.tick) / reglages.comboDelai : 0, niveau: partie.niveau, verrouillees: partie.verrouillees, verrouAllume: partie.verrouAllume, multibille: partie.multibille, prochain: partie.multibille ? grouper(partie.prochainJackpot, o.langue) : "", lampes: (partie.lampes[0] ? 1 : 0) + (partie.lampes[1] ? 1 : 0) });
   };
   majHud();
 
@@ -337,6 +340,8 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     p.verrouillees = partie.verrouillees;
     p.jackpots = partie.jackpots;
     p.niveau = partie.niveau;
+    p.lampes = (partie.lampes[0] ? 1 : 0) + (partie.lampes[1] ? 1 : 0);
+    p.vers = partie.aiguillageVers;
     let voies = 0;
     for (const v of partie.voiesAllumees) if (v) voies++;
     p.voies = voies;
@@ -436,7 +441,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       partie.avancer();
       tDernierPas = performance.now();
       prendre(apresPas, partie.ev);
-      for (const e of sonsDuPas(partie.ev, avantPas, apresPas, contenu.theme)) sons.jouer(e);
+      for (const e of sonsDuPas(partie.ev, avantPas, apresPas, contenu.theme, partie.ev2)) sons.jouer(e);
       if (tDernierPas - tVibration > PAUSE_VIBRATION_MS && batteurFrappe(vx, vy)) {
         tVibration = tDernierPas;
         vibrations++;
@@ -460,6 +465,17 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         o.vibrer(120);
       }
       if (partie.ev & EV_MULTI_FIN && !(partie.ev & EV_NIVEAU)) message = "";
+      // lot PBG3 : la porte qui s'ouvre, le passage (ses points un instant à l'afficheur), le poteau qui s'arme et celui qui renvoie la bille
+      if (partie.ev2 & EV2_PORTE_OUVRE) message = dire("scene.porte.ouvre");
+      if (partie.ev2 & EV2_SAUVEUR_ARME) message = dire("scene.poteau.arme");
+      if (partie.ev2 & EV2_SAUVEUR) {
+        message = dire("scene.poteau.sauve");
+        o.vibrer(60);
+      }
+      if (partie.ev2 & EV2_PORTE_PASSAGE) {
+        hud.gain(o.t("hud.porte.gain", { points: grouper(partie.gains.reduce((somme, g) => somme + g.points, 0), o.langue) }), RAIL_GAIN_MS);
+        o.vibrer(40);
+      }
       if (partie.ev & EV_JACKPOT) {
         const texte = o.t("scene.jackpot", { points: grouper(partie.dernierJackpot, o.langue) });
         hud.gain(o.t("hud.jackpot.gain", { points: grouper(partie.dernierJackpot, o.langue) }), JACKPOT_GAIN_MS);

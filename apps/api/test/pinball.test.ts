@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, jouerRobot, scoreParColonnes, seuilsDe, seuilsValides, themeDuJour, planDuJour, NB_PLANS, IDS_PLANS, type Evenement } from "@cdj/pinball-sim";
+import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, jouerRobot, graineDuRobot, scoreParColonnes, seuilsDe, seuilsValides, themeDuJour, planDuJour, NB_PLANS, IDS_PLANS, type Evenement } from "@cdj/pinball-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_PINBALL } from "../scripts/pinball-essais";
 import { contenuDePinball } from "../src/pinball";
@@ -99,6 +99,24 @@ describe("Pinball sur le serveur", () => {
     expect(rep.body.score).toEqual(attendu);
     expect(attendu.score).toBeGreaterThanOrEqual(r.partie.score); // le serveur joue la fin de la partie : jamais moins que ce que le robot avait déjà
   }, 60_000);
+
+  it("lot PBG3 : une partie où la porte est franchie, le poteau renvoie une bille et l'aiguillage dérive une bille : le serveur rejoue les mêmes événements et retrouve le même score", async () => {
+    // le 11/11/2026 (foire, bretelle) : la partie du robot de 3 minutes (graine 1) passe une fois la porte, est sauvée 6 fois par le poteau, dérivée 4 fois par l'aiguillage (golden : « robot-deblocages »)
+    const jour = daysFromCivil(2026, 11, 11);
+    const t = await monter({ frozen: { [DATE]: figerJour(JOUR, { bronze: 1000, silver: 3000, gold: 8000, author: 20000 }) } });
+    t.clock.now = jour * DAY_MS + 12 * 3_600_000;
+    await ouvrirJeu(t, "pinball");
+    const c = dailyPinball(jour);
+    const r = jouerRobot(c, graineDuRobot(1), { maxTicks: 108000 });
+    expect(r.partie.passages, "la porte est franchie").toBeGreaterThanOrEqual(1);
+    expect(r.partie.sauvetages, "le poteau renvoie une bille").toBeGreaterThanOrEqual(1);
+    expect(r.partie.aiguillages, "l'aiguillage dérive une bille").toBeGreaterThanOrEqual(1);
+    const attendu = scoreParColonnes(jouer(c, r.evenements));
+    const rep = await t.call("POST", "/api/pinball/submit", { replay: enregistrer(c, r.evenements), name: "Deblocages" }, { headers: entete(78) });
+    expect(rep.status, JSON.stringify(rep.body)).toBe(200);
+    expect(rep.body.score).toEqual(attendu);
+    expect(attendu.score).toBeGreaterThanOrEqual(r.partie.score);
+  }, 120_000);
 
   it("range la durée de la partie (en pas) comme départage, à côté du score (cle1 = −score, cle2 = pas)", async () => {
     const t = await monter();

@@ -20,7 +20,7 @@ const tenus: Evenement[] = [
 const jourDe = (theme: ThemePinball, plan: string): number => {
   for (let j = daysFromCivil(2026, 11, 2); ; j++) if (themeDuJour(j) === theme && dailyPinball(j).plan === plan) return j;
 };
-const robot = (jour: number, pas: number): Evenement[] => jouerRobot(dailyPinball(jour), graineDuRobot(0), { maxTicks: pas }).evenements;
+const robot = (jour: number, pas: number, graine = 0): Evenement[] => jouerRobot(dailyPinball(jour), graineDuRobot(graine), { maxTicks: pas }).evenements;
 
 const reds = [
   { nom: "vide", jour: jourRef, evenements: [] as Evenement[] },
@@ -34,6 +34,8 @@ const reds = [
   { nom: "robot-ocean", jour: jourDe("ocean", "tremplin"), evenements: robot(jourDe("ocean", "tremplin"), 72000) },
   // Lot PBG2 : une partie entière du robot (15 minutes) passe par plusieurs multibilles (verrou, trois billes, jackpots, missions des niveaux suivants)
   { nom: "robot-multibilles", jour: jourDe("espace", "doublette"), evenements: robot(jourDe("espace", "doublette"), 540000) },
+  // Lot PBG3 : une partie du robot (3 minutes) qui franchit la porte (4 ouvertures, 1 passage), est sauvée six fois par le poteau et dérivée quatre fois par l'aiguillage
+  { nom: "robot-deblocages", jour: daysFromCivil(2026, 11, 11), evenements: robot(daysFromCivil(2026, 11, 11), 108000, 1) },
   { nom: "robot-multibilles-court", jour: jourDe("foire", "bretelle"), evenements: robot(jourDe("foire", "bretelle"), 216000) },
 ].map((r) => {
   const contenu = dailyPinball(r.jour);
@@ -42,7 +44,7 @@ const reds = [
 
 const themesVus = new Set<string>();
 const sortie = {
-  _: "Golden de Pinball (lots PB1 à PBG2). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
+  _: "Golden de Pinball (lots PB1 à PBG3). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
   sim: PINBALL_SIM_VERSION,
   generateur: PINBALL_GENERATOR_VERSION,
   bot: PINBALL_BOT_VERSION,

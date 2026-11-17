@@ -107,6 +107,17 @@ export interface Reglages {
   /** Les niveaux de la mission : le but du niveau suivant vaut le but du niveau × `missionButPas` % arrondi au-dessus (150 : ×1,5) ; la récompense monte de `missionPas` % de la base à chaque niveau. */
   missionButPas: number;
   missionPas: number;
+  // --- Lot PBG3 : la porte, le poteau sauveur et l'aiguillage.
+  /** La porte : combien de pas elle reste ouverte après la banque de cibles complète (ou l'orbite, sur une table sans banque), ce que rapporte un passage (avant le multiplicateur), et combien de pas elle reste ouverte encore après un passage (la bille a le temps de la franchir). */
+  porteDuree: number;
+  portePoints: number;
+  porteApres: number;
+  /** Le poteau sauveur : la vitesse (px/s) dont il renvoie la bille vers le haut, et la vitesse de côté (px/s) dont il la dévie, du côté où elle l'a touché (jamais droit sur l'axe : la bille irait toujours au même endroit, au milieu de la table). */
+  sauveurForce: number;
+  sauveurDevie: number;
+  /** L'aiguillage : 1 il dérive la bille de la rampe (vers le verrou allumé, vers l'élément du thème pendant la multibille), 0 il n'agit pas ; la vitesse de la bille dérivée (px/s). */
+  aiguillageActif: number;
+  aiguillageVitesse: number;
 }
 
 /** Les valeurs de la maquette (à régler au jeu : « Les sensations » du seed). */
@@ -178,6 +189,13 @@ export const REGLAGES: Reglages = {
   jackpotMultiplie: 1,
   missionButPas: 150,
   missionPas: 50,
+  porteDuree: 3600,
+  portePoints: 4000,
+  porteApres: 150,
+  sauveurForce: 900,
+  sauveurDevie: 60,
+  aiguillageActif: 1,
+  aiguillageVitesse: 500,
 };
 
 export const copierReglages = (r: Reglages = REGLAGES): Reglages => ({ ...r });
