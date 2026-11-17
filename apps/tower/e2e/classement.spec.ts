@@ -202,7 +202,8 @@ test("sans serveur : la partie reste jouable et l'arrivée dit « hors ligne, no
   const { context, page } = await appareil(browser, `/?api=${API}&tactile=0`, true, true);
   await expect(page.locator(".accueil__message")).toContainText(/hors ligne|offline/i);
   await jouerUnePartie(page, variante());
-  await expect(page.locator("#fin-rang-statut")).toContainText(/Hors ligne, non classé/);
+  // Lot PG2 : on attend l'ÉTAT (l'envoi coupé a échoué, la file le dit) avec le délai des envois, pas les 5 s par défaut : sur un poste chargé la partie finie et l'envoi refusé arrivaient après (instable à 2 / 4 en local).
+  await expect(page.locator("#fin-rang-statut")).toContainText(/Hors ligne, non classé/, ENVOI);
   expect((await page.evaluate(() => JSON.parse(localStorage.getItem("tower:records")!))).jours[JOUR].e).toBe(0);
   await expect(page.locator("#fin-rejouer")).toBeVisible();
   await context.close();

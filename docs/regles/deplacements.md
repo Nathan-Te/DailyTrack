@@ -224,3 +224,4 @@ Chaque ligne : où la règle était, son titre, sa nouvelle place. Le texte est 
 | `CLAUDE.md` + 5 `CLAUDE.md` de zone | préambule d'avant, deux puces des zones partagées, blockquote « Renvois » | `docs/regles/racine/textes-remplaces.md` |
 | `apps/web`, `apps/jump`, `apps/tower` | « Mon groupe » dans le classement (3 copies identiques) | `packages/kit/CLAUDE.md` (une seule copie) |
 | `docs/tower/consignes.md` | devenu un index | `docs/tower/consignes.md` |
+| `packages/kit/CLAUDE.md` | le bilan de la partie, les dessins de « Comment jouer » et l'ouverture en haut (lot PG2) | `docs/regles/kit/bilan-et-aide-lot-pg2.md` |

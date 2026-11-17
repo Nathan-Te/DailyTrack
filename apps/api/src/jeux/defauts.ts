@@ -39,6 +39,12 @@ export interface ContratMinimal<Niveau, Rejeu extends RejeuNeuf, Mesure> {
   entrees(rejeu: Rejeu): string;
 
   // --- Facultatifs : jamais obligatoires -------------------------------------------------------------------------------------------------
+  /**
+   * Lot PG2 — **la version du générateur qui a produit ce niveau** (facultatif, défaut : `versions().generatorVersion`, le générateur courant). **À donner dès qu'un jeu garde d'anciennes versions** : un jour figé sous
+   * l'ancien générateur (le fichier du jour porte son `g`) est servi tel quel après une montée de version, et sa rediffusion nomme **ce** générateur-là ; sans ce champ, `memeContenu` la compare au seul générateur courant
+   * et refuse `409 version` un jour figé qui se rejoue pourtant très bien. Le décodage (`decoder`) doit connaître les deux versions ; le jour qui n'est pas figé rend le générateur courant.
+   */
+  generateurDuNiveau?(niveau: Niveau): number;
   /** Le thème du jour (un code traduit par le portail), défaut : aucun. */
   theme?(niveau: Niveau): string | null;
   /** L'empreinte des entrées de la partie de l'auteur (refus de la copie), défaut : aucune. */
@@ -107,9 +113,10 @@ export function contratDeFiche<Niveau, Rejeu extends RejeuNeuf, Mesure>(fiche: F
 
     decoder: (texte) => c.decoder(texte),
     jourDe: (r) => ("jour" in r.contenu ? r.contenu.jour : null),
-    /** La rediffusion nomme le générateur que le serveur sert ce jour-là, sinon l'onglet est resté sur une autre version : « recharge la page ». */
-    memeContenu(r) {
-      if (r.g !== c.versions().generatorVersion) throw new RefusJeu("version", `Une nouvelle version du jeu est disponible : recharge la page (générateur ${r.g})`);
+    /** La rediffusion nomme le générateur que le serveur sert ce jour-là, sinon l'onglet est resté sur une autre version : « recharge la page ». Lot PG2 : ce générateur est celui **du niveau servi** (`generateurDuNiveau`, un jour figé d'une ancienne version), à défaut le courant. */
+    memeContenu(r, niveau) {
+      const attendu = c.generateurDuNiveau ? c.generateurDuNiveau(niveau) : c.versions().generatorVersion;
+      if (r.g !== attendu) throw new RefusJeu("version", `Une nouvelle version du jeu est disponible : recharge la page (générateur ${r.g})`);
     },
     entrees: (r) => c.entrees(r),
     rejouer: async (niveau, texte) => c.rejouer(niveau, texte),
