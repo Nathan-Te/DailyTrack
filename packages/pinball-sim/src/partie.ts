@@ -526,6 +526,9 @@ export class Partie {
   /** La multibille finit (il ne reste qu'une bille sur la table) : la mission revient au niveau suivant, son but plus haut (`missionButPas` %, arrondi au-dessus). */
   private finMultibille(): void {
     this.multibille = false;
+    // lot PBL1 : une bille que le lanceur était en train de charger tout seul attend de nouveau le joueur (sa charge repart de zéro : jamais un départ à demi-puissance)
+    if (this.dansLanceur) this.charge = 0;
+    for (const b of this.autres) if (b.dansLanceur) b.charge = 0;
     this.sauveeMulti = 0;
     this.jackpots = 0;
     this.niveau++;
@@ -802,8 +805,11 @@ export class Partie {
       return;
     }
     if (this.dansLanceur) {
-      if (this.appuiLanceur) this.charge = Math.min(CHARGE_MAX, this.charge + d.chargeParPas);
-      else if (this.charge > 0) {
+      // lot PBL1 : **pendant la multibille le lanceur part tout seul** — toute bille qui y attend (celle qu'amène le verrou, ou une bille revenue par le couloir) se charge d'elle-même et part à pleine puissance :
+      // le joueur n'a rien à tenir, et les commandes du lanceur n'y changent rien
+      const auto = this.multibille;
+      if (this.appuiLanceur || auto) this.charge = Math.min(CHARGE_MAX, this.charge + d.chargeParPas);
+      if (auto ? this.charge >= CHARGE_MAX : !this.appuiLanceur && this.charge > 0) {
         this.vy = -div((r.lanceurBase * CHARGE_MAX + r.lanceurPlus * this.charge) * UNITE, CHARGE_MAX);
         this.charge = 0;
         this.dansLanceur = false;
