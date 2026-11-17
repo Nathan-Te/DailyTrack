@@ -76,6 +76,8 @@ export function genererSection(e: EntreeSection): SortieSection {
   const aDebut = Math.max(aEntree + 1, colonneAu(t0 + LIBRE_TICKS));
   const aFin = (premier + info.longueur) * LARGEUR_MORCEAU - OUVERT_FIN; // exclue
   const tc = t(aDebut); // le pas du début du contenu
+  const tirageStyle = new Rng(mixSeed(mixSeed(e.jour, 0x4a21c7), premier)).int(100);
+  const champ = info.mode === MODE_AVION ? info.facile || tirageStyle < 55 : !info.facile && tirageStyle < 55;
 
   if (info.mode === MODE_AVION) return { ...avion(), motif: "avion" };
   if (info.mode === MODE_ONDE) return { ...onde(), motif: "onde" };
@@ -87,8 +89,81 @@ export function genererSection(e: EntreeSection): SortieSection {
     return { cases, pieces, gemmes, axe, portails, motif: "avion" };
   }
 
+  /**
+   * **Le style de la section (lot GR6, retour de Nathan : de vraies portions de niveau pour ces gameplays)** : un *couloir* (l'avion : un tunnel qui ondule ; l'onde : un tunnel bordé de piques) ou **un champ** — l'espace est libre
+   * et ce sont **des obstacles en l'air** (blocs suspendus, colonnes qui tombent du plafond ou montent du sol, **mines de piques**) qu'il faut contourner. Tiré de (jour, section) : le même pour tous les morceaux d'une section.
+   * La première section de l'avion est un champ (des blocs, larges, sans danger) ; celle de l'onde un couloir.
+   */
+
+  // --- LE CHAMP : des obstacles en l'air, un axe qui les contourne ------------------------------------------------------------------------------------------------------------------------------------------------
+  /**
+   * Un obstacle est posé toutes les ~1,25 s (le TEMPS : même difficulté à toute vitesse) : `{ a0, a1 }` colonnes, `{ r0, r1 }` rangées (r1 exclue), `cell` BLOC ou PIQUE. **L'axe passe du côté qui laisse au moins 3 rangées libres**
+   * (le plus proche de l'axe d'avant : le chemin ne fait pas de grands sauts, l'onde ne monte pas à plus de 45°) et reste à plat le long de l'obstacle.
+   */
+  function champAerien(): SortieSection {
+    const avion = info.mode === MODE_AVION;
+    const facile = info.facile;
+    const espace = avion ? (facile ? 170 : d < 50 ? 135 : 110) : facile ? 170 : d < 50 ? 150 : 125;
+    interface Obs {
+      a0: number;
+      a1: number;
+      r0: number;
+      r1: number;
+      cell: number;
+    }
+    const obstacles: Obs[] = [];
+    const MILIEU = 11 * (CASE >> 1); // 5,5 cases
+    const waypoints: { a: number; y: number }[] = [{ a: aDebut, y: MILIEU }];
+    const tMax = t(aFin);
+    for (let k = 0, tk = tc + 70; tk < tMax; k++, tk += espace) {
+      const a0 = colonneAu(tk);
+      if (a0 < aDebut + 1 || a0 >= aFin - 3) continue;
+      const rng = new Rng(mixSeed(mixSeed(e.jour, 0x31c9d5), premier * 64 + k));
+      const g = rng.int(100);
+      const rs = 3 + rng.int(5); // 3 à 7
+      const longue = facile ? 3 : 3 + rng.int(2); // une colonne qui tombe ou monte : 3 ou 4 rangées
+      let o: Obs;
+      if (avion) {
+        if (g < 35) o = { a0, a1: a0 + 2, r0: rs, r1: rs + 2, cell: BLOC }; // un îlot suspendu
+        else if (g < 55 && !facile) o = { a0, a1: a0 + 1, r0: rs, r1: rs + 2, cell: PIQUE }; // une mine de piques
+        else if (g < 78) o = { a0, a1: a0 + 2, r0: 2, r1: 2 + longue, cell: BLOC }; // une colonne du plafond
+        else o = { a0, a1: a0 + 2, r0: 10 - longue, r1: 10, cell: BLOC }; // une colonne du sol
+      } else if (g < 45) o = { a0, a1: a0 + 1, r0: rs, r1: rs + 2, cell: PIQUE };
+      else if (g < 75) o = { a0, a1: a0 + 2, r0: rs, r1: rs + 2, cell: PIQUE }; // un amas
+      else if (g < 88) o = { a0, a1: a0 + 1, r0: 2, r1: 2 + longue, cell: PIQUE }; // des piques qui pendent du plafond
+      else o = { a0, a1: a0 + 1, r0: 10 - longue, r1: 10, cell: PIQUE }; // des piques qui montent du sol
+      // Le côté : au moins 3 rangées libres, le plus proche de l'axe d'avant.
+      const avant = waypoints[waypoints.length - 1]!.y;
+      const haut = (2 + o.r0) * (CASE >> 1);
+      const bas = (o.r1 + 10) * (CASE >> 1);
+      const okHaut = o.r0 - 2 >= 3;
+      const okBas = 10 - o.r1 >= 3;
+      const y = okHaut && okBas ? (Math.abs(haut - avant) <= Math.abs(bas - avant) ? haut : bas) : okHaut ? haut : bas;
+      obstacles.push(o);
+      waypoints.push({ a: o.a0 - 1, y }, { a: o.a1, y });
+    }
+    waypoints.push({ a: Math.max(aFin - 1, waypoints[waypoints.length - 1]!.a + 1), y: MILIEU });
+    const centreDe = (a: number): number => {
+      if (a <= waypoints[0]!.a) return waypoints[0]!.y;
+      for (let i = 0; i + 1 < waypoints.length; i++) {
+        const p = waypoints[i]!;
+        const q = waypoints[i + 1]!;
+        if (a <= q.a) return q.a === p.a ? q.y : p.y + Math.trunc(((q.y - p.y) * (a - p.a)) / (q.a - p.a));
+      }
+      return waypoints[waypoints.length - 1]!.y;
+    };
+    for (const o of obstacles) for (let a = o.a0; a < o.a1; a++) for (let r = o.r0; r < o.r1; r++) if (a >= x0 && a < x0 + LARGEUR_MORCEAU) poser(a - x0, r, o.cell);
+    for (let c = 0; c < LARGEUR_MORCEAU; c++) {
+      const a = x0 + c;
+      if (a >= aDebut && a < aFin && (a - aDebut) % 2 === 0) pieces.push({ x: centreX(c), y: centreDe(a) });
+    }
+    gemmeAuMilieu(centreDe);
+    return finir(centreDe);
+  }
+
   // --- L'AVION : un couloir qui ondule, des piliers en haut et en bas, des pièces en vague --------------------------------------------------------------------------------------------------------------------
   function avion(): SortieSection {
+    if (champ) return champAerien();
     const facile = info.facile;
     const G = facile ? 6 : d < 35 ? 5 : 4; // la hauteur libre du couloir, en rangées
     const A = facile ? 1 : d < 50 ? 1 : 2; // l'amplitude de l'ondulation, en rangées
@@ -132,6 +207,7 @@ export function genererSection(e: EntreeSection): SortieSection {
 
   // --- L'ONDE : un couloir serré en escalier, bordé de piques, des pièces sur l'axe ------------------------------------------------------------------------------------------------------------------------
   function onde(): SortieSection {
+    if (champ) return champAerien();
     const facile = info.facile;
     // Un couloir serré (3 rangées) seulement à une vitesse où un doigt le tient : à grande vitesse le zigzag fait au moins 6 pas de montée ou de descente (0,85 case à 17 cases/s), le couloir est plus large.
     const lent = tr.vitesseEn(tr.camAu(tc)) < 10 * CASE;
@@ -170,16 +246,17 @@ export function genererSection(e: EntreeSection): SortieSection {
     const SOL = 10;
     const NORMAL = 8 * CASE + 819; // 8,2 cases : le centre qu'on tient au-dessus du sol (un bond part du sol à 9,6)
     /** Les obstacles du morceau : `{ a0, a1, haut }` (colonnes absolues, `haut` > 0 : une colonne de `haut` cases ; 0 : un trou). Tirés dans l'ordre du temps, pour que le même morceau donne les mêmes obstacles. */
-    const obstacles: { a0: number; a1: number; haut: number }[] = [];
+    const obstacles: { a0: number; a1: number; haut: number; piques?: boolean }[] = [];
     const tMax = t(aFin);
     for (let k = 0, tk = tc + 60; tk < tMax; k++, tk += espace) {
       const genre = new Rng(mixSeed(mixSeed(e.jour, 0x7d1c5b), premier * 64 + k)).int(100);
       const a0 = colonneAu(tk);
       if (a0 + 2 < aDebut || a0 >= aFin - 2) continue;
-      if (genre < 50) obstacles.push({ a0, a1: Math.max(a0 + 2, colonneAu(tk + (facile ? 40 : 60))), haut: 0 });
-      else obstacles.push({ a0, a1: a0 + 1 + (genre % 2), haut: 1 + (genre >= 80 ? hauteurMax - 1 : 0) });
+      if (genre < 40) obstacles.push({ a0, a1: Math.max(a0 + 2, colonneAu(tk + (facile ? 40 : 60))), haut: 0 });
+      else if (genre < 68 || facile) obstacles.push({ a0, a1: a0 + 1 + (genre % 2), haut: 1 + (genre >= 80 ? hauteurMax - 1 : 0) });
+      else obstacles.push({ a0, a1: a0 + 2 + (genre % 2), haut: 1, piques: true }); // des piques au sol (le rouge) : on les saute comme une colonne basse
     }
-    const dans = (a: number): { a0: number; a1: number; haut: number } | undefined => obstacles.find((o) => a >= o.a0 && a < o.a1);
+    const dans = (a: number): { a0: number; a1: number; haut: number; piques?: boolean } | undefined => obstacles.find((o) => a >= o.a0 && a < o.a1);
     const centreDe = (a: number): number => {
       const o = obstacles.find((q) => a >= q.a0 - 1 && a <= q.a1);
       return o && o.haut > 0 ? (SOL - o.haut) * CASE - CASE - 819 : NORMAL;
@@ -191,7 +268,7 @@ export function genererSection(e: EntreeSection): SortieSection {
       if (o && o.haut === 0) {
         poser(c, SOL, VIDE);
         poser(c, SOL + 1, VIDE);
-      } else if (o) for (let h = 1; h <= o.haut; h++) poser(c, SOL - h, BLOC);
+      } else if (o) for (let h = 1; h <= o.haut; h++) poser(c, SOL - h, o.piques ? PIQUE : BLOC);
     }
     // Des pièces en arc au-dessus de chaque obstacle (cinq, sur une parabole), sinon trois pièces d'une colonne sur trois à la hauteur normale.
     for (const o of obstacles) {

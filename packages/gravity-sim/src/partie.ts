@@ -564,7 +564,8 @@ export class Partie {
     this.grace = 0;
     this.tampon = 0;
     this.bondAttente = 0;
-    if (mode === MODE_GRAVITE) this.g = 1; // en sortant d'un mode, on retombe vers le sol
+    // **Entrer dans un mode comme en sortir remet « à l'endroit »** (`g = 1`) : un avion vole toujours vers le haut, jamais la tête en bas, quel que soit le côté où l'on était quand on a franchi le portail ; en sortant, on retombe vers le sol.
+    this.g = 1;
     if (mode === MODE_AVION) this.vy = this.vy > AVION_VY_MAX ? AVION_VY_MAX : this.vy < -AVION_VY_MAX ? -AVION_VY_MAX : this.vy;
   }
 

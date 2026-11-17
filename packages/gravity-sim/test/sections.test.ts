@@ -159,7 +159,7 @@ describe("la composition d'une section : portail, couloir libre, motif, retour p
       }
     }
   });
-  it("aucun bloc spécial de thème dans une section (ni tapis, ni glace, ni cases qui battent, ni inverseur, ni vent) : seulement des blocs, et des piques dans l'onde", () => {
+  it("aucun bloc spécial de thème dans une section (ni tapis, ni glace, ni cases qui battent, ni inverseur, ni vent) : seulement des blocs et des piques (le rouge : le danger)", () => {
     for (const j of jours) {
       const { t } = contexte(j);
       for (let m = 0; m < nbMorceaux; m++) {
@@ -167,7 +167,6 @@ describe("la composition d'une section : portail, couloir libre, motif, retour p
         if (modeDuMotif(mor.motif) === 0) continue;
         const types = new Set(mor.cases);
         for (const v of types) expect([0, BLOC, PIQUE], `jour ${j}, morceau ${m} (${mor.motif})`).toContain(v);
-        if (mor.motif !== "onde") expect(types.has(PIQUE)).toBe(false);
         expect(mor.decalage).toBe(0);
       }
     }
@@ -190,6 +189,45 @@ describe("la composition d'une section : portail, couloir libre, motif, retour p
     expect(vus.avion.size).toBeGreaterThan(2); // l'axe change de hauteur : le couloir ondule
     expect(vus.onde.size).toBeGreaterThan(0);
     expect(vus.ressort).toEqual(new Set(["trou", "colonne", "sol"]));
+  });
+  it("de vrais obstacles en l'air (lot GR6, retour de Nathan) : des blocs suspendus et des mines de piques dans l'avion, des mines de piques dans l'onde, des piques au sol dans le ressort", () => {
+    const vu = { blocEnAir: 0, piqueEnAir: { avion: 0, onde: 0 }, piquesAuSol: 0, colonnePlafond: 0 };
+    for (const j of jours) {
+      const { t } = contexte(j);
+      for (let m = 0; m < nbMorceaux; m++) {
+        const mor = t.morceau(m);
+        if (modeDuMotif(mor.motif) === 0) continue;
+        for (let c = 0; c < LARGEUR_MORCEAU; c++) {
+          for (let r = 3; r < 9; r++) {
+            const v = case_(mor, c, r);
+            // Un bloc suspendu : ni le plafond (rangée 2) ni le sol (rangée 9) de la colonne n'est un bloc.
+            if (mor.motif === "avion" && v === BLOC && case_(mor, c, 2) !== BLOC && case_(mor, c, 9) !== BLOC) vu.blocEnAir++;
+            // Une mine : des piques dans une colonne sans mur (ni le plafond ni le sol de la colonne n'est un bloc).
+            if (v === PIQUE && case_(mor, c, 2) !== BLOC && case_(mor, c, 9) !== BLOC && (mor.motif === "avion" || mor.motif === "onde")) vu.piqueEnAir[mor.motif]++;
+          }
+          if (mor.motif === "avion" && case_(mor, c, 2) === BLOC && case_(mor, c, 3) === BLOC && case_(mor, c, 7) === 0 && case_(mor, c, 8) === 0) vu.colonnePlafond++;
+          if (mor.motif === "ressort" && case_(mor, c, 9) === PIQUE) vu.piquesAuSol++;
+        }
+      }
+    }
+    expect(vu.blocEnAir).toBeGreaterThan(5);
+    expect(vu.piqueEnAir.avion).toBeGreaterThan(2);
+    expect(vu.piqueEnAir.onde).toBeGreaterThan(2);
+    expect(vu.piquesAuSol).toBeGreaterThan(2);
+    expect(vu.colonnePlafond).toBeGreaterThan(2);
+  });
+  it("chaque obstacle en l'air laisse au moins 3 rangées libres d'un côté, et l'axe passe de ce côté (jamais dans un bloc ou un pique)", () => {
+    for (const j of jours) {
+      const { t } = contexte(j);
+      for (let m = 0; m < nbMorceaux; m++) {
+        const mor = t.morceau(m);
+        if (mor.motif !== "avion" && mor.motif !== "onde") continue;
+        for (let c = 0; c < LARGEUR_MORCEAU; c++) {
+          const r = Math.trunc(mor.axe[c]! / CASE);
+          expect([0], `jour ${j}, morceau ${m} (${mor.motif}), colonne ${c} : l'axe est dans la rangée ${r}`).toContain(case_(mor, c, r));
+        }
+      }
+    }
   });
   it("les pièces d'une section d'avion et d'onde sont posées sur l'axe : le pilote du robot les suit", () => {
     for (const j of jours.slice(0, 4)) {

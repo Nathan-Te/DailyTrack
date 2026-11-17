@@ -100,22 +100,24 @@ describe("les portails de mode", () => {
     expect(p.g).toBe(1);
     expect(p.modeLoin).toBe(MODE_AVION);
   });
-  it("on garde le sens de la gravité en entrant ; en sortant on retombe vers le sol", () => {
-    const p = sur([
-      { c: 4, type: "avion", m: 1 },
-      { c: 10, type: "gravite", m: 1 },
-    ]);
-    p.appuyer(); // on part au plafond
-    pas(p, 2);
-    p.relacher();
-    pas(p, 90);
-    expect(p.g).toBe(-1);
-    expect(p.mode).toBe(MODE_GRAVITE); // pas encore au portail
-    jusquau(p, MODE_AVION);
-    expect(p.g).toBe(-1); // gardé en entrant
-    jusquau(p, MODE_GRAVITE);
-    expect(p.mode).toBe(MODE_GRAVITE);
-    expect(p.g).toBe(1);
+  it("on est toujours remis à l'endroit en entrant dans un mode (jamais un avion la tête en bas) ; en sortant on retombe vers le sol", () => {
+    for (const type of ["avion", "onde", "ressort"] as const) {
+      const p = sur([
+        { c: 4, type, m: 1 },
+        { c: 10, type: "gravite", m: 1 },
+      ]);
+      p.appuyer(); // on part au plafond, la gravité vers le haut
+      pas(p, 2);
+      p.relacher();
+      pas(p, 90);
+      expect(p.g).toBe(-1);
+      expect(p.mode).toBe(MODE_GRAVITE); // pas encore au portail
+      jusquau(p, type === "avion" ? MODE_AVION : type === "onde" ? MODE_ONDE : MODE_RESSORT);
+      expect(p.g, `entrée ${type}`).toBe(1); // remis à l'endroit
+      jusquau(p, MODE_GRAVITE);
+      expect(p.mode).toBe(MODE_GRAVITE);
+      expect(p.g).toBe(1);
+    }
   });
   it("un portail ne se franchit qu'une fois (le joueur ne recule jamais)", () => {
     const p = sur([{ c: 5, type: "ressort" }]);

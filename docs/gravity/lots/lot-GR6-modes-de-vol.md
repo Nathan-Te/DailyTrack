@@ -25,6 +25,7 @@ Le jeu est `off` et **aucun jour n'est figé** (`apps/gravity/public/jours/` vid
 - **Avion** : couloir de 6 rangées (facile), 5 ou 4 qui **ondule** (période 3 s à 2,2 s, amplitude 1 à 2 rangées), des **piliers** en haut puis en bas (1,25 s d'écart, épaisseur 1 ou 2), pièces en vague sur l'axe.
 - **Onde** : couloir de 5 (facile), 4 ou 3 rangées en **escalier** (une rangée toutes les 0,5 à 0,8 s), **bordé de piques** ; 3 rangées seulement à basse vitesse et très dur.
 - **Ressort** : **trous** et **colonnes** de 1 ou 2 cases toutes les 1,1 à 1,4 s, pièces en arc au-dessus de chaque obstacle.
+- **Retour de Nathan (après la première recette)** : (1) **on entre dans un mode toujours à l'endroit** (`g = 1` à l'entrée : un avion ne vole plus jamais la tête en bas, même si on était au plafond au portail) ; (2) **deux styles par section** — un couloir ou **un champ d'obstacles en l'air** : avion = blocs suspendus, colonnes du plafond ou du sol, mines de piques ; onde = mines de piques (1 × 2, amas, piques qui pendent ou montent) ; ressort = piques au sol en plus des trous et colonnes. L'axe contourne chaque obstacle du côté qui laisse ≥ 3 rangées. 30 jours sur 30 repassés (1,39 s par jour en moyenne, 2,13 s au plus), golden régénéré (même version 4 : jamais livrée), captures `obstacles-avion.png` et `obstacles-onde.png`.
 - Chaque section : portail → couloir libre d'1 s → motif → deux colonnes ouvertes → morceau de retour (portail de retour, sol, pièces). Le morceau d'avant est calme et finit sur le sol.
 
 ## Liens de recette (jeu `off` : avec la clé d'aperçu)

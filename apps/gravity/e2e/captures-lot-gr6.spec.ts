@@ -15,6 +15,19 @@ async function jusquAuPortail(page: Page, apres: number): Promise<void> {
   await page.waitForTimeout(900); // quelques images : le mode s'installe doucement (rendu au temps du mur), la scène se dessine
 }
 
+// Lot GR6 (retour de Nathan) — en plein milieu d'une section : les obstacles en l'air (blocs suspendus, colonnes, mines de piques) et le héros toujours à l'endroit.
+for (const [mode, apres] of [["avion", 330], ["onde", 330], ["ressort", 330]] as const) {
+  test(`capture — des obstacles en l'air : ${mode}`, async ({ browser }) => {
+    test.skip(!DOSSIER, "CAPTURES=<dossier> pour produire les images");
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&mode=${mode}&robot&jour=2026-11-17`, true, { deviceScaleFactor: 1 });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await lancer(page);
+    await jusquAuPortail(page, apres);
+    await page.screenshot({ path: `${DOSSIER}/obstacles-${mode}.png` });
+    await context.close();
+  });
+}
+
 for (const [mode, apres] of [["avion", 30], ["onde", 36], ["ressort", 26]] as const) {
   test(`capture — le mode ${mode} en paysage (1280 × 720)`, async ({ browser }) => {
     test.skip(!DOSSIER, "CAPTURES=<dossier> pour produire les images");
