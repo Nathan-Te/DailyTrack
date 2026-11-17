@@ -24,12 +24,20 @@ export interface EtatHud {
   /** Lot PBG1 : le rang du combo en cours (0 : aucun, ou son délai est passé) et la part du délai qui reste avant qu'il se perde, de 1 (un rail vient d'être mené à son bout) à 0. */
   combo: number;
   reste: number;
+  /** Lot PBG2 : le niveau de la mission (1, 2…), les billes verrouillées (0 à `total`), le verrou allumé, la multibille en cours et la valeur du prochain jackpot (déjà formatée). */
+  niveau: number;
+  verrouillees: number;
+  verrouAllume: boolean;
+  multibille: boolean;
+  prochain: string;
 }
 
 export interface OptionsHud {
   t: (cle: string, params?: Readonly<Record<string, string | number>>) => string;
   /** Le nombre de billes d'une partie. */
   billes: number;
+  /** Lot PBG2 : le nombre de billes à verrouiller pour lancer la multibille. */
+  verrous: number;
   /** Les touches de chaque commande (« ← », « Q »…) : l'aide du clavier, sur ordinateur à la première partie ; `null` : pas d'aide du clavier (écran tactile, ou une partie déjà jouée sur cette page). */
   clavier: { gauche: readonly string[]; droite: readonly string[]; lanceur: readonly string[] } | null;
   /** Lot PBG1 : le mouvement réduit (le joueur l'a demandé) : le compteur de combo ne « saute » plus à chaque rang. */
@@ -53,6 +61,8 @@ export interface Hud {
 export const GAIN_MS = 2000;
 /** Au-delà, le score s'écrit un peu plus petit pour tenir dans l'afficheur. */
 const SCORE_LONG = 9;
+/** Lot PBG2 : la jauge de la mission a au plus 6 cases (le but monte à chaque niveau). */
+const CASES_MAX = 6;
 
 export function creerHud(o: OptionsHud): Hud {
   const { t } = o;
@@ -80,6 +90,13 @@ export function creerHud(o: OptionsHud): Hud {
   const comboReste = el("i");
   const combo = el("div", { classe: "pinball-hud__plaque pinball-combo", attrs: { role: "status", "data-actif": "0", "data-haut": "0" } }, comboTexte, el("span", { classe: "pinball-combo__jauge", attrs: { "aria-hidden": "true" } }, comboReste));
 
+  // Lot PBG2 : le verrou — deux petites billes (pleines : verrouillées), « Verrou allumé » quand la mission est réussie, et le niveau de la mission. Au coin haut droit de la zone de la table (le coin vide de l'arc), avec le combo.
+  const verrouBilles = el("span", { classe: "pinball-verrou__billes", attrs: { "aria-hidden": "true" } });
+  for (let i = 0; i < o.verrous; i++) verrouBilles.append(el("i"));
+  const verrouTexte = el("span", { classe: "pinball-verrou__texte" });
+  const verrou = el("div", { classe: "pinball-hud__plaque pinball-verrou", attrs: { role: "status", "data-etat": "eteint" } }, verrouBilles, verrouTexte);
+  const coins = el("div", { classe: "pinball-hud__coins" }, combo, verrou);
+
   const aide = el("p", { classe: "pinball-hud__aide", texte: t("hud.aide.lancer") });
   const clavier = o.clavier ? el("div", { classe: "pinball-hud__clavier" }) : null;
   if (clavier && o.clavier) {
@@ -87,7 +104,7 @@ export function creerHud(o: OptionsHud): Hud {
     clavier.append(ligne(o.clavier.gauche, t("commandes.action.gauche")), ligne(o.clavier.droite, t("commandes.action.droite")), ligne(o.clavier.lanceur, t("hud.clavier.lancer")));
   }
   const gabarit = el("div", { classe: "pinball-hud__libre", attrs: { "aria-hidden": "true" } });
-  const racine = el("div", { classe: "pinball-hud", attrs: { "data-lancee": "0" } }, gabarit, pause, plein, afficheur, mult, mission, billes, combo, aide, ...(clavier ? [clavier] : []));
+  const racine = el("div", { classe: "pinball-hud", attrs: { "data-lancee": "0" } }, gabarit, pause, plein, afficheur, mult, mission, billes, coins, aide, ...(clavier ? [clavier] : []));
 
   // Les nœuds ne sont écrits que quand ce qu'ils disent change.
   let cle = "";
@@ -115,7 +132,7 @@ export function creerHud(o: OptionsHud): Hud {
     maj(e): void {
       // la jauge du combo se règle au quarantième : assez fin pour se voir couler, assez rare pour ne pas écrire un nœud à chaque image
       const reste = Math.round(Math.max(0, Math.min(1, e.reste)) * 40);
-      const k = `${e.score}|${e.mult}|${e.billes}|${e.mission}|${e.compteur}|${e.but}|${e.faite ? 1 : 0}|${e.lancee ? 1 : 0}|${e.combo}|${e.combo > 0 ? reste : 0}`;
+      const k = `${e.score}|${e.mult}|${e.billes}|${e.mission}|${e.compteur}|${e.but}|${e.faite ? 1 : 0}|${e.lancee ? 1 : 0}|${e.combo}|${e.combo > 0 ? reste : 0}|${e.niveau}|${e.verrouillees}|${e.verrouAllume ? 1 : 0}|${e.multibille ? 1 : 0}|${e.multibille ? e.prochain : ""}`;
       if (k === cle) return;
       cle = k;
       if (e.score !== scoreAffiche) {
@@ -128,12 +145,22 @@ export function creerHud(o: OptionsHud): Hud {
       mult.setAttribute("aria-label", t("hud.mult.aria", { mult: e.mult }));
       billes.setAttribute("aria-label", t("hud.billes.aria", { n: e.billes, total: o.billes }));
       [...billes.children].forEach((b, i) => ((b as HTMLElement).dataset.perdue = i < e.billes ? "0" : "1"));
-      mission.dataset.etat = e.faite ? "reussie" : e.lancee ? "en-cours" : "debut";
-      missionNom.textContent = e.mission;
-      while (jauge.childElementCount > e.but) jauge.lastElementChild!.remove();
-      while (jauge.childElementCount < e.but) jauge.append(document.createElement("i"));
-      [...jauge.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < e.compteur ? "1" : "0"));
-      missionVal.textContent = e.faite ? t("hud.mission.reussie") : `${e.compteur}/${e.but}`;
+      // lot PBG2 : pendant la multibille la bande du bas dit « MULTIBILLE » et le prochain jackpot, à la place de la mission
+      mission.dataset.etat = e.multibille ? "multibille" : e.faite ? "reussie" : e.lancee ? "en-cours" : "debut";
+      missionNom.textContent = e.multibille ? t("hud.multibille") : e.mission;
+      // la jauge a au plus `CASES_MAX` cases (le but monte à chaque niveau : 5, 8, 12, 18…) ; le texte dit le compte exact
+      const cases = Math.min(e.but, CASES_MAX);
+      const pleines = e.compteur >= e.but ? cases : Math.floor((e.compteur * cases) / e.but);
+      while (jauge.childElementCount > cases) jauge.lastElementChild!.remove();
+      while (jauge.childElementCount < cases) jauge.append(document.createElement("i"));
+      jauge.dataset.dense = cases > 5 ? "1" : "0";
+      [...jauge.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < pleines ? "1" : "0"));
+      missionVal.textContent = e.multibille ? t("hud.jackpot.prochain", { points: e.prochain }) : e.faite ? t("hud.mission.reussie") : `${e.compteur}/${e.but}`;
+      mission.setAttribute("aria-label", e.multibille ? t("hud.multibille.aria", { points: e.prochain }) : t("hud.niveau.aria", { n: e.niveau }));
+      verrou.dataset.etat = e.verrouAllume ? "allume" : e.verrouillees > 0 ? "plein" : "eteint";
+      [...verrouBilles.children].forEach((b, i) => ((b as HTMLElement).dataset.plein = i < e.verrouillees ? "1" : "0"));
+      verrouTexte.textContent = e.verrouAllume ? t("hud.verrou.allume") : t("hud.niveau", { n: e.niveau });
+      verrou.setAttribute("aria-label", `${t("hud.verrou.aria", { n: e.verrouillees, total: o.verrous })} · ${t("hud.niveau.aria", { n: e.niveau })}`);
       racine.dataset.lancee = e.lancee ? "1" : "0";
       combo.dataset.actif = e.combo > 0 ? "1" : "0";
       if (e.combo > 0) {

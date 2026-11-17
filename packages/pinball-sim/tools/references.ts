@@ -32,6 +32,9 @@ const reds = [
   { nom: "robot-espace", jour: jourDe("espace", "bretelle"), evenements: robot(jourDe("espace", "bretelle"), 72000) },
   { nom: "robot-foire", jour: jourDe("foire", "doublette"), evenements: robot(jourDe("foire", "doublette"), 72000) },
   { nom: "robot-ocean", jour: jourDe("ocean", "tremplin"), evenements: robot(jourDe("ocean", "tremplin"), 72000) },
+  // Lot PBG2 : une partie entière du robot (15 minutes) passe par plusieurs multibilles (verrou, trois billes, jackpots, missions des niveaux suivants)
+  { nom: "robot-multibilles", jour: jourDe("espace", "doublette"), evenements: robot(jourDe("espace", "doublette"), 540000) },
+  { nom: "robot-multibilles-court", jour: jourDe("foire", "bretelle"), evenements: robot(jourDe("foire", "bretelle"), 216000) },
 ].map((r) => {
   const contenu = dailyPinball(r.jour);
   return { nom: r.nom, date: formatDay(r.jour), g: contenu.g, code: enregistrer(contenu, r.evenements), resultat: jouer(contenu, r.evenements) };
@@ -39,7 +42,7 @@ const reds = [
 
 const themesVus = new Set<string>();
 const sortie = {
-  _: "Golden de Pinball (lots PB1 à PB4). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
+  _: "Golden de Pinball (lots PB1 à PBG2). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
   sim: PINBALL_SIM_VERSION,
   generateur: PINBALL_GENERATOR_VERSION,
   bot: PINBALL_BOT_VERSION,

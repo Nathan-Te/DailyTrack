@@ -89,6 +89,24 @@ export interface Reglages {
   comboMax: number;
   /** Ce que chaque rang de combo ajoute aux points d'un rail, en % de sa valeur (50 : le deuxième rail d'une série rapporte 1,5 fois, le troisième 2 fois…). */
   comboPas: number;
+  // --- Lot PBG2 : le verrou, la multibille, le jackpot et les niveaux de la mission.
+  /** Ce que rapporte une bille verrouillée (avant le multiplicateur), et les pas avant que le trou reprenne après une bille verrouillée. */
+  verrouPoints: number;
+  verrouPause: number;
+  /** La multibille : les pas entre la deuxième bille verrouillée et la première bille lâchée, entre deux billes lâchées, la bille sauvée du départ (pas, comptés depuis le départ : toute bille perdue pendant ce délai revient par le trou) et les pas qu'une bille sauvée met à revenir. */
+  multibilleDepart: number;
+  multibilleLacher: number;
+  multibilleSauvee: number;
+  multibilleRelance: number;
+  /** Le rebond d'une bille contre une autre, en ‰ (1 000 : élastique, à masses égales les billes échangent leurs vitesses selon la normale). */
+  rebondBille: number;
+  /** Le jackpot : le premier vaut `jackpotBase` points, chaque suivant `jackpotPas` % de la base de plus ; `jackpotMultiplie` à 1 : le multiplicateur s'y applique (0 : non). */
+  jackpotBase: number;
+  jackpotPas: number;
+  jackpotMultiplie: number;
+  /** Les niveaux de la mission : le but du niveau suivant vaut le but du niveau × `missionButPas` % arrondi au-dessus (150 : ×1,5) ; la récompense monte de `missionPas` % de la base à chaque niveau. */
+  missionButPas: number;
+  missionPas: number;
 }
 
 /** Les valeurs de la maquette (à régler au jeu : « Les sensations » du seed). */
@@ -148,6 +166,18 @@ export const REGLAGES: Reglages = {
   comboDelai: 3000,
   comboMax: 5,
   comboPas: 50,
+  verrouPoints: 2500,
+  verrouPause: 300,
+  multibilleDepart: 300,
+  multibilleLacher: 480,
+  multibilleSauvee: 6000,
+  multibilleRelance: 240,
+  rebondBille: 1000,
+  jackpotBase: 5000,
+  jackpotPas: 50,
+  jackpotMultiplie: 1,
+  missionButPas: 150,
+  missionPas: 50,
 };
 
 export const copierReglages = (r: Reglages = REGLAGES): Reglages => ({ ...r });

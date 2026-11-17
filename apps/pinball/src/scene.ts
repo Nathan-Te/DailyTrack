@@ -10,7 +10,7 @@
 // `?debug&tune` ajoute le panneau des réglages (`tune.ts`, à la demande) : changer un réglage de la simulation **relance la partie, qui n'est alors pas classable** (`essai.ts`). **Lot PB4 : `?robot`** — le robot de
 // la simulation joue sa partie (calculée par `niveau.ts`), la scène en rejoue les événements à leur pas ; la mention « Le robot joue » le dit, le toucher et le clavier ne changent rien.
 // **Lot PBG1 : les rails** — la scène lit `partie.combo` / `comboFin` pour le compteur de combo du HUD (la part du délai qui reste) et les événements `EV_RAMPE` / `EV_ORBITE` pour « +1 600 » à l'afficheur (le gain du pas) ; `?plan=<id>` (essai) joue un plan donné (`niveau.ts`).
-import { DROITE, EV_BUMPER, EV_CIBLE, EV_LANCE, EV_MISSION, EV_ORBITE, EV_RAMPE, EV_SAUVEE, EV_SPINNER, GAUCHE, LANCEUR, MAX_EVENEMENTS, NB_BILLES, POINTS, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
+import { DROITE, EV_BUMPER, EV_CIBLE, EV_JACKPOT, EV_LANCE, EV_MISSION, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_ORBITE, EV_RAMPE, EV_SAUVEE, EV_SPINNER, EV_VERROU_ALLUME, EV_VERROUILLEE, GAUCHE, LANCEUR, MAX_EVENEMENTS, NB_BILLES, POINTS, VERROU_BILLES, Partie, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, VARIANTE, enregistrer, grouper, pointeDuBatteur, type Contenu, type Evenement, type Reglages } from "@cdj/pinball-sim";
 import { DetecteurBridage } from "@cdj/core/bridage";
 import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
@@ -36,6 +36,9 @@ type Cmd = 0 | 1 | 2;
 const ATTENTE_FIN_MS = 800;
 /** Lot PBG1 : « +1 600 » reste à l'afficheur un peu moins longtemps que le gain de la mission (ms). */
 const RAIL_GAIN_MS = 1400;
+/** Lot PBG2 : un message court au milieu de la table (« MULTIBILLE ! »…) dure 1,6 s ; un jackpot reste 2 s à l'afficheur. */
+const MESSAGE_MS = 1600;
+const JACKPOT_GAIN_MS = 2000;
 /** Une vibration courte quand un batteur frappe la bille (ms), et le temps minimal entre deux (ms). */
 const VIBRATION_MS = 16;
 const PAUSE_VIBRATION_MS = 140;
@@ -79,10 +82,12 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   const arretee = (): boolean => partie.finie || (robot !== undefined && partie.tick >= robot.fin);
   let reglages: Reglages = essai.reglages !== null ? reglagesDe(essai.reglages) : REGLAGES;
   let vue: Vue = vueDe(essai.reglages);
-  /** Une partie neuve ; `?essai=mission` la met au but moins un (la mission se réussit au prochain pas : le moment fort tout de suite, jamais classé). */
+  /** Une partie neuve ; `?essai=mission` la met au but moins un (la mission se réussit au prochain pas : le moment fort tout de suite, jamais classé) ; lot PBG2 : `?essai=verrou` allume le verrou, `?essai=multibille` commence en multibille. */
   const neuve = (): Partie => {
     const p = new Partie(contenu, reglages);
     if (essai.mission) p.compteur = Math.max(0, p.but - 1);
+    if (essai.verrou) p.allumerLeVerrou();
+    if (essai.multibille) p.lancerLaMultibille();
     return p;
   };
   let partie = neuve();
@@ -105,6 +110,7 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     t: (cle, params) => o.t(cle, params),
     reduit: o.reduit,
     billes: NB_BILLES,
+    verrous: VERROU_BILLES,
     clavier: sansClavier ? null : { gauche: cmd.nomsTouches("gauche", o.langue).slice(0, 2), droite: cmd.nomsTouches("droite", o.langue).slice(0, 2), lanceur: cmd.nomsTouches("lanceur", o.langue).slice(0, 1) },
     pause: () => document.getElementById("jeu-hud-pause")?.click(), // la pause est celle du kit : son bouton, que la barre cachée garde
   });
@@ -193,11 +199,15 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   }
   let lancee = false;
   let tEclat = -1e9;
+  // lot PBG2 : le départ de la multibille (éclat et secousse), et un message court au milieu de la table
+  let tMulti = -1e9;
+  let tMessage = -1e9;
+  let message = "";
   /** Le HUD relit la partie à chaque image (il n'écrit un nœud que si ce qu'il dit change). */
   const majHud = (): void => {
     // lot PBG1 : le combo en cours (celui dont le délai n'est pas passé) et la part du délai qui reste
     const enCours = partie.combo > 0 && partie.tick <= partie.comboFin;
-    hud.maj({ score: grouper(partie.score, o.langue), mult: partie.mult, billes: partie.billes, mission: o.t(`hud.mission.nom.${partie.mission}`), compteur: partie.compteur, but: partie.but, faite: partie.missionFaite, lancee, combo: enCours ? partie.combo : 0, reste: enCours ? (partie.comboFin - partie.tick) / reglages.comboDelai : 0 });
+    hud.maj({ score: grouper(partie.score, o.langue), mult: partie.mult, billes: partie.billes, mission: o.t(`hud.mission.nom.${partie.mission}`), compteur: partie.compteur, but: partie.but, faite: partie.missionFaite, lancee, combo: enCours ? partie.combo : 0, reste: enCours ? (partie.comboFin - partie.tick) / reglages.comboDelai : 0, niveau: partie.niveau, verrouillees: partie.verrouillees, verrouAllume: partie.verrouAllume, multibille: partie.multibille, prochain: partie.multibille ? grouper(partie.prochainJackpot, o.langue) : "" });
   };
   majHud();
 
@@ -271,7 +281,9 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       /* un pointeur déjà fini : rien à capturer */
     }
     const r = hote.getBoundingClientRect();
-    const c: Cmd = partie.dansLanceur ? 2 : e.clientX - r.left < r.width / 2 ? 0 : 1;
+    // lot PBG2 : en multibille une bille peut attendre au lanceur pendant que d'autres jouent : le toucher du bord droit (le couloir) est alors le lanceur, le reste les batteurs
+    const auLanceur = partie.billesDeLaTable().some((b) => b.dansLanceur);
+    const c: Cmd = auLanceur && (partie.autres.length === 0 || e.clientX - r.left > r.width * 0.82) ? 2 : e.clientX - r.left < r.width / 2 ? 0 : 1;
     tenir(c, `p:${e.pointerId}`);
   };
   const surLevee = (e: PointerEvent): void => {
@@ -322,6 +334,9 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     p.mult = partie.mult;
     p.compteur = partie.compteur;
     p.combo = partie.combo;
+    p.verrouillees = partie.verrouillees;
+    p.jackpots = partie.jackpots;
+    p.niveau = partie.niveau;
     let voies = 0;
     for (const v of partie.voiesAllumees) if (v) voies++;
     p.voies = voies;
@@ -393,7 +408,13 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
   let tDernierPas = performance.now();
   let tFin = 0;
   let tSauvee = -1e9;
-  const gains: { x: number; y: number; points: number; fin: number }[] = [];
+  const gains: { x: number; y: number; points: number; fin: number; texte?: string }[] = [];
+  /** Le texte court d'un message de la table (déjà traduit), et la durée d'un jackpot flottant sur la table (pas). */
+  const dire = (cle: string, params?: Record<string, string | number>): string => {
+    tMessage = performance.now();
+    return o.t(cle, params);
+  };
+  const JACKPOT_VIE = 1200;
   return {
     avancer(): void {
       if (arretee()) {
@@ -429,13 +450,31 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         hud.gain(o.t("hud.mission.gain", { points: grouper(POINTS.mission * multAvant, o.langue) }));
         o.vibrer(120);
       }
+      // lot PBG2 : la boucle — chaque événement a son message court sur la table (le dernier du pas l'emporte : la multibille passe devant la bille verrouillée), son message à l'afficheur pour le jackpot, et le départ de la multibille son éclat et sa vibration
+      if (partie.ev & EV_VERROU_ALLUME) message = dire("scene.verrou.allume");
+      if (partie.ev & EV_VERROUILLEE) message = dire("scene.verrouillee");
+      if (partie.ev & EV_NIVEAU) message = dire("scene.niveau", { n: partie.niveau });
+      if (partie.ev & EV_MULTI) {
+        tMulti = tDernierPas;
+        message = dire("scene.multibille");
+        o.vibrer(120);
+      }
+      if (partie.ev & EV_MULTI_FIN && !(partie.ev & EV_NIVEAU)) message = "";
+      if (partie.ev & EV_JACKPOT) {
+        const texte = o.t("scene.jackpot", { points: grouper(partie.dernierJackpot, o.langue) });
+        hud.gain(o.t("hud.jackpot.gain", { points: grouper(partie.dernierJackpot, o.langue) }), JACKPOT_GAIN_MS);
+        const g = partie.gains.find((q) => q.points === partie.dernierJackpot) ?? partie.gains[partie.gains.length - 1];
+        // la prise est dessinée à l'endroit de la bille (le rendu la lit toujours, `texte` la distingue des gains de `?debug`)
+        gains.push({ x: g?.x ?? partie.x, y: g?.y ?? partie.y, points: partie.dernierJackpot, fin: partie.tick + JACKPOT_VIE, texte });
+        o.vibrer(40);
+      }
       if (partie.ev & (EV_RAMPE | EV_ORBITE)) {
         // lot PBG1 : un rail mené à son bout — ses points (multiplicateur compris : le gain du pas) un instant à l'afficheur
         const points = partie.gains.reduce((somme, g) => somme + g.points, 0);
         if (points > 0) hud.gain(o.t("hud.rail.gain", { points: grouper(points, o.langue) }), RAIL_GAIN_MS);
       }
       majHud();
-      if (debug) for (const g of partie.gains) gains.push({ x: g.x, y: g.y, points: g.points, fin: partie.tick + TICKS_PAR_SECONDE });
+      if (debug) for (const g of partie.gains) if (g.points !== partie.dernierJackpot || !(partie.ev & EV_JACKPOT)) gains.push({ x: g.x, y: g.y, points: g.points, fin: partie.tick + TICKS_PAR_SECONDE });
       if (arretee()) tFin = tDernierPas;
     },
     dessiner(): void {
@@ -446,13 +485,23 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
       tImageSon = maintenant;
       const avance = partie.tick !== tickSon && !arretee();
       tickSon = partie.tick;
-      const enJeu = avance && !partie.dansLanceur && partie.captif === 0;
+      // lot PBG2 : en multibille le roulement suit la plus rapide des billes en jeu (une seule bille : la sienne, comme avant)
+      let vitesse = Math.hypot(partie.vx, partie.vy) / UNITE;
+      let enJeu = avance && !partie.vide && !partie.dansLanceur && partie.captif === 0;
+      if (partie.autres.length > 0) {
+        vitesse = 0;
+        for (const b of partie.billesDeLaTable()) {
+          if (b.dansLanceur || b.captif > 0) continue;
+          enJeu = avance;
+          vitesse = Math.max(vitesse, Math.hypot(b.vx, b.vy) / UNITE);
+        }
+      }
       const zone = partie.table.trousNoirs[0];
-      if (enJeu && zone) {
+      if (enJeu && zone && !partie.vide) {
         trouNoirSon.distance = Math.hypot(partie.x - zone.x, partie.y - zone.y) / UNITE;
         trouNoirSon.rayon = zone.r / UNITE;
       }
-      sons.continu(enJeu ? Math.hypot(partie.vx, partie.vy) / UNITE : 0, avance && partie.dansLanceur && partie.tenue(LANCEUR) ? partie.charge : 0, enJeu && zone ? trouNoirSon : null);
+      sons.continu(enJeu ? vitesse : 0, avance && partie.dansLanceur && partie.tenue(LANCEUR) ? partie.charge : 0, enJeu && zone ? trouNoirSon : null);
       let spin = 0;
       if (avance) for (const s of partie.spin) spin = Math.max(spin, s);
       for (let i = cliquetis.avancer(dt, spin); i > 0; i--) sons.jouer({ son: "spinner", spin });
@@ -464,8 +513,13 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         alpha: Math.min(1, Math.max(0, (maintenant - tDernierPas) / (1000 / TICKS_PAR_SECONDE))),
         sauvee: Math.max(0, 1 - (maintenant - tSauvee) / 1600),
         eclat: Math.max(0, 1 - (maintenant - tEclat) / 1100),
+        multi: Math.max(0, 1 - (maintenant - tMulti) / 1400),
+        message: maintenant - tMessage < MESSAGE_MS ? { texte: message, vie: 1 - (maintenant - tMessage) / MESSAGE_MS } : null,
+        secousse: o.reduit ? 0 : Math.max(0, 1 - (maintenant - tMulti) / 450),
+        plaqueVerrou: o.t("plaque.verrou"),
+        plaqueJackpot: o.t("plaque.jackpot"),
         texteSauvee: o.t("scene.sauvee"),
-        gains: gains.map((g) => ({ x: g.x, y: g.y, points: g.points, vie: (g.fin - partie.tick) / TICKS_PAR_SECONDE })),
+        gains: gains.map((g) => ({ x: g.x, y: g.y, points: g.points, vie: (g.fin - partie.tick) / (g.texte ? JACKPOT_VIE : TICKS_PAR_SECONDE), ...(g.texte ? { texte: g.texte } : {}) })),
       });
       surveiller(maintenant, performance.now() - avant);
     },

@@ -131,6 +131,8 @@ export interface Table {
   rails: Rail[];
   portes: Porte[];
   mini: MiniBatteur | null;
+  /** Lot PBG2 : le rang (dans `trous`) du trou qui sert de verrou — celui du deuxième emplacement du plan — ou −1 (le plan d'essai : pas de verrou, la mission ne se joue qu'une fois). */
+  verrou: number;
 }
 
 /** Les points de l'arc du haut (centre 196,25 × 205, rayon 176,25 : 31 points de la maquette), en unités. Calculés hors ligne, entiers. */
@@ -152,7 +154,7 @@ function segment(ax: number, ay: number, bx: number, by: number, e: number, kick
 /** La table du jour : le châssis, puis les six emplacements. */
 export function construireTable(contenu: Contenu, r: Reglages): Table {
   const plan = planDe(contenu.plan);
-  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null };
+  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1 };
   const mur = (ax: number, ay: number, bx: number, by: number, e: number, kick = 0, type: 0 | 1 = 0): void => void t.murs.push(segment(ax, ay, bx, by, e, kick, type));
   // --- le châssis
   mur(px(20), px(560), px(20), px(205), r.rebondMur);
@@ -175,6 +177,8 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
   for (const def of plan.orbite ? [...plan.rampes, plan.orbite] : plan.rampes) poserRail(t, def, r);
   if (plan.mini) t.mini = miniDe(plan.mini);
   contenu.modules.forEach((m, i) => poser(t, r, contenu.theme, m, i, px(plan.emplacements[i]!.x), px(plan.emplacements[i]!.y)));
+  // lot PBG2 : le verrou est le trou du deuxième emplacement (celui de tous les plans du jour ; le plan d'essai n'en a pas)
+  t.verrou = t.poses.find((q) => q.emplacement === 1 && q.type === "trou")?.rang ?? -1;
   return t;
 }
 

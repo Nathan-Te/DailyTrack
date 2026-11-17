@@ -76,6 +76,20 @@ for (const minutes of [5, 10, 15, 20]) {
 }
 console.log(`  ${(1 / cout / 1000).toFixed(2)} millions de pas par seconde`);
 
+// lot PBG2 : une partie riche en multibilles (trois billes en jeu, des collisions entre elles) coûte plus par pas qu'une partie à une bille : on rejoue de vraies parties du robot de 15 minutes, avec des multibilles, jusqu'à la fin
+console.log("— lot PBG2 : coût d'un rejeu de 15 minutes, avec des multibilles (le serveur, parties du robot de 15 minutes)");
+const riches: { nom: string; ev: Evenement[]; c: ReturnType<typeof dailyPinball> }[] = [];
+for (let i = 0; i < 12 && riches.length < 4; i++) {
+  const c = dailyPinball(premier + 5 * i + 1);
+  const r = jouerRobot(c, 1 + i, { maxTicks: DUREE_MAX_TICKS });
+  if (r.partie.multibilles >= 3) riches.push({ nom: `${c.theme}:${c.plan} (${r.partie.multibilles} multibilles, ${r.partie.jackpotsPartie} jackpots, fin à ${(r.partie.tick / TICKS_PAR_SECONDE / 60).toFixed(1)} min)`, ev: r.evenements, c });
+}
+for (const l of riches) {
+  const ticks = jouer(l.c, l.ev).ticks;
+  const t = med([0, 1, 2].map(() => ms(() => jouer(l.c, l.ev))));
+  console.log(`  ${l.nom} : ${ticks} pas rejoués en ${t.toFixed(0)} ms (${(ticks / t / 1000).toFixed(2)} millions de pas par seconde), ${enregistrer(l.c, l.ev).length} caractères`);
+}
+
 console.log("— taille d'une rediffusion de 10 minutes");
 const robot3 = jouerRobot(dailyPinball(premier + 4), 1, { maxTicks: ROBOT_PAS });
 for (const [nom, ev, jour] of [

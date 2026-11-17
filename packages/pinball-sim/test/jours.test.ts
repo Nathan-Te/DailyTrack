@@ -22,13 +22,13 @@ describe("un jour figé fige ses seuils", () => {
     expect(lu!.theme).toBe(dailyPinball(JOUR).theme);
     expect(lu!.modules).toEqual(dailyPinball(JOUR).modules);
     expect(seuilsDuJour(lu!)).toEqual(f.seuils);
-  });
+  }, 120_000); // lot PBG2 : les seuils du robot, quatre parties de six minutes
   it("les seuils du fichier l'emportent sur le calcul : changer le calcul ne change jamais un jour figé", () => {
     const f = figerJour(JOUR, { bronze: 111, silver: 222, gold: 333, author: 444 });
     const lu = lireJourFige(f)!;
     expect(seuilsDe(lu)).toEqual({ bronze: 111, silver: 222, gold: 333, author: 444 });
     expect(seuilsDe(dailyPinball(JOUR))).toEqual(seuilsDuRobot(dailyPinball(JOUR))); // sans fichier : le robot
-  });
+  }, 120_000);
   it("lot PB4 : les seuils figés l'emportent sur le robot, qui ne se lance pas (une table que le robot ne saurait pas jouer ne l'arrête pas)", () => {
     const f = { bronze: 5, silver: 6, gold: 7, author: 8 };
     const piege = { ...dailyPinball(JOUR), modules: ["inconnu"], seuilsFiges: f } as unknown as Parameters<typeof seuilsDuJour>[0];

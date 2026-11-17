@@ -20,8 +20,13 @@ describe("les options d'essai de l'adresse", () => {
     expect(lireEssai("?sons", false)).toMatchObject({ sons: false });
     expect(lireEssai("?debug", false)).toMatchObject({ sons: false });
   });
+  it("lot PBG2 : `?essai=verrou` et `?essai=multibille` sont des essais (jamais classés), un seul à la fois", () => {
+    expect(lireEssai("?essai=verrou", false)).toMatchObject({ verrou: true, multibille: false, mission: false, essai: true });
+    expect(lireEssai("?essai=multibille", false)).toMatchObject({ verrou: false, multibille: true, mission: false, essai: true });
+    expect(lireEssai("?essai=autre", false)).toMatchObject({ verrou: false, multibille: false, essai: false });
+  });
   it("sur la production (`restreint`), aucune option n'existe : `?essai=mission` ne fait rien", () => {
-    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, robot: null, plan: null, essai: false });
+    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, robot: null, plan: null, essai: false });
   });
 });
 

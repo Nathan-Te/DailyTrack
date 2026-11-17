@@ -52,6 +52,12 @@ export const EXEMPLES: Readonly<Record<NomSon, readonly Exemple[]>> = {
   mult: [2, 3, 4, 5, 6].map((m) => ex(`Multiplicateur ×${m}`, `Multiplier ×${m}`, { son: "mult", mult: m, retard: 0 })),
   missionPas: [1, 2, 3].map((n) => ex(`Mission : pas ${n}`, `Mission: step ${n}`, { son: "missionPas", compteur: n })),
   mission: [ex("Mission réussie", "Mission complete", { son: "mission" })],
+  verrouAllume: [ex("Verrou allumé", "Lock lit", { son: "verrouAllume" })],
+  verrouillee: [1, 2].map((n) => ex(`Bille verrouillée (${n})`, `Ball locked (${n})`, { son: "verrouillee", n })),
+  multibille: [ex("Départ de la multibille", "Multiball start", { son: "multibille" })],
+  jackpot: [1, 2, 4, 8].map((n) => ex(`Jackpot n° ${n}`, `Jackpot #${n}`, { son: "jackpot", rang: n })),
+  multibilleFin: [ex("Fin de la multibille", "Multiball end", { son: "multibilleFin" })],
+  niveau: [2, 3, 5].map((n) => ex(`Mission niveau ${n}`, `Mission level ${n}`, { son: "niveau", n })),
   sauvee: [ex("Bille sauvée", "Ball saved", { son: "sauvee" })],
   perdue: [ex("Bille perdue", "Ball lost", { son: "perdue" })],
   fin: [ex("Fin de partie", "Game over", { son: "fin" })],
@@ -63,6 +69,7 @@ const GROUPES: readonly { fr: string; en: string; sons: readonly NomSon[] }[] = 
   { fr: "Les modules communs", en: "Common modules", sons: ["bumper", "cible", "banque", "spinner", "trou", "voie", "voies"] },
   { fr: "Les éléments des thèmes", en: "Theme elements", sons: ["manege", "tourbillon", "portail", "geyser", "coulee"] },
   { fr: "Les rails (lot PBG1)", en: "Rails (lot PBG1)", sons: ["rail", "recul", "rampe", "orbite", "combo"] },
+  { fr: "La boucle (lot PBG2)", en: "The loop (lot PBG2)", sons: ["verrouAllume", "verrouillee", "multibille", "jackpot", "multibilleFin", "niveau"] },
   { fr: "Les moments", en: "Moments", sons: ["mult", "missionPas", "mission", "sauvee", "perdue", "fin"] },
 ];
 

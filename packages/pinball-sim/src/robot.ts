@@ -2,7 +2,7 @@ import { Rng } from "@cdj/core";
 import * as K from "./constantes";
 import type { Controle } from "./constantes";
 import type { Contenu } from "./generateur";
-import { Partie } from "./partie";
+import { Partie, type BilleVue } from "./partie";
 import type { Evenement } from "./rediffusion";
 import { REGLAGES, type Reglages } from "./reglages";
 // Posées dans des locales : sous Vitest chaque import se lit par un accesseur (deux à trois fois plus lent dans les boucles du robot).
@@ -60,6 +60,9 @@ export const ROBOT_VALEUR_MISSION = 12000;
 /** Une bille perdue coûte 10 000 points ; une bille sauvée (elle revient au lanceur), le tiers. Un cran de multiplicateur vaut 3 000. */
 export const ROBOT_PERTE = 10000;
 export const ROBOT_VALEUR_MULT = 3000;
+/** Lot PBG2 : ce que vaut une bille verrouillée (le verrou est allumé : deux billes verrouillées lancent la multibille et ses jackpots), et ce que coûte une bille perdue pendant la multibille (elle ne coûte pas de bille de la partie, mais la multibille s'arrête plus tôt). */
+export const ROBOT_VALEUR_VERROU = 15000;
+export const ROBOT_PERTE_MULTI = 4000;
 /** Le lanceur : le robot tient la charge entre 800 et 1 000 (‰), après 60 à 180 pas d'attente. */
 const CHARGE_MIN = 800;
 const ATTENTE_LANCEUR = 60;
@@ -97,24 +100,60 @@ interface Depart {
   billes: number;
   progres: number;
   faite: boolean;
+  verrous: number;
+  perdues: number;
 }
 const progresDe = (p: Partie): number => {
   let m = p.compteur * 8;
   if (p.mission === "manege") for (const a of p.manegeAvance) m += a;
   return m;
 };
-const departDe = (p: Partie): Depart => ({ score: p.score, mult: p.mult, billes: p.billes, progres: progresDe(p), faite: p.missionFaite });
+const departDe = (p: Partie): Depart => ({ score: p.score, mult: p.mult, billes: p.billes, progres: progresDe(p), faite: p.missionFaite, verrous: p.verrouTotal, perdues: p.perduesMulti });
 
-/** Le robot lâche un batteur quand : il est tenu depuis `ROBOT_MAINTIEN_MIN` pas et la bille a quitté la zone des batteurs (ou est captive, ou revenue au lanceur) ; il le lâche de toute façon à `ROBOT_MAINTIEN_MAX`. */
-const doitLacher = (p: Partie, depuis: number): boolean => depuis >= ROBOT_MAINTIEN_MAX || (depuis >= ROBOT_MAINTIEN_MIN && (p.y < ROBOT_Y_LACHE * UNITE || p.captif > 0 || p.dansLanceur));
+const nouvelleVue = (): BilleVue => ({ id: -1, x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, couche: 0, captif: 0, dansLanceur: false, charge: 0 });
+
+/** Une bille est-elle dans la zone des batteurs (sur le plateau, sous `ROBOT_Y_LACHE`, ni captive ni au lanceur) ? Lot PBG2 : une bille quelconque de la table. */
+function dansLaZone(p: Partie): boolean {
+  const lim = ROBOT_Y_LACHE * UNITE;
+  if (!p.vide && p.y >= lim && p.captif === 0 && !p.dansLanceur) return true;
+  for (const b of p.autres) if (b.y >= lim && b.captif === 0 && !b.dansLanceur) return true;
+  return false;
+}
+
+/** Le robot lâche un batteur quand : il est tenu depuis `ROBOT_MAINTIEN_MIN` pas et plus aucune bille n'est dans la zone des batteurs (elle a quitté la zone, ou est captive, ou revenue au lanceur) ; il le lâche de toute façon à `ROBOT_MAINTIEN_MAX`. */
+const doitLacher = (p: Partie, depuis: number): boolean => depuis >= ROBOT_MAINTIEN_MAX || (depuis >= ROBOT_MAINTIEN_MIN && !dansLaZone(p));
+
+/**
+ * **La bille qu'il joue** (lot PBG2). Une seule bille : la bille de la partie. En multibille : **la plus menacée**, la plus basse de celles qui descendent vers les batteurs sur le plateau (ni captive, ni sur un rail, ni
+ * au lanceur) ; l'égalité va à la première entrée en jeu. Rend faux s'il n'y en a aucune.
+ */
+function plusMenacee(p: Partie, sortie: BilleVue): boolean {
+  if (p.autres.length === 0) return !p.vide && p.lire(p.id, sortie);
+  let y = -1;
+  for (const b of p.billesDeLaTable()) {
+    if (b.couche !== 0 || b.captif > 0 || b.dansLanceur || b.vy <= 0 || b.y <= ROBOT_Y_DECISION * UNITE || b.x >= 340 * UNITE || b.y <= y) continue;
+    y = b.y;
+    Object.assign(sortie, b);
+  }
+  return y >= 0;
+}
+
+/** Une bille attend-elle dans le couloir du lanceur ? Laquelle (sa charge compte) : la première. */
+function auLanceur(p: Partie, sortie: BilleVue): boolean {
+  if (!p.vide && p.dansLanceur) return p.lire(p.id, sortie);
+  for (const b of p.autres) if (b.dansLanceur) return p.lire(b.id, sortie);
+  return false;
+}
 
 /** La note d'une suite : les points, la mission, le multiplicateur, moins une bille perdue. */
 function noter(p: Partie, d: Depart): number {
   let v = p.score - d.score;
   if (!d.faite) v += (progresDe(p) - d.progres) * (ROBOT_VALEUR_MISSION / 8);
   v += (p.mult - d.mult) * ROBOT_VALEUR_MULT;
+  v += (p.verrouTotal - d.verrous) * ROBOT_VALEUR_VERROU;
   if (p.billes < d.billes) v -= ROBOT_PERTE;
   else if (p.ev & EV_SAUVEE) v -= Math.trunc(ROBOT_PERTE / 3);
+  v -= (p.perduesMulti - d.perdues) * ROBOT_PERTE_MULTI;
   return v;
 }
 
@@ -122,7 +161,7 @@ function noter(p: Partie, d: Depart): number {
  * Joue une copie `c` (la bille vient d'être préparée à son état de départ) : les batteurs de `appuyes` sont pressés tout de suite et tenus selon la règle du robot, puis la copie joue jusqu'à `ROBOT_HORIZON` pas, ou
  * jusqu'à ce que la bille soit perdue, sauvée, revenue au lanceur, ou retombe vers les batteurs après être remontée. Rend la note et le nombre de pas joués.
  */
-function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[]): { note: number; pas: number } {
+function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[], id: number): { note: number; pas: number } {
   for (const b of appuyes) c.regler(b, true);
   let tenu = appuyes.length > 0;
   let depuis = 0;
@@ -130,7 +169,10 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[]): { note: num
   let pas = 0;
   const haut = (ROBOT_Y_DECISION - 100) * UNITE;
   const decision = ROBOT_Y_DECISION * UNITE;
-  while ((pas < ROBOT_HORIZON || c.couche === 1) && pas < ROBOT_HORIZON_RAIL && !c.finie) {
+  // lot PBG2 : on suit « sa » bille (par son identifiant) ; les autres billes de la multibille jouent leur partie sans qu'on les suive
+  const f = nouvelleVue();
+  if (!c.lire(id, f)) f.couche = 0;
+  while ((pas < ROBOT_HORIZON || f.couche === 1) && pas < ROBOT_HORIZON_RAIL && !c.finie) {
     if (tenu && doitLacher(c, depuis)) {
       for (const b of appuyes) c.regler(b, false);
       tenu = false;
@@ -138,9 +180,10 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[]): { note: num
     c.avancer();
     pas++;
     depuis++;
-    if (c.billes < d.billes || c.dansLanceur || c.ev & EV_SAUVEE) break;
-    if (c.y < haut) monte = true;
-    else if (monte && depuis > ROBOT_MAINTIEN_MIN && c.vy > 0 && c.y > decision && c.couche === 0) break;
+    if (c.billes < d.billes || c.ev & EV_SAUVEE) break;
+    if (!c.lire(id, f) || f.dansLanceur) break; // perdue, verrouillée ou revenue au lanceur
+    if (f.y < haut) monte = true;
+    else if (monte && depuis > ROBOT_MAINTIEN_MIN && f.vy > 0 && f.y > decision && f.couche === 0) break;
   }
   return { note: noter(c, d), pas };
 }
@@ -150,7 +193,7 @@ export function noterFrappe(p: Partie, batteurs: readonly Batteur[], delai: numb
   const c = p.copier(true);
   const d = departDe(p);
   for (let i = 0; i < delai && !c.finie; i++) c.avancer();
-  return essayer(c, d, batteurs).note;
+  return essayer(c, d, batteurs, p.id).note;
 }
 
 /** Le résultat d'un choix : le coup (ou rien) et, sinon, quand regarder de nouveau. */
@@ -167,6 +210,11 @@ interface Choix {
  */
 export function* choisirEnTranches(p: Partie, libre: readonly [number, number]): Generator<void, Choix, undefined> {
   let pas = 0;
+  // la bille qu'il joue : la bille de la partie, ou la plus menacée en multibille
+  const cible = nouvelleVue();
+  if (!plusMenacee(p, cible)) return { raison: "jamais", coup: null, revoir: 60, pas };
+  const id = cible.id;
+  const f = nouvelleVue();
   // 1. la bille jouée d'avance sans rien appuyer : quand arrive-t-elle aux batteurs, de quel côté ?
   const base = p.copier(true);
   const ligne = ROBOT_Y_BATTEURS * UNITE;
@@ -176,15 +224,19 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number]):
   let derniere = -1;
   const basse = ROBOT_Y_BASSE * UNITE;
   while (pas < plafond && !base.finie) {
-    if (arrivee < 0 && base.y >= ligne && base.vy > 0 && base.captif === 0 && !base.dansLanceur) {
-      arrivee = pas;
-      xArrivee = base.x;
+    if (!base.lire(id, f)) {
+      if (arrivee >= 0) derniere = pas;
+      break; // la bille est perdue ou verrouillée
     }
-    if (arrivee >= 0 && (base.y >= basse || pas >= arrivee + ROBOT_APRES_MAX)) {
+    if (arrivee < 0 && f.y >= ligne && f.vy > 0 && f.captif === 0 && !f.dansLanceur) {
+      arrivee = pas;
+      xArrivee = f.x;
+    }
+    if (arrivee >= 0 && (f.y >= basse || pas >= arrivee + ROBOT_APRES_MAX)) {
       derniere = pas;
       break;
     }
-    if (base.billes < p.billes || base.dansLanceur || base.captif > 0) {
+    if (base.billes < p.billes || f.dansLanceur || f.captif > 0) {
       if (arrivee >= 0) derniere = pas;
       break;
     }
@@ -216,7 +268,7 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number]):
     etats.push(pre.copier(true));
   }
   // 3. la note de rien faire, puis celle de chaque frappe à chaque moment
-  const rien = essayer(p.copier(true), depart, []);
+  const rien = essayer(p.copier(true), depart, [], id);
   pas += rien.pas;
   yield;
   let meilleur: Coup | null = null;
@@ -224,7 +276,7 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number]):
   for (const batteurs of cotes) {
     const notes: number[] = [];
     for (let j = 0; j < delais.length; j++) {
-      const r = essayer(etats[j]!.copier(true), depart, batteurs);
+      const r = essayer(etats[j]!.copier(true), depart, batteurs, id);
       notes.push(r.note);
       pas += r.pas;
       yield;
@@ -285,6 +337,8 @@ export function* jouerRobotEnTranches(contenu: Contenu, graine: number, options:
   let dansLanceur = partie.dansLanceur;
   let attente = ATTENTE_LANCEUR + rng.int(121);
   let charge = CHARGE_MIN + rng.int(201);
+  const lanceur = nouvelleVue();
+  const cible = nouvelleVue();
   while (!partie.finie && partie.tick < max) {
     const t = partie.tick;
     // les batteurs tenus : relâchés selon la règle du robot (aussi quand la bille est revenue au lanceur)
@@ -294,19 +348,24 @@ export function* jouerRobotEnTranches(contenu: Contenu, graine: number, options:
         if (doitLacher(partie, depuis[b])) regler(b, false);
       }
     }
-    if (partie.dansLanceur) {
+    // lot PBG2 : en multibille une bille peut attendre au lanceur pendant que d'autres jouent : le lanceur et les batteurs se jouent alors ensemble
+    const aLanceur = auLanceur(partie, lanceur);
+    const multi = partie.autres.length > 0;
+    if (aLanceur) {
       if (!dansLanceur) {
         dansLanceur = true;
         attente = t + ATTENTE_LANCEUR + rng.int(121);
         charge = CHARGE_MIN + rng.int(201);
       }
       if (partie.tenue(LANCEUR)) {
-        if (partie.charge >= charge) regler(LANCEUR, false);
+        if (lanceur.charge >= charge) regler(LANCEUR, false);
       } else if (t >= attente) regler(LANCEUR, true);
-      prevu = null;
+      if (!multi) prevu = null;
     } else {
       dansLanceur = false;
       regler(LANCEUR, false);
+    }
+    if (!aLanceur || multi) {
       if (prevu !== null && t >= prevu.tick) {
         prevu.coup.appui = t;
         for (const b of prevu.batteurs) {
@@ -315,7 +374,7 @@ export function* jouerRobotEnTranches(contenu: Contenu, graine: number, options:
           dernier[b] = t;
         }
         prevu = null;
-      } else if (prevu === null && t >= revoir && !partie.tenue(GAUCHE) && !partie.tenue(DROITE) && partie.captif === 0 && partie.couche === 0 && partie.vy > 0 && partie.y > ROBOT_Y_DECISION * UNITE && partie.x < 340 * UNITE) {
+      } else if (prevu === null && t >= revoir && !partie.tenue(GAUCHE) && !partie.tenue(DROITE) && plusMenacee(partie, cible) && cible.captif === 0 && cible.couche === 0 && cible.vy > 0 && cible.y > ROBOT_Y_DECISION * UNITE && cible.x < 340 * UNITE) {
         decisions++;
         const c = yield* choisirEnTranches(partie, [dernier[0] + ROBOT_ECART_MIN - t, dernier[1] + ROBOT_ECART_MIN - t]);
         pasSimules += c.pas;

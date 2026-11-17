@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2957 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+2974 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3724,8 +3724,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
+| `aujourdhui.boucle` | Réussis la mission, verrouille deux billes : multibille et jackpots, puis la mission revient plus haut. | Complete the mission, lock two balls: multiball and jackpots, then the mission comes back higher. |
 | `aujourdhui.mission` | Mission | Mission |
-| `aujourdhui.mission.gain` | +{points} et un cran de multiplicateur, une fois par partie | +{points} and one step of multiplier, once per game |
+| `aujourdhui.mission.gain` | +{points} et un cran de multiplicateur, de plus en plus à chaque niveau | +{points} and one step of multiplier, more at every level |
 | `aujourdhui.table` | Sur la table | On the table |
 | `aujourdhui.plan` | Plan : {plan} | Layout: {plan} |
 | `aujourdhui.medailles` | Médailles du jour | Today's medals |
@@ -3747,10 +3748,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.point1` | Une table de flipper par jour, la même pour tous. Trois billes, quinze minutes au plus : fais le plus de points possible. | One pinball table a day, the same for everyone. Three balls, fifteen minutes at most: score as many points as you can. |
 | `aide.point2` | Batteur gauche : {gauche} ; batteur droit : {droite} (ou la moitié gauche ou droite de l'écran). Pour lancer, maintiens {lanceur} (ou touche l'écran) puis relâche : plus tu tiens, plus la bille part fort. | Left flipper: {gauche}; right flipper: {droite} (or touch the left or right half of the screen). To launch, hold {lanceur} (or touch the screen) then let go: the longer you hold, the harder the ball goes. |
 | `aide.point3` | Ton score du jour est celui de ta meilleure partie : rejoue autant que tu veux, seule la meilleure compte au classement. | Your score for the day is your best game: play as often as you like, only the best one counts on the leaderboard. |
-| `aide.point4` | La mission du jour change avec la table : tours de manège, plongées dans le tourbillon, passages par les portails ou geysers déclenchés. Réussis-la, une fois par partie : elle rapporte des points et un cran de multiplicateur. | Today's mission changes with the table: carousel laps, whirlpool dives, trips through the portals or geysers set off. Complete it, once per game: it earns points and one step of multiplier. |
+| `aide.point4` | La mission du jour change avec la table : tours de manège, plongées dans le tourbillon, passages par les portails ou geysers déclenchés. Réussis-la : elle rapporte des points et un cran de multiplicateur, et elle allume le verrou (point 8). | Today's mission changes with the table: carousel laps, whirlpool dives, trips through the portals or geysers set off. Complete it: it earns points and one step of multiplier, and it lights the lock (point 8). |
 | `aide.point5` | Le multiplicateur va de ×1 à ×6 et multiplie chaque point que tu marques. Il monte d'un cran quand tu réussis la mission et quand tu allumes les trois lampes du haut de la table. | The multiplier goes from ×1 to ×6 and multiplies every point you score. It goes up one step when you complete the mission and when you light the three lamps at the top of the table. |
 | `aide.point6` | Bille sauvée : une bille perdue juste après son lancer revient au lanceur, une fois par bille. Les batteurs, eux, ne pardonnent rien : à toi de viser. | Ball save: a ball lost just after launch comes back to the launcher, once per ball. The flippers forgive nothing, though: aim well. |
 | `aide.point7` | Les rampes et l'orbite se prennent en visant la flèche de leur entrée, assez vite : la bille roule au-dessus de la table et rapporte des points quand elle arrive au bout. Deux rails de suite avant que la jauge du combo ne se vide, et le combo monte : chaque rail rapporte plus. | Ramps and the orbit are taken by aiming at the arrow at their entrance, fast enough: the ball rolls above the table and scores when it reaches the end. Two rails in a row before the combo gauge runs out, and the combo goes up: each rail is worth more. |
+| `aide.point8` | La boucle : réussis la mission, le verrou s'allume sur le trou. Verrouille deux billes : c'est la multibille, trois billes en jeu, et chaque prise de l'élément du thème rapporte un jackpot de plus en plus gros. Quand il ne reste qu'une bille, la mission revient, plus haut et plus généreuse. | The loop: complete the mission and the lock lights up on the hole. Lock two balls: that is multiball, three balls in play, and every hit on the theme element earns a bigger and bigger jackpot. When one ball is left, the mission comes back, higher and more generous. |
 
 ### kit (`kit.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3921,6 +3923,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.rail.gain` | +{points} | +{points} |
 | `hud.combo` | Combo ×{n} | Combo ×{n} |
 | `hud.combo.aria` | Combo ×{n} | Combo ×{n} |
+| `hud.niveau` | Niveau {n} | Level {n} |
+| `hud.niveau.aria` | Mission, niveau {n} | Mission, level {n} |
+| `hud.verrou.aria` | Billes verrouillées : {n} sur {total} | Locked balls: {n} of {total} |
+| `hud.verrou.allume` | Verrou allumé | Lock is lit |
+| `hud.multibille` | MULTIBILLE | MULTIBALL |
+| `hud.multibille.aria` | Multibille : prochain jackpot {points} | Multiball: next jackpot {points} |
+| `hud.jackpot.prochain` | Jackpot {points} | Jackpot {points} |
+| `hud.jackpot.gain` | JACKPOT +{points} | JACKPOT +{points} |
 
 ### plan (`plan.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3930,6 +3940,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `plan.tremplin` | Tremplin | Ramp-up |
 | `plan.bretelle` | Bretelle | Sliproad |
 | `plan.boucle` | Boucle | Loop |
+
+### plaque (`plaque.*`, `apps/pinball/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `plaque.verrou` | VERROU | LOCK |
+| `plaque.jackpot` | JACKPOT | JACKPOT |
 
 ### robot (`robot.*`, `apps/pinball/src/catalogue.*.ts`)
 
@@ -3943,6 +3960,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `scene.aria` | La table de flipper du jour : deux batteurs en bas, trois billes | Today's pinball table: two flippers at the bottom, three balls |
 | `scene.sauvee` | Bille sauvée ! | Ball saved! |
+| `scene.multibille` | MULTIBILLE ! | MULTIBALL! |
+| `scene.verrou.allume` | VERROU ALLUMÉ | LOCK IS LIT |
+| `scene.verrouillee` | BILLE VERROUILLÉE | BALL LOCKED |
+| `scene.niveau` | MISSION NIVEAU {n} | MISSION LEVEL {n} |
+| `scene.jackpot` | JACKPOT +{points} | JACKPOT +{points} |
 
 ### Thèmes (`theme.*`, `apps/pinball/src/catalogue.*.ts`)
 

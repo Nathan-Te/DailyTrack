@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { NORME, QUART, TOUR, dailyPinball, jouerRobot, racine, sinus, cosinus } from "../src/index";
+import { NORME, QUART, TOUR, UNITE, Partie, dailyPinball, jouerRobot, racine, sinus, cosinus } from "../src/index";
 
 // **Pas un seul flottant dans la simulation** (règle du lot PB1) : la partie, le générateur et la rediffusion ne manient que des entiers. Deux gardes : (1) le code — aucun littéral décimal, aucune racine ni transcendante,
 // aucun arrondi de flottant, aucun texte converti en nombre décimal (`describePurity` interdit déjà `Math.sin`…, le hasard, les dates et `**`) ; (2) l'état — après une vraie partie, chaque nombre de la partie est un entier.
@@ -40,6 +40,28 @@ describe("tout l'état d'une partie est entier", () => {
     };
     visiter("partie", partie);
     expect(nombres.length).toBeGreaterThan(150); // la table, les éléments et la bille
+    for (const [nom, v] of nombres) expect(Number.isInteger(v), `${nom} = ${String(v)}`).toBe(true);
+  });
+});
+
+describe("lot PBG2 : tout l'état d'une multibille est entier", () => {
+  it("trois billes en jeu, des collisions entre elles, un jackpot : chaque nombre de la partie et de chaque bille est un entier", () => {
+    const p = new Partie(dailyPinball(daysFromCivil(2026, 11, 9), undefined, "ocean", "doublette"));
+    p.lancerLaMultibille();
+    p.dansLanceur = false;
+    p.x = 184 * UNITE;
+    p.y = 450 * UNITE;
+    p.vy = 300 * UNITE;
+    for (let i = 0; i < 4000; i++) p.avancer();
+    expect(p.autres.length, "plusieurs billes en jeu").toBeGreaterThanOrEqual(1);
+    const nombres: [string, unknown][] = [];
+    const visiter = (nom: string, v: unknown): void => {
+      if (typeof v === "number") nombres.push([nom, v]);
+      else if (Array.isArray(v)) v.forEach((x, i) => visiter(`${nom}[${i}]`, x));
+      else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) visiter(`${nom}.${k}`, x);
+    };
+    visiter("partie", p);
+    expect(nombres.length).toBeGreaterThan(200);
     for (const [nom, v] of nombres) expect(Number.isInteger(v), `${nom} = ${String(v)}`).toBe(true);
   });
 });

@@ -89,6 +89,18 @@ const CURSEURS: readonly Curseur[] = [
   sim("comboDelai", "Combo", "Délai pour enchaîner (pas ; 600 = 1 s)", "Time to chain (steps; 600 = 1 s)", 50),
   sim("comboMax", "Combo", "Rang de combo au-delà duquel les points ne montent plus", "Combo rank beyond which points stop rising"),
   sim("comboPas", "Combo", "Points en plus par rang (% d'un rail)", "Extra points per rank (% of a rail)", 5),
+  sim("verrouPoints", "Verrou", "Points d'une bille verrouillée", "Points for a locked ball", 100),
+  sim("verrouPause", "Verrou", "Pas avant que le trou reprenne (600 = 1 s)", "Steps before the hole takes again (600 = 1 s)", 30),
+  sim("multibilleDepart", "Multibille", "Pas avant la première bille lâchée", "Steps before the first ball is released", 30),
+  sim("multibilleLacher", "Multibille", "Pas entre deux billes lâchées", "Steps between two released balls", 30),
+  sim("multibilleSauvee", "Multibille", "Bille sauvée au départ (pas ; 0 = aucune)", "Ball save at the start (steps; 0 = none)", 300),
+  sim("multibilleRelance", "Multibille", "Pas qu'une bille sauvée met à revenir par le trou", "Steps a saved ball takes to come back through the hole", 30),
+  sim("rebondBille", "Multibille", "Rebond entre billes (‰ ; 1000 = élastique)", "Bounce between balls (‰; 1000 = elastic)", 50),
+  sim("jackpotBase", "Jackpot", "Premier jackpot (points)", "First jackpot (points)", 250),
+  sim("jackpotPas", "Jackpot", "Jackpot en plus à chaque prise (% du premier)", "Extra per jackpot (% of the first)", 10),
+  sim("jackpotMultiplie", "Jackpot", "Le multiplicateur s'applique (1 : oui, 0 : non)", "The multiplier applies (1: yes, 0: no)", 1),
+  sim("missionButPas", "Niveaux de la mission", "But du niveau suivant (% du but du niveau)", "Next level's goal (% of this level's goal)", 10),
+  sim("missionPas", "Niveaux de la mission", "Récompense en plus par niveau (% de la base)", "Extra reward per level (% of the base)", 10),
   { cle: "angle", groupe: "vue", section: "Vue", fr: "Caméra : angle (°)", en: "Camera: angle (°)" },
   { cle: "distance", groupe: "vue", section: "Vue", fr: "Caméra : distance (% du cadrage)", en: "Camera: distance (% of framing)" },
   { cle: "champ", groupe: "vue", section: "Vue", fr: "Caméra : champ (°)", en: "Camera: field of view (°)" },
@@ -107,7 +119,7 @@ const CURSEURS: readonly Curseur[] = [
   { cle: "occlusion", groupe: "vue", section: "Lumière", fr: "Ombres de contact sur le sol (%)", en: "Contact shadows on the floor (%)" },
   { cle: "vignettage", groupe: "vue", section: "Lumière", fr: "Vignettage de la table (%)", en: "Table vignetting (%)" },
 ];
-const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", "Rampes et orbite": "Ramps and orbit", Combo: "Combo", Vue: "View", "Lumière": "Light" };
+const SECTIONS_EN: Record<string, string> = { Table: "Table", "Rebonds (‰)": "Bounces (‰)", "Coups (px/s)": "Kicks (px/s)", Batteurs: "Flippers", Lanceur: "Launcher", Trou: "Hole", "Bille sauvée": "Ball save", "Cibles et couloirs": "Targets and lanes", "Océan": "Ocean", "Fête foraine": "Funfair", Espace: "Space", Volcan: "Volcano", "Missions (buts)": "Missions (goals)", "Rampes et orbite": "Ramps and orbit", Combo: "Combo", Verrou: "Lock", Multibille: "Multiball", Jackpot: "Jackpot", "Niveaux de la mission": "Mission levels", Vue: "View", "Lumière": "Light" };
 const TEXTES = {
   fr: { ouvrir: "Réglages d'essai", titre: "Réglages d'essai", note: "Un curseur de la simulation relance la partie (non classée) ; ceux de la vue agissent en direct (rendu haute qualité).", exporter: "Exporter", copie: "Copié", lien: "Copier le lien", retablir: "Rétablir", fermer: "Fermer", json: "Les réglages, en JSON", sansTrois: "Le rendu de secours est affiché : la vue n'a pas d'effet." },
   en: { ouvrir: "Tuning", titre: "Tuning", note: "A simulation slider restarts the game (not ranked); the view sliders apply live (high quality render).", exporter: "Export", copie: "Copied", lien: "Copy link", retablir: "Reset", fermer: "Close", json: "The settings, as JSON", sansTrois: "The fallback render is showing: the view has no effect." },

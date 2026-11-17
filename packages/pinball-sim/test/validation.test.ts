@@ -83,7 +83,7 @@ describe("la validation refuse une table piégée exprès", () => {
     }
   });
   it("un trou qui ne prend jamais la bille et une mission qu'on ne peut pas finir : module jamais touché et mission jamais réussie, donc refusée", () => {
-    const piege = analyserTable(dailyPinball(JOUR + 2, undefined, "foire"), { ...REGLAGES, trouVitesseMax: 0, butManege: 1000 });
+    const piege = analyserTable(dailyPinball(JOUR + 2, undefined, "foire"), { ...REGLAGES, trouVitesseMax: 0, butManege: 1000 }, 72000);
     expect(piege.ok).toBe(false);
     expect(piege.raisons!.some((r) => r.startsWith("module jamais touché : S") && r.endsWith(":trou"))).toBe(true);
     expect(piege.raisons).toContain("mission jamais réussie");
