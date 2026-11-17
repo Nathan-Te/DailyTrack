@@ -20,7 +20,7 @@ export function valider30Jours(du: number, n: number): void {
         const cle = cleDeTable(c);
         let a = vues.get(cle) ?? analyserTable(c, undefined, DUREE);
         // lot PBL1 : « chaque module touché » se juge sur les parties de six minutes, comme la validation des 500 tables (`valider:pinball`) : en deux minutes le robot n'a parfois pas encore touché le mini-batteur d'une table valide (2026-11-15) — on refait alors l'analyse à la durée de la validation
-        if (a.raisons!.some((r) => r.startsWith("module jamais touché")) || a.manquants.length > 0) a = analyserTable(c);
+        if (a.raisons!.some((r) => r.startsWith("module jamais touché")) || (a.manquants ?? []).length > 0) a = analyserTable(c);
         vues.set(cle, a);
         // lot PBG3 : « la porte s'ouvre d'elle-même et est franchie » se juge sur les parties de six minutes (la validation des 500 tables, `test/validation-porte.test.ts`) : en deux minutes le robot n'a pas toujours fait tomber la banque ou mené l'orbite
         const raisons = a.raisons!.filter((r) => !r.startsWith("porte jamais"));

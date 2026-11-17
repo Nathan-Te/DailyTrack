@@ -153,9 +153,9 @@ test.describe("Pinball : le HUD en surimpression", () => {
   });
 
   test("un rail mené à son bout : « + points » à l'afficheur (ceux que la simulation compte) et le combo monte au rail suivant dans le délai", async ({ browser }) => {
-    // la partie du robot sur la « Doublette » de l'Espace ce jour-là (graine 0) : on cherche, dans la simulation (Node), le premier rail mené à son bout et le premier combo
-    const contenu = dailyPinball(parseDay(JOUR)!, undefined, "espace", "doublette");
-    const robot = jouerRobot(contenu, graineDuRobot(0), { maxTicks: 72000 });
+    // la partie du robot sur la « Doublette » de l'Océan ce jour-là (graine 0) : on cherche, dans la simulation (Node), le premier rail mené à son bout et le premier combo
+    const contenu = dailyPinball(parseDay(JOUR)!, undefined, "ocean", "doublette"); // lot PBL1 : l'Océan (le robot de l'Espace y perd ses billes en 70 s et ne chaîne plus deux rails)
+    const robot = jouerRobot(contenu, graineDuRobot(0), { maxTicks: 216000 });
     const p = new Partie(contenu);
     let k = 0;
     let premier: { pas: number; gain: number } | null = null;
@@ -170,7 +170,7 @@ test.describe("Pinball : le HUD en surimpression", () => {
     }
     expect(premier, "le robot mène un rail à son bout").not.toBeNull();
     expect(combo, "et il en enchaîne deux").not.toBeNull();
-    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&robot&theme=espace&plan=doublette");
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&robot&theme=ocean&plan=doublette");
     await lancer(page);
     await page.evaluate((pas) => window.__jeu.avancer(pas + 1), premier!.pas);
     await expect(page.locator(".pinball-hud__chiffres")).toHaveText(`+${grouper(premier!.gain, "fr")}`);
