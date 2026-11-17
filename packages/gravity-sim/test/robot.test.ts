@@ -8,6 +8,7 @@ import {
   ROBOT_ECART_MIN,
   ROBOT_FENETRE_MIN,
   ROBOT_HORIZON,
+  ROBOT_MAINTIEN_MIN,
   ROBOT_MARGE,
   ROBOT_SANS_BOUCLIER,
   dailyGravity,
@@ -19,6 +20,7 @@ import {
   type Terrain,
 } from "../src/index";
 import { partieSur } from "./aide";
+import { classerLesChangements, rejouerLesChangements } from "./aideRobot";
 
 // Le robot (lot GR2) : il joue la vraie simulation comme un humain. Ces tests gardent ses contraintes — les constantes nommées, l'écart entre deux appuis, la fenêtre de réussite, le refus du bouclier —, son
 // déterminisme (deux appels, la même partie) et que sa partie est une rediffusion valide, rejouée par le serveur. La franchissabilité de 30 jours est `franchissabilite.test.ts`.
@@ -32,45 +34,50 @@ describe("les contraintes d'humain du robot sont des constantes nommées", () =>
     expect(ROBOT_MARGE).toBe(4);
     expect(ROBOT_SANS_BOUCLIER).toBe(true);
     expect(ROBOT_HORIZON).toBe(2);
-    expect(GRAVITY_BOT_VERSION).toBeGreaterThanOrEqual(2);
+    expect(ROBOT_MAINTIEN_MIN).toBe(6); // lot GR6 : en avion et en onde, un appui ou un relâché dure au moins 6 pas
+    expect(GRAVITY_BOT_VERSION).toBeGreaterThanOrEqual(3);
   });
 });
 
 describe("le robot joue comme un humain", () => {
   const r = jouerRobot(terrain(), { maxDistance: 700 });
-  it("deux appuis sont séparés d'au moins 12 pas, jamais deux au même pas", () => {
-    expect(r.appuis.length).toBeGreaterThan(20);
-    for (let i = 1; i < r.appuis.length; i++) expect(r.appuis[i]! - r.appuis[i - 1]!).toBeGreaterThanOrEqual(ROBOT_ECART_MIN);
+  const classes = classerLesChangements(terrain(), r.changements);
+  it("les contraintes d'humain de chaque mode : 12 pas entre deux appuis en gravité et en ressort, 6 pas par appui ou relâché en avion et en onde, jamais deux changements au même pas", () => {
+    expect(r.changements.length).toBeGreaterThan(20);
+    expect(new Set(classes.map((c) => c.mode)).size, "la partie du robot doit passer par plusieurs modes").toBeGreaterThan(1);
+    for (let i = 1; i < r.changements.length; i++) expect(r.changements[i]! - r.changements[i - 1]!).toBeGreaterThanOrEqual(1);
+    const appuisGravite = classes.filter((c) => c.appui && (c.mode === 0 || c.mode === 3));
+    for (let i = 1; i < appuisGravite.length; i++) expect(appuisGravite[i]!.tick - appuisGravite[i - 1]!.tick, `appuis du pas ${appuisGravite[i - 1]!.tick} et ${appuisGravite[i]!.tick}`).toBeGreaterThanOrEqual(ROBOT_ECART_MIN);
+    for (let i = 1; i < classes.length; i++) {
+      const a = classes[i - 1]!;
+      const b = classes[i]!;
+      if ((a.mode === 1 || a.mode === 2) && (b.mode === 1 || b.mode === 2)) expect(b.tick - a.tick, `changements du pas ${a.tick} et ${b.tick}`).toBeGreaterThanOrEqual(ROBOT_MAINTIEN_MIN);
+    }
   });
-  it("chaque appui a sa fenêtre : au moins 9 pas qui réussissent de suite (4 de chaque côté), et le rapport le dit", () => {
-    expect(r.rapport.appuis).toHaveLength(r.appuis.length);
+  it("chaque changement du pilote ou de la recherche a sa fenêtre : au moins 9 pas qui réussissent de suite (4 de chaque côté), et le rapport le dit", () => {
     expect(r.rapport.entorses).toEqual([]);
+    expect(r.rapport.appuis.length).toBeGreaterThan(20);
     for (const a of r.rapport.appuis) {
       expect(a.respecte).toBe(true);
       expect(a.fenetre).toBeGreaterThanOrEqual(2 * ROBOT_MARGE + 1);
       expect(a.fenetre).toBeGreaterThanOrEqual(ROBOT_FENETRE_MIN);
     }
   });
-  it("chaque appui est utile : il inverse la gravité (jamais un appui perdu)", () => {
-    expect(r.partie.inversions).toBe(r.appuis.length);
+  it("chaque appui de gravité est utile : il inverse la gravité (jamais un appui perdu)", () => {
+    expect(r.partie.inversions).toBe(classes.filter((c) => c.appui && c.mode === 0).length);
   });
-  it("chaque appui tient s'il arrive 4 pas plus tôt ou plus tard : la partie rejouée avec lui décalé reste vivante au morceau suivant", () => {
-    // On ne décale qu'un appui à la fois, les autres restent à leur pas : un humain en retard d'un appui garde la même partie après le suivant dans la plupart des cas — on vérifie ici que
-    // **cet appui-là** (tous les appuis d'un tronçon) ne tue jamais dans les 60 pas qui suivent, quand il arrive de 4 pas plus tôt ou plus tard.
+  it("chaque changement tient s'il arrive 4 pas plus tôt ou plus tard : la partie rejouée avec lui décalé reste vivante (80 pas)", () => {
+    // On ne décale qu'un changement à la fois (avec son relâché d'un pas en gravité et en ressort), les autres restent à leur pas.
     const t = terrain();
-    const echantillon = r.appuis.filter((_, i) => i % 5 === 0).slice(0, 12);
-    for (const tick of echantillon) {
+    const echantillon = r.changements.map((_, i) => i).filter((i) => i % 7 === 0).slice(0, 14);
+    for (const i of echantillon) {
       for (const d of [-ROBOT_MARGE, ROBOT_MARGE]) {
-        const p = new Partie(t);
-        let k = 0;
-        while (p.tick < tick + 80 && !p.finie) {
-          while (k < r.appuis.length && r.appuis[k]! + (r.appuis[k] === tick ? d : 0) <= p.tick) {
-            if (r.appuis[k]! + (r.appuis[k] === tick ? d : 0) === p.tick) p.appuyer();
-            k++;
-          }
-          p.avancer();
-        }
-        expect(p.finie, `appui ${tick} décalé de ${d}`).toBe(false);
+        const liste = [...r.changements];
+        liste[i] = liste[i]! + d;
+        if (classes[i + 1] && classes[i]!.appui && classes[i + 1]!.tick - classes[i]!.tick === 1) liste[i + 1] = liste[i + 1]! + d; // le relâché d'un pas suit son appui
+        if (liste.some((v, j) => j > 0 && v <= liste[j - 1]!)) continue; // un décalage qui chevauche un voisin n'est pas un décalage : la fenêtre est jugée pour chaque changement par le robot
+        const p = rejouerLesChangements(t, liste, r.changements[i]! + 80);
+        expect(p.finie, `changement ${r.changements[i]} décalé de ${d}`).toBe(false);
       }
     }
   });
@@ -96,23 +103,16 @@ describe("le robot est déterministe et sa partie est une vraie rediffusion", ()
   it("deux appels donnent les mêmes appuis, le même score, le même rapport", () => {
     const a = jouerRobot(terrain(), { maxDistance: 400 });
     const b = jouerRobot(terrain(), { maxDistance: 400 });
-    expect(b.appuis).toEqual(a.appuis);
+    expect(b.changements).toEqual(a.changements);
     expect(b.partie.score).toBe(a.partie.score);
     expect(b.rapport).toEqual(a.rapport);
   });
-  it("le serveur rejoue ses appuis : même score, même pas ; la rediffusion se décode ; il ramasse bien plus que la distance", () => {
+  it("le serveur rejoue ses changements : même score, même pas ; la rediffusion se décode ; il ramasse bien plus que la distance", () => {
     const c = dailyGravity(JOUR);
-    const { appuis, partie } = jouerRobot(terrainDuJour(c), { maxDistance: 600 });
-    const lus = decoderRediffusion(enregistrer(c, appuis)).appuis;
+    const { changements: appuis, partie } = jouerRobot(terrainDuJour(c), { maxDistance: 600 });
+    const lus = decoderRediffusion(enregistrer(c, appuis)).changements;
     expect(lus).toEqual(appuis);
-    const rejeu = new Partie(terrainDuJour(c));
-    for (let k = 0; rejeu.tick < partie.tick; ) {
-      if (lus[k] === rejeu.tick) {
-        rejeu.appuyer();
-        k++;
-      }
-      rejeu.avancer();
-    }
+    const rejeu = rejouerLesChangements(terrainDuJour(c), lus, partie.tick);
     expect(rejeu.resultat()).toEqual(partie.resultat());
     expect(rejouer(c, enregistrer(c, appuis)).score).toBeGreaterThanOrEqual(partie.score); // le serveur va jusqu'à la mort
     expect(partie.pieces).toBeGreaterThan(100);

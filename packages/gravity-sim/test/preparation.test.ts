@@ -10,12 +10,12 @@ afterEach(() => {
   delete GENERATEURS[9];
   delete GENERATEURS[8];
 });
-/** Un générateur qui est celui de la version 3 sauf au morceau `MORCEAU_PIEGE` : une colonne de blocs sur 16 colonnes, du plafond au sol — aucun humain ne passe. */
+/** Un générateur qui est celui de la version 4 sauf au morceau `MORCEAU_PIEGE` : une colonne de blocs sur 16 colonnes, du plafond au sol — aucun humain ne passe. */
 const poserGenerateurPiege = (): void => {
   GENERATEURS[9] = {
-    ...GENERATEURS[3]!,
-    morceau: (j, m, ordre, entree, precedent, regles) => {
-      const sain = genererMorceau(j, m, ordre, entree, precedent, regles);
+    ...GENERATEURS[4]!,
+    morceau: (j, m, ordre, entree, precedent, regles, plan) => {
+      const sain = genererMorceau(j, m, ordre, entree, precedent, regles, plan);
       if (m !== MORCEAU_PIEGE) return sain;
       return { ...sain, motif: "zigzag", cases: new Uint8Array(LARGEUR_MORCEAU * LIGNES).fill(BLOC), pieces: [], gemmes: [], bonus: [] };
     },
@@ -52,7 +52,7 @@ describe("preparerJour", () => {
   });
 
   it("le même générateur sans le piège passe : c'est bien le mur qui fait échouer, pas la distance demandée", () => {
-    GENERATEURS[8] = { ...GENERATEURS[3]! }; // (un autre numéro : le terrain d'une version est gardé en mémoire, celui du piège ne doit pas servir ici)
+    GENERATEURS[8] = { ...GENERATEURS[4]! }; // (un autre numéro : le terrain d'une version est gardé en mémoire, celui du piège ne doit pas servir ici)
     expect(verifierFranchissable(dailyGravity(JOUR, 8), 400).ok).toBe(true);
   });
 });

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { Partie, dailyGravity, enregistrer, jouer, rejouer, terrainDuJour } from "../src/index";
+import { Partie, dailyGravity, enregistrer, jouer, jouerRobot, rejouer, terrainDuJour } from "../src/index";
 
-// Le déterminisme : la même liste d'appuis donne toujours le même résultat — côté jeu (la partie pas à pas, comme `scene.ts`) comme côté serveur (`rejouer`) — quels que soient l'ordre des appels, le terrain déjà en
+// Le déterminisme (lot GR6 : la liste est celle des changements du bouton — appui, relâché, appui…) : la même liste donne toujours le même résultat — côté jeu (la partie pas à pas, comme `scene.ts`) comme côté serveur (`rejouer`) — quels que soient l'ordre des appels, le terrain déjà en
 // mémoire ou non, et un autre jour de la même version.
 const JOUR = daysFromCivil(2026, 11, 9);
 const appuis = Array.from({ length: 80 }, (_, i) => 30 + i * 97 + ((i * 31) % 17));
@@ -12,7 +12,8 @@ function pasAPas(a: readonly number[]): ReturnType<Partie["resultat"]> {
   let k = 0;
   while (!p.finie) {
     if (a[k] === p.tick) {
-      p.appuyer();
+      if (p.bouton) p.relacher();
+      else p.appuyer();
       k++;
     }
     p.avancer();
@@ -20,7 +21,7 @@ function pasAPas(a: readonly number[]): ReturnType<Partie["resultat"]> {
   return p.resultat();
 }
 
-describe("même liste d'appuis, même score", () => {
+describe("même liste de changements, même score", () => {
   it("le jeu (pas à pas) et le serveur (rejouer) donnent le même résultat", () => {
     const c = dailyGravity(JOUR);
     const jeu = pasAPas(appuis);
@@ -28,6 +29,17 @@ describe("même liste d'appuis, même score", () => {
     expect(serveur).toEqual(jeu);
     expect(jouer(terrainDuJour(c), appuis)).toEqual(jeu);
   });
+  it("avec des appuis ET des relâchés à travers les trois modes (la partie du robot) : le jeu pas à pas, le serveur et `jouer` donnent la même chose", () => {
+    const c = dailyGravity(JOUR);
+    const robot = jouerRobot(terrainDuJour(c), { maxTicks: 22000 });
+    const changements = robot.changements;
+    expect(robot.partie.modeLoin, "la partie du robot doit avoir traversé au moins un mode").not.toBe(0);
+    expect(changements.length).toBeGreaterThan(100);
+    const jeu = pasAPas(changements);
+    expect(rejouer(c, enregistrer(c, changements))).toEqual(jeu);
+    expect(jouer(terrainDuJour(c), changements)).toEqual(jeu);
+    expect(jeu.changements).toBe(changements.length);
+  }, 60000);
   it("un terrain neuf ou déjà chargé, dans le désordre : rien ne change", () => {
     const c = dailyGravity(JOUR);
     const a = jouer(terrainDuJour(c), appuis);

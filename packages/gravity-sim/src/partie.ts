@@ -7,6 +7,9 @@ const {
   AIMANT_PART,
   AIMANT_RAYON,
   AIMANT_TICKS,
+  AVION_GRAVITE,
+  AVION_POUSSEE,
+  AVION_VY_MAX,
   BONUS_PORTEE,
   BORD_MARGE,
   BORD_RETOUR,
@@ -16,11 +19,16 @@ const {
   DEPART_Y,
   DUREE_MAX_TICKS,
   AVANCE_MAX,
+  FACTEUR_NORMAL,
   GEMME_PORTEE,
   GRACE,
   INVULNERABILITE,
   LARGEUR_MORCEAU,
   LIGNES,
+  MODE_AVION,
+  MODE_GRAVITE,
+  MODE_ONDE,
+  MODE_RESSORT,
   MULT_MAX,
   PIECE_MANQUEE,
   PIECE_PORTEE,
@@ -32,6 +40,9 @@ const {
   POINTS_GEMME,
   POINTS_PIECE,
   RATTRAPAGE,
+  RESSORT_ATTENTE,
+  RESSORT_BOND,
+  RESSORT_GRAVITE,
   SAUVETAGE_VY,
   SAUVETAGE_Y_BAS,
   SAUVETAGE_Y_HAUT,
@@ -48,10 +59,15 @@ const {
 } = K;
 import * as M from "./monde";
 import type { Terrain } from "./monde";
-const { GLACE, INVERSEUR, PIQUE, TAPIS, VENT, solide } = M;
+const { FACTEUR_DU_PORTAIL, GLACE, INVERSEUR, MODE_DU_PORTAIL, PIQUE, TAPIS, VENT, solide } = M;
+import type { ModeDeVol } from "./constantes";
+import type { TypePortail } from "./monde";
 
-// La partie de Gravity : **entière, un pas = 1/120 s**. Le joueur court vers la droite à la vitesse de la caméra ; **la seule entrée est un appui** (`appuyer`), qui inverse la gravité s'il y a une surface sous les
-// pieds (ou si on vient de la quitter : temps de grâce), jamais sur la glace ; un appui juste avant un contact est gardé (tampon). Tout est en unités du monde (1 case = 4 096) et en unités par seconde, **aucun flottant** :
+// La partie de Gravity : **entière, un pas = 1/120 s**. Le joueur court vers la droite à la vitesse de la caméra ; **la seule entrée est l'état du bouton** (lot GR6 : `appuyer` / `relacher`, un changement par pas). En
+// mode gravité, le DÉBUT d'un appui inverse la gravité s'il y a une surface sous les pieds (ou si on vient de la quitter : temps de grâce), jamais sur la glace ; un appui juste avant un contact est gardé (tampon).
+// **Les modes de vol (lot GR6)** : l'avion (maintenu on monte, relâché on descend, avec de l'inertie), l'onde (45°, le signe suit le bouton) et le ressort (chaque début d'appui est un bond, même en l'air) ; on y entre et
+// on en sort par des **portails** du niveau (`Morceau.portails`), qui changent aussi la vitesse (portails de vitesse). Les règles ne changent pas : le rouge tue, le vide aussi, le bord gauche aussi ; le bouclier sauve
+// (et un sauvetage du vide remet en mode gravité). Tout est en unités du monde (1 case = 4 096) et en unités par seconde, **aucun flottant** :
 // la physique est celle de la fonction `pas()` de la maquette, à ses constantes (`constantes.ts`), avec les deux défauts de la maquette corrigés (voir `pas`, `placerLibre`).
 //
 // À chaque pas : (1) la caméra avance ; (2) un appui gardé, si l'on touche une surface, inverse la gravité ; (3) la course (la caméra + 4,2 cases est visée, rattrapage si on a du retard, tapis × 1,35, un mur arrête) ;
@@ -74,6 +90,10 @@ export const EV_BOUCLIER = 32;
 export const EV_INVERSEUR = 64;
 export const EV_MORT = 128;
 export const EV_MANQUEE = 256;
+/** Lot GR6 : un portail franchi à ce pas (`portail` dit lequel) ; un bond du ressort ; un changement de sens de l'onde. */
+export const EV_PORTAIL = 512;
+export const EV_BOND = 1024;
+export const EV_VIRAGE = 2048;
 
 /** Une pièce en cours de partie : sa position (l'aimant la déplace), son état (0 libre, 1 prise, 2 manquée). */
 export interface PieceEtat {
@@ -105,6 +125,9 @@ export interface Resultat {
   appuis: number;
   /** Les inversions de gravité faites. */
   inversions: number;
+  /** Lot GR6 : les changements du bouton (appuis et relâchés : la rediffusion) et **le mode de vol le plus loin atteint** (le dernier mode non gravité dont on a franchi le portail ; 0 : aucun). */
+  changements: number;
+  modeLoin: ModeDeVol;
 }
 
 const idiv = (a: number, b: number): number => Math.trunc(a / b);
@@ -123,6 +146,21 @@ export class Partie {
   vy = 0;
   /** +1 : la gravité tire vers le bas ; −1 : vers le haut. */
   g: 1 | -1 = 1;
+  /** Lot GR6 — le mode de vol (`MODE_*`), le facteur de vitesse du dernier portail de vitesse (pour cent), l'état du bouton, et les pas depuis lesquels il a changé / depuis le dernier début d'appui (ticks absolus). */
+  mode: ModeDeVol = MODE_GRAVITE;
+  facteur = FACTEUR_NORMAL;
+  bouton = false;
+  dernierChg = -1000;
+  dernierAppui = -1000;
+  /** Ressort : les pas avant que le bond suivant soit permis (`RESSORT_ATTENTE` après un bond). */
+  bondAttente = 0;
+  /** Le mode non gravité le plus loin atteint, et le dernier portail franchi (pour le rendu : valable le pas où `EV_PORTAIL` est levé). */
+  modeLoin: ModeDeVol = MODE_GRAVITE;
+  portail: TypePortail | null = null;
+  /** **La rediffusion** : les pas où le bouton a changé (le premier est un appui, ils alternent). */
+  changements: number[] = [];
+  /** Les états voulus du bouton, à appliquer un par pas (un appui et un relâché dans le même pas se suivent : jamais deux changements au même pas). */
+  private file: boolean[] = [];
   /** Posé sur une surface (dans le sens de la gravité) au dernier pas, et laquelle (le type de la case). */
   sol = false;
   surface = 0;
@@ -186,7 +224,11 @@ export class Partie {
   }
   /** L'appui est-il pris en compte maintenant (une surface sous les pieds ou quittée à l'instant, et pas de glace) ? */
   get peutInverser(): boolean {
-    return (this.sol || this.grace > 0) && this.surface !== GLACE;
+    return this.mode === MODE_GRAVITE && (this.sol || this.grace > 0) && this.surface !== GLACE;
+  }
+  /** Ressort : un appui donné maintenant donne-t-il un bond tout de suite (au moins `RESSORT_ATTENTE` pas depuis le dernier) ? */
+  get peutBondir(): boolean {
+    return this.mode === MODE_RESSORT && this.bondAttente <= 1;
   }
 
   /** L'état des objets du morceau `k` (les morceaux avant lui sont chargés aussi). */
@@ -198,11 +240,28 @@ export class Partie {
     return this.charges[k]!;
   }
 
-  /** Le joueur touche l'écran à ce pas (avant `avancer`) : l'appui est gardé 14 pas (0,12 s). */
+  /** Le joueur pose le doigt à ce pas (avant `avancer`) : en mode gravité ou ressort l'appui est gardé 14 pas (0,12 s). Un appui déjà voulu ne se répète pas. */
   appuyer(): void {
     if (this.mort !== 0) return;
-    this.appuis++;
-    this.tampon = TAMPON;
+    if ((this.file.length > 0 ? this.file[this.file.length - 1]! : this.bouton) === true) return;
+    this.file.push(true);
+  }
+  /** Le joueur lève le doigt à ce pas (avant `avancer`). Un relâché déjà voulu ne se répète pas. */
+  relacher(): void {
+    if (this.mort !== 0) return;
+    if ((this.file.length > 0 ? this.file[this.file.length - 1]! : this.bouton) === false) return;
+    this.file.push(false);
+  }
+  /** Applique un changement du bouton au pas courant (un seul par pas) : c'est ce pas qui entre dans la rediffusion. */
+  private changer(etat: boolean): void {
+    this.bouton = etat;
+    this.changements.push(this.tick);
+    this.dernierChg = this.tick;
+    if (etat) {
+      this.appuis++;
+      this.dernierAppui = this.tick;
+      if (this.mode === MODE_GRAVITE || this.mode === MODE_RESSORT) this.tampon = TAMPON;
+    }
   }
 
   /**
@@ -240,6 +299,15 @@ export class Partie {
     c.precY = this.precY;
     c.precCam = this.precCam;
     c.essai = this.essai;
+    c.mode = this.mode;
+    c.facteur = this.facteur;
+    c.bouton = this.bouton;
+    c.dernierChg = this.dernierChg;
+    c.dernierAppui = this.dernierAppui;
+    c.bondAttente = this.bondAttente;
+    c.modeLoin = this.modeLoin;
+    c.portail = this.portail;
+    c.file = [...this.file];
     if (planification) {
       // Une copie de planification n'a ni bouclier, ni invulnérabilité, ni aimant (même si la partie copiée en a) : un danger la tue.
       c.ramasse = false;
@@ -249,6 +317,7 @@ export class Partie {
       return c;
     }
     c.ramasse = this.ramasse;
+    c.changements = [...this.changements];
     const figes = Math.max(0, Math.min(this.charges.length, idiv(this.cam - 8 * CASE, CASES_PAR_MORCEAU)));
     c.charges = this.charges.map((ch, k) => (k < figes ? ch : { pieces: ch.pieces.map((p) => ({ ...p })), gemmes: [...ch.gemmes], bonus: [...ch.bonus] }));
     return c;
@@ -261,6 +330,7 @@ export class Partie {
     this.precX = this.x;
     this.precY = this.y;
     this.precCam = this.cam;
+    if (this.file.length > 0) this.changer(this.file.shift()!);
     this.pas();
     this.tick++;
     if (this.tampon > 0) this.tampon--;
@@ -269,7 +339,7 @@ export class Partie {
   }
 
   resultat(): Resultat {
-    return { score: this.score, distance: this.distance, pieces: this.pieces, gemmes: this.gemmes, multMax: this.multMax, ticks: this.tick, cause: (this.mort || MORT_TEMPS) as CauseDeMort, appuis: this.appuis, inversions: this.inversions };
+    return { score: this.score, distance: this.distance, pieces: this.pieces, gemmes: this.gemmes, multMax: this.multMax, ticks: this.tick, cause: (this.mort || MORT_TEMPS) as CauseDeMort, appuis: this.appuis, inversions: this.inversions, changements: this.changements.length, modeLoin: this.modeLoin };
   }
 
   /** Les cases qui touchent la boîte en `(px, py)` : 0 rien, 1 une case solide (sa place dans `hCx` / `hCy`), 2 un pique (sa boîte réduite est touchée). Le pique l'emporte sur le reste (comme dans la maquette). */
@@ -310,24 +380,37 @@ export class Partie {
 
   private pas(): void {
     // La caméra : sa vitesse monte avec la distance.
-    const vitesse = vitesseCamera(this.cam, this.regles);
-    this.cam = avancerCamera(this.cam, this.regles);
+    const vitesse = vitesseCamera(this.cam, this.regles, this.facteur);
+    this.cam = avancerCamera(this.cam, this.regles, this.facteur);
+    this.portail = null;
 
     // L'inversion : seulement au contact d'une surface (le tampon garde l'appui, la grâce le laisse passer après un bord), jamais sur la glace.
     // **Défaut de la maquette (a)** : elle donnait `vy = −g × 2` (un élan vers la surface qu'on quitte) que le sol annulait aussitôt. L'élan est donc nul ici : même jeu, sans un pas perdu.
-    if (this.tampon > 0 && this.peutInverser) {
-      this.g = (this.g === 1 ? -1 : 1) as 1 | -1;
-      this.sol = false;
-      this.grace = 0;
-      this.tampon = 0;
-      this.vy = 0;
-      this.inversions++;
-      this.ev |= EV_INVERSION;
+    if (this.mode === MODE_GRAVITE) {
+      if (this.tampon > 0 && this.peutInverser) {
+        this.g = (this.g === 1 ? -1 : 1) as 1 | -1;
+        this.sol = false;
+        this.grace = 0;
+        this.tampon = 0;
+        this.vy = 0;
+        this.inversions++;
+        this.ev |= EV_INVERSION;
+      }
+    } else if (this.mode === MODE_RESSORT) {
+      // Le ressort : chaque début d'appui est un bond, même en l'air ; au moins `RESSORT_ATTENTE` pas entre deux bonds (un appui pendant l'attente est gardé par le tampon).
+      if (this.bondAttente > 0) this.bondAttente--;
+      if (this.tampon > 0 && this.bondAttente === 0) {
+        this.vy = -this.g * RESSORT_BOND;
+        this.bondAttente = RESSORT_ATTENTE;
+        this.tampon = 0;
+        this.sol = false;
+        this.ev |= EV_BOND;
+      }
     }
 
     // L'horizontal : la course, rattrapage si on a du retard, un mur arrête.
     const cible = this.cam + CIBLE_CAMERA;
-    let vx = this.surface === TAPIS && this.sol ? idiv(vitesse * TAPIS_NUM, TAPIS_DEN) : vitesse;
+    let vx = this.surface === TAPIS && this.sol && this.mode === MODE_GRAVITE ? idiv(vitesse * TAPIS_NUM, TAPIS_DEN) : vitesse;
     if (this.x < cible) vx += RATTRAPAGE;
     if (this.x > cible + AVANCE_MAX) vx = idiv(vitesse * 9, 10);
     let nx = this.x + idiv(vx, TICKS_PAR_SECONDE);
@@ -337,12 +420,29 @@ export class Partie {
       h = 0;
     }
     if (h === 1) nx = this.hCx * CASE - TAILLE - 1;
+    const xAvant = this.x;
     if (nx > this.x) this.x = nx;
+    if (this.x > xAvant) this.franchir(xAvant + DEMI_JOUEUR, this.x + DEMI_JOUEUR);
 
     // Le vertical : la gravité (ou le vent, qui porte vers le haut et allège la gravité), puis la collision.
-    const dansVent = this.typeEn(enCases(this.x + DEMI_JOUEUR), enCases(this.y + DEMI_JOUEUR)) === VENT;
-    this.vy += (dansVent ? -VENT_POUSSEE : 0) + this.g * (dansVent ? this.regles.ventGravite : this.regles.gravite);
-    if (dansVent && this.vy < VENT_VY_MIN) this.vy = VENT_VY_MIN;
+    if (this.mode === MODE_GRAVITE) {
+      const dansVent = this.typeEn(enCases(this.x + DEMI_JOUEUR), enCases(this.y + DEMI_JOUEUR)) === VENT;
+      this.vy += (dansVent ? -VENT_POUSSEE : 0) + this.g * (dansVent ? this.regles.ventGravite : this.regles.gravite);
+      if (dansVent && this.vy < VENT_VY_MIN) this.vy = VENT_VY_MIN;
+    } else if (this.mode === MODE_AVION) {
+      // L'avion : maintenu, la poussée l'emporte sur la gravité de l'avion (on monte) ; relâché, on descend. De l'inertie : |vy| ≤ `AVION_VY_MAX`.
+      this.vy += this.g * (this.bouton ? -AVION_POUSSEE : AVION_GRAVITE);
+      if (this.vy > AVION_VY_MAX) this.vy = AVION_VY_MAX;
+      else if (this.vy < -AVION_VY_MAX) this.vy = -AVION_VY_MAX;
+    } else if (this.mode === MODE_ONDE) {
+      // L'onde : à 45°, la vitesse verticale est celle de la course ; maintenu on monte (contre la gravité), relâché on descend.
+      const v = vx < VY_MAX ? vx : VY_MAX;
+      const nv = this.bouton ? -this.g * v : this.g * v;
+      if ((this.vy > 0 && nv < 0) || (this.vy < 0 && nv > 0)) this.ev |= EV_VIRAGE;
+      this.vy = nv;
+    } else {
+      this.vy += this.g * RESSORT_GRAVITE;
+    }
     if (this.vy > VY_MAX) this.vy = VY_MAX;
     else if (this.vy < -VY_MAX) this.vy = -VY_MAX;
     const etaitAuSol = this.sol;
@@ -356,12 +456,12 @@ export class Partie {
     if (h === 1) {
       if (this.vy > 0) ny = this.hCy * CASE - TAILLE - 1;
       else ny = (this.hCy + 1) * CASE + 1;
-      // On touche la surface seulement si on allait dans le sens de la gravité (sinon, c'est la tête qui cogne).
-      if ((this.vy > 0 && this.g === 1) || (this.vy < 0 && this.g === -1)) {
+      // On touche la surface seulement si on allait dans le sens de la gravité (sinon, c'est la tête qui cogne). Avion et onde : le sol et le plafond se touchent sans mourir, on glisse (jamais « posé »).
+      if (this.mode !== MODE_AVION && this.mode !== MODE_ONDE && ((this.vy > 0 && this.g === 1) || (this.vy < 0 && this.g === -1))) {
         if (!etaitAuSol && Math.abs(this.vy) > 6 * CASE) this.ev |= EV_ATTERRISSAGE;
         this.sol = true;
         this.surface = this.hType;
-        if (this.hType === INVERSEUR) {
+        if (this.hType === INVERSEUR && this.mode === MODE_GRAVITE) {
           this.g = (this.g === 1 ? -1 : 1) as 1 | -1;
           this.sol = false;
           this.ev |= EV_INVERSEUR;
@@ -369,7 +469,7 @@ export class Partie {
       }
       this.vy = 0;
     }
-    if (etaitAuSol && !this.sol) this.grace = GRACE + 1; // + 1 : le pas qui finit la décrémente aussitôt (8 pas de grâce pleins)
+    if (etaitAuSol && !this.sol && this.mode === MODE_GRAVITE) this.grace = GRACE + 1; // + 1 : le pas qui finit la décrémente aussitôt (8 pas de grâce pleins)
     this.y = ny;
 
     // Le ramassage : l'aimant attire les pièces proches (leur position fait partie de l'état), puis pièces, gemmes, bonus.
@@ -435,6 +535,39 @@ export class Partie {
     }
   }
 
+  /**
+   * Les portails franchis entre deux pas (le centre du joueur passe de `de` à `a`, en unités) : un portail est franchi quand le centre du joueur dépasse le milieu de sa colonne. Un portail de mode change le mode (la gravité
+   * garde son sens en entrant ; le portail de retour la remet vers le sol), un portail de vitesse change le facteur de la caméra jusqu'au suivant. Le tampon et la grâce ne survivent pas à un changement de mode.
+   */
+  private franchir(de: number, a: number): void {
+    const k0 = idiv(de, CASES_PAR_MORCEAU);
+    const k1 = idiv(a, CASES_PAR_MORCEAU);
+    for (let k = k0; k <= k1; k++) {
+      const portails = this.terrain.morceau(k).portails;
+      for (let i = 0; i < portails.length; i++) {
+        const p = portails[i]!;
+        const px = k * CASES_PAR_MORCEAU + p.c * CASE + (CASE >> 1);
+        if (px <= de || px > a) continue;
+        const facteur = FACTEUR_DU_PORTAIL[p.type];
+        if (facteur !== undefined) this.facteur = facteur;
+        else this.entrerMode(MODE_DU_PORTAIL[p.type] as ModeDeVol);
+        this.portail = p.type;
+        this.ev |= EV_PORTAIL;
+      }
+    }
+  }
+
+  private entrerMode(mode: ModeDeVol): void {
+    this.mode = mode;
+    if (mode !== MODE_GRAVITE) this.modeLoin = mode;
+    this.sol = false;
+    this.grace = 0;
+    this.tampon = 0;
+    this.bondAttente = 0;
+    if (mode === MODE_GRAVITE) this.g = 1; // en sortant d'un mode, on retombe vers le sol
+    if (mode === MODE_AVION) this.vy = this.vy > AVION_VY_MAX ? AVION_VY_MAX : this.vy < -AVION_VY_MAX ? -AVION_VY_MAX : this.vy;
+  }
+
   /** Un danger (pique, vide, bord) : vrai si la partie est finie. En invulnérabilité ou avec le bouclier, on est sauvé (et le bouclier se consomme). */
   private danger(cause: CauseDeMort): boolean {
     if (this.invuln > 0) {
@@ -460,6 +593,10 @@ export class Partie {
   private sauver(cause: CauseDeMort): void {
     if (cause === MORT_VIDE) {
       const bas = this.y > (LIGNES - 1) * CASE;
+      // Lot GR6 : un bouclier qui sauve d'une chute dans un mode **remet en mode gravité**.
+      this.mode = MODE_GRAVITE;
+      this.bondAttente = 0;
+      this.tampon = 0;
       this.g = bas ? -1 : 1;
       const [x, y] = this.placerLibre(this.x, bas ? SAUVETAGE_Y_BAS : SAUVETAGE_Y_HAUT);
       this.x = Math.max(this.x, x);
@@ -509,6 +646,8 @@ export class Partie {
     this.sol = false;
     this.grace = 0;
     this.tampon = 0;
+    this.mode = MODE_GRAVITE;
+    this.bondAttente = 0;
     this.cam = this.x - CIBLE_CAMERA;
     this.precX = this.x;
     this.precY = this.y;
@@ -517,13 +656,16 @@ export class Partie {
   }
 }
 
-/** Joue une partie entière : `appuis` est la liste des pas où le joueur a touché l'écran (strictement croissante). Jusqu'à la mort ou aux dix minutes. */
-export function jouer(terrain: Terrain, appuis: readonly number[]): Resultat {
+/** Joue une partie entière : `changements` est la liste des pas où le bouton change d'état (strictement croissante ; le premier est un appui, le suivant un relâché, etc.). Jusqu'à la mort ou aux dix minutes. */
+export function jouer(terrain: Terrain, changements: readonly number[]): Resultat {
   const p = new Partie(terrain);
   let k = 0;
   while (!p.finie) {
-    while (k < appuis.length && appuis[k]! <= p.tick) {
-      if (appuis[k] === p.tick) p.appuyer();
+    while (k < changements.length && changements[k]! <= p.tick) {
+      if (changements[k] === p.tick) {
+        if (p.bouton) p.relacher();
+        else p.appuyer();
+      }
       k++;
     }
     p.avancer();

@@ -19,13 +19,25 @@ import {
   ordreDesThemes,
   colonnesParcourues,
   pasDeTraversee,
+  planDuJour,
+  reglesDuContenu,
   terrainDuJour,
   tickOuLeJoueurArrive,
+  vitesseCamera,
   type Morceau,
 } from "../src/index";
 
 const JOUR = daysFromCivil(2026, 11, 9);
 const case_ = (m: Morceau, c: number, r: number): number => m.cases[c * LIGNES + r]!;
+/** Les morceaux d'une section à mode (lot GR6) : leur chemin est un axe, pas une suite de surfaces ; ils ont leurs tests (`sections.test.ts`). */
+const enMode = (m: Morceau): boolean => m.motif === "avion" || m.motif === "onde" || m.motif === "ressort";
+/** La vitesse de la caméra (unités par seconde) à la colonne 8 du morceau `m` d'un jour, **sous les portails de vitesse** (lot GR6 : elle ne dépend plus seulement de la distance). */
+const vitesseDuMorceau = (jour: number, m: number): number => {
+  const c = dailyGravity(jour);
+  const r = reglesDuContenu(c);
+  const colonne = m * LARGEUR_MORCEAU + 8;
+  return vitesseCamera(Math.max(0, colonne * CASE - 17203), r, planDuJour(jour, r).facteurAu(colonne * CASE + (CASE >> 1)));
+};
 
 describe("le générateur du jour", () => {
   it("est pur : le même jour donne le même contenu, le même morceau, la même empreinte", () => {
@@ -78,7 +90,7 @@ describe("le générateur du jour", () => {
         for (const v of mor.cases) types.add(v);
       }
     }
-    expect([...motifs].sort()).toEqual(["calme", "escalier", "etages", "ilots", "inverseur", "milieu", "pics", "pilier", "special", "trouBas", "trouHaut", "zigzag"]);
+    expect([...motifs].sort()).toEqual(["avion", "calme", "escalier", "etages", "ilots", "inverseur", "milieu", "onde", "pics", "pilier", "ressort", "special", "trouBas", "trouHaut", "zigzag"]);
     expect([...types].sort()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
   it("les gemmes sont rares ; le bouclier et l'aimant sont à des endroits fixes (un morceau sur 23)", () => {
@@ -93,12 +105,13 @@ describe("le générateur du jour", () => {
     expect(gemmes).toBeLessThan(60);
     expect(new Set(bonus)).toEqual(new Set(["11:bouclier", "19:aimant"]));
   });
-  it("la boucle est plus dense : plus de piques, de trous et de motifs difficiles au second tour", () => {
+  it("la boucle est plus dense : plus de morceaux en section à mode et de motifs difficiles au second tour", () => {
     const difficiles = (de: number): number => {
       let n = 0;
       for (let j = 0; j < 15; j++) {
         const t = terrainDuJour(dailyGravity(JOUR + j));
-        for (let m = de; m < de + MORCEAUX_PAR_BOUCLE; m++) if (["milieu", "escalier", "etages", "ilots", "inverseur"].includes(t.morceau(m).motif)) n++;
+        // Les motifs difficiles de la gravité, plus les sections à mode (le seed : « plus nombreux et plus denses dans la seconde boucle »).
+        for (let m = de; m < de + MORCEAUX_PAR_BOUCLE; m++) if (["milieu", "escalier", "etages", "ilots", "inverseur", "avion", "onde", "ressort"].includes(t.morceau(m).motif)) n++;
       }
       return n;
     };
@@ -114,6 +127,7 @@ describe("le chemin sûr de chaque morceau", () => {
       for (let m = 0; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
         const mor = t.morceau(m);
         expect(mor.chemin.length).toBeGreaterThan(0);
+        if (enMode(mor)) continue;
         expect(mor.entree).toBe(m === 0 ? 1 : t.morceau(m - 1).sortie);
         expect(mor.sortie).toBe(mor.chemin[mor.chemin.length - 1]!.g);
         for (const e of mor.chemin) {
@@ -143,6 +157,7 @@ describe("le chemin sûr de chaque morceau", () => {
       const t = terrainDuJour(dailyGravity(j));
       for (let m = 3; m < MORCEAUX_PAR_BOUCLE; m++) {
         const mor = t.morceau(m);
+        if (enMode(mor)) continue;
         for (const e of mor.chemin) {
           for (let c = e.c0; c < e.c1; c++) {
             total++;
@@ -160,6 +175,7 @@ describe("le chemin sûr de chaque morceau", () => {
       const t = terrainDuJour(dailyGravity(j));
       for (let m = 3; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
         const mor = t.morceau(m);
+        if (enMode(mor)) continue;
         for (const e of mor.chemin) for (let c = e.c0; c < e.c1; c++) expect(case_(mor, c, e.y)).not.toBe(PIQUE);
       }
     }
@@ -218,7 +234,18 @@ describe("les surfaces suivent la vitesse à laquelle le morceau est abordé (lo
     return debuts.filter((c) => c >= 2);
   };
   it("les îlots laissent la place de rejoindre le sol ou le plafond avant le bout du morceau : à partir de 8 m/s (leur premier morceau) il n'en reste qu'un par morceau", () => {
-    const morceaux = [...morceauxDe("ilots", 19, 30), ...morceauxDe("ilots", 80, 95)];
+    // Lot GR6 : « à partir de 8 m/s » se lit sur la vitesse réelle du morceau (les portails de vitesse la changent), plus sur sa place dans le niveau.
+    const vitesses = new Map<Morceau, number>();
+    const morceaux: Morceau[] = [];
+    for (let j = 0; j < 40; j++) {
+      const t = terrainDuJour(dailyGravity(JOUR + j));
+      for (let m = 19; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
+        const mor = t.morceau(m);
+        if (mor.motif !== "ilots") continue;
+        vitesses.set(mor, vitesseDuMorceau(JOUR + j, m));
+        if (vitesses.get(mor)! >= 8.5 * CASE) morceaux.push(mor);
+      }
+    }
     expect(morceaux.length).toBeGreaterThan(6);
     for (const mor of morceaux) {
       const debuts = debutsDesIlots(mor);
@@ -232,37 +259,47 @@ describe("les surfaces suivent la vitesse à laquelle le morceau est abordé (lo
     let ilots = 0;
     for (let j = 0; j < 40; j++) {
       const t = terrainDuJour(dailyGravity(JOUR + j));
-      for (let m = 76; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
+      for (let m = 40; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
         const mor = t.morceau(m);
+        // La vitesse réelle du morceau (lot GR6 : les portails de vitesse), comme le fait le générateur (un vol de 3 cases : 5 colonnes ou plus).
+        const vite = vitesseDuMorceau(JOUR + j, m) > 10.5 * CASE;
         if (mor.motif === "escalier") {
           escaliers++;
-          expect(mor.entree, `jour ${j}, morceau ${m}`).toBe(-1);
+          if (vite) expect(mor.entree, `jour ${j}, morceau ${m}`).toBe(-1);
         }
         if (mor.motif === "ilots") {
           ilots++;
-          expect(["etages", "milieu", "escalier"], `jour ${j}, morceau ${m}`).not.toContain(t.morceau(m - 1).motif);
+          if (vite) expect(["etages", "milieu", "escalier"], `jour ${j}, morceau ${m}`).not.toContain(t.morceau(m - 1).motif);
         }
       }
     }
-    expect(escaliers).toBeGreaterThan(10); // l'escalier qui descend reste
+    expect(escaliers).toBeGreaterThan(10);
     expect(ilots).toBeGreaterThan(10);
   });
   it("les étages finissent au plafond (le morceau suivant l'attend) et leur trou est plus large à grande vitesse", () => {
-    const lents = morceauxDe("etages", 19, 40);
-    const rapides = morceauxDe("etages", 80, 95);
-    expect(lents.length).toBeGreaterThan(2);
-    expect(rapides.length).toBeGreaterThan(2);
-    for (const mor of [...lents, ...rapides]) {
-      expect(mor.sortie).toBe(-1);
-      expect(mor.chemin[mor.chemin.length - 1]!.y).toBe(2);
-    }
+    const largeurs: { v: number; w: number }[] = [];
     // La largeur du trou A de l'étage haut : les cases vides de la rangée 4 à partir de la colonne 5.
     const trou = (mor: Morceau): number => {
       let n = 0;
       while (5 + n < LARGEUR_MORCEAU && case_(mor, 5 + n, 4) === 0) n++;
       return n;
     };
-    expect(Math.min(...rapides.map(trou))).toBeGreaterThan(Math.max(...lents.map(trou)) - 1);
-    expect(Math.max(...rapides.map(trou))).toBeGreaterThan(Math.min(...lents.map(trou)));
+    for (let j = 0; j < 60; j++) {
+      const t = terrainDuJour(dailyGravity(JOUR + j));
+      for (let m = 19; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
+        const mor = t.morceau(m);
+        if (mor.motif !== "etages") continue;
+        expect(mor.sortie).toBe(-1);
+        expect(mor.chemin[mor.chemin.length - 1]!.y).toBe(2);
+        largeurs.push({ v: vitesseDuMorceau(JOUR + j, m), w: trou(mor) });
+      }
+    }
+    expect(largeurs.length).toBeGreaterThan(6);
+    // Lot GR6 : la vitesse est celle du morceau (portails compris) ; le trou ne rétrécit jamais quand elle monte.
+    largeurs.sort((a, b) => a.v - b.v);
+    const lents = largeurs.slice(0, Math.trunc(largeurs.length / 3));
+    const rapides = largeurs.slice(-Math.trunc(largeurs.length / 3));
+    const moyenne = (l: { w: number }[]): number => l.reduce((x, y) => x + y.w, 0) / l.length;
+    expect(moyenne(rapides)).toBeGreaterThan(moyenne(lents));
   });
 });

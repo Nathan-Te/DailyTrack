@@ -13,16 +13,16 @@ const meilleur = pilotes.reduce((a, b) => (b.partie.distance > a.partie.distance
 const jourRef = jours[0]!;
 
 const reds = [
-  { nom: "vide", jour: jourRef, appuis: [] as number[] },
-  { nom: "reguliere", jour: jourRef, appuis: Array.from({ length: 200 }, (_, i) => 60 + i * 90) },
-  { nom: "robot", jour: meilleur.jour, appuis: meilleur.appuis },
+  { nom: "vide", jour: jourRef, changements: [] as number[] },
+  { nom: "reguliere", jour: jourRef, changements: Array.from({ length: 200 }, (_, i) => 60 + i * 90) },
+  { nom: "robot", jour: meilleur.jour, changements: meilleur.changements },
 ].map((r) => {
   const contenu = dailyGravity(r.jour);
-  return { nom: r.nom, date: formatDay(r.jour), g: contenu.g, code: enregistrer(contenu, r.appuis), resultat: jouer(terrainDuJour(contenu), r.appuis) };
+  return { nom: r.nom, date: formatDay(r.jour), g: contenu.g, code: enregistrer(contenu, r.changements), resultat: jouer(terrainDuJour(contenu), r.changements) };
 });
 
 const sortie = {
-  _: "Golden de Gravity (lots GR1 et GR2). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
+  _: "Golden de Gravity (lots GR1, GR2 et GR6). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
   sim: GRAVITY_SIM_VERSION,
   generateur: GRAVITY_GENERATOR_VERSION,
   bot: GRAVITY_BOT_VERSION,

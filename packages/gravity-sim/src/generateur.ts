@@ -1,8 +1,10 @@
 import { mixSeed, Rng } from "@cdj/core";
-import { tickOuLeJoueurArrive, vitesseCamera } from "./camera";
-import { ALTERNE_BATTEMENT, CASE, CIBLE_CAMERA, CLIGNOTANT_CYCLE, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, NB_THEMES, TICKS_PAR_SECONDE, VY_MAX } from "./constantes";
+import { vitesseCamera } from "./camera";
+import { ALTERNE_BATTEMENT, CASE, CIBLE_CAMERA, CLIGNOTANT_CYCLE, FACTEUR_NORMAL, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, NB_THEMES, TICKS_PAR_SECONDE, VY_MAX } from "./constantes";
 import { REGLES_COURANTES, cleDesRegles, reglesDe, type ReglagesEssai, type Regles } from "./regles";
-import { ALTERNE_A, ALTERNE_B, BLOC, CLIGNOTANT, GLACE, INVERSEUR, PIQUE, TAPIS, VENT, VIDE, type Bonus, type Etape, type Morceau, type Motif, type Objet, type Terrain } from "./monde";
+import { ALTERNE_A, ALTERNE_B, BLOC, CLIGNOTANT, GLACE, INVERSEUR, PIQUE, TAPIS, VENT, VIDE, type Bonus, type Etape, type Morceau, type Motif, type Objet, type Portail, type Terrain } from "./monde";
+import { COLONNE_PORTAIL, difficulte, motifBrut, planDuJour, SEL_MORCEAU, type PlanDuJour } from "./plan";
+import { genererSection } from "./sections";
 import { ordreDesThemes, THEMES_GRAVITY, type ThemeGravity } from "./themes";
 import type { Seuils } from "./types";
 
@@ -41,9 +43,9 @@ export interface Contenu {
 export interface Generateur {
   morceauxParTheme: number;
   ordre(jour: number): readonly ThemeGravity[];
-  morceau(jour: number, m: number, ordre: readonly ThemeGravity[], entree: 1 | -1, precedent: Motif | null, regles: Regles): Morceau;
+  morceau(jour: number, m: number, ordre: readonly ThemeGravity[], entree: 1 | -1, precedent: Motif | null, regles: Regles, plan: PlanDuJour): Morceau;
 }
-/** Les versions que `dailyGravity` sait appeler (la version 3 est définie plus bas, avec `genererMorceau`). Mutable seulement pour que les tests y posent une version factice : le code n'y ajoute rien à l'exécution. */
+/** Les versions que `dailyGravity` sait appeler (la version 4 est définie plus bas, avec `genererMorceau`). Mutable seulement pour que les tests y posent une version factice : le code n'y ajoute rien à l'exécution. */
 export const GENERATEURS: Record<number, Generateur> = {};
 /** Les versions du générateur que ce code sait appeler. */
 export const versionsGenerateur = (): number[] => Object.keys(GENERATEURS).map(Number);
@@ -55,11 +57,9 @@ export function reglesDuContenu(c: Pick<Contenu, "g" | "sim" | "reglages">): Reg
   return reglesDe(c.sim ?? GRAVITY_SIM_VERSION, gen.morceauxParTheme, c.reglages);
 }
 
-/** Sel de la graine des morceaux (propre au jeu). */
-const SEL = 0x6a9d3f;
+/** Sel de la graine des morceaux (propre au jeu) : celui du plan (`plan.ts`, qui refait les premiers tirages d'un morceau). */
+const SEL = SEL_MORCEAU;
 const DEMI = CASE >> 1;
-/** Le numéro d'un morceau qui commence la boucle suivante (la difficulté repart de la base, relevée de 35 %). */
-const RAMPE_PAR_BOUCLE = 35;
 
 /** Le contenu du jour avec le générateur `version` (le courant par défaut) et la simulation `sim` (la courante par défaut) ; `essai` : les réglages d'essai (hors production). Une version inconnue lève `ErreurGenerateur`. */
 export function dailyGravity(jour: number, version: number = GRAVITY_GENERATOR_VERSION, sim: number = GRAVITY_SIM_VERSION, essai?: ReglagesEssai): Contenu {
@@ -90,8 +90,8 @@ export function pasDeTraversee(h: number, regles: Regles = REGLES_COURANTES): nu
   return pas;
 }
 /** Combien de colonnes (arrondi au-dessus) le joueur parcourt en `pas` pas quand il arrive à la colonne `colonne` : la vitesse de la caméra y est connue d'avance (elle ne dépend que de la distance). **C'est ce qui permet de poser les surfaces à la vitesse à laquelle le morceau sera abordé.** */
-export function colonnesParcourues(pas: number, colonne: number, regles: Regles = REGLES_COURANTES): number {
-  const parPas = Math.trunc(vitesseCamera(Math.max(0, colonne * CASE - CIBLE_CAMERA), regles) / TICKS_PAR_SECONDE);
+export function colonnesParcourues(pas: number, colonne: number, regles: Regles = REGLES_COURANTES, facteur: number = FACTEUR_NORMAL): number {
+  const parPas = Math.trunc(vitesseCamera(Math.max(0, colonne * CASE - CIBLE_CAMERA), regles, facteur) / TICKS_PAR_SECONDE);
   return Math.trunc((pas * parPas + CASE - 1) / CASE);
 }
 
@@ -104,16 +104,17 @@ const colonneVide = (): number[] => Array.from({ length: LIGNES }, (_, r) => (r 
  * elle n'aurait pas la place d'être faite). Les inversions que le motif exige sont dans le motif, avec la place pour les faire. `precedent` : le motif du morceau d'avant (lot GR2 : certains motifs ne se posent pas
  * après certains autres à grande vitesse, voir le tirage).
  */
-export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGravity[], entree: 1 | -1 = 1, precedent: Motif | null = null, regles: Regles = REGLES_COURANTES): Morceau {
+export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGravity[], entree: 1 | -1 = 1, precedent: Motif | null = null, regles: Regles = REGLES_COURANTES, plan: PlanDuJour = planDuJour(jour, regles)): Morceau {
   const rng = new Rng(mixSeed(mixSeed(jour, SEL), m));
   const REG = regles;
   const parTheme = REG.morceauxParTheme;
-  const parBoucle = parTheme * NB_THEMES;
-  const theme = ordre[Math.trunc(m / parTheme) % NB_THEMES]!;
-  const boucle = Math.trunc(m / parBoucle);
+    const theme = ordre[Math.trunc(m / parTheme) % NB_THEMES]!;
   /** La difficulté de 0 à 100 : monte sur le tour des cinq thèmes, repart de la base relevée de 35 % à la boucle suivante. */
-  const d = Math.min(100, Math.trunc(((m % parBoucle) * 100) / 60) + boucle * RAMPE_PAR_BOUCLE);
+  const d = difficulte(m, REG);
   const x0 = m * LARGEUR_MORCEAU;
+  const info = plan.info(m);
+  /** Les colonnes que le joueur parcourt en `pas` pas à la colonne `colonne`, **sous le facteur de vitesse qui y vaut** (lot GR6 : les portails de vitesse). */
+  const cp = (pas: number, colonne: number): number => colonnesParcourues(pas, colonne, REG, plan.facteurAu(colonne * CASE + (CASE >> 1)));
 
   const cases = new Uint8Array(LARGEUR_MORCEAU * LIGNES);
   for (let c = 0; c < LARGEUR_MORCEAU; c++) cases.set(colonneVide(), c * LIGNES);
@@ -121,6 +122,9 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
   const gemmes: Objet[] = [];
   const bonus: Bonus[] = [];
   const chemin: Etape[] = [];
+  /** Lot GR6 : les portails du morceau (le portail de vitesse de la colonne 1, ou celui de retour d'un morceau de retour ; ceux d'entrée sont posés par `genererSection`). */
+  const portails: Portail[] = [];
+  if (info.vitesse) portails.push({ c: COLONNE_PORTAIL, type: info.vitesse });
   let decalage = 0;
   /** La rangée où le bonus est posé quand aucune étape du chemin ne couvre la colonne 8 (une trajectoire en l'air). */
   let rangeeEnLAir: number | null = null;
@@ -164,6 +168,31 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
   /** Une gemme à la rangée `r` du motif (avant miroir). */
   const gemme = (c: number, r: number): void => void gemmes.push(centre(c, r));
 
+  // **Lot GR6 : un morceau de contenu d'une section à mode** (avion, onde, ressort) est écrit par `genererSection` (`sections.ts`) ; le morceau de retour et celui d'avant une section sont des morceaux de gravité calmes.
+  if (info.section && info.section.rang < info.section.longueur) {
+    const sec = genererSection({ jour, m, info: info.section, plan, d: info.section.facile ? 0 : d, rng });
+    const bonusSection: Bonus[] = [];
+    const axeMilieu = sec.axe[8]!;
+    const mil = { x: (x0 + 8) * CASE + DEMI, y: axeMilieu };
+    if (m % 23 === 11) bonusSection.push({ ...mil, type: "bouclier" });
+    if (m % 23 === 19) bonusSection.push({ ...mil, type: "aimant" });
+    return {
+      m,
+      theme,
+      motif: sec.motif,
+      cases: sec.cases,
+      pieces: sec.pieces,
+      gemmes: sec.gemmes,
+      bonus: bonusSection,
+      chemin: [{ c0: 0, c1: LARGEUR_MORCEAU, y: Math.trunc(axeMilieu / CASE), g: 1 }],
+      portails: sec.portails,
+      axe: sec.axe,
+      decalage: 0,
+      entree,
+      sortie: 1,
+    };
+  }
+
   let motif: Motif;
   if (m < 3) {
     // Les trois premiers morceaux sont calmes : un couloir, des pièces sur une rangée.
@@ -175,14 +204,21 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
     const special = rng.chance(38);
     const LISTE: readonly Motif[] = ["trouBas", "trouHaut", "zigzag", "pilier", "pics", "milieu", "escalier", "etages", "inverseur", "ilots"];
     motif = special ? "special" : LISTE[rng.int(d < 30 ? 7 : LISTE.length)]!;
+    // Lot GR6 : le morceau de retour d'une section (le portail de retour, puis un sol) et celui qui la précède (on entre dans un mode avec la gravité vers le bas) sont calmes et finissent sur le sol.
+    if (info.section) motif = "calme";
+    else if (info.avantSection) motif = entree === 1 ? "calme" : "inverseur";
     // **Lot GR2 : deux motifs que le robot ne passe pas partout à grande vitesse.** (1) L'escalier montant : arrivé du sol, on s'accroche sous la première marche, puis sous la seconde, puis le plafond vous reprend — trois vols de
     // 3, 5 et 5 colonnes à 12,5 m/s, plus les temps de se poser : plus que les 16 colonnes, et le morceau finirait à mi-hauteur, là où le suivant n'attend personne. Au-delà de 10 m/s (un vol de 3 cases fait 5 colonnes) il
     // devient un trou, qui finit au plafond ; l'escalier qui descend (arrivée du plafond) finit au sol et reste. (2) Les îlots demandent un vol de 5 cases dès la colonne 2 : après un morceau dont le dernier vol atterrit
     // dans le suivant (étages, milieu, escalier : on touche la surface après le bout du morceau) il n'y a plus la place de s'y préparer à grande vitesse : l'îlot devient un trou.
-    const vite = colonnesParcourues(pasDeTraversee(3 * CASE, REG), x0 + 8, REG) >= 5;
+    const vite = cp(pasDeTraversee(3 * CASE, REG), x0 + 8) >= 5;
     if (motif === "escalier" && entree === 1 && vite) motif = "trouBas";
     if (motif === "ilots" && vite && precedent !== null && (precedent === "etages" || precedent === "milieu" || precedent === "escalier")) motif = "trouHaut";
+    if (info.section) portails.push({ c: COLONNE_PORTAIL, type: "gravite" });
     switch (motif) {
+      case "calme":
+        voie(2, 14, 9, 1);
+        break;
       case "trouBas":
       case "trouHaut": {
         // Un trou : on est du côté qui reste (le motif est en miroir au besoin, `trouBas` et `trouHaut` ne diffèrent que par leur nom).
@@ -219,7 +255,7 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
         // **Lot GR2 : la plateforme finit assez tôt pour qu'on ait rejoint le sol ou le plafond avant le bout du morceau** (le suivant n'attend personne à mi-hauteur) : la descente depuis la plateforme fait 5 cases,
         // `sortie` colonnes de course (4 à 7 m/s, 7 à 12,5 m/s), plus une de marge ; la plateforme dépasse le trou d'une colonne de chaque côté, comme avant (13 colonnes de trou à basse vitesse, 5 à 12,5 m/s).
         orienter(1, false);
-        const sortie = colonnesParcourues(pasDeTraversee(5 * CASE, REG), x0 + 12, REG) + 1;
+        const sortie = cp(pasDeTraversee(5 * CASE, REG), x0 + 12) + 1;
         const fin = Math.max(8, Math.min(13, LARGEUR_MORCEAU - sortie));
         trou(3, fin, false);
         trou(3, fin, true);
@@ -259,8 +295,8 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
         // vous prend. Pas de miroir : les deux chemins existent, et **les deux finissent au plafond**, comme le morceau suivant l'attend (lot GR2 : l'étage haut ne retenait plus le joueur jusqu'au bord du morceau).
         // **Le trou A suit la vitesse.** Pour traverser un étage d'une case la boîte (0,8) doit descendre de 1,8 case : 34 pas, soit `trav` colonnes de course (3 à 9 m/s, 4 à 12,5 m/s) ; le trou est large de `trav + 3` colonnes
         // (de quoi y tenir, plus une fenêtre) ; l'étage haut commence par 5 colonnes, de quoi se poser en arrivant du plafond (le morceau d'avant finit souvent à la colonne 16 sous un îlot : le plafond se rejoint aux premières colonnes).
-        const trav = colonnesParcourues(pasDeTraversee(Math.trunc((9 * CASE) / 5), REG), x0 + 8, REG);
-        const chute = colonnesParcourues(pasDeTraversee(3 * CASE, REG), x0 + 8, REG);
+        const trav = cp(pasDeTraversee(Math.trunc((9 * CASE) / 5), REG), x0 + 8);
+        const chute = cp(pasDeTraversee(3 * CASE, REG), x0 + 8);
         const a0 = 5;
         const a1 = Math.min(LARGEUR_MORCEAU - 4, a0 + trav + 3);
         for (let c = 0; c < LARGEUR_MORCEAU; c++) {
@@ -283,12 +319,12 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
         // **Lot GR2 : l'écart entre deux îlots suit la vitesse** — un vol d'un îlot bas (rangée 8) à un îlot haut (rangée 3) dure 45 pas et fait 3 colonnes à 7 m/s, 5 à 12,5 m/s : les îlots sont posés tous les
         // `vol + 3` colonnes (de quoi se poser, attendre `ROBOT_ECART_MIN` pas et repartir avec une fenêtre), larges de `vol − 1` (3 à 4 colonnes), et le vide s'arrête après le dernier.
         orienter(1, false);
-        const vol = colonnesParcourues(pasDeTraversee(Math.trunc((13 * CASE) / 4), REG), x0 + 8, REG);
+        const vol = cp(pasDeTraversee(Math.trunc((13 * CASE) / 4), REG), x0 + 8);
         const largeur = Math.max(3, Math.min(5, vol));
         const ecart = vol + 4;
         // Après le dernier îlot on quitte sa surface pour rejoindre le sol ou le plafond (2 cases de vol, 2 à 4 colonnes) : il finit assez tôt pour que ce soit fait avant le bout du morceau, que le suivant attend sur
         // une surface (à 12,5 m/s il ne reste de la place que pour un seul îlot).
-        const queue = colonnesParcourues(pasDeTraversee(2 * CASE, REG), x0 + 14, REG) + 1;
+        const queue = cp(pasDeTraversee(2 * CASE, REG), x0 + 14) + 1;
         const iles: number[] = [];
         for (let c = 2; c + largeur + queue <= LARGEUR_MORCEAU && iles.length < 4; c += ecart) iles.push(c);
         if (iles.length === 0) iles.push(2);
@@ -341,7 +377,7 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
             }
             trou(4, 12, true);
             voie(3, 13, 9, 1);
-            const arrivee = tickOuLeJoueurArrive((x0 + 4) * CASE, REG);
+            const arrivee = plan.trajectoire.tickOuLeJoueurArrive((x0 + 4) * CASE);
             decalage = (CLIGNOTANT_CYCLE - (arrivee % CLIGNOTANT_CYCLE)) % CLIGNOTANT_CYCLE;
             break;
           }
@@ -350,7 +386,7 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
             // **Lot GR2 : la seconde couleur est posée là où le vol d'une surface à l'autre atterrit.** Du plafond au sol il y a 7,25 cases : 75 pas, soit `vol` colonnes de course (5 à 7 m/s, 8 à 12,5 m/s) ; partant de
             // la première couleur (colonnes 3 à 7) on atterrit à `vol` colonnes de plus, la seconde commence donc `vol − 1` colonnes après sa première colonne et le vide la suit.
             orienter(1, true);
-            const vol = colonnesParcourues(pasDeTraversee(Math.trunc((29 * CASE) / 4), REG), x0 + 8, REG);
+            const vol = cp(pasDeTraversee(Math.trunc((29 * CASE) / 4), REG), x0 + 8);
             const b0 = Math.min(LARGEUR_MORCEAU - 3, 2 + vol);
             const b1 = Math.min(LARGEUR_MORCEAU, 9 + vol);
             trou(3, b1, false);
@@ -359,7 +395,7 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
             for (let c = b0; c < b1; c++) poser(c, 1, ALTERNE_B);
             voie(3, 8, 9, 1);
             voie(b0 + 1, b1, 2, -1);
-            const bascule = tickOuLeJoueurArrive((x0 + 7) * CASE, REG);
+            const bascule = plan.trajectoire.tickOuLeJoueurArrive((x0 + 7) * CASE);
             decalage = (((ALTERNE_BATTEMENT - bascule) % (2 * ALTERNE_BATTEMENT)) + 2 * ALTERNE_BATTEMENT) % (2 * ALTERNE_BATTEMENT);
             break;
           }
@@ -385,7 +421,7 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
   const bonusEn = (type: Bonus["type"]): Bonus => ({ x: (x0 + 8) * CASE + DEMI, y: (2 * rangeeBonus + 1) * DEMI, type });
   if (m % 23 === 11) bonus.push(bonusEn("bouclier"));
   if (m % 23 === 19) bonus.push(bonusEn("aimant"));
-  return { m, theme, motif, cases, pieces, gemmes, bonus, chemin, decalage, entree, sortie: chemin[chemin.length - 1]!.g };
+  return { m, theme, motif, cases, pieces, gemmes, bonus, chemin, portails, axe: [], decalage, entree, sortie: chemin[chemin.length - 1]!.g };
 }
 
 /** La rangée (déjà en miroir) de l'étape qui couvre la colonne `c`, sinon celle de la dernière étape. */
@@ -401,12 +437,13 @@ export function terrainDuJour(contenu: Pick<Contenu, "jour" | "ordre" | "g" | "s
   const garde = GARDES.get(cle);
   if (garde) return garde;
   const gen = GENERATEURS[contenu.g]!;
+  const plan = planDuJour(contenu.jour, regles);
   const morceaux: Morceau[] = [];
   // Les morceaux se tirent dans l'ordre : chacun a besoin de la gravité de sortie du précédent (`entree`).
   const terrain: Terrain = {
     regles,
     morceau(k) {
-      while (morceaux.length <= k) morceaux.push(gen.morceau(contenu.jour, morceaux.length, contenu.ordre, morceaux.length === 0 ? 1 : morceaux[morceaux.length - 1]!.sortie, morceaux.length === 0 ? null : morceaux[morceaux.length - 1]!.motif, regles));
+      while (morceaux.length <= k) morceaux.push(gen.morceau(contenu.jour, morceaux.length, contenu.ordre, morceaux.length === 0 ? 1 : morceaux[morceaux.length - 1]!.sortie, morceaux.length === 0 ? null : morceaux[morceaux.length - 1]!.motif, regles, plan));
       return morceaux[k]!;
     },
   };
@@ -438,11 +475,18 @@ export function empreinteContenu(contenu: Contenu): string {
     }
     for (const b of m.bonus) entier(b.type === "bouclier" ? 1 : 2);
     for (const e of m.chemin) for (const v of [e.c0, e.c1, e.y, e.g + 1]) entier(v);
+    for (const q of m.portails) for (const v of [q.c, PORTAILS.indexOf(q.type)]) entier(v);
+    for (const v of m.axe) entier(v);
     entier(m.decalage);
     entier(m.entree + 1);
   }
   return h.toString(16).padStart(8, "0");
 }
 
-/** Le générateur de la version 3 (lot GR2 : îlots, étages et néon suivent la vitesse) : `genererMorceau`, avec l'ordre des thèmes de Jump et 19 morceaux par thème. */
-GENERATEURS[3] = { morceauxParTheme: MORCEAUX_PAR_THEME, ordre: ordreDesThemes, morceau: genererMorceau };
+const PORTAILS: readonly string[] = ["avion", "onde", "ressort", "gravite", "lent", "v1", "v2", "v3"];
+
+/**
+ * Le générateur de la version 4 (lot GR6 : les sections à mode, leurs portails, les portails de vitesse) : `genererMorceau`, avec l'ordre des thèmes de Jump et 19 morceaux par thème. **Les versions 2 et 3 sont retirées** :
+ * le jeu est `off`, aucun jour n'est figé, aucun fichier ne les nomme (`packages/gravity-sim/CLAUDE.md`, « Les anciennes versions »).
+ */
+GENERATEURS[4] = { morceauxParTheme: MORCEAUX_PAR_THEME, ordre: ordreDesThemes, morceau: genererMorceau };

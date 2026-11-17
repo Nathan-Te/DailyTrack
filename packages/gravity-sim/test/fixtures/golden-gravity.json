@@ -1,8 +1,8 @@
 {
   "_": "Golden de Gravity (lots GR1 et GR2). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
-  "sim": 2,
-  "generateur": 3,
-  "bot": 2,
+  "sim": 3,
+  "generateur": 4,
+  "bot": 3,
   "jours": [
     {
       "date": "2026-11-02",
@@ -13,12 +13,12 @@
         "nuit",
         "neon"
       ],
-      "empreinte": "72c7730d",
+      "empreinte": "13974759",
       "seuils": {
-        "bronze": 910,
-        "silver": 1690,
-        "gold": 3490,
-        "author": 7730
+        "bronze": 990,
+        "silver": 1950,
+        "gold": 3690,
+        "author": 8980
       }
     },
     {
@@ -30,7 +30,7 @@
         "neon",
         "nuit"
       ],
-      "empreinte": "fb704a64"
+      "empreinte": "4770b372"
     },
     {
       "date": "2026-11-08",
@@ -41,7 +41,7 @@
         "neon",
         "foret"
       ],
-      "empreinte": "1f3ebec8"
+      "empreinte": "8110f64b"
     },
     {
       "date": "2026-11-11",
@@ -52,12 +52,12 @@
         "nuit",
         "glace"
       ],
-      "empreinte": "9fbc948c",
+      "empreinte": "fbbcef7c",
       "seuils": {
-        "bronze": 1130,
-        "silver": 2790,
-        "gold": 3960,
-        "author": 7670
+        "bronze": 1210,
+        "silver": 2600,
+        "gold": 3550,
+        "author": 7390
       }
     },
     {
@@ -69,7 +69,7 @@
         "usine",
         "nuit"
       ],
-      "empreinte": "3b388b5e"
+      "empreinte": "92c5f2af"
     },
     {
       "date": "2026-11-17",
@@ -80,7 +80,7 @@
         "neon",
         "nuit"
       ],
-      "empreinte": "68d9fc8a"
+      "empreinte": "010500ac"
     },
     {
       "date": "2026-11-20",
@@ -91,12 +91,12 @@
         "neon",
         "usine"
       ],
-      "empreinte": "16ea57b1",
+      "empreinte": "369d420d",
       "seuils": {
-        "bronze": 2460,
-        "silver": 3570,
-        "gold": 5670,
-        "author": 9760
+        "bronze": 1980,
+        "silver": 3650,
+        "gold": 5800,
+        "author": 10390
       }
     },
     {
@@ -108,7 +108,7 @@
         "nuit",
         "neon"
       ],
-      "empreinte": "ed687944"
+      "empreinte": "84f92ab2"
     },
     {
       "date": "2026-11-26",
@@ -119,7 +119,7 @@
         "neon",
         "glace"
       ],
-      "empreinte": "94928870"
+      "empreinte": "b858d82f"
     },
     {
       "date": "2026-11-29",
@@ -130,12 +130,12 @@
         "usine",
         "nuit"
       ],
-      "empreinte": "de433ebd",
+      "empreinte": "2f872d7a",
       "seuils": {
-        "bronze": 790,
-        "silver": 2750,
-        "gold": 4060,
-        "author": 8810
+        "bronze": 900,
+        "silver": 4620,
+        "gold": 5470,
+        "author": 8800
       }
     }
   ],
@@ -143,8 +143,8 @@
     {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 3,
-      "code": "AQIDAJeiAQ",
+      "g": 4,
+      "code": "AQMEAJeiAQ",
       "resultat": {
         "score": 256,
         "distance": 66,
@@ -154,41 +154,47 @@
         "ticks": 1098,
         "cause": 1,
         "appuis": 0,
-        "inversions": 0
+        "inversions": 0,
+        "changements": 0,
+        "modeLoin": 0
       }
     },
     {
       "nom": "reguliere",
       "date": "2026-11-02",
-      "g": 3,
-      "code": "AQIDAJeiATxaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa",
+      "g": 4,
+      "code": "AQMEAJeiATxaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa",
       "resultat": {
-        "score": 263,
-        "distance": 113,
-        "pieces": 15,
+        "score": 122,
+        "distance": 52,
+        "pieces": 7,
         "gemmes": 0,
         "multMax": 1,
-        "ticks": 1863,
-        "cause": 1,
-        "appuis": 21,
-        "inversions": 18
+        "ticks": 939,
+        "cause": 3,
+        "appuis": 5,
+        "inversions": 5,
+        "changements": 10,
+        "modeLoin": 0
       }
     },
     {
       "nom": "robot",
-      "date": "2026-11-05",
-      "g": 3,
-      "code": "AQIDAJqiAZQBmALAAkSQAYAB0AFcgAHwApQDFBz0BcwBUKQBQLgBkAWQC7ADqAPwAowCtAbIAbwBfKQC9AOUASiAAuAB0ALAAfACgAHEAYwD3AJ0rAGsAeABkAL8AaQBpAP4AqABrAFE7AGoAZgBTOgCgAG4B8QCeIQB0AiAAcABgAGIAbwBlAGEAbABZNABkAGgAcwEuAF4oAXMBKgB3ASgAcgCmAHYAcwCQEQYJGDwAZwBmAFU3AHEBcgBgAKAA7QDdNwBrAKQAWB4XKwBzARUwAHUAQ",
+      "date": "2026-11-08",
+      "g": 4,
+      "code": "AQMEAJ2iAZQBAZcCAbMJAf8BAf8BAfMDAZsBAdsCAeMBAZsDFAYGBgYGBgYGHwYNBgoGCQYGBgYHBgcGBgYGBgYGBwYJBgYGBgsGBgYGBgcGBgYOBgkGCAYIBgcGBwYHBgYGBgHYAQHnAwHnAwGTAgG_AQGzBQGXAQFbAZwCLAYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgkGDQYGBgYGBgYGBgYGBgYGEM8EAR8BFwHjAQG_AgHzCQGBAQFmAXEBsAEB6wcB9AIUBgYGBgYGBgYkBg8GCwYHBgYKBgkGBgYGhwIBcwHDAQFmAXEBhgIBuwIBmwIBxwEB8wMBawFjAeABFAYGBgYGBgYGKQYMBgcGBwYGCAYOBg0GDAYGBgYGBgwGEAYNBgkGCAYIBgYGrwEBlQMBZgFxAXEB1gIB4wEBpwEBswEBuwEBnwEBwwEBpwIBjgQvBwcHBwcHBwcHBwcHBwcLBg4HBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBxa1AQGjAQEzAV8BewHbAgFmAXEBcQFwAZABAXAB5QEBhwIBtwEBuwEBrwEB6gIUBgYGBgYGBgYpBgwGBwYHBgYIBg4GDQYMBgYGBgYGDAYQBg0GCQYIBggGBgalAQGHAwG7AwHcAi8HBwcHBwcHBwcHBwcHBwsGDgcHBwcHBwcHBwcHBwcHBwcHBwcGCgYOBwcGDgcLBwcHBwcHBwcHBwcHBwcHBwcHCwcLBgoHBwcLBg4HBwcHBwcHBwcHBwcHBwcHB8QBAbsDAWYBcQGmAgGDBAFzAfABFAYGBgYGBgYGKQYMBgcGBwYGCAYOBg0GDAYGBgYGBg0GDgYdBg8GBgYHBgYGBgYGBgYOBg8GBgYKBggJBg0GDwYIBeYBAb8CAZsBAYMCAWYBcQFxAW8BcAFqAdACAdgCFAYGBgYGBgYGKQYMBgcGBwYGCAYOBg0GDAYGBgYGBgwGEAYcBg8GBgYHBgcGBgYGCQYNBg4GCgYGBgcIBg0GDwYIBQ",
       "resultat": {
-        "score": 24348,
-        "distance": 2868,
-        "pieces": 826,
-        "gemmes": 19,
+        "score": 24279,
+        "distance": 2679,
+        "pieces": 776,
+        "gemmes": 16,
         "multMax": 5,
-        "ticks": 31250,
-        "cause": 1,
-        "appuis": 116,
-        "inversions": 116
+        "ticks": 30565,
+        "cause": 3,
+        "appuis": 343,
+        "inversions": 64,
+        "changements": 686,
+        "modeLoin": 2
       }
     }
   ]
