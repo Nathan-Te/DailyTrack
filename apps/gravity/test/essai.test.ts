@@ -7,10 +7,10 @@ import { PARAMETRES_D_ESSAI, libellesDesReglages, lireReglagesEssai } from "../s
 // Les essais de recette du lot GR2 : `?robot` (on regarde le robot jouer le niveau du jour) et `?morceau=<n>` (on commence juste avant le morceau n). Hors production seulement, jamais classés.
 describe("la lecture de ?robot et ?morceau=", () => {
   it("lit les deux, ensemble ou séparément", () => {
-    expect(lireEssais("?robot", false)).toEqual({ robot: true, morceau: null });
-    expect(lireEssais("?morceau=12", false)).toEqual({ robot: false, morceau: 12 });
-    expect(lireEssais("?jour=2026-11-09&robot&morceau=40", false)).toEqual({ robot: true, morceau: 40 });
-    expect(lireEssais("", false)).toEqual({ robot: false, morceau: null });
+    expect(lireEssais("?robot", false)).toEqual({ robot: true, morceau: null, mode: null });
+    expect(lireEssais("?morceau=12", false)).toEqual({ robot: false, morceau: 12, mode: null });
+    expect(lireEssais("?jour=2026-11-09&robot&morceau=40", false)).toEqual({ robot: true, morceau: 40, mode: null });
+    expect(lireEssais("", false)).toEqual({ robot: false, morceau: null, mode: null });
     expect(lireEssais("?robot=0", false).robot).toBe(false);
   });
   it("ignore un numéro qui n'est pas un entier de 1 à deux tours des cinq thèmes", () => {
@@ -18,7 +18,7 @@ describe("la lecture de ?robot et ?morceau=", () => {
     expect(lireEssais(`?morceau=${2 * MORCEAUX_PAR_BOUCLE}`, false).morceau).toBe(2 * MORCEAUX_PAR_BOUCLE);
   });
   it("**ne fait rien en production** : ni le robot, ni le morceau", () => {
-    expect(lireEssais("?robot&morceau=12", true)).toEqual({ robot: false, morceau: null });
+    expect(lireEssais("?robot&morceau=12&mode=avion", true)).toEqual({ robot: false, morceau: null, mode: null });
   });
   it("commence douze colonnes avant le morceau, trois colonnes de départ comprises", () => {
     expect(COLONNES_AVANT_MORCEAU).toBe(12);
@@ -33,6 +33,25 @@ describe("la lecture de ?robot et ?morceau=", () => {
     expect(DEFINITION.classable?.("?robot")).toBe(false);
     expect(DEFINITION.classable?.("?morceau=30")).toBe(false);
     expect(DEFINITION.classable?.("?morceau=zéro")).toBe(true); // un numéro invalide est ignoré : la page est celle d'un joueur
+  });
+});
+
+// Lot GR6 — `?mode=avion|onde|ressort` : la partie commence juste avant la première section de ce mode du jour. Hors production seulement, jamais classée.
+describe("lot GR6 : la lecture de ?mode=", () => {
+  it("lit les trois modes de vol, ensemble avec ?robot, ?morceau= ou ?jour=", () => {
+    for (const mode of ["avion", "onde", "ressort"] as const) expect(lireEssais(`?mode=${mode}`, false)).toEqual({ robot: false, morceau: null, mode });
+    expect(lireEssais("?jour=2026-11-09&mode=onde&robot", false)).toEqual({ robot: true, morceau: null, mode: "onde" });
+    expect(lireEssais("?mode=ressort&morceau=40", false)).toEqual({ robot: false, morceau: 40, mode: "ressort" }); // `?morceau=` l'emporte, niveau.ts
+  });
+  it("ignore un mode inconnu (la gravité est le mode de base, pas un essai) ; **rien en production**", () => {
+    for (const mauvais of ["", "gravite", "Avion", "vol", "1", "avion,onde"]) expect(lireEssais(`?mode=${mauvais}`, false).mode, mauvais).toBeNull();
+    expect(lireEssais("?mode=avion", true).mode).toBeNull();
+  });
+  it("une page avec ?mode= n'est jamais classable (hors production : le paramètre suffit, même illisible), jamais en production", () => {
+    for (const a of ["?mode=avion", "?mode=onde&robot", "?mode=ressort", "?mode=inconnu", "?debug&mode=avion"]) expect(DEFINITION.classable?.(a), a).toBe(false);
+    expect(aUnReglageDEssai("?mode=avion", false)).toBe(true);
+    expect(aUnReglageDEssai("?mode=avion", true)).toBe(false);
+    expect(DEFINITION.classable?.("?debug&manuel")).toBe(true);
   });
 });
 
@@ -52,7 +71,7 @@ describe("lot GR5 : la lecture des réglages d'essai", () => {
   });
   it("**ne fait rien en production** : aucun réglage n'est lu, la partie est celle d'un joueur", () => {
     expect(lireReglagesEssai("?vitesse=8&gravite=40&longueur=12&medailles=55", true)).toBeNull();
-    expect(lireEssais("?vitesse=8", true)).toEqual({ robot: false, morceau: null });
+    expect(lireEssais("?vitesse=8", true)).toEqual({ robot: false, morceau: null, mode: null });
   });
   it("la mention dit ce qui a changé, pas ce qui est comme d'habitude", () => {
     expect(libellesDesReglages(lireReglagesEssai("?vitesse=8&gravite=46&medailles=55&longueur=19", false)!)).toEqual([

@@ -192,6 +192,112 @@
   color: var(--dj-encre-douce);
 }
 
+/* lot GR6 — l'icône du mode en cours, à côté du multiplicateur (rien en gravité) */
+.g-score__rang {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.g-modeicone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait, 3px) solid var(--dj-encre);
+  border-radius: 50%;
+  transform: rotate(4deg);
+}
+.g-modeicone svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--dj-encre);
+}
+.g-icone--trait path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* l'annonce d'un mode (lot GR6) : la même carte que le nom du thème, sa couleur à gauche ; le nom, puis la consigne la première fois seulement. Elle se pose sur la place de l'annonce du thème et passe dessous quand les deux se
+   montrent ensemble. */
+.g-mode,
+.g-vitesse {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 20px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait, 3px) solid var(--dj-encre);
+  border-radius: 6px;
+  box-shadow: inset 8px 0 0 var(--g-accent, var(--dj-encre)), var(--dj-ombre-cartouche, 4px 4px 0 var(--dj-encre));
+  transform: translateX(-50%) rotate(1.5deg);
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+  max-width: calc(100vw - 24px);
+}
+.g-mode--vu,
+.g-vitesse--vu {
+  opacity: 1;
+}
+.g-theme--vu ~ .g-mode {
+  top: calc(100% + 10px);
+}
+.g-mode__icone svg {
+  display: block;
+  width: 28px;
+  height: 28px;
+  fill: var(--dj-encre);
+}
+.g-mode__texte {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  white-space: normal;
+}
+.g-mode__nom {
+  font-size: clamp(22px, 6vmin, 28px);
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.g-mode__consigne {
+  font-family: var(--dj-police-chiffres, sans-serif);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--dj-encre-douce);
+}
+/* l'annonce d'un portail de vitesse : discrète, une pastille d'encre sous l'annonce du milieu */
+.g-vitesse {
+  top: calc(100% + 54px);
+  gap: 6px;
+  padding: 3px 12px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border-radius: 14px;
+  box-shadow: none;
+  font-family: var(--dj-police-chiffres, sans-serif);
+  font-weight: 700;
+  font-size: 13px;
+  transform: translateX(-50%);
+}
+.g-vitesse__icone svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
 /* les essais et la mort */
 .g-robot {
   position: absolute;
@@ -289,6 +395,8 @@
   }
 }
 .g-hud--reduit .g-theme,
+.g-hud--reduit .g-mode,
+.g-hud--reduit .g-vitesse,
 .g-hud--reduit .g-mult__jauge {
   transition: none;
 }
@@ -300,7 +408,9 @@
   .g-bonus__puce--fin {
     animation: none;
   }
-  .g-theme {
+  .g-theme,
+  .g-mode,
+  .g-vitesse {
     transition: none;
   }
 }

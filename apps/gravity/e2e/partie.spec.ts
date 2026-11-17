@@ -26,6 +26,7 @@ test.describe("Gravity : une partie", () => {
       window.__jeu.avancer(400);
       window.__jeu.action("toucher");
       window.__jeu.avancer(60);
+      window.__jeu.relacher("toucher");
     });
     await expect(page.locator("#jeu-hud-score")).not.toHaveText("0");
     await expect(page.locator("#jeu-hud-temps")).toContainText(" m · ×");
@@ -104,7 +105,7 @@ test.describe("Gravity : une partie", () => {
     const valeurs = (await page.locator(".g-seuils__valeur").allTextContents()).map((v) => Number(v.replace(/\D/g, "")));
     expect(valeurs).toEqual([seuils.bronze, seuils.silver, seuils.gold, seuils.author]);
     await page.locator("#jeu-bouton-aide").click();
-    await expect(page.locator("#jeu-aide .jeu-aide li")).toHaveCount(12);
+    await expect(page.locator("#jeu-aide .jeu-aide li")).toHaveCount(16); // lot GR6 : + les trois modes de vol et les portails de vitesse
     await context.close();
   });
 });

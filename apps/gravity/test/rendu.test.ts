@@ -11,18 +11,22 @@ import {
   MORCEAUX_PAR_BOUCLE,
   Partie,
   solide,
+  terrainDeTest,
   terrainDuJour,
   dailyGravity,
+  type TypePortail,
 } from "@cdj/gravity-sim";
 import { THEMES, HAZARD, BLOCK_STYLE } from "@cdj/visuels/plateformes";
 import { Art } from "@cdj/visuels/plateformes/three";
 import { couleursGravity } from "../src/couleurs";
+import { dessinAvion, dessinCadrePortail, dessinIconePortail, dessinRessort, dessinVoilePortail } from "../src/dessinsModes";
 import { dessinAnneau, dessinBloc, dessinBonus, dessinChevrons, dessinDisque, dessinFleche, dessinGemme, dessinInverseur, dessinPan, dessinPiece, dessinRuban, dessinTirets, etatDuBloc, type TypeBloc, type VarianteBloc } from "../src/dessins";
 import { Monde, geometrieDesColonnes } from "../src/monde3d";
 
 // Lot GR3 — le rendu de Gravity : la DA de Jump vient de `@cdj/visuels`, le reste est propre au jeu. Ce que ces tests tiennent : le rendu ne lit que l'état de la simulation, le rouge n'est qu'aux dangers, les blocs qui changent
 // s'annoncent toujours, le monde se construit et se libère sur tout un niveau.
-const FICHIERS = ["scene.ts", "monde3d.ts", "heros.ts", "effets.ts", "hud.ts", "dessins.ts", "couleurs.ts"];
+// Lot GR6 : les fichiers des modes de vol (dessins, décisions d'annonce, vitesse) sont du rendu comme les autres.
+const FICHIERS = ["scene.ts", "monde3d.ts", "heros.ts", "effets.ts", "hud.ts", "dessins.ts", "couleurs.ts", "dessinsModes.ts", "modesLogique.ts", "vitesse.ts"];
 const SRC = new URL("../src/", import.meta.url);
 
 describe("le rendu ne décide rien du jeu", () => {
@@ -35,8 +39,8 @@ describe("le rendu ne décide rien du jeu", () => {
     // seule la scène mesure le temps du mur (l'interpolation entre deux pas et l'attente de la mort)
     for (const f of FICHIERS.filter((x) => x !== "scene.ts")) expect(readFileSync(new URL(f, SRC), "utf8").replace(/^\s*\/\/.*$/gm, ""), f).not.toMatch(/performance\.now/);
   });
-  it("seule la scène appelle la simulation (avancer, appuyer) : les dessins la lisent", () => {
-    for (const f of FICHIERS.filter((x) => x !== "scene.ts")) expect(readFileSync(new URL(f, SRC), "utf8").replace(/^\s*\/\/.*$/gm, ""), f).not.toMatch(/\.(avancer|appuyer|sauterAuThemeSuivant)\(/);
+  it("seule la scène appelle la simulation (avancer, appuyer, relacher) : les dessins la lisent", () => {
+    for (const f of FICHIERS.filter((x) => x !== "scene.ts")) expect(readFileSync(new URL(f, SRC), "utf8").replace(/^\s*\/\/.*$/gm, ""), f).not.toMatch(/\.(avancer|appuyer|relacher|sauterAuThemeSuivant)\(/);
   });
   it("la DA de Jump n'est pas recopiée : aucune palette de thème, aucun rouge ni jaune en dur dans les fichiers du rendu", () => {
     for (const f of readdirSync(SRC).filter((x) => x.endsWith(".ts") && FICHIERS.includes(x))) {
@@ -60,6 +64,7 @@ function teinte([r, g, b]: [number, number, number]): { h: number; s: number } {
   return { h: (h * 60 + 360) % 360, s: d / mx };
 }
 
+const PORTAILS: TypePortail[] = ["avion", "onde", "ressort", "gravite", "lent", "v1", "v2", "v3"];
 describe("le rouge est réservé aux dangers", () => {
   const c = couleursGravity();
   const dessins: [string, Art][] = [
@@ -75,6 +80,16 @@ describe("le rouge est réservé aux dangers", () => {
     ["inverseur", dessinInverseur(c.papier)],
     ["flèche", dessinFleche(0xffffff)],
     ["chevrons", dessinChevrons(3, 0xe6eef2, 1)],
+    // lot GR6 : les arches (cadre, voile, icône de chacun des huit portails), l'avion en papier et le ressort — jamais de rouge
+    ...(PORTAILS.flatMap((t) => [
+      [`cadre ${t}`, dessinCadrePortail(t, 3.5, c.encre, c.papier)],
+      [`voile ${t}`, dessinVoilePortail(t, 3.5, c.papier)],
+      [`icône ${t}`, dessinIconePortail(t, c.encre, c.papier)],
+    ]) as [string, Art][]),
+    ["avion arrière", dessinAvion(c.encre, c.papier).arriere],
+    ["avion avant", dessinAvion(c.encre, c.papier).avant],
+    ["ressort", dessinRessort(c.encre, c.papier).fil],
+    ["plaque du ressort", dessinRessort(c.encre, c.papier).plaque],
     ...(["plein", "alerte", "absent", "retour"] as VarianteBloc[]).flatMap((v) => ([CLIGNOTANT, ALTERNE_A, ALTERNE_B] as TypeBloc[]).map((t): [string, Art] => [`bloc ${t} ${v}`, dessinBloc(t, v)])),
   ];
   it("aucun dessin hors les piques ne prend la teinte du rouge des dangers (à 30° au moins, sauf les neutres)", () => {
@@ -180,5 +195,33 @@ describe("le monde se construit, se libère, et ne dessine que les colonnes de s
     const terrain = terrainDuJour(contenu);
     const monde = new Monde(terrain, 20_400, couleursGravity(), true);
     for (let b = 0; b < 5; b++) expect(monde.themeDe(b * 19)).toBe(THEMES[contenu.ordre[b]!]);
+  });
+});
+
+// Lot GR6 — les portails dans le monde : une arche par portail du niveau, construite avec son morceau, libérée avec lui ; une couleur et une icône par mode, jamais le même dessin pour deux modes.
+describe("les portails se construisent avec leur morceau et se libèrent avec lui", () => {
+  const c = couleursGravity();
+  it("un terrain de test avec un portail par type : chaque morceau garde ses arches (cadre, voile, icône) tant qu'il est dans le champ", () => {
+    const types = PORTAILS;
+    const terrain = terrainDeTest([], { portails: types.map((type, i) => ({ type, c: 1 + i, m: 0 })) });
+    const monde = new Monde(terrain, 1, couleursGravity(), false);
+    const partie = new Partie(terrain);
+    monde.maj({ cam: 0, largeur: 20, tick: 0, temps: 0 }, partie);
+    const meshes = monde.groupe.children.flatMap((g) => g.children).length;
+    expect(meshes).toBeGreaterThan(types.length * 3); // trois mailles par portail, plus le décor
+    // loin du morceau 0 : ses arches sont libérées
+    monde.maj({ cam: 20 * LARGEUR_MORCEAU, largeur: 20, tick: 0, temps: 0 }, partie);
+    monde.maj({ cam: 0, largeur: 20, tick: 0, temps: 0.5 }, partie); // le battement et la reconstruction ne cassent rien
+    monde.detruire();
+    expect(monde.groupe.children.length).toBe(0);
+  });
+  it("deux modes n'ont jamais le même dessin (le cadre ou l'icône diffère) : la couleur ne porte pas seule l'information", () => {
+    const empreinte = (a: Art): string => `${a.vertexCount}:${Array.from(a.pos.slice(0, 600)).map((n) => n.toFixed(3)).join(",")}:${Array.from(a.col.slice(0, 600)).map((n) => n.toFixed(3)).join(",")}`;
+    const icones = PORTAILS.map((t) => empreinte(dessinIconePortail(t, c.encre, c.papier)));
+    expect(new Set(icones).size).toBe(PORTAILS.length);
+    // les portails de vitesse ont 1 à 3 chevrons : plus de géométrie avec chaque chevron
+    const sommets = (t: TypePortail): number => dessinIconePortail(t, c.encre, c.papier).vertexCount;
+    expect(sommets("v2")).toBeGreaterThan(sommets("v1"));
+    expect(sommets("v3")).toBeGreaterThan(sommets("v2"));
   });
 });

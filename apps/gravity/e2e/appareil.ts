@@ -10,6 +10,8 @@ export interface Porte {
   manuel(oui?: boolean): void;
   avancer(n: number): void;
   action(id: string): void;
+  /** Lot GR6 : l'action tenue est relâchée (le doigt se lève). */
+  relacher(id: string): void;
   phase(): "jeu" | "pause" | "fin";
   envoi(): { statut: string; code: string; rang: number | null };
   score(): number[] | null;
@@ -53,22 +55,23 @@ export async function lancer(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __jeu?: unknown }).__jeu);
 }
 
-/** La partie scriptée des essais : le robot de la simulation joue le jour pendant `pas` pas (ses appuis sont la rediffusion) ; sans l'aide du robot une partie d'essai meurt en quelques secondes. */
-export const appuisDeLEssai = (pas = 12000): number[] => jouerRobot(terrainDuJour(dailyGravity(parseDay(JOUR)!)), { maxTicks: pas }).appuis;
+/** La partie scriptée des essais : le robot de la simulation joue le jour pendant `pas` pas (ses changements du bouton sont la rediffusion) ; sans l'aide du robot une partie d'essai meurt en quelques secondes. */
+export const changementsDeLEssai = (pas = 12000): number[] => jouerRobot(terrainDuJour(dailyGravity(parseDay(JOUR)!)), { maxTicks: pas }).changements;
 
 /**
- * Joue la partie du jour à la main, pas à pas : un appui (`action("toucher")`) à chaque pas de la liste, la rediffusion du jeu est donc cette liste ; puis la partie se joue seule jusqu'à la mort. Rend ce que la
- * simulation (Node, la même) attend de ces appuis.
+ * Joue la partie du jour à la main, pas à pas : le doigt se pose (`action("toucher")`) puis se lève (`relacher("toucher")`) à chaque pas de la liste — le premier est un appui, ils alternent —, la rediffusion du jeu est donc cette
+ * liste (lot GR6 : l'entrée est l'état du bouton) ; puis la partie se joue seule jusqu'à la mort. Rend ce que la simulation (Node, la même) attend de ces changements.
  */
-export async function jouerLeJour(page: Page, appuis: readonly number[] = appuisDeLEssai()): Promise<Resultat> {
-  await page.evaluate((appuis) => {
+export async function jouerLeJour(page: Page, changements: readonly number[] = changementsDeLEssai()): Promise<Resultat> {
+  await page.evaluate((changements) => {
     let t = 0;
-    for (const x of appuis) {
+    changements.forEach((x, i) => {
       window.__jeu.avancer(x - t);
       t = x;
-      window.__jeu.action("toucher");
-    }
+      if (i % 2 === 0) window.__jeu.action("toucher");
+      else window.__jeu.relacher("toucher");
+    });
     window.__jeu.avancer(80000);
-  }, [...appuis]);
-  return jouer(terrainDuJour(dailyGravity(parseDay(JOUR)!)), appuis);
+  }, [...changements]);
+  return jouer(terrainDuJour(dailyGravity(parseDay(JOUR)!)), changements);
 }

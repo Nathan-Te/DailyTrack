@@ -5,6 +5,7 @@
 // du robot ont leur propre calque, au-dessus du plateau : ce ne sont pas des zones du HUD.
 import { grouper, type Seuils } from "@cdj/gravity-sim";
 import type { OptionsPartie, ZonesSurimpression } from "@cdj/kit/jeu/types";
+import { CHEVRONS_DU_PORTAIL, MODE_AFFICHE, VITESSE_AFFICHEE, nomDuMode, type AnnonceMode, type AnnonceVitesse, type NomDeMode } from "./modesLogique";
 import "./hud.css";
 
 export interface EtatHud {
@@ -26,6 +27,11 @@ export interface EtatHud {
   /** Le bilan de la partie, montré avec la cause pendant que la mort se voit (lot GR4) : le kit n'a pas d'emplacement pour un bilan sur son écran de fin (README du lot). Null tant qu'on joue. */
   bilan: { distance: number; pieces: number; gemmes: number; theme: string; mult: number } | null;
   robot: boolean;
+  /** Lot GR6 : le mode de vol en cours (`MODE_*`), l'annonce du dernier portail de mode (nom, consigne la première fois seulement, couleur du portail) et celle du dernier portail de vitesse ; `tick` : le pas de la simulation (leur âge). */
+  mode: number;
+  tick: number;
+  annonceMode: (AnnonceMode & { couleur: string }) | null;
+  annonceVitesse: AnnonceVitesse | null;
   /** Lot GR5 : la mention des réglages d'essai (« Réglage d'essai · départ 8 m/s »), ou null : une partie normale n'en montre pas. */
   reglage: string | null;
 }
@@ -45,14 +51,28 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, classe: string, ...en
   e.append(...enfants);
   return e;
 };
-const svg = (d: string): SVGSVGElement => {
+const svg = (d: string, trait = false): SVGSVGElement => {
   const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   s.setAttribute("viewBox", "0 0 20 20");
   s.setAttribute("aria-hidden", "true");
+  if (trait) s.classList.add("g-icone--trait");
   const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
   p.setAttribute("d", d);
   s.append(p);
   return s;
+};
+/** Les icônes des modes (lot GR6), dans un carré de 20 : l'avion en papier (plein), les autres en traits. La gravité : la double flèche. */
+const ICONES_MODE: Readonly<Record<NomDeMode, { d: string; trait: boolean }>> = {
+  gravite: { d: "M10 2v16M6 6l4-4 4 4M6 14l4 4 4-4", trait: true },
+  avion: { d: "M2 10 18 3 11 17 9 11z", trait: false },
+  onde: { d: "M2 14 6 5 10 14 14 5 18 14", trait: true },
+  ressort: { d: "M10 2 5 4.5 15 7.5 5 10.5 15 13.5 5 16.5 10 18", trait: true },
+};
+/** L'icône d'un portail de vitesse : `n` chevrons (›), ou deux tirets pour le portail lent. */
+const iconeDeVitesse = (n: number): { d: string; trait: boolean } => ({ d: n === 0 ? "M3 7.5h14M3 12.5h14" : Array.from({ length: n }, (_, i) => `M${n === 1 ? 7 : n === 2 ? 4 + i * 6 : 2 + i * 6} 4l6 6-6 6`).join(""), trait: true });
+const remplacerIcone = (hote: Element, icone: { d: string; trait: boolean }): void => {
+  hote.querySelector("svg")?.remove();
+  hote.prepend(svg(icone.d, icone.trait));
 };
 
 export class Hud {
@@ -72,12 +92,19 @@ export class Hud {
   private readonly themeNom = el("b", "g-theme__nom");
   private readonly themeMeca = el("small", "g-theme__meca");
   private readonly theme = el("div", "g-theme", this.themeNom, this.themeMeca);
+  /** Lot GR6 : l'annonce d'un mode (nom, consigne la première fois), celle d'un portail de vitesse, et la petite icône du mode en cours près du multiplicateur. */
+  private readonly modeNom = el("b", "g-mode__nom");
+  private readonly modeConsigne = el("small", "g-mode__consigne");
+  private readonly mode = el("div", "g-mode", el("span", "g-mode__icone"), el("div", "g-mode__texte", this.modeNom, this.modeConsigne));
+  private readonly vitesseTexte = el("span", "g-vitesse__texte");
+  private readonly vitesse = el("div", "g-vitesse", el("span", "g-vitesse__icone"), this.vitesseTexte);
+  private readonly iconeMode = el("span", "g-modeicone");
   private readonly robot = el("div", "g-robot");
   private readonly reglage = el("div", "g-reglage");
   private readonly mortCause = el("b", "g-mort__cause");
   private readonly bilanValeurs = [0, 1, 2, 3, 4].map(() => el("b", "g-bilan__valeur"));
   private readonly mort = el("div", "g-mort", this.mortCause);
-  private dernier = { ligne: "", mult: 1, med: "", bouclier: false, aimant: -1, themeId: "", mort: "", score: -1, vuTheme: false };
+  private dernier = { ligne: "", mult: 1, med: "", bouclier: false, aimant: -1, themeId: "", mort: "", score: -1, vuTheme: false, modeId: 0, vuMode: false, vitesseId: 0, vuVitesse: false, mode: -1 };
 
   constructor(
     hote: HTMLElement,
@@ -103,10 +130,12 @@ export class Hud {
     const noms = ["bilan.distance", "bilan.pieces", "bilan.gemmes", "bilan.theme", "bilan.mult"] as const;
     this.mort.append(el("div", "g-bilan", ...noms.map((n, i) => el("div", "g-bilan__case", this.bilanValeurs[i]!, el("span", "g-bilan__nom", o.t(n))))));
     this.medaille.hidden = true;
-    zones.centre.append(el("div", "g-score", this.score, this.ligne, this.mult));
+    this.mode.hidden = false;
+    this.iconeMode.hidden = true;
+    zones.centre.append(el("div", "g-score", this.score, this.ligne, el("div", "g-score__rang", this.mult, this.iconeMode)));
     zones.hautDroite.append(this.medaille);
     zones.hautGauche.append(this.bonus);
-    zones.annonce.append(this.theme);
+    zones.annonce.append(this.theme, this.mode, this.vitesse);
     this.racine.append(this.robot, this.reglage, this.mort);
     this.mult.addEventListener("animationend", () => this.mult.classList.remove("g-mult--chute"));
     hote.append(this.racine);
@@ -175,6 +204,38 @@ export class Hud {
       d.vuTheme = vu;
       this.theme.classList.toggle("g-theme--vu", vu);
     }
+    // Lot GR6 : l'icône du mode en cours (rien en gravité), l'annonce du dernier portail de mode (elle reste 2,5 s) et celle d'un portail de vitesse (1,3 s, discrète)
+    if (e.mode !== d.mode) {
+      d.mode = e.mode;
+      const nom = nomDuMode(e.mode);
+      this.iconeMode.hidden = e.mode === 0;
+      if (e.mode !== 0) remplacerIcone(this.iconeMode, ICONES_MODE[nom]);
+    }
+    const am = e.annonceMode;
+    if (am && am.id !== d.modeId) {
+      d.modeId = am.id;
+      this.modeNom.textContent = t(`mode.${am.mode}`);
+      this.modeConsigne.textContent = am.consigne ? t(`mode.${am.mode}.consigne`) : "";
+      this.modeConsigne.hidden = !am.consigne;
+      this.mode.style.setProperty("--g-accent", am.couleur);
+      remplacerIcone(this.mode.firstElementChild!, ICONES_MODE[am.mode]);
+    }
+    const vuMode = am !== null && e.tick - am.depuis >= 0 && e.tick - am.depuis <= MODE_AFFICHE && e.mort === null;
+    if (vuMode !== d.vuMode) {
+      d.vuMode = vuMode;
+      this.mode.classList.toggle("g-mode--vu", vuMode);
+    }
+    const av = e.annonceVitesse;
+    if (av && av.id !== d.vitesseId) {
+      d.vitesseId = av.id;
+      this.vitesseTexte.textContent = t(`portail.${av.type}`);
+      remplacerIcone(this.vitesse.firstElementChild!, iconeDeVitesse(CHEVRONS_DU_PORTAIL[av.type]));
+    }
+    const vuVitesse = av !== null && e.tick - av.depuis >= 0 && e.tick - av.depuis <= VITESSE_AFFICHEE && e.mort === null;
+    if (vuVitesse !== d.vuVitesse) {
+      d.vuVitesse = vuVitesse;
+      this.vitesse.classList.toggle("g-vitesse--vu", vuVitesse);
+    }
     this.robot.hidden = !e.robot;
     if (e.reglage !== (this.reglage.hidden ? null : this.reglage.textContent)) {
       this.reglage.hidden = e.reglage === null;
@@ -197,6 +258,6 @@ export class Hud {
   detruire(): void {
     this.racine.remove();
     // les zones du kit sont vidées à chaque partie (`surimpression.vider`) ; on retire pourtant ce qu'on y a posé : la scène peut être détruite avant
-    for (const e of [this.score.parentElement, this.medaille, this.bonus, this.theme]) e?.remove();
+    for (const e of [this.score.parentElement, this.medaille, this.bonus, this.theme, this.mode, this.vitesse]) e?.remove();
   }
 }
