@@ -49,6 +49,16 @@ Validé par Nathan d'après la maquette jouable `gravity-maquette-jouable.html` 
 - Pièces couleur papier cerclées d'encre ; gemmes couleur Diamant (`#4FC3DC`) ; bonus en disque papier avec un dessin Diamant.
 - **Le HUD** : le score en grand au centre, le multiplicateur en autocollant jaune avec sa jauge, la médaille visée en haut à droite, les bonus actifs en haut à gauche, le nom du thème quand il change.
 
+## Les modes de vol (ajout du 17 novembre 2026)
+- Pour dynamiser la course, le niveau traverse des **sections à mode**, comme les véhicules de Geometry Dash. On y entre et on en sort par un **portail**. Une section dure de 2 à 4 morceaux (4 à 8 secondes). Le mode de base, c'est la gravité.
+- **Avion** (un avion en papier plié, le cube assis dedans) : on maintient l'appui pour monter, on relâche pour descendre, avec de l'inertie. Le sol et le plafond se touchent sans mourir. Des couloirs qui ondulent, des piliers, des pièces en vague.
+- **Onde** (le cube penché, avec une traînée d'encre en zigzag) : en maintenant on monte à 45°, en relâchant on descend à 45°. Des couloirs serrés bordés de piques. C'est le mode le plus nerveux.
+- **Ressort** (le cube sur un ressort) : chaque appui donne un bond, même en l'air, et la gravité est plus faible. Des trous et des colonnes à franchir en rythme.
+- **Les portails de vitesse** (›, ›› et ›››, plus un portail lent) changent la vitesse jusqu'au portail de vitesse suivant. Des lignes de vitesse apparaissent quand ça va vite.
+- **Introduction** : le 1er thème fait découvrir l'avion, le 2e l'onde, le 3e le ressort, chaque fois avec une section facile annoncée à l'écran. Ensuite les modes se mélangent, et la seconde boucle est plus dense et plus rapide.
+- Les règles ne changent pas : le rouge tue, le vide aussi, ainsi que le bord gauche. Le bouclier sauve aussi dans un mode. Les pièces et le multiplicateur restent les mêmes.
+- Dans le niveau, un appui et un relâché comptent tous les deux. La rediffusion devient donc la liste des pas où l'appui commence ou finit.
+
 ## Technique (règles de la plateforme)
 - **Simulation déterministe en entiers**, rejouée par le serveur. **La rediffusion n'est que la liste des pas où le joueur a touché l'écran**, donc minuscule même pour une longue partie. Le serveur rejoue jusqu'à la mort et retrouve le score. Une durée maximale de partie (10 minutes ?) borne le coût du rejeu.
 - **Le générateur monte sa version, jamais une date** (jours figés). Les seuils des médailles sont figés avec le niveau.
@@ -57,3 +67,4 @@ Validé par Nathan d'après la maquette jouable `gravity-maquette-jouable.html` 
 ## Encore ouvert
 - La couleur de l'étiquette et le nom.
 - Le pourcentage des médailles (60 %) et la longueur d'un thème (300 m), à régler sur le prototype.
+- Le réglage des modes (durée des sections, fréquence, multiplicateurs des portails de vitesse), sur le prototype.

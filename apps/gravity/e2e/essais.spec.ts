@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { decoderRediffusion } from "@cdj/gravity-sim";
 import { appareil, lancer } from "./appareil";
 
 // Les essais de recette du lot GR2 (hors production, jamais classés) : `?robot` — on regarde le robot jouer le niveau du jour — et `?morceau=<n>` — la partie commence juste avant le morceau n, dans l'état où le robot
@@ -52,6 +53,65 @@ test.describe("Gravity : les essais de recette", () => {
     await page.evaluate(() => window.__jeu.avancer(100000));
     await expect(page.locator("#jeu-fin")).toBeVisible();
     await expect(page.locator("#jeu-fin-rang")).toContainText("essai"); // « Partie d'essai : non classée »
+    await context.close();
+  });
+
+  // Lot GR6 : `?mode=avion|onde|ressort` — la partie commence juste avant la première section de ce mode. La lecture, « rien en production » et « jamais classée » sont en unitaire (`test/essai.test.ts`, `test/modes.test.ts`).
+  const NOMS = { avion: "Avion", onde: "Onde", ressort: "Ressort" } as const;
+  for (const mode of ["avion", "onde", "ressort"] as const) {
+    test(`lot GR6 — ?mode=${mode} : la partie commence avant la section, le portail annonce « ${NOMS[mode]} » avec sa consigne, l'icône du mode est près du multiplicateur ; jamais classée`, async ({ browser }) => {
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&mode=${mode}`);
+      await lancer(page);
+      const texte = (await page.locator("#jeu-hud-temps").textContent()) ?? "";
+      expect(Number(texte.split(" m")[0])).toBeGreaterThan(30); // une section du mode : loin du départ
+      await expect(page.locator(".g-modeicone")).toBeHidden(); // encore en gravité
+      await expect(page.locator(".g-mode")).not.toHaveClass(/g-mode--vu/);
+      await page.evaluate(() => window.__jeu.avancer(260)); // treize colonnes : le portail est franchi
+      await expect(page.locator(".g-mode")).toHaveClass(/g-mode--vu/);
+      await expect(page.locator(".g-mode__nom")).toHaveText(NOMS[mode]);
+      await expect(page.locator(".g-mode__consigne")).not.toHaveText(""); // la première fois du mode : la consigne
+      await expect(page.locator(".g-modeicone")).toBeVisible();
+      await page.evaluate(() => window.__jeu.avancer(100000));
+      await expect(page.locator("#jeu-fin")).toBeVisible();
+      await expect(page.locator("#jeu-fin-rang")).toContainText("essai"); // « Partie d'essai : non classée »
+      await context.close();
+    });
+  }
+
+  test("lot GR6 — ?mode=avion&robot : on regarde le robot jouer la section ; le doigt se pose et se lève (la rediffusion est la liste des changements du bouton)", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&mode=avion&robot");
+    await lancer(page);
+    await expect(page.locator(".g-robot")).toBeVisible();
+    await page.evaluate(() => window.__jeu.avancer(260));
+    await expect(page.locator(".g-mode__nom")).toHaveText("Avion"); // le portail d'entrée de la section
+    await page.evaluate(() => window.__jeu.avancer(100000));
+    await expect(page.locator("#jeu-fin")).toBeVisible();
+    const code = await page.evaluate(() => window.__jeu.rediffusion());
+    const r = decoderRediffusion(code!);
+    expect(r.changements.length).toBeGreaterThan(4); // des appuis ET des relâchés
+    await context.close();
+  });
+
+  test("lot GR6 — le toucher est l'état du bouton : poser le doigt appuie, le lever relâche ; les deux sont dans la rediffusion", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&mode=avion");
+    await lancer(page);
+    // dans le morceau calme qui précède la section : le doigt se pose, se lève, se repose, se lève (90 pas, moins que les douze colonnes avant le portail)
+    const vue = page.viewportSize()!;
+    await page.mouse.move(vue.width / 2, vue.height / 2);
+    await page.mouse.down();
+    await page.evaluate(() => window.__jeu.avancer(40));
+    await page.mouse.up();
+    await page.evaluate(() => window.__jeu.avancer(30));
+    await page.mouse.down();
+    await page.evaluate(() => window.__jeu.avancer(20));
+    await page.mouse.up();
+    await page.evaluate(() => window.__jeu.avancer(100000));
+    await expect(page.locator("#jeu-fin")).toBeVisible();
+    const r = decoderRediffusion((await page.evaluate(() => window.__jeu.rediffusion()))!);
+    // la rediffusion commence par ce que le robot a joué pour amener la partie jusque-là, puis nos quatre changements : deux appuis, deux relâchés, à 40, 30 puis 20 pas d'écart
+    const [a, b, c, d] = r.changements.slice(-4) as [number, number, number, number];
+    expect([b - a, c - b, d - c]).toEqual([40, 30, 20]);
+    expect(r.changements.length % 2).toBe(0); // autant d'appuis que de relâchés : le doigt est levé à la fin
     await context.close();
   });
 });

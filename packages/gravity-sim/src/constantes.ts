@@ -3,14 +3,14 @@
 // écrites en entiers, avec en commentaire (virgule française) la valeur physique qu'elles figurent.
 
 /**
- * La version des RÈGLES (la physique, les cases, le score, les morts). Elle monte à tout changement qui change une partie rejouée. v1 : le squelette « Cibles » (30 s, 8 × 6, jamais joué). v2 (lot GR1) : le vrai jeu.
+ * La version des RÈGLES (la physique, les cases, le score, les morts). Elle monte à tout changement qui change une partie rejouée. v1 : le squelette « Cibles » (30 s, 8 × 6, jamais joué). v2 (lot GR1) : le vrai jeu. v3 (lot GR6) : les modes de vol (avion, onde, ressort), les portails (de mode et de vitesse), l'entrée devient l'état du bouton.
  * **On monte la version, jamais une date** : un jour figé nomme la version qui l'a produit.
  */
-export const GRAVITY_SIM_VERSION = 2;
-/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. v3 (lot GR2) : les îlots, les étages et le néon suivent la vitesse du morceau, les étages finissent au plafond, l'escalier montant et les îlots qui ne tiennent pas à grande vitesse deviennent des trous (le robot prouve le chemin sûr). */
-export const GRAVITY_GENERATOR_VERSION = 3;
-/** La version du calcul des SEUILS des médailles (et du robot qui les produit). v1 (lot GR1) : provisoire, « sur le papier ». v2 (lot GR2) : le robot (`robot.ts`), 60 % de son score aux points d'arrêt de `seuils.ts`. **Tout changement du robot, du pourcentage ou des points d'arrêt la monte.** Un jour figé garde les seuils de son fichier. */
-export const GRAVITY_BOT_VERSION = 2;
+export const GRAVITY_SIM_VERSION = 3;
+/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. v3 (lot GR2) : les îlots, les étages et le néon suivent la vitesse du morceau, les étages finissent au plafond, l'escalier montant et les îlots qui ne tiennent pas à grande vitesse deviennent des trous (le robot prouve le chemin sûr). v4 (lot GR6) : les sections à mode (avion, onde, ressort), leurs portails, les portails de vitesse, l'introduction des modes selon le rang du thème. */
+export const GRAVITY_GENERATOR_VERSION = 4;
+/** La version du calcul des SEUILS des médailles (et du robot qui les produit). v1 (lot GR1) : provisoire, « sur le papier ». v2 (lot GR2) : le robot (`robot.ts`), 60 % de son score aux points d'arrêt de `seuils.ts`. v3 (lot GR6) : le robot joue l'état du bouton et les trois modes. **Tout changement du robot, du pourcentage ou des points d'arrêt la monte.** Un jour figé garde les seuils de son fichier. */
+export const GRAVITY_BOT_VERSION = 3;
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 // Le temps : 120 pas par seconde — **la fréquence de Jump** (`TICK_RATE` de `@cdj/jump-sim`), pour la même raison : à 17 m/s une case se traverse en 7 pas, la collision par axe ne saute jamais une case, et la
@@ -96,12 +96,40 @@ export const POINTS_GEMME = 100;
 export const PIECES_PAR_PALIER = 10;
 export const MULT_MAX = 5;
 
-// Les appuis : la rediffusion n'est que la liste des pas où le joueur a touché l'écran.
-/** Au plus 4 000 appuis par partie (un joueur ne touche pas plus de 6 fois par seconde pendant 10 minutes) : au-delà, la rediffusion est refusée. */
-export const MAX_APPUIS = 4000;
+// Les changements du bouton : **la rediffusion est la liste des pas où l'appui commence ou finit** (lot GR6). Le premier est toujours un appui, ils alternent ensuite (appui, relâché, appui…).
+/** Au plus 8 000 changements par partie (4 000 appuis et autant de relâchés : un joueur ne touche pas plus de 6 fois par seconde pendant 10 minutes) : au-delà, la rediffusion est refusée. */
+export const MAX_CHANGEMENTS = 8000;
 
 /**
  * Le pourcentage du score du robot que vaut un seuil de médaille (seed : « 60 % »), arrondi à 10 près (`seuils.ts`). **Il se règle par Nathan** (lot GR4) et monte `GRAVITY_BOT_VERSION`. Lot GR5 : ici et non dans
  * `seuils.ts`, pour que la lecture des réglages d'essai (`apps/gravity/src/essai.ts`, dans le premier chargement) ne tire pas le robot avec elle.
  */
 export const POURCENT_DU_ROBOT = 60;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------
+// Les modes de vol (lot GR6). **Toutes ces constantes seront réglées au lot GR7** avec les réglages d'essai ; elles sont nommées, entières, avec la valeur physique en commentaire.
+// Un mode ne change que ce que fait le bouton (et la gravité) : le rouge tue, le vide aussi, ainsi que le bord gauche ; le bouclier sauve ; les pièces et le multiplicateur sont ceux de la gravité.
+export const MODE_GRAVITE = 0;
+export const MODE_AVION = 1;
+export const MODE_ONDE = 2;
+export const MODE_RESSORT = 3;
+export type ModeDeVol = 0 | 1 | 2 | 3;
+
+/** Avion : relâché, l'avion tombe (30 cases/s² = 1 024 unités par pas) ; maintenu, il monte (36 cases/s² = 1 229) ; |vy| ≤ 8 cases/s (32 768) : de l'inertie, ni tout ni rien. */
+export const AVION_GRAVITE = 1024;
+export const AVION_POUSSEE = 1229;
+export const AVION_VY_MAX = 32768;
+/** Onde : vy = ± la vitesse horizontale (45°) ; le signe suit l'état du bouton (maintenu : on monte). Rien à régler : la pente est de 1. */
+/** Ressort : la gravité est réduite (28 cases/s² = 956 par pas) ; chaque début d'appui donne un bond de 13,4 cases/s (54 886), même en l'air ; au moins 12 pas entre deux bonds (0,1 s). */
+export const RESSORT_GRAVITE = 956;
+export const RESSORT_BOND = 54886;
+export const RESSORT_ATTENTE = 12;
+
+/** Les portails de vitesse : la vitesse de la caméra est multipliée (en pour cent) jusqu'au portail de vitesse suivant, par-dessus la montée normale. Lent ×0,8 ; › ×1,15 ; ›› ×1,3 ; ››› ×1,5. */
+export const FACTEUR_NORMAL = 100;
+export const FACTEUR_LENT = 80;
+export const FACTEUR_V1 = 115;
+export const FACTEUR_V2 = 130;
+export const FACTEUR_V3 = 150;
+/** **Le plafond absolu de la vitesse** de la caméra, portails compris : 17 cases/s (69 632 unités par seconde : à cette vitesse une case se traverse en 7 pas, la collision par axe ne saute rien). */
+export const VITESSE_PLAFOND = 69632;

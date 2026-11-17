@@ -1,8 +1,8 @@
 {
-  "_": "Golden de Gravity (lots GR1 et GR2). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
-  "sim": 2,
-  "generateur": 3,
-  "bot": 2,
+  "_": "Golden de Gravity (lots GR1, GR2 et GR6). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
+  "sim": 3,
+  "generateur": 4,
+  "bot": 3,
   "jours": [
     {
       "date": "2026-11-02",
@@ -13,12 +13,12 @@
         "nuit",
         "neon"
       ],
-      "empreinte": "72c7730d",
+      "empreinte": "0028c254",
       "seuils": {
-        "bronze": 910,
-        "silver": 1690,
-        "gold": 3490,
-        "author": 7730
+        "bronze": 990,
+        "silver": 1950,
+        "gold": 3690,
+        "author": 8920
       }
     },
     {
@@ -30,7 +30,7 @@
         "neon",
         "nuit"
       ],
-      "empreinte": "fb704a64"
+      "empreinte": "680cff0a"
     },
     {
       "date": "2026-11-08",
@@ -41,7 +41,7 @@
         "neon",
         "foret"
       ],
-      "empreinte": "1f3ebec8"
+      "empreinte": "d3eb9d69"
     },
     {
       "date": "2026-11-11",
@@ -52,12 +52,12 @@
         "nuit",
         "glace"
       ],
-      "empreinte": "9fbc948c",
+      "empreinte": "cfea6a70",
       "seuils": {
-        "bronze": 1130,
-        "silver": 2790,
-        "gold": 3960,
-        "author": 7670
+        "bronze": 1210,
+        "silver": 2600,
+        "gold": 3550,
+        "author": 7430
       }
     },
     {
@@ -69,7 +69,7 @@
         "usine",
         "nuit"
       ],
-      "empreinte": "3b388b5e"
+      "empreinte": "13ae7ebe"
     },
     {
       "date": "2026-11-17",
@@ -80,7 +80,7 @@
         "neon",
         "nuit"
       ],
-      "empreinte": "68d9fc8a"
+      "empreinte": "40369e34"
     },
     {
       "date": "2026-11-20",
@@ -91,12 +91,12 @@
         "neon",
         "usine"
       ],
-      "empreinte": "16ea57b1",
+      "empreinte": "de1a4fdb",
       "seuils": {
-        "bronze": 2460,
-        "silver": 3570,
-        "gold": 5670,
-        "author": 9760
+        "bronze": 1980,
+        "silver": 3650,
+        "gold": 5800,
+        "author": 10170
       }
     },
     {
@@ -108,7 +108,7 @@
         "nuit",
         "neon"
       ],
-      "empreinte": "ed687944"
+      "empreinte": "dcb47f6d"
     },
     {
       "date": "2026-11-26",
@@ -119,7 +119,7 @@
         "neon",
         "glace"
       ],
-      "empreinte": "94928870"
+      "empreinte": "b55edea3"
     },
     {
       "date": "2026-11-29",
@@ -130,12 +130,12 @@
         "usine",
         "nuit"
       ],
-      "empreinte": "de433ebd",
+      "empreinte": "d01a7c66",
       "seuils": {
-        "bronze": 790,
-        "silver": 2750,
-        "gold": 4060,
-        "author": 8810
+        "bronze": 900,
+        "silver": 4620,
+        "gold": 5470,
+        "author": 8260
       }
     }
   ],
@@ -143,8 +143,8 @@
     {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 3,
-      "code": "AQIDAJeiAQ",
+      "g": 4,
+      "code": "AQMEAJeiAQ",
       "resultat": {
         "score": 256,
         "distance": 66,
@@ -154,41 +154,47 @@
         "ticks": 1098,
         "cause": 1,
         "appuis": 0,
-        "inversions": 0
+        "inversions": 0,
+        "changements": 0,
+        "modeLoin": 0
       }
     },
     {
       "nom": "reguliere",
       "date": "2026-11-02",
-      "g": 3,
-      "code": "AQIDAJeiATxaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa",
+      "g": 4,
+      "code": "AQMEAJeiATxaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa",
       "resultat": {
-        "score": 263,
-        "distance": 113,
-        "pieces": 15,
+        "score": 122,
+        "distance": 52,
+        "pieces": 7,
         "gemmes": 0,
         "multMax": 1,
-        "ticks": 1863,
-        "cause": 1,
-        "appuis": 21,
-        "inversions": 18
+        "ticks": 939,
+        "cause": 3,
+        "appuis": 5,
+        "inversions": 5,
+        "changements": 10,
+        "modeLoin": 0
       }
     },
     {
       "nom": "robot",
-      "date": "2026-11-05",
-      "g": 3,
-      "code": "AQIDAJqiAZQBmALAAkSQAYAB0AFcgAHwApQDFBz0BcwBUKQBQLgBkAWQC7ADqAPwAowCtAbIAbwBfKQC9AOUASiAAuAB0ALAAfACgAHEAYwD3AJ0rAGsAeABkAL8AaQBpAP4AqABrAFE7AGoAZgBTOgCgAG4B8QCeIQB0AiAAcABgAGIAbwBlAGEAbABZNABkAGgAcwEuAF4oAXMBKgB3ASgAcgCmAHYAcwCQEQYJGDwAZwBmAFU3AHEBcgBgAKAA7QDdNwBrAKQAWB4XKwBzARUwAHUAQ",
+      "date": "2026-11-08",
+      "g": 4,
+      "code": "AQMEAJ2iAZQBAZcCAbMJAf8BAf8BAfMDAZsBAdsCAeMBAZsDFAYGBgYGBgYGGQYcBggGBgYGCgYHBgcGBgYGBgYGBggGCAYIBgcGBwYIBgcGBwYGDQYKBgYLBhAGCQYHA9gBAecDAecDAZMCAb8BAbMFAZcBAVsBnAIsBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGCQYNBgYGBgYGBgYGBgYGBgYQzwQBHwEXAeMBAb8CAfMJAYEBAWYBcQGwAQHrBwH0AhQGBgYGBgYGBiQGDwYLBgcGBgoGCQYGBgaHAgFzAcMBAWYBcQGGAgG7AgGbAgHHAQHzAwFrAWMB4AEUBgYGBgYGBgYYBiEGBgYGBgYMBhMGDgYGBgYGBhkGFwYKBgYGBgsGBrIBAZUDAWYBcQFvAdgCAeMBAacBAbMBAbsBAZ8BAcMBAacCAY4ELwcHBwcHBwcHBwcHBwcHCwYOBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcWtQEBowEBMwFfAXsB2wIBZgFxAXEBbwFwAW8BhwIBhwIBtwEBuwEBrwEB6gIUBgYGBgYGBgYSBgoGBgYGBgYGCQYOBg0GCwYIBggGCAYGBgcGBgYLBgkGCQYGBgYKBgWlAQGHAwG7AwHcAjUHBwcHBwcGCAYQBhAGCAcHCQYSBhMGFAYRBggJBhAGEgYSBhAHCQcHCAYHBwcGBwYHBwgHCAcHBwcHBwcHBwcHBwcHBwcHBwcHBwkGCgYMBwcHBxarAQG7AwFmAXEBpgIBgwQBcwHwARQGBgYGBgYGBhcGGAYPBgYGBgwGDgYLBgcGBwYGBgYLBhMGHAYJBgoGBggGDAYMBgkGBwYGBgYGBgYGBgYMBgsGCQYGBucBAb8CAZsBAYMCAWYBcQFxAW8BcAFxAckCAdgCFAYGBgYGBgYGEgYKBgYGBgYGBgkGDgYNBgsGCAYIBggGBgYHBgsGCwYJBgwGCQYGBgYKBg8GCgYHBgYGBgYGBgYGBgwGCwYKBgYG",
       "resultat": {
-        "score": 24348,
-        "distance": 2868,
-        "pieces": 826,
-        "gemmes": 19,
+        "score": 23609,
+        "distance": 2679,
+        "pieces": 769,
+        "gemmes": 16,
         "multMax": 5,
-        "ticks": 31250,
-        "cause": 1,
-        "appuis": 116,
-        "inversions": 116
+        "ticks": 30565,
+        "cause": 3,
+        "appuis": 343,
+        "inversions": 64,
+        "changements": 686,
+        "modeLoin": 2
       }
     }
   ]

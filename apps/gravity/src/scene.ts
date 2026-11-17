@@ -2,8 +2,9 @@
 // `monde3d.ts` (le monde : piques, blocs qui changent, inverseur, vent, objets), `heros.ts` (le héros à bandeau, l'aura, l'aimant), `effets.ts` (poussière, étincelles, traînée, éclat, secousse), `hud.ts` (le HUD), `dessins.ts` (les dessins purs).
 //
 // **De l'affichage et des entrées seulement : aucun dessin ne lit autre chose que l'état de la simulation** (`Partie` de `@cdj/gravity-sim`, entière, 120 pas par seconde) ; aucune décision de jeu ici. Le rendu interpole entre l'état d'avant
-// le dernier pas et l'état d'après. Une entrée (toucher, clic, Espace, flèches, W, S, A à la manette — le kit route les touches par `DefinitionJeu.actions`) est un appui daté **au pas de la simulation** : la rediffusion est la liste de
-// ces pas. Les particules et la secousse suivent les pas (figées en pause), jamais `Math.random`.
+// le dernier pas et l'état d'après. **L'entrée est l'état du bouton** (lot GR6) : le doigt se pose (`appuyer`) ou se lève (`relacher`), daté **au pas de la simulation** — le toucher et le clic sont d'ici, Espace, les flèches, W, S et A à
+// la manette sont ceux du kit (`DefinitionJeu.actions` : `action` à l'appui, `actionRelachee` au relâché) ; la rediffusion (`partie.changements`) est la liste des pas où le bouton change. Les particules, les traînées et la secousse suivent
+// les pas (figées en pause), jamais `Math.random`. **Lot GR6 aussi** : le héros de chaque mode, les portails, les lignes de vitesse et le recul de la caméra, l'annonce des modes, les sons des modes.
 import { OrthographicCamera, Scene, WebGLRenderer } from "three";
 import {
   CASE,
@@ -16,8 +17,10 @@ import {
   EV_MORT,
   EV_PIECE,
   LARGEUR_MORCEAU,
+  EV_BOND,
+  EV_PORTAIL,
   LIGNES,
-  MAX_APPUIS,
+  MODE_AVION,
   MORT_BORD,
   MORT_PIQUE,
   MORT_TEMPS,
@@ -27,6 +30,7 @@ import {
   TAILLE,
   TICKS_PAR_SECONDE,
   VARIANTE,
+  vitesseCamera,
   decoderRediffusion,
   enregistrer,
   terrainDuJour,
@@ -43,6 +47,9 @@ import { libellesDesReglages } from "./reglagesEssai";
 import { Heros, TAILLE_HEROS } from "./heros";
 import { Hud } from "./hud";
 import { Monde } from "./monde3d";
+import { couleurDuPortail } from "./dessinsModes";
+import { Annonces, estPortailDeVitesse, type AnnonceMode, type AnnonceVitesse } from "./modesLogique";
+import { LignesDeVitesse, TAUX_LIGNES, TAUX_RECUL, intensiteLignes, lisser, reculVoulu } from "./vitesse";
 import { musique } from "./musiqueDuJeu";
 import { Sons } from "./sons";
 import { sonsDuPas, type Photo } from "./sonsLogique";
@@ -52,6 +59,8 @@ const CLE_MORT: Record<number, string> = { [MORT_VIDE]: "vide", [MORT_PIQUE]: "p
 /** Combien de temps (ms) la mort se montre avant l'écran de fin ; rien avec « réduire les animations ». */
 const DELAI_MORT_MS = 1500;
 const MILIEU = -LIGNES / 2;
+/** La clarté (0 à 1) d'une couleur 0xRRGGBB : les lignes de vitesse sont de l'encre sur un décor clair, du papier sur un décor sombre. */
+const luminance = (c: number): number => (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
 
 /** Un contenu dont les seuils se calculent en arrière-plan (`niveau.ts`) : `pretSeuils` les rend s'ils sont prêts, **sans jamais forcer le calcul** (lire les seuils du contenu le forcerait, et gèlerait la partie). */
 type ContenuDeScene = Contenu & { essai?: EssaiRecette; pretSeuils?: () => Seuils | null };
@@ -60,24 +69,23 @@ type ContenuDeScene = Contenu & { essai?: EssaiRecette; pretSeuils?: () => Seuil
 export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: OptionsPartie): PartieDuJeu {
   const terrain = terrainDuJour(contenu);
   const partie = new Partie(terrain);
-  const appuis: number[] = [];
-  // Les essais de recette (lot GR2, `niveau.ts`) : le robot a déjà joué ; `?morceau=<n>` rejoue ses appuis jusqu'au pas où le joueur reprend la main, `?robot` les rejoue sous nos yeux. Jamais classé.
+  // Les essais de recette (lot GR2, `niveau.ts`) : le robot a déjà joué ; `?morceau=<n>` et `?mode=<mode>` rejouent ses changements du bouton (appui, relâché, appui…) jusqu'au pas où le joueur reprend la main, `?robot` les rejoue
+  // sous nos yeux. Jamais classé.
   const essai = (contenu as ContenuDeScene).essai;
   // Les réglages d'essai du lot GR5 (`contenu.reglages`, hors production) : la partie est un essai, jamais classée ni envoyée ; la mention dit ce qui a changé.
   const reglagesDEssai = contenu.reglages ?? null;
   if (reglagesDEssai) partie.essai = true;
   /** La mention discrète des réglages (« Réglage d'essai · départ 8 m/s · gravité 40 ») : ce qui a changé par rapport à la version courante. */
   const mentionDesReglages = reglagesDEssai ? o.t("essai.reglage", { liste: libellesDesReglages(reglagesDEssai).map((l) => o.t(`essai.reglage.${l.cle}`, { v: l.valeur })).join(" · ") || "—" }) : null;
-  const appuisDuRobot = essai?.robot ? essai.appuis : null;
+  const changementsDuRobot = essai?.robot ? essai.changements : null;
   let suiteDuRobot = 0;
+  /** Applique le changement du bouton `k` du robot (le premier est un appui, ils alternent). */
+  const jouerLeChangement = (k: number): void => (k % 2 === 0 ? partie.appuyer() : partie.relacher());
   if (essai) {
     partie.essai = true;
     let k = 0;
     while (partie.tick < essai.depart && !partie.finie) {
-      if (essai.appuis[k] === partie.tick) {
-        partie.appuyer();
-        k++;
-      }
+      if (essai.changements[k] === partie.tick) jouerLeChangement(k++);
       partie.avancer();
     }
     suiteDuRobot = k;
@@ -104,10 +112,14 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   const monde = new Monde(terrain, contenu.jour, couleurs, o.reduit);
   const heros = new Heros(couleurs);
   const effets = new Effets(o.reduit);
-  scene.add(monde.groupe, heros.groupe, effets.mesh);
+  const lignes = new LignesDeVitesse();
+  scene.add(lignes.mesh, monde.groupe, heros.traine, heros.groupe, effets.mesh);
   const hud = new Hud(hote, o);
   // Les sons (lot GR4, règle S2 : `sons.ts` ouvre son contexte par `ouvrirContexteAudio`) : aucun avant le premier geste du joueur, le volume des effets est celui du kit.
   const sons = new Sons({ niveau: o.volumeEffets });
+  const annonces = new Annonces();
+  let annonceMode: (AnnonceMode & { couleur: string }) | null = null;
+  let annonceVitesse: AnnonceVitesse | null = null;
   const geste = (): void => sons.deverrouiller();
   const GESTES = ["pointerdown", "pointerup", "touchend", "keydown", "click"] as const;
   for (const g of GESTES) addEventListener(g, geste, { passive: true });
@@ -136,20 +148,48 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   observateur.observe(hote);
   redimensionner();
 
-  // --- Les entrées : un appui daté au pas de la simulation ---
+  // --- Les entrées : l'état du bouton, daté au pas de la simulation (lot GR6) ---
+  // Le bouton est appuyé tant qu'un doigt (ou la souris) est posé sur le plateau **ou** qu'une touche / un bouton de manette de l'action « toucher » est tenu (le kit : `action` / `actionRelachee`). Un changement d'état est
+  // demandé à la simulation (`appuyer`, `relacher`), qui le date à son prochain pas et le range dans `partie.changements`, la rediffusion. Rien de tout cela pendant `?robot`, ni après la mort.
+  const pointeurs = new Set<number>();
+  let actionTenue = false;
+  const synchroniser = (): void => {
+    if (changementsDuRobot || partie.finie) return;
+    if (pointeurs.size > 0 || actionTenue) partie.appuyer();
+    else partie.relacher();
+  };
   const toucher = (): void => {
     geste(); // un contexte audio créé ou réveillé au geste du joueur
-    if (appuisDuRobot) return; // `?robot` : on regarde
-    if (partie.finie || appuis.length >= MAX_APPUIS || appuis[appuis.length - 1] === partie.tick) return;
-    appuis.push(partie.tick);
-    partie.appuyer();
+    actionTenue = true;
+    synchroniser();
+  };
+  const lacher = (): void => {
+    actionTenue = false;
+    synchroniser();
   };
   const surPointeur = (e: PointerEvent): void => {
     if ((e.target as HTMLElement).closest("button")) return; // la barre du kit a ses propres boutons
     e.preventDefault();
-    toucher();
+    geste();
+    pointeurs.add(e.pointerId);
+    synchroniser();
+  };
+  const surLever = (e: PointerEvent): void => {
+    if (pointeurs.delete(e.pointerId)) synchroniser();
+  };
+  /** La fenêtre perd le focus, ou la page se cache : tout est relâché (la pause du kit relâche aussi les actions tenues). */
+  const toutLever = (): void => {
+    pointeurs.clear();
+    synchroniser();
+  };
+  const surVisibilite = (): void => {
+    if (document.hidden) toutLever();
   };
   hote.addEventListener("pointerdown", surPointeur);
+  addEventListener("pointerup", surLever);
+  addEventListener("pointercancel", surLever);
+  addEventListener("blur", toutLever);
+  document.addEventListener("visibilitychange", surVisibilite);
   const surTouche = (e: KeyboardEvent): void => {
     if (e.code === "KeyT" && essaiDeTheme && !e.repeat) partie.sauterAuThemeSuivant();
   };
@@ -168,7 +208,11 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   let horloge = 0;
 
   /** L'état que les sons comparent avant et après un pas (inversion, palier ou chute du multiplicateur, bonus pris). */
-  const photo = (): Photo => ({ g: partie.g, mult: partie.mult, chaine: partie.chaine, bouclier: partie.bouclier, aimant: partie.aimant });
+  const photo = (): Photo => ({ g: partie.g, mult: partie.mult, chaine: partie.chaine, bouclier: partie.bouclier, aimant: partie.aimant, portail: partie.portail, monte: partie.vy < 0 });
+  /** Le recul de la caméra et l'intensité des lignes de vitesse affichés (lissés : un portail de vitesse ne les change jamais d'un coup). */
+  let recul = 0;
+  let intensite = 0;
+  let themeClair = false;
 
   /** Les événements du dernier pas (`EV_*`) : de quoi dessiner les sensations, rien d'autre. */
   function evenements(): void {
@@ -192,6 +236,18 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       effets.poussiere(cx, cy, 8, couleurs.papier);
       effets.trainee(cx, cy, partie.g, couleurs.diamant);
       heros.repartir();
+    }
+    // Lot GR6 : un portail franchi (un souffle de la couleur du portail, jamais une secousse), le bond du ressort ; l'annonce du mode ou de la vitesse
+    if (ev & EV_PORTAIL && partie.portail !== null) {
+      effets.etincelles(cx, cy, couleurDuPortail(partie.portail, couleurs.papier), 14);
+      effets.poussiere(cx, cy, 6, couleurDuPortail(partie.portail, couleurs.papier));
+      const a = annonces.portail(partie.portail, partie.tick);
+      if (estPortailDeVitesse(partie.portail)) annonceVitesse = a as AnnonceVitesse;
+      else annonceMode = { ...(a as AnnonceMode), couleur: enCss(couleurDuPortail(partie.portail, couleurs.papier)) };
+    }
+    if (ev & EV_BOND) {
+      effets.poussiere(cx, pieds, 4, couleurs.papier, partie.g > 0 ? 1 : -1);
+      heros.bondir();
     }
     if (ev & EV_PIECE) effets.etincelles(cx, cy, couleurs.papier, 8);
     if (ev & EV_GEMME) effets.etincelles(cx, cy, couleurs.diamant, 18);
@@ -219,6 +275,11 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
     const yU = partie.precY + (partie.y - partie.precY) * a;
     const temps = partie.tick / TICKS_PAR_SECONDE;
     monde.maj({ cam, largeur: largeurVue, tick: partie.tick, temps }, partie);
+    // Lot GR6 : la vitesse réelle de la caméra (portails compris) règle les lignes de vitesse et le recul ; en pause (aucun pas depuis un moment) le souffle de l'avion se tait
+    const vitesse = vitesseCamera(partie.cam, partie.regles, partie.facteur) / CASE;
+    recul = lisser(recul, reculVoulu(vitesse), dt, TAUX_RECUL);
+    intensite = lisser(intensite, intensiteLignes(vitesse), dt, TAUX_LIGNES);
+    sons.souffle(partie.mode === MODE_AVION && partie.bouton && !partie.finie && maintenant - tDernierPas < 250);
     heros.poser({
       x: xU / CASE + TAILLE_HEROS / 2,
       y: -(yU / CASE + TAILLE_HEROS / 2),
@@ -234,11 +295,15 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       aimant: partie.aimant,
       mort: partie.mort !== 0,
       reduit: o.reduit,
+      mode: partie.mode,
+      vyUp: -partie.vy / CASE,
     });
     effets.dessiner();
     const secousse = effets.decalage(horloge);
-    camera.position.x = cam + largeurVue / 2 + secousse.x;
+    // le recul : la caméra se décale vers l'avant, le héros se voit plus près du bord gauche (on voit plus loin devant) — en portrait comme en paysage, jamais d'effet sous le seuil
+    camera.position.x = cam + largeurVue / 2 + secousse.x + recul;
     camera.position.y = MILIEU + secousse.y;
+    lignes.maj(intensite, temps, vitesse, { largeur: largeurVue, hauteur: camera.top - camera.bottom, gauche: camera.position.x - largeurVue / 2, centreY: camera.position.y });
     renderer.render(scene, camera);
 
     const prets = (contenu as ContenuDeScene).pretSeuils;
@@ -254,8 +319,12 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       theme: themeVu ? { id: themeVu, nom: o.t(`theme.${themeVu}`), meca: o.t(`theme.${themeVu}.meca`), couleur: enCss(THEMES[themeVu].tiles.rimSide), age: partie.tick - themeDepuis } : null,
       mort: partie.mort !== 0 ? (CLE_MORT[partie.mort] ?? "vide") : null,
       bilan: partie.mort !== 0 ? { distance: partie.distance, pieces: partie.pieces, gemmes: partie.gemmes, theme: themeVu ? o.t(`theme.${themeVu}`) : "", mult: partie.multMax } : null,
-      robot: appuisDuRobot !== null,
+      robot: changementsDuRobot !== null,
       reglage: mentionDesReglages,
+      mode: partie.mode,
+      tick: partie.tick,
+      annonceMode,
+      annonceVitesse,
     });
   }
 
@@ -266,10 +335,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
         effets.avancerPas(); // l'éclat de la mort finit de s'envoler pendant qu'on voit la cause
         return;
       }
-      if (appuisDuRobot && appuisDuRobot[suiteDuRobot] === partie.tick) {
-        partie.appuyer();
-        suiteDuRobot++;
-      }
+      if (changementsDuRobot && changementsDuRobot[suiteDuRobot] === partie.tick) jouerLeChangement(suiteDuRobot++);
       const avant = photo();
       partie.avancer();
       tDernierPas = performance.now();
@@ -283,9 +349,11 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
         if (themeVu !== null) sons.jouer({ son: "theme" }); // pas au départ : seulement quand le décor change
         themeVu = th;
         themeDepuis = partie.tick;
+        themeClair = luminance(THEMES[th].palette.background) > 0.5;
+        lignes.colorer(themeClair ? couleurs.encre : couleurs.papier);
         musique.scene(`theme:${th}`); // la musique suit le thème (le kit n'annonce que celui du départ)
       }
-      heros.avancerPas((partie.x - partie.precX) / CASE, partie.sol);
+      heros.avancerPas((partie.x - partie.precX) / CASE, partie.sol, partie.mode, (partie.x + TAILLE / 2) / CASE, -(partie.y + TAILLE / 2) / CASE, -partie.vy / CASE);
       evenements();
       for (const e of sonsDuPas(partie.ev, avant, photo())) sons.jouer(e);
       effets.avancerPas();
@@ -296,9 +364,13 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
     action(id) {
       if (id === "toucher") toucher();
     },
+    // Lot GR6 : la touche ou le bouton de manette de « toucher » est levé (ou la pause, la fin, la perte du focus : le kit relâche tout) : le doigt se lève.
+    actionRelachee(id) {
+      if (id === "toucher") lacher();
+    },
     // La barre du kit : le score, puis la distance et le multiplicateur (le HUD de la scène les montre en grand ; la pause et les lecteurs d'écran lisent ceux-ci).
     hud: () => ({ principal: VARIANTE.formatScore([partie.score], o.langue), secondaire: o.t("hud.detail", { m: partie.distance, mult: partie.mult }) }),
-    resultat: () => ({ score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, appuis) }),
+    resultat: () => ({ score: VARIANTE.score(partie.resultat()), rediffusion: enregistrer(contenu, partie.changements) }),
     fantome(r) {
       // Pas de fantôme (`sansFantome`) ; la rediffusion d'un autre jour ou abîmée ne se lit pas.
       if (r) {
@@ -313,6 +385,12 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
     detruire() {
       observateur.disconnect();
       removeEventListener("keydown", surTouche);
+      removeEventListener("pointerup", surLever);
+      removeEventListener("pointercancel", surLever);
+      removeEventListener("blur", toutLever);
+      document.removeEventListener("visibilitychange", surVisibilite);
+      sons.arreter();
+      lignes.detruire();
       for (const g of GESTES) removeEventListener(g, geste);
       hote.removeEventListener("pointerdown", surPointeur);
       hud.detruire();

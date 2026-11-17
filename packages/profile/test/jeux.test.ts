@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { ETATS_JEU, JEUX_PUBLICS, etatDansListe as etatCore, etatsDeReponse as reponseCore, etatsParDefaut as defautCore } from "@cdj/core/jeux";
 import { CLES_GARDEES, clesDeDonnees } from "../src/generation";
 import {
+  DELAI_LECTURE_JEUX_MS,
+  DELAI_RELECTURE_JEUX_MS,
   ENTETE_APERCU,
   adopterCleApercu,
   cleApercuKey,
@@ -122,5 +124,69 @@ describe("le démarrage d'un jeu", () => {
     expect(await demarrerInterrupteur({ jeu: "track", adresse: { pathname: "/", search: "", hash: "" }, base: "https://x.test", fetchImpl, ...commun })).toEqual({ vue: "ouvert" });
     expect(await demarrerInterrupteur({ jeu: "tower", adresse: { pathname: "/", search: "", hash: "" }, base: "demo", ...commun })).toEqual({ vue: "ouvert" });
     expect(await demarrerInterrupteur({ jeu: "tower", adresse: { pathname: "/", search: "", hash: "" }, base: null, ...commun })).toEqual({ vue: "ouvert" });
+  });
+
+  // Serveur de la recette à zéro instance : la première lecture dépasse 5 s. Avant, le jeu `on` passait sur « Bientôt » ; maintenant la lecture est relue une fois, avec un délai plus long.
+  describe("un serveur qui se réveille", () => {
+    const commun = () => ({ remplacerAdresse: vi.fn(), poserCle: vi.fn(), stockage: memoire(), adresse: { pathname: "/", search: "", hash: "" }, base: "https://x.test" });
+    /** Un `fetch` dont l'appel `n` (à partir de 1) est la fonction `reponses[n - 1]` ; celui qui reçoit le signal d'abandon le respecte. */
+    const sequence = (...reponses: Array<(signal: AbortSignal) => Promise<Response>>) => {
+      const appels: number[] = [];
+      const fetchImpl = (async (_u: unknown, init?: RequestInit) => {
+        appels.push(appels.length);
+        const reponse = reponses[Math.min(appels.length, reponses.length) - 1];
+        return reponse!(init!.signal as AbortSignal);
+      }) as never;
+      return { fetchImpl, appels };
+    };
+    const silence = (signal: AbortSignal) => new Promise<Response>((_, rejeter) => signal.addEventListener("abort", () => rejeter(new DOMException("abandon", "AbortError"))));
+    const jeux = (etats: Record<string, string>) => async () => new Response(JSON.stringify({ jeux: etats }));
+
+    it("délai dépassé puis réponse : le jeu `on` reste ouvert", async () => {
+      vi.useFakeTimers();
+      try {
+        const { fetchImpl, appels } = sequence(silence, jeux({ gravity: "on" }));
+        const attente = demarrerInterrupteur({ jeu: "gravity", fetchImpl, ...commun() });
+        await vi.advanceTimersByTimeAsync(DELAI_LECTURE_JEUX_MS + 1);
+        expect(await attente).toEqual({ vue: "ouvert" });
+        expect(appels).toHaveLength(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("la relecture a un délai plus long, et deux échecs de suite donnent la liste du site", async () => {
+      vi.useFakeTimers();
+      try {
+        const { fetchImpl, appels } = sequence(silence, silence);
+        let fini = false;
+        const attente = demarrerInterrupteur({ jeu: "gravity", fetchImpl, ...commun() }).then((o) => ((fini = true), o));
+        await vi.advanceTimersByTimeAsync(DELAI_LECTURE_JEUX_MS + 1);
+        await vi.advanceTimersByTimeAsync(DELAI_RELECTURE_JEUX_MS - 1000);
+        expect(fini).toBe(false); // la seconde lecture attend encore
+        await vi.advanceTimersByTimeAsync(2000);
+        expect(await attente).toEqual({ vue: "bientot" });
+        expect(appels).toHaveLength(2); // une seule relecture, pas de boucle
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("une panne 5xx se relit, un refus 4xx ne se relit pas", async () => {
+      const panne = async () => new Response("{}", { status: 503 });
+      const a = sequence(panne, jeux({ gravity: "on" }));
+      expect(await demarrerInterrupteur({ jeu: "gravity", fetchImpl: a.fetchImpl, ...commun() })).toEqual({ vue: "ouvert" });
+      expect(a.appels).toHaveLength(2);
+      const refus = async () => new Response("{}", { status: 429 });
+      const b = sequence(refus, jeux({ gravity: "on" }));
+      expect(await demarrerInterrupteur({ jeu: "gravity", fetchImpl: b.fetchImpl, ...commun() })).toEqual({ vue: "bientot" });
+      expect(b.appels).toHaveLength(1);
+    });
+
+    it("une réponse qui arrive du premier coup n'est lue qu'une fois", async () => {
+      const a = sequence(jeux({ gravity: "off" }));
+      expect(await demarrerInterrupteur({ jeu: "gravity", fetchImpl: a.fetchImpl, ...commun() })).toEqual({ vue: "bientot" });
+      expect(a.appels).toHaveLength(1);
+    });
   });
 });

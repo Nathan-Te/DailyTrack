@@ -72,9 +72,18 @@ export function fetchAvecCleApercu(base: string, cle: string, fetchImpl: FetchLi
   };
 }
 
-/** Lit `GET /api/jeux` : la liste des états, ou `null` sans réponse lisible (le site prend alors la liste construite). Ne lève jamais. */
+/** Délai de la première lecture de `GET /api/jeux`, puis de la seconde (le serveur de la recette et des aperçus dort à zéro instance : son réveil dépasse 5 s ; Cloud Run coupe à 30 s). */
+export const DELAI_LECTURE_JEUX_MS = 5000;
+export const DELAI_RELECTURE_JEUX_MS = 15_000;
+
+/**
+ * Lit `GET /api/jeux` : la liste des états, ou `null` sans réponse lisible (le site prend alors la liste construite, où un jeu pas encore public est « Bientôt »). Ne lève jamais.
+ * **Une panne passagère se relit une fois, avec un délai plus long** (délai dépassé, réseau, 5xx : un serveur qui se réveille) avant de renoncer : sinon un jeu `on` s'affichait puis passait
+ * sur « Bientôt » au bout de 5 s. Un refus du serveur (4xx) ne se relit pas.
+ */
 export async function lireEtatsDesJeux(base: string, fetchImpl?: FetchLike): Promise<{ etats: Record<string, EtatJeu>; apercuDePr: boolean } | null> {
-  const r = await call<unknown>(base, "GET", "/api/jeux", undefined, 5000, undefined, fetchImpl);
+  let r = await call<unknown>(base, "GET", "/api/jeux", undefined, DELAI_LECTURE_JEUX_MS, undefined, fetchImpl);
+  if (!r.ok && (r.status === 0 || r.status >= 500)) r = await call<unknown>(base, "GET", "/api/jeux", undefined, DELAI_RELECTURE_JEUX_MS, undefined, fetchImpl);
   if (!r.ok) return null;
   const etats = etatsDeReponse(r.data);
   return etats ? { etats, apercuDePr: (r.data as { apercu?: unknown }).apercu === true } : null;

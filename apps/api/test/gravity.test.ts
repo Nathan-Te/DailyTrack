@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, DUREE_MAX_TICKS, MAX_APPUIS, dailyGravity, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsDuRobot, terrainDuJour, themeDuJour } from "@cdj/gravity-sim";
+import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, DUREE_MAX_TICKS, MAX_CHANGEMENTS, dailyGravity, enregistrer, figerJour, jouer, jouerRobot, scoreParColonnes, seuilsDe, seuilsDuRobot, terrainDuJour, themeDuJour } from "@cdj/gravity-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_GRAVITY } from "../scripts/gravity-essais";
 import { contenuDeGravity } from "../src/gravity";
@@ -75,7 +75,7 @@ describe("Gravity sur le serveur", () => {
     expect(cles.map((x) => x.cle1)).toEqual([...cles.map((x) => x.cle1)].sort((x, y) => x - y)); // cle1 = −score : croissant
   });
 
-  it("refuse les copies (deux fois les mêmes appuis), les rediffusions illisibles, trafiquées, trop longues et les autres jours", async () => {
+  it("refuse les copies (deux fois les mêmes changements), les rediffusions illisibles, trafiquées, trop longues et les autres jours", async () => {
     const t = await monter({ copies: false });
     const c = dailyGravity(JOUR);
     expect((await envoyer(t, 1, 2)).status).toBe(200);
@@ -88,9 +88,9 @@ describe("Gravity sur le serveur", () => {
     const bon = enregistrer(c, [30, 200]);
     await refuse(6, bon.slice(0, bon.length - 2), "invalid_replay"); // tronquée
     await refuse(7, bon.replace(/.$/, "!"), "invalid_replay"); // un caractère hors alphabet
-    const trop = Array.from({ length: MAX_APPUIS + 1 }, (_, i) => i * 3 + 5);
-    await refuse(8, enregistrer(c, trop), "invalid_replay"); // trop d'appuis
-    await refuse(9, enregistrer(c, [DUREE_MAX_TICKS + 5]), "invalid_replay"); // un appui après les dix minutes
+    const trop = Array.from({ length: MAX_CHANGEMENTS + 1 }, (_, i) => i * 3 + 5);
+    await refuse(8, enregistrer(c, trop), "invalid_replay"); // trop de changements
+    await refuse(9, enregistrer(c, [DUREE_MAX_TICKS + 5]), "invalid_replay"); // un changement après les dix minutes
     expect((await t.call("POST", "/api/gravity/submit", { replay: enregistrer(dailyGravity(JOUR - 1), []), name: "Hier" }, { headers: entete(10) })).status).toBe(409);
     expect((await t.call("POST", "/api/gravity/submit", { name: "Sans" }, { headers: entete(11) })).status).toBeGreaterThanOrEqual(400);
   });
@@ -103,6 +103,22 @@ describe("Gravity sur le serveur", () => {
     expect(r.status).toBe(200);
     expect(r.body.score).toEqual(scoreParColonnes(jouer(terrainDuJour(c), [30, 200])));
   });
+
+  it("lot GR6 : une partie à travers les modes de vol (appuis ET relâchés, portails) est rejouée au bit près par le serveur — le score est celui du jeu", async () => {
+    const t = await monter();
+    const c = dailyGravity(JOUR);
+    const robot = jouerRobot(terrainDuJour(c), { maxTicks: 22000 });
+    expect(robot.partie.modeLoin, "le robot doit avoir traversé un mode de vol").not.toBe(0);
+    const attendu = scoreParColonnes(jouer(terrainDuJour(c), robot.changements));
+    const r = await t.call("POST", "/api/gravity/submit", { replay: enregistrer(c, robot.changements), name: "Pilote" }, { headers: entete(1) });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.score).toEqual(attendu);
+    // Une rediffusion dont un relâché est retiré est une autre partie : le serveur la rejoue telle quelle (son score peut seulement différer).
+    const trafiquee = robot.changements.filter((_, i) => i !== 40);
+    const r2 = await t.call("POST", "/api/gravity/submit", { replay: enregistrer(c, trafiquee), name: "Trafiquee" }, { headers: entete(2) });
+    expect(r2.status).toBe(200);
+    expect(r2.body.score).toEqual(scoreParColonnes(jouer(terrainDuJour(c), trafiquee)));
+  }, 60000);
 
   it("une partie vide est rejouée jusqu'à sa mort, classée la dernière", async () => {
     const t = await monter();

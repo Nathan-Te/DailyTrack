@@ -114,7 +114,7 @@ test.describe("les écrans du kit : mise en page", () => {
       await verifier(page, "la pause", taille);
       await page.locator("#jeu-reprendre").click();
       await page.evaluate(() => window.__jeu.avancer(6000)); // le temps est écoulé : l'arrivée
-      await expect(page.locator("#jeu-fin")).toBeVisible();
+      await expect(page.locator("#jeu-fin")).toBeVisible({ timeout: 20_000 }); // l'arrivée termine d'un trait le calcul des seuils du jour (le robot : lot GR6, plus long avec les modes de vol)
       await verifier(page, "la fin de partie", taille);
       await context.close();
     });

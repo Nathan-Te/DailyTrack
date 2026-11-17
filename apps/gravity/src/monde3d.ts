@@ -4,10 +4,11 @@
 // Le monde est infini : un morceau (16 colonnes) est construit quand il entre dans le champ et libéré quand il en sort ; un fond (une « bande » de 19 morceaux, un thème) est construit de même, **coupé net à la frontière du thème**
 // par deux plans de découpe. Repère : x vers la droite en cases, y = −rangée (la rangée 0 est en haut), comme `@cdj/visuels`.
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, Plane, Vector3, type Material } from "three";
-import { ALTERNE_A, ALTERNE_B, BLOC, CLIGNOTANT, GLACE, INVERSEUR, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, PIQUE, TAPIS, VENT, VIDE, caseDe, type Partie, type Terrain } from "@cdj/gravity-sim";
+import { ALTERNE_A, ALTERNE_B, BLOC, CLIGNOTANT, GLACE, INVERSEUR, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, PIQUE, TAPIS, VENT, VIDE, caseDe, type Partie, type Terrain, type TypePortail } from "@cdj/gravity-sim";
 import { BELT_BAND, BELT_GAP, BELT_STYLE, THEMES, WIND_STYLE, type Theme } from "@cdj/visuels/plateformes";
 import { Art, artGeometry, buildParallax, buildTileArt, layerOffset, visibleLayers, type CodesTuiles } from "@cdj/visuels/plateformes/three";
 import type { CouleursGravity } from "./couleurs";
+import { dessinCadrePortail, dessinIconePortail, dessinVoilePortail } from "./dessinsModes";
 import { ajouterPique, dessinBloc, dessinBonus, dessinChevrons, dessinFleche, dessinGemme, dessinInverseur, dessinPiece, etatDuBloc, type TypeBloc, type VarianteBloc } from "./dessins";
 
 /** Colonnes de contexte lues de chaque côté d'un morceau pour que ses bords se raccordent à ses voisins (tuiles, ombres de profondeur). */
@@ -85,8 +86,17 @@ interface VentVu {
   cx: number;
   rangee: number;
 }
+/** Un portail (lot GR6) : son cadre et son voile (qui battent doucement), son icône (qui reste droite). */
+interface PortailVu {
+  cadre: Mesh;
+  voile: Mesh;
+  icone: Mesh;
+  /** Un déphasage propre (le battement), en radians. */
+  phase: number;
+}
 interface MorceauVu {
   groupe: Group;
+  portails: PortailVu[];
   decalage: number;
   blocs: BlocVu[];
   chevrons: ChevronsVu[];
@@ -130,6 +140,9 @@ export class Monde {
   private readonly geoInverseur: BufferGeometry;
   private readonly geoFleche: BufferGeometry;
   private readonly geoBloc = new Map<string, BufferGeometry>();
+  /** Lot GR6 : les tampons des portails, gardés par type et par hauteur libre (en rangées) — partagés par tous les portails qui se ressemblent. */
+  private readonly geoPortails = new Map<string, BufferGeometry>();
+  private readonly matVoile = new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.24, side: DoubleSide, depthWrite: false });
 
   /** Lot GR5 : la longueur d'un thème (un essai peut la régler : `?longueur=`) vient des règles du terrain, plus d'une constante. */
   private readonly morceauxParTheme: number;
@@ -166,7 +179,7 @@ export class Monde {
     const m = this.terrain.morceau(k);
     const theme = THEMES[m.theme];
     const groupe = new Group();
-    const vu: MorceauVu = { groupe, decalage: m.decalage, blocs: [], chevrons: [], vent: [], pieces: [], gemmes: [], bonus: [], geometries: [], materiaux: [] };
+    const vu: MorceauVu = { groupe, portails: [], decalage: m.decalage, blocs: [], chevrons: [], vent: [], pieces: [], gemmes: [], bonus: [], geometries: [], materiaux: [] };
     const x0 = k * LARGEUR_MORCEAU;
 
     // Les tuiles : la grille du morceau avec `MARGE` colonnes de ses voisins de chaque côté ; seules les colonnes du morceau sont gardées.
@@ -261,6 +274,26 @@ export class Monde {
       }
     }
 
+    // Les portails (lot GR6) : une arche de papier et d'encre sur la plus grande ouverture de leur colonne, avec l'icône de leur mode.
+    for (const [i, p] of m.portails.entries()) {
+      const ouverture = this.ouverture(m.cases, p.c);
+      if (!ouverture) continue;
+      const rangees = ouverture.bas - ouverture.haut + 1;
+      const x = x0 + p.c + 0.5;
+      const y = -(ouverture.haut + ouverture.bas + 1) / 2;
+      const poser = (mesh: Mesh, z: number): Mesh => {
+        mesh.position.set(x, y, z);
+        groupe.add(mesh);
+        return mesh;
+      };
+      vu.portails.push({
+        cadre: poser(new Mesh(this.geoPortail(p.type, rangees, "cadre"), this.mat), 0.06),
+        voile: poser(new Mesh(this.geoPortail(p.type, rangees, "voile"), this.matVoile), 0.05),
+        icone: poser(new Mesh(this.geoPortail(p.type, rangees, "icone"), this.mat), 0.07),
+        phase: i * 1.3 + p.c,
+      });
+    }
+
     // Les objets à ramasser : une maille par objet, partagent leur géométrie ; leur place et leur visibilité sont posées à chaque image.
     for (let i = 0; i < m.pieces.length; i++) vu.pieces.push(this.objet(groupe, this.geoPiece));
     for (const g of m.gemmes) {
@@ -274,6 +307,34 @@ export class Monde {
       vu.bonus.push(o);
     }
     return vu;
+  }
+
+  /** La plus grande ouverture (rangées `haut` à `bas`, comprises) de la colonne `c` du morceau : ce que traverse le joueur (le vide, le vent et les piques ne sont pas de la matière). Null s'il n'y en a pas. */
+  private ouverture(cases: Uint8Array, c: number): { haut: number; bas: number } | null {
+    let meilleure: { haut: number; bas: number } | null = null;
+    let debut = -1;
+    for (let r = 0; r <= LIGNES; r++) {
+      const type = r < LIGNES ? cases[c * LIGNES + r]! : BLOC;
+      const libre = type === VIDE || type === VENT || type === PIQUE;
+      if (libre && debut < 0) debut = r;
+      if (!libre && debut >= 0) {
+        if (!meilleure || r - debut > meilleure.bas - meilleure.haut + 1) meilleure = { haut: debut, bas: r - 1 };
+        debut = -1;
+      }
+    }
+    return meilleure;
+  }
+
+  /** Un tampon de portail : le cadre (encre et bande de la couleur du mode), le voile ou l'icône ; gardé par type, partie et hauteur (le dessin de l'icône n'en dépend pas). */
+  private geoPortail(type: TypePortail, rangees: number, partie: "cadre" | "voile" | "icone"): BufferGeometry {
+    const cle = partie === "icone" ? `${type}:icone` : `${type}:${rangees}:${partie}`;
+    let g = this.geoPortails.get(cle);
+    if (!g) {
+      const demi = Math.max(0.6, rangees / 2 - 0.08);
+      g = artGeometry(partie === "cadre" ? dessinCadrePortail(type, demi, this.c.encre, this.c.papier) : partie === "voile" ? dessinVoilePortail(type, demi, this.c.papier) : dessinIconePortail(type, this.c.encre, this.c.papier));
+      this.geoPortails.set(cle, g);
+    }
+    return g;
   }
 
   private objet(groupe: Group, geo: BufferGeometry): Mesh {
@@ -368,6 +429,12 @@ export class Monde {
         }
       }
       for (const ch of vu.chevrons) ch.mesh.position.x = ch.x0 + (this.reduit ? 0 : decalageTapis);
+      // les portails battent doucement (le cadre s'élargit et se resserre) ; mouvement réduit : ils restent fixes
+      for (const pt of vu.portails) {
+        const battement = this.reduit ? 1 : 1 + 0.07 * Math.sin(e.temps * 4.5 + pt.phase);
+        pt.cadre.scale.x = battement;
+        pt.voile.scale.x = battement;
+      }
       for (const v of vu.vent) {
         for (let i = 0; i < v.fleches.length; i++) {
           const f = v.fleches[i]!;
@@ -411,7 +478,9 @@ export class Monde {
     }
     this.bandes.clear();
     for (const g of this.partagees) g.dispose();
-    for (const mt of [this.mat, this.matVentFond, this.matVentBord, this.matFleche]) mt.dispose();
+    for (const g of this.geoPortails.values()) g.dispose();
+    this.geoPortails.clear();
+    for (const mt of [this.mat, this.matVentFond, this.matVentBord, this.matFleche, this.matVoile]) mt.dispose();
     this.groupe.clear();
   }
 }

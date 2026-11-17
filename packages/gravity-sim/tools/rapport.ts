@@ -39,7 +39,7 @@ for (let j = du; j < du + jours; j++) {
   const serres = [...r.rapport.appuis].sort((a, b) => a.fenetre - b.fenetre).slice(0, nbSerres);
   const total = r.rapport.piecesPrises + r.rapport.piecesLachees;
   const motifMort = mort ? terrain.morceau(Math.trunc((p.x - 0) / (16 * 4096))).motif : "";
-  let ligne = `${formatDay(j)} ${bon ? "OK    " : "ÉCHEC "} ${String(p.distance).padStart(4)} m  score ${String(p.score).padStart(6)}  pièces ${r.rapport.piecesPrises}/${total}  appuis ${String(r.appuis.length).padStart(3)}  ${(dt / 1000).toFixed(2)} s`;
+  let ligne = `${formatDay(j)} ${bon ? "OK    " : "ÉCHEC "} ${String(p.distance).padStart(4)} m  score ${String(p.score).padStart(6)}  pièces ${r.rapport.piecesPrises}/${total}  appuis ${String(r.changements.length).padStart(3)}  ${(dt / 1000).toFixed(2)} s`;
   if (nbSerres > 0 && serres.length > 0) ligne += `  serrés ${serres.map((a) => `m${a.morceau} ${a.motif} ${a.fenetre}`).join(" · ")}`;
   console.log(ligne);
   if (base) {

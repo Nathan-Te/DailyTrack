@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-2985 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3001 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3531,7 +3531,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `commandes.action.toucher` | Inverser la gravité | Flip gravity |
+| `commandes.action.toucher` | Toucher (inverser, voler, bondir) | Press (flip, fly, bounce) |
 
 ### Comment jouer (`aide.*`, `apps/gravity/src/catalogue.*.ts`)
 
@@ -3546,6 +3546,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.bloc.neon` | Néon : deux couleurs, une seule est solide à la fois. | Neon: two colors, and only one is solid at a time. |
 | `aide.bloc.foret` | Forêt, courants d'air : ils te portent vers le haut. | Forest: air currents lift you up. |
 | `aide.bloc.inverseur` | Partout, l'inverseur : il change ta gravité dès que tu le touches. | Any theme: the gravity switch flips your gravity the moment you touch it. |
+| `aide.mode.avion` | Portail avion : maintiens pour monter, relâche pour descendre. Le sol et le plafond ne tuent pas. | Plane gate: hold to climb, release to dive. The floor and ceiling don't kill you. |
+| `aide.mode.onde` | Portail onde : maintiens pour monter à 45°, relâche pour descendre à 45°. Les piques bordent le couloir. | Wave gate: hold to climb at 45°, release to drop at 45°. Spikes line the corridor. |
+| `aide.mode.ressort` | Portail ressort : chaque appui est un bond, même en l'air. | Spring gate: every press is a bounce, even in midair. |
+| `aide.vitesse` | Portails ›, ›› et ››› : tu vas plus vite jusqu'au suivant ; deux tirets : plus lent. Des lignes filent quand ça va très vite. | Gates ›, ›› and ›››: you go faster until the next one; two dashes: slower. Lines streak by at top speed. |
 | `aide.bouclier` | Bouclier : il te sauve une fois (un pique, une chute, le bord de l'écran). Il est au même endroit pour tout le monde. | Shield: saves you once (a spike, a fall, the screen edge). It sits in the same spot for everyone. |
 | `aide.aimant` | Aimant : pendant 8 secondes, les pièces proches viennent à toi. | Magnet: for 8 seconds, nearby coins fly to you. |
 | `aide.mult` | Multiplicateur : +1 toutes les 10 pièces d'affilée, jusqu'à ×5. Une pièce ratée, et il retombe à ×1. | Multiplier: +1 every 10 coins in a row, up to ×5. Miss a coin and it drops back to ×1. |
@@ -3661,6 +3665,19 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
 | `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
 
+### mode (`mode.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `mode.gravite` | Gravité | Gravity |
+| `mode.gravite.consigne` | Touche pour inverser la gravité | Touch to flip gravity |
+| `mode.avion` | Avion | Plane |
+| `mode.avion.consigne` | Maintiens pour monter, relâche pour descendre | Hold to climb, release to dive |
+| `mode.onde` | Onde | Wave |
+| `mode.onde.consigne` | Maintiens pour monter, relâche pour descendre : toujours en diagonale | Hold to climb, release to drop: always diagonal |
+| `mode.ressort` | Ressort | Spring |
+| `mode.ressort.consigne` | Touche pour bondir, même en l'air | Touch to bounce, even in midair |
+
 ### mort (`mort.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
@@ -3688,11 +3705,20 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `hud.bouclier` | Bouclier | Shield |
 | `hud.aimant` | Aimant · {s} s | Magnet · {s} s |
 
+### Portail (`portail.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `portail.lent` | Plus lent | Slower |
+| `portail.v1` | Plus vite › | Faster › |
+| `portail.v2` | Plus vite ›› | Faster ›› |
+| `portail.v3` | Plus vite ››› | Faster ››› |
+
 ### scene (`scene.*`, `apps/gravity/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | Le coureur et le niveau du jour : touche l'écran pour inverser la gravité | The runner and today's level: touch the screen to flip gravity |
+| `scene.aria` | Le coureur et le niveau du jour : touche l'écran pour inverser la gravité, maintiens-le pour voler | The runner and today's level: touch the screen to flip gravity, hold it to fly |
 
 ### Thèmes (`theme.*`, `apps/gravity/src/catalogue.*.ts`)
 

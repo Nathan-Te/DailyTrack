@@ -1,7 +1,7 @@
 // Les SONS de « Gravity » (lot GR4), la **décision** : de chaque événement de la simulation, la liste des notes à jouer (hauteur, durée, forme, niveau). **Pur** : aucun `AudioContext` ici, `sons.ts` ne fait que les lire. Web Audio
 // procédural, sans fichier (rien à télécharger : le poids du premier chargement ne bouge pas), sur le modèle de Blocks. **Présentation seulement : rien ici ne touche la simulation ni la rediffusion.**
 // Le caractère : net mais jamais punitif — des sinus et des triangles, jamais d'onde carrée, des niveaux bas (le plus fort est la mort, à 0,3) ; la chute du multiplicateur et la mort descendent doucement.
-import { EV_ATTERRISSAGE, EV_BONUS, EV_BOUCLIER, EV_GEMME, EV_INVERSEUR, EV_INVERSION, EV_MANQUEE, EV_MORT, EV_PIECE } from "@cdj/gravity-sim";
+import { EV_ATTERRISSAGE, EV_BOND, EV_BONUS, EV_BOUCLIER, EV_GEMME, EV_INVERSEUR, EV_INVERSION, EV_MANQUEE, EV_MORT, EV_PIECE, EV_PORTAIL, EV_VIRAGE, type TypePortail } from "@cdj/gravity-sim";
 
 export type FormeOnde = "sine" | "triangle";
 export interface Note {
@@ -28,7 +28,11 @@ export type Evenement =
   | { son: "bonus"; quoi: "bouclier" | "aimant" }
   | { son: "bouclierConsomme" }
   | { son: "mort" }
-  | { son: "theme" };
+  | { son: "theme" }
+  // Lot GR6 : un portail franchi (un son par type), le changement de sens de l'onde, le bond du ressort.
+  | { son: "portail"; type: TypePortail }
+  | { son: "virage"; vers: "haut" | "bas" }
+  | { son: "bond" };
 
 /** Ce que la scène lit de la simulation avant et après un pas : de quoi savoir ce qui vient de changer. */
 export interface Photo {
@@ -37,6 +41,9 @@ export interface Photo {
   chaine: number;
   bouclier: boolean;
   aimant: number;
+  /** Lot GR6 : le portail franchi à ce pas (valable quand `EV_PORTAIL` est levé) et le sens vertical du héros (vrai : il monte). */
+  portail: TypePortail | null;
+  monte: boolean;
 }
 
 /** La hauteur d'une pièce : sol à 784 Hz (Sol₅), **un demi-ton de plus toutes les deux pièces d'affilée**, jusqu'à l'octave (24 pièces) — la série se monte à l'oreille, doucement, et retombe avec elle. */
@@ -60,6 +67,9 @@ export function sonsDuPas(ev: number, avant: Photo, apres: Photo): Evenement[] {
   if (ev & EV_GEMME) sons.push({ son: "gemme" });
   if (ev & EV_BONUS) sons.push({ son: "bonus", quoi: apres.bouclier && !avant.bouclier ? "bouclier" : "aimant" });
   if (ev & EV_BOUCLIER) sons.push({ son: "bouclierConsomme" });
+  if ((ev & EV_PORTAIL) !== 0 && apres.portail !== null) sons.push({ son: "portail", type: apres.portail });
+  if (ev & EV_VIRAGE) sons.push({ son: "virage", vers: apres.monte ? "haut" : "bas" });
+  if (ev & EV_BOND) sons.push({ son: "bond" });
   if (ev & EV_MORT) sons.push({ son: "mort" });
   return sons;
 }
@@ -100,10 +110,55 @@ export function notesDe(e: Evenement): Note[] {
     case "mort":
       // Trois notes qui descendent, puis un glissement grave : la partie est finie, sans cris.
       return [note(0, 330, 0.18, 0.28, "triangle"), note(0.16, 262, 0.18, 0.28, "triangle"), note(0.32, 196, 0.2, 0.28, "triangle"), note(0.48, 196, 0.5, 0.26, "triangle", 98)];
+    case "portail":
+      return notesDePortail(e.type);
+    case "virage":
+      // Un « tic » bref : plus aigu quand l'onde part vers le haut, plus grave vers le bas.
+      return [note(0, e.vers === "haut" ? 740 : 560, 0.05, 0.12, "triangle", e.vers === "haut" ? 840 : 480)];
+    case "bond":
+      // Un « boing » : un sinus qui monte vite, un triangle plus haut qui le suit.
+      return [note(0, 210, 0.16, 0.2, "sine", 520), note(0.03, 420, 0.12, 0.08, "triangle", 880)];
     case "theme":
       // Un changement de décor : un glissement qui s'ouvre, puis un accord qui se pose.
       return [note(0, 392, 0.4, 0.15, "sine", 784), note(0.18, 523, 0.3, 0.12, "triangle"), note(0.18, 659, 0.3, 0.12, "triangle")];
   }
+}
+
+/** Lot GR6 — le son d'un portail : l'avion monte en souffle, l'onde zigzague, le ressort fait « boing », la gravité retombe ; **la hauteur d'un portail de vitesse monte avec ses chevrons**, le portail lent est grave et descend. */
+export function notesDePortail(type: TypePortail): Note[] {
+  switch (type) {
+    case "avion":
+      return [note(0, 300, 0.3, 0.2, "sine", 720), note(0.12, 540, 0.2, 0.1, "triangle", 900)];
+    case "onde":
+      return [note(0, 520, 0.07, 0.16, "triangle"), note(0.07, 780, 0.07, 0.16, "triangle"), note(0.14, 520, 0.07, 0.16, "triangle"), note(0.21, 780, 0.12, 0.16, "triangle")];
+    case "ressort":
+      return [note(0, 190, 0.14, 0.22, "sine", 480), note(0.14, 480, 0.12, 0.2, "sine", 250), note(0.26, 250, 0.16, 0.16, "sine", 400)];
+    case "gravite":
+      return [note(0, 660, 0.18, 0.18, "triangle", 330), note(0.12, 330, 0.24, 0.16, "sine", 220)];
+    case "lent":
+      return [note(0, 196, 0.34, 0.22, "triangle", 131)];
+    case "v1":
+      return [note(0, 660, 0.12, 0.16, "triangle")];
+    case "v2":
+      return [note(0, 660, 0.1, 0.16, "triangle"), note(0.08, 880, 0.12, 0.16, "triangle")];
+    case "v3":
+      return [note(0, 660, 0.09, 0.16, "triangle"), note(0.07, 880, 0.09, 0.16, "triangle"), note(0.14, 1175, 0.16, 0.16, "triangle")];
+  }
+}
+
+/** Le souffle de l'avion (lot GR6) : un bruit filtré qui dure tant qu'on maintient. Son niveau de crête (jamais au-dessus de 0,3), la fréquence de son filtre (Hz) et la rapidité de ses fondus (secondes). */
+export const SOUFFLE = { niveau: 0.12, filtre: 780, fondu: 0.07 } as const;
+/** Le niveau voulu du souffle : celui du réglage « Volume des effets » fois son niveau de crête quand l'avion est maintenu (et le jeu tourne), sinon rien. */
+export const niveauDuSouffle = (actif: boolean, volume: number): number => (actif ? niveauEffets(volume) * SOUFFLE.niveau : 0);
+/** `n` échantillons de bruit blanc de −1 à 1 : un petit générateur entier (jamais `Math.random`), le même partout. */
+export function echantillonsDeBruit(n: number): Float32Array {
+  const sortie = new Float32Array(n);
+  let graine = 0x1f2e3d4c;
+  for (let i = 0; i < n; i++) {
+    graine = (Math.imul(graine, 1664525) + 1013904223) >>> 0;
+    sortie[i] = graine / 2147483648 - 1;
+  }
+  return sortie;
 }
 
 /** Le niveau général des effets : le « Volume des effets » du joueur (0 à 1) ; 0 ou illisible : rien ne se joue. */

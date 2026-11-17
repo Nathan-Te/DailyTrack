@@ -26,6 +26,7 @@ test.describe("Gravity : une partie", () => {
       window.__jeu.avancer(400);
       window.__jeu.action("toucher");
       window.__jeu.avancer(60);
+      window.__jeu.relacher("toucher");
     });
     await expect(page.locator("#jeu-hud-score")).not.toHaveText("0");
     await expect(page.locator("#jeu-hud-temps")).toContainText(" m · ×");
@@ -36,7 +37,8 @@ test.describe("Gravity : une partie", () => {
     const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0");
     await lancer(page);
     const attendu = await jouerLeJour(page);
-    await expect(page.locator("#jeu-fin")).toBeVisible();
+    // Le jour de l'essai n'est pas figé : l'écran de fin termine d'un trait le calcul des seuils (le robot, ≈ 1,5 s sous Node, plus avec les modes de vol et le rendu logiciel d'une machine chargée) — 20 s comme `classement.spec.ts`.
+    await expect(page.locator("#jeu-fin")).toBeVisible({ timeout: 20_000 });
     const score = VARIANTE.score(attendu);
     await expect(page.locator("#jeu-fin-score")).toHaveText(VARIANTE.formatScore(score, "fr"));
     expect(await page.evaluate(() => window.__jeu.score())).toEqual(score);
@@ -104,7 +106,7 @@ test.describe("Gravity : une partie", () => {
     const valeurs = (await page.locator(".g-seuils__valeur").allTextContents()).map((v) => Number(v.replace(/\D/g, "")));
     expect(valeurs).toEqual([seuils.bronze, seuils.silver, seuils.gold, seuils.author]);
     await page.locator("#jeu-bouton-aide").click();
-    await expect(page.locator("#jeu-aide .jeu-aide li")).toHaveCount(12);
+    await expect(page.locator("#jeu-aide .jeu-aide li")).toHaveCount(16); // lot GR6 : + les trois modes de vol et les portails de vitesse
     await context.close();
   });
 });

@@ -3,8 +3,11 @@ import * as K from "./constantes";
 import * as M from "./monde";
 import type { Terrain } from "./monde";
 import { Partie, type Resultat } from "./partie";
+import { decider, juger, ATTENTE_MAX, MARGE_PILOTE } from "./pilote";
 const { BONUS_PORTEE, CASE, DUREE_MAX_TICKS, GEMME_PORTEE, LARGEUR_MORCEAU, PIECE_PORTEE, POINTS_GEMME, POINTS_PIECE, TAILLE, TAMPON } = K;
-const { BLOC, GLACE, TAPIS } = M;
+const { BLOC, GLACE, MODE_DU_PORTAIL, TAPIS } = M;
+/** Les facteurs de vitesse que peut avoir un état (le rang est gardé dans ses drapeaux, 3 bits). */
+const FACTEURS: readonly number[] = [K.FACTEUR_NORMAL, K.FACTEUR_LENT, K.FACTEUR_V1, K.FACTEUR_V2, K.FACTEUR_V3];
 
 // LE ROBOT (lot GR2) — il joue la vraie simulation, comme un humain, et sert à deux choses : **prouver que chaque morceau se passe** (`test/franchissabilite.test.ts`) et **donner les seuils des médailles**
 // (`seuils.ts`). Il remplace le pilote d'essai du lot GR1.
@@ -19,6 +22,11 @@ const { BLOC, GLACE, TAPIS } = M;
 //  4. Parmi les suites permises il prend celle qui ramasse le plus (pièces, gemmes, bonus) sur les `ROBOT_VUE_PAS` pas qui viennent — « tout ce que le chemin sûr porte » : les pièces y sont posées —, au milieu de la
 //     plage des ex æquo. Le chemin sûr du générateur ne le guide donc que par ses pièces : jamais un rail, et s'il faut lâcher une pièce pour survivre il la lâche.
 //  5. Le rapport (`RapportRobot`) compte les pièces prises et laissées et note chaque appui avec le morceau, le motif et la fenêtre mesurée : les passages les plus serrés du jour.
+//
+// **Lot GR6 — les trois modes de vol.** La recherche ci-dessus ne joue que le mode gravité (l'inversion n'a lieu qu'au contact d'une surface : peu de coups) : elle s'arrête au prochain portail d'entrée d'une section.
+// Dans l'avion, l'onde et le ressort le bouton change d'état à tout moment : **le pilote** (`pilote.ts`) suit l'axe du morceau et **juge chaque changement sur des copies** (±4 pas, 1,5 s de pilotage), avec les mêmes
+// contraintes d'humain (au moins 6 pas par appui ou relâché en avion et en onde, 12 pas entre deux appuis en gravité et en ressort, jamais le bouclier). **En gravité et en ressort le bouton se relâche au pas suivant** :
+// le relâché n'a aucun effet dans ces modes, la rediffusion porte donc un appui d'un pas, puis son relâché.
 //
 // **Aucun hasard, aucun flottant, aucune horloge** : deux appels donnent la même partie (`test/robot.test.ts`). Le jeu ne charge le robot que pour `?robot` et `?morceau=` (hors production) ou pour les seuils d'un jour
 // qui n'est pas figé ; le serveur ne le lance pas à chaque partie (`seuils.ts`).
@@ -86,8 +94,8 @@ const AUCUN = -1;
 
 /** La surface compte seulement au sol ou dans la grâce, et seulement par ses deux effets : le tapis (vitesse) et la glace (pas d'appui) : 0 autre, 1 tapis, 2 glace. */
 const surfaceDe = (p: Partie): number => (p.sol || p.grace > 0 ? (p.surface === TAPIS ? 1 : p.surface === GLACE ? 2 : 0) : 0);
-/** Les drapeaux d'un état : gravité (bit 0 : 1 = vers le bas), sol (bit 1), surface (bits 2-3), grâce (bits 4-7), tampon (bits 8-11). */
-const drapeaux = (p: Partie): number => (p.g === 1 ? 1 : 0) | (p.sol ? 2 : 0) | (surfaceDe(p) << 2) | (p.grace << 4) | (p.tampon << 8);
+/** Les drapeaux d'un état : gravité (bit 0 : 1 = vers le bas), sol (bit 1), surface (bits 2-3), grâce (bits 4-7), tampon (bits 8-11), rang du facteur de vitesse (bits 12-14). Le mode est toujours la gravité (la recherche s'arrête aux portails d'entrée). */
+const drapeaux = (p: Partie): number => (p.g === 1 ? 1 : 0) | (p.sol ? 2 : 0) | (surfaceDe(p) << 2) | (p.grace << 4) | (p.tampon << 8) | (FACTEURS.indexOf(p.facteur) << 12);
 const empreinte = (tick: number, x: number, y: number, vy: number, f: number): number => {
   const h = Math.imul(tick, 0x7f4a7c15) ^ Math.imul(x, 0x85ebca6b) ^ Math.imul(y, 0xc2b2ae35) ^ Math.imul(vy, 0x27d4eb2f) ^ f;
   return Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
@@ -200,6 +208,9 @@ class Graphe {
     t.surface = s === 1 ? TAPIS : s === 2 ? GLACE : BLOC;
     t.grace = (f >> 4) & 15;
     t.tampon = (f >> 8) & 15;
+    t.mode = 0;
+    t.facteur = FACTEURS[(f >> 12) & 7]!;
+    t.bouton = false;
     t.mort = 0;
     t.ev = 0;
     t.invuln = 0;
@@ -477,6 +488,20 @@ class Recherche {
   }
 }
 
+/** Le x (unités) du prochain portail d'entrée d'un mode de vol après `x`, sinon l'infini (la recherche de gravité n'a pas de limite). */
+const prochainPortailDeMode = (terrain: Terrain, x: number): number => {
+  const largeur = LARGEUR_MORCEAU * CASE;
+  const k0 = Math.trunc(x / largeur);
+  for (let k = k0; k <= k0 + 3; k++) {
+    for (const q of terrain.morceau(k).portails) {
+      const m = MODE_DU_PORTAIL[q.type];
+      const px = k * largeur + q.c * CASE + (CASE >> 1);
+      if (m !== undefined && m !== 0 && px > x) return px;
+    }
+  }
+  return Infinity;
+};
+
 /** Le motif du morceau où est la colonne `x` (en unités) : `special-<thème>` pour la case spéciale d'un thème. */
 const motifEn = (terrain: Terrain, x: number): { morceau: number; motif: string } => {
   const morceau = Math.trunc(x / (LARGEUR_MORCEAU * CASE));
@@ -493,7 +518,8 @@ interface Plan {
 
 /** Ce que rend le robot : les pas de ses appuis, la partie qu'il a jouée (avec ramassage, comme celle d'un joueur) et le rapport. */
 export interface PartieDuRobot {
-  appuis: number[];
+  /** Les pas où le bouton change d'état (appui, relâché, appui…) : la rediffusion du robot. */
+  changements: number[];
   partie: Partie;
   rapport: RapportRobot;
 }
@@ -515,7 +541,6 @@ export function* jouerRobotEnTranches(terrain: Terrain, options: OptionsRobot = 
   const maxTicks = options.maxTicks ?? DUREE_MAX_TICKS;
   const strict = options.strict ?? true;
   const p = new Partie(terrain);
-  const appuis: number[] = [];
   const rapport: RapportRobot = { appuis: [], piecesPrises: 0, piecesLachees: 0, entorses: [] };
   let dernier = -1000;
   const arrets = [...(options.arrets ?? [])].sort((a, b) => a - b);
@@ -564,7 +589,8 @@ export function* jouerRobotEnTranches(terrain: Terrain, options: OptionsRobot = 
     const k = Math.trunc(p.x / largeurMorceau);
     const tMin = dernier + ROBOT_ECART_MIN;
     for (let horizon = ROBOT_HORIZON; horizon >= 0; horizon--) {
-      const but = (k + horizon + 1) * largeurMorceau;
+      // Lot GR6 : la recherche de gravité s'arrête au prochain portail d'entrée d'une section (le pilote prend la suite).
+      const but = Math.min((k + horizon + 1) * largeurMorceau, prochainPortailDeMode(terrain, p.x + (TAILLE >> 1)));
       for (let marge = ROBOT_MARGE; marge >= 0; marge--) {
         const plan = choisir(rechercheDe(but, marge), tMin);
         if (plan) return { ...plan, respecte: marge === ROBOT_MARGE && horizon === ROBOT_HORIZON };
@@ -577,8 +603,37 @@ export function* jouerRobotEnTranches(terrain: Terrain, options: OptionsRobot = 
   let plan: Plan | null = null;
   let planK = -1;
   let replanA = 0;
+  // Le pilote (modes de vol) : les copies des derniers pas (pour juger un changement 4 pas plus tôt), et le nombre de pas déjà attendus pour trouver une fenêtre.
+  const passe: Partie[] = [];
+  let attente = 0;
   while (!p.finie && p.tick < maxTicks && (options.maxDistance === undefined || p.distance < options.maxDistance)) {
     const k = Math.trunc(p.x / largeurMorceau);
+    if (p.mode !== 0) {
+      // ---- Un mode de vol : le pilote.
+      plan = null;
+      const veut = decider(p);
+      if (veut !== p.bouton) {
+        const jug = p.mode === 3 && !veut ? { fenetre: 2 * MARGE_PILOTE + 1, respecte: true } : juger(p, passe);
+        if (!jug.respecte && attente < ATTENTE_MAX) attente++;
+        else {
+          const { morceau, motif } = motifEn(terrain, p.x);
+          if (veut) p.appuyer();
+          else p.relacher();
+          if (!(p.mode === 3 && !veut)) rapport.appuis.push({ tick: p.tick, morceau, motif, fenetre: jug.fenetre, respecte: jug.respecte });
+          if (!jug.respecte && rapport.entorses.at(-1)?.morceau !== morceau) rapport.entorses.push({ morceau, motif, tick: p.tick });
+          if (veut) dernier = p.tick;
+          attente = 0;
+          yield;
+        }
+      } else attente = 0;
+      passe.push(p.copier(true));
+      if (passe.length > MARGE_PILOTE) passe.shift();
+      p.avancer();
+      while (prochainArret < arrets.length && p.distance >= arrets[prochainArret]!) options.surPoint?.(arrets[prochainArret++]!, p);
+      continue;
+    }
+    passe.length = 0;
+    // ---- La gravité : le robot cherche.
     // On planifie au début, après chaque appui, et — si aucun appui n'est prévu — tous les `PAQUET_VUE` pas et à chaque nouveau morceau (le but recule).
     if (plan === null || (plan.t === null && (k !== planK || p.tick >= replanA))) {
       if (graphe.taille > LIMITE_GRAPHE) {
@@ -597,17 +652,16 @@ export function* jouerRobotEnTranches(terrain: Terrain, options: OptionsRobot = 
     if (plan.t === p.tick) {
       const { morceau, motif } = motifEn(terrain, p.x);
       p.appuyer();
-      appuis.push(p.tick);
       dernier = p.tick;
       rapport.appuis.push({ tick: p.tick, morceau, motif, fenetre: plan.fenetre, respecte: plan.respecte });
       plan = null;
-    }
+    } else if (p.bouton) p.relacher(); // un appui d'un pas : le relâché est sans effet en gravité, mais il fait partie de la rediffusion
     p.avancer();
     while (prochainArret < arrets.length && p.distance >= arrets[prochainArret]!) options.surPoint?.(arrets[prochainArret++]!, p);
   }
   rapport.piecesPrises = p.pieces;
   rapport.piecesLachees = p.charges.reduce((n, c) => n + c.pieces.filter((x) => x.etat === 2).length, 0);
-  return { appuis, partie: p, rapport };
+  return { changements: p.changements, partie: p, rapport };
 }
 
 /** Le résultat de la partie du robot, comme le serveur le rejouerait. */

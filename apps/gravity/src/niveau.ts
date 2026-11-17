@@ -1,4 +1,4 @@
-import { GRAVITY_GENERATOR_VERSION, THEMES_GRAVITY, dailyGravity, jouerRobot, lireJourFige, ordreCommencantPar, seuilsEnTranches, terrainDuJour, type Contenu, type Seuils, type ThemeGravity } from "@cdj/gravity-sim";
+import { GRAVITY_GENERATOR_VERSION, MODE_AVION, MODE_ONDE, MODE_RESSORT, THEMES_GRAVITY, dailyGravity, jouerRobot, lireJourFige, ordreCommencantPar, planDuJour, seuilsEnTranches, terrainDuJour, type Contenu, type Seuils, type ThemeGravity } from "@cdj/gravity-sim";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { DISTANCE_DU_ROBOT, distanceAvantMorceau, lireEssais, type EssaiRecette } from "./essai";
@@ -10,6 +10,8 @@ declare const __JOURS_FIGES__: readonly string[] | undefined;
 const JOURS_FIGES: readonly string[] = typeof __JOURS_FIGES__ === "undefined" ? [] : __JOURS_FIGES__;
 
 /** Les tranches du robot : au plus 4 ms de calcul toutes les 16 ms (un quart d'un écran à 60 Hz), le temps d'une partie y suffit largement. */
+/** Le rang de simulation du mode d'un essai `?mode=` (lot GR6) : écrit ici et non lu de `modesLogique.ts`, qui n'est que de la scène — un module partagé de plus ferait un morceau non nommé de `budget.aLaDemande`. */
+const RANG_DU_MODE = { avion: MODE_AVION, onde: MODE_ONDE, ressort: MODE_RESSORT } as const;
 const TRANCHE_MS = 4;
 const PAUSE_MS = 16;
 const DEPART_MS = 400;
@@ -68,12 +70,18 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   const rendu: Contenu & { essai?: EssaiRecette; pretSeuils: () => Seuils | null } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? calcul!.seuils, pretSeuils: calcul ? calcul.pret : () => contenu.seuilsFiges ?? null };
   // Les essais de recette (`?robot`, `?morceau=<n>`, hors production) : le robot joue ici, avant la partie (une à deux secondes), et la scène rejoue ses appuis.
   const essais = lireEssais(typeof location === "undefined" ? "" : location.search, production);
-  if (essais.robot || essais.morceau !== null) {
+  // Lot GR6 — `?mode=<mode>` : le morceau où commence la première section de ce mode (le plan du jour, avec les règles du contenu), sauf si `?morceau=` le dit déjà ; aucune section (−1) : rien.
+  let morceau = essais.morceau;
+  if (morceau === null && essais.mode !== null) {
+    const n = planDuJour(rendu.jour, terrainDuJour(rendu).regles!).premierMorceauDuMode(RANG_DU_MODE[essais.mode]);
+    if (n >= 1) morceau = n;
+  }
+  if (essais.robot || morceau !== null) {
     await new Promise((r) => setTimeout(r, 30)); // laisse l'écran de chargement se peindre avant le calcul
-    const cible = essais.morceau === null ? 0 : distanceAvantMorceau(essais.morceau);
+    const cible = morceau === null ? 0 : distanceAvantMorceau(morceau);
     let depart = 0;
     const r = jouerRobot(terrainDuJour(rendu), { maxDistance: essais.robot ? DISTANCE_DU_ROBOT : cible, arrets: cible > 0 ? [cible] : [], surPoint: (_d, p) => void (depart = p.tick) });
-    rendu.essai = { robot: essais.robot, appuis: r.appuis, depart };
+    rendu.essai = { robot: essais.robot, changements: r.changements, depart };
   }
   return rendu;
 }

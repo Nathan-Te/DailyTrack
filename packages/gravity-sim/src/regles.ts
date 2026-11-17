@@ -22,9 +22,10 @@ export interface ReglesSim {
   /** La gravité dans le vent (le rapport 2/5 de la gravité : 628 pour 1 570). */
   ventGravite: number;
 }
-/** Les versions jouables de la simulation. **On en ajoute, on n'en change pas** : un jour figé sous la version 2 se rejoue avec cette ligne tant qu'on la garde. */
+/** Les versions jouables de la simulation. **On en ajoute, on n'en change pas** : un jour figé sous la version 3 se rejoue avec cette ligne tant qu'on la garde. */
 export const SIMS: Record<number, ReglesSim> = {
-  2: { vitesseBase: VITESSE_BASE, vitesseMax: VITESSE_MAX, distanceParCran: DISTANCE_PAR_CRAN, gravite: GRAVITE, ventGravite: VENT_GRAVITE },
+  // Lot GR6 : la version 2 est retirée (le jeu est `off`, aucun jour n'est figé : aucun fichier ne la nomme) ; les valeurs de la caméra et de la gravité de la version 3 sont celles de la 2, les modes sont des constantes de la simulation.
+  3: { vitesseBase: VITESSE_BASE, vitesseMax: VITESSE_MAX, distanceParCran: DISTANCE_PAR_CRAN, gravite: GRAVITE, ventGravite: VENT_GRAVITE },
 };
 /** Les versions de la simulation que ce code sait jouer. */
 export const versionsSimJouables = (): number[] => Object.keys(SIMS).map(Number);

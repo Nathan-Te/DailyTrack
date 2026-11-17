@@ -1,6 +1,6 @@
 import * as K from "./constantes";
 import { REGLES_COURANTES, type Regles } from "./regles";
-const { CIBLE_CAMERA, DUREE_MAX_TICKS, TICKS_PAR_SECONDE } = K;
+const { CIBLE_CAMERA, DUREE_MAX_TICKS, FACTEUR_NORMAL, TAILLE, TICKS_PAR_SECONDE, VITESSE_PLAFOND } = K;
 
 // La caméra défile toute seule, plus vite avec la distance (maquette : `7 + distance / 220`, plafonnée à 12,5 cases/s). Sa trajectoire ne dépend de rien d'autre que du temps : le générateur s'en sert pour savoir QUAND le
 // joueur arrive à une colonne (les cases qui battent d'un morceau sont alignées sur cette arrivée, `generateur.ts`).
@@ -8,11 +8,15 @@ const { CIBLE_CAMERA, DUREE_MAX_TICKS, TICKS_PAR_SECONDE } = K;
 /** Ce que la caméra lit des règles (lot GR5 : les valeurs de la version de la simulation du jour, ou d'un essai). Sans règles : celles de la version courante. */
 type Vitesses = Pick<Regles, "vitesseBase" | "vitesseMax" | "distanceParCran">;
 
-/** La vitesse de la caméra (unités par seconde) quand elle est à `cam` unités du départ. Entier. */
-export const vitesseCamera = (cam: number, r: Vitesses = REGLES_COURANTES): number => Math.min(r.vitesseMax, r.vitesseBase + Math.trunc(cam / r.distanceParCran));
+/**
+ * La vitesse de la caméra (unités par seconde) quand elle est à `cam` unités du départ. Entier. **Lot GR6** : la montée normale (plafonnée à `vitesseMax`) est multipliée par le facteur du dernier portail de vitesse
+ * (`facteur`, en pour cent ; 100 sans portail), puis **plafonnée à `VITESSE_PLAFOND`** : la vitesse réelle, celle que suit la caméra, ne dépasse jamais 17 cases/s.
+ */
+export const vitesseCamera = (cam: number, r: Vitesses = REGLES_COURANTES, facteur: number = FACTEUR_NORMAL): number =>
+  Math.min(VITESSE_PLAFOND, Math.trunc((Math.min(r.vitesseMax, r.vitesseBase + Math.trunc(cam / r.distanceParCran)) * facteur) / 100));
 
 /** Un pas de la caméra. */
-export const avancerCamera = (cam: number, r: Vitesses = REGLES_COURANTES): number => cam + Math.trunc(vitesseCamera(cam, r) / TICKS_PAR_SECONDE);
+export const avancerCamera = (cam: number, r: Vitesses = REGLES_COURANTES, facteur: number = FACTEUR_NORMAL): number => cam + Math.trunc(vitesseCamera(cam, r, facteur) / TICKS_PAR_SECONDE);
 
 const tables = new Map<string, Int32Array>();
 /** La position de la caméra à chaque pas de la partie (calculée une fois par jeu de règles : 72 001 entiers ; huit jeux au plus gardés). */
@@ -39,4 +43,38 @@ export function tickOuLeJoueurArrive(x: number, r: Regles = REGLES_COURANTES): n
     else bas = milieu + 1;
   }
   return bas;
+}
+
+/**
+ * Lot GR6 — la trajectoire de la caméra **sous les portails de vitesse d'un jour** : le facteur de vitesse n'est plus constant, il change quand le joueur franchit un portail. `facteurAu(x)` donne le facteur (en pour cent)
+ * qui vaut quand le centre du joueur est en `x` ; on suppose le joueur à `CIBLE_CAMERA` devant la caméra (il y est, sauf un mur : le robot prouve le reste). Le générateur s'en sert pour savoir QUAND le joueur arrive à une
+ * colonne (les cases qui battent) et à quelle vitesse (les surfaces suivent la vitesse réelle). Paresseuse : la table s'étend à la demande, jusqu'à 72 000 pas.
+ */
+export class Trajectoire {
+  private readonly pos: number[] = [0];
+  constructor(
+    private readonly r: Regles,
+    private readonly facteurAu: (x: number) => number,
+  ) {}
+  /** La position de la caméra au pas `t`. */
+  camAu(t: number): number {
+    while (this.pos.length <= t && this.pos.length <= DUREE_MAX_TICKS) {
+      const cam = this.pos[this.pos.length - 1]!;
+      this.pos.push(avancerCamera(cam, this.r, this.facteurAu(cam + CIBLE_CAMERA + (TAILLE >> 1))));
+    }
+    return this.pos[Math.min(t, this.pos.length - 1)]!;
+  }
+  /** Le premier pas où un joueur qui suit la caméra a son bord gauche à `x` unités ou plus loin. */
+  tickOuLeJoueurArrive(x: number): number {
+    const voulu = x - CIBLE_CAMERA;
+    let t = 0;
+    // Les pas sont sautés par paquets de 64 : la table est croissante, on cherche le paquet puis le pas.
+    while (t < DUREE_MAX_TICKS && this.camAu(Math.min(DUREE_MAX_TICKS, t + 64)) < voulu) t += 64;
+    while (t < DUREE_MAX_TICKS && this.camAu(t) < voulu) t++;
+    return t;
+  }
+  /** La vitesse de la caméra (unités par seconde) quand elle est à `cam`, sous le facteur qui vaut en ce point. */
+  vitesseEn(cam: number): number {
+    return vitesseCamera(cam, this.r, this.facteurAu(cam + CIBLE_CAMERA + (TAILLE >> 1)));
+  }
 }
