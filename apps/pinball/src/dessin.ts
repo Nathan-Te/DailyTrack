@@ -1638,7 +1638,7 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
             for (const e of empreinte) ecart = Math.min(ecart, distanceBoite(b, e.x, e.y) - e.r);
             if (ecart > ECART_MAX_PLAQUE) continue;
             // le moindre écart d'abord ; une plaque réduite coûte cher (jusqu'à 70 : un écart de 28 px) : mieux vaut une plaque lisible un peu plus loin, reliée par son trait ; au-dessous de l'élément de préférence (la table est penchée), puis de côté, le dessus en dernier
-            const cout = Math.max(0, ecart) * 2.5 + (1 - taille) * 220 + (sinA < -0.4 ? 9 : 0) + (sinA > 0.4 ? 0 : 3) + Math.abs(cosA) * 0.5;
+            const cout = Math.max(0, ecart) * 2.5 + (1 - taille) * 450 + (sinA < -0.4 ? 9 : 0) + (sinA > 0.4 ? 0 : 3) + Math.abs(cosA) * 0.5;
             if (!meilleur || cout < meilleur.cout - 1e-9) {
               meilleur = { x, y, ecart, cout, taille, l, h };
               surUnRail = sansRails;

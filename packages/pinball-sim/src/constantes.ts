@@ -4,7 +4,7 @@
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée (une règle, un réglage par défaut, la géométrie). */
 export const PINBALL_SIM_VERSION = 7;
 /** La version du générateur de la table du jour. Elle monte à tout changement de ce que `dailyPinball` produit. Jamais une date. */
-export const PINBALL_GENERATOR_VERSION = 6;
+export const PINBALL_GENERATOR_VERSION = 7;
 /** La version du calcul des seuils des médailles : le robot du lot PB4 (version 1 : les seuils provisoires du PB1, les mêmes tous les jours). Elle monte à tout changement du robot, de ses constantes ou des pourcentages (`seuils.ts`). */
 export const PINBALL_BOT_VERSION = 6;
 
