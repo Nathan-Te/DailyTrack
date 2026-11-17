@@ -227,12 +227,12 @@ describe("les specs e2e d'une PR", () => {
 });
 
 describe("les tests unitaires d'une PR (graphe des imports)", () => {
-  it("une PR de DailyJump (apps/jump) ne lance ni la simulation de Track, ni celle de Jump, ni le serveur : moins d'une minute de tests (plafond relevé à 70 s au lot GR5 : les tests de Gravity et de Pinball n'ont pas de durée dans `scripts/unit-durees.json`, 5 s chacun par défaut ; `main` était rouge à 61 s)", () => {
+  it("une PR de DailyJump (apps/jump) ne lance ni la simulation de Track, ni celle de Jump, ni le serveur : moins d'une minute de tests", () => {
     const r = testsPour(["apps/jump/src/hud.ts"], g);
     expect(r.fichiers.length).toBeGreaterThan(0);
     expect(r.fichiers.some((f) => f.startsWith("packages/sim/") || f.startsWith("packages/jump-sim/") || f.startsWith("apps/web/test/g"))).toBe(false);
     const durees = dureesUnitaires(ROOT);
-    expect(r.fichiers.reduce((s, f) => s + (durees[f] ?? 5), 0)).toBeLessThanOrEqual(70);
+    expect(r.fichiers.reduce((s, f) => s + (durees[f] ?? 5), 0)).toBeLessThanOrEqual(60);
   });
 
   it("la simulation de Track atteint ses tests, ceux du jeu et ceux du serveur (qui la rejoue), pas ceux de DailyJump", () => {

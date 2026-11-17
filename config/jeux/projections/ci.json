@@ -1081,6 +1081,10 @@
           "surimpression.spec.ts": [
             "cibles-jeu",
             "ui"
+          ],
+          "fin-et-aide.spec.ts": [
+            "cibles-jeu",
+            "ui"
           ]
         },
         "parts": {
@@ -1091,7 +1095,8 @@
         "regression": [
           "ecrans-kit.spec.ts",
           "chargement-partie.spec.ts",
-          "surimpression.spec.ts"
+          "surimpression.spec.ts",
+          "fin-et-aide.spec.ts"
         ]
       },
       "app": "cibles",
