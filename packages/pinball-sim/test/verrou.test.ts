@@ -134,8 +134,10 @@ describe("la multibille", () => {
     expect(p.sauveeMulti).toBe(REGLAGES.multibilleSauvee - 1); // le pas du verrou compte déjà
   });
 
+  // lot PBL1 : le lanceur part tout seul pendant la multibille ; ces deux tests suivent les billes lâchées par le trou, la bille du lanceur y attend : sa charge est ralentie à l'extrême (`lanceurCharge` 1 : jamais pleine), `test/lanceur-auto.test.ts` garde le départ automatique
+  const SANS_AUTO = (): Reglages => ({ ...copierReglages(), lanceurCharge: 1 });
   it("les deux billes verrouillées sont lâchées l'une après l'autre ; la bille du lanceur reste", () => {
-    const p = lancerMulti();
+    const p = lancerMulti(SANS_AUTO());
     const idLanceur = p.id;
     const nb: number[] = [];
     for (let i = 0; i < REGLAGES.multibilleDepart + REGLAGES.multibilleLacher + 10; i++) {
@@ -178,7 +180,7 @@ describe("la multibille", () => {
   });
 
   it("bille perdue après le délai : elle ne coûte pas de bille de la partie ; la multibille s'arrête quand il n'en reste qu'une, la mission revient au niveau suivant", () => {
-    const p = lancerMulti();
+    const p = lancerMulti(SANS_AUTO());
     const but = p.but;
     avancer(p, REGLAGES.multibilleDepart + REGLAGES.multibilleLacher + 10);
     p.sauveeMulti = 0;
