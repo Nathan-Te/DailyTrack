@@ -1,6 +1,7 @@
 import { AXE, DROITE, GAUCHE, HAUTEUR, JET_GEYSER, LARGEUR, MISSION_DU_THEME, MODULES_DE_MISSION, MULT_MAX, NORME, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, pointeDuBatteur, type Mission, type Partie, type Porte, type Poser, type Rail, type Table, type ThemePinball } from "@cdj/pinball-sim";
 import { modulesAPlat } from "./modeles/plat";
 import { echantillons, hauteurRail, type PointRail } from "./rails";
+import { angleVise, boutLibre, couleurAiguillage, geoAiguillage, geoPorte, ouverturePorte, rapprocher, sortiePoteau } from "./deblocages";
 
 // Le rendu À PLAT de « Pinball » (lot PB1) : le dessin « Canvas+ » de la maquette (`docs/pinball/maquettes/pinball-maquette-jouable.html`) — rails avec leur ombre, modules communs (lot PBV4 : une icône par thème, `modeles/`), lance-pierres à
 // caoutchouc, batteurs, flèches de tir devant chaque module, nom de chaque module, lampes des couloirs et des multiplicateurs. **Écrit pour être gardé comme rendu de secours** (qualité minimale, petits écrans) quand le
@@ -34,7 +35,7 @@ export const PALETTES: Readonly<Record<ThemePinball, Palette>> = {
   volcan: { fond: "#3A2C27", fond2: "#2E221E", bumper: "#C2401F", accent: "#D9A066", cible: "#B8B4C0", sling: "#E8B23A", sombre: false, bande: "#FF7A2E", lampe: "#FFC46B" },
 };
 /** Le rayon d'un module (px) : la distance où se pose sa flèche et son nom. */
-export const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22, manege: 60, tourbillon: 64, trouNoir: 26, portailA: 28, portailB: 28, asteroide: 34, geyser: 30, coulee: 56 };
+export const RAYON_MODULE: Readonly<Record<string, number>> = { bumpers: 50, mini: 30, cibles: 26, spinner: 40, trou: 22, manege: 60, tourbillon: 64, trouNoir: 26, portailA: 28, portailB: 28, asteroide: 34, geyser: 30, coulee: 56, porte: 16 };
 export const TAU = 6.283185307179586;
 
 // --- Lot PB3 : ce qui est commun aux deux rendus pour les éléments des thèmes et la mission (la maquette : `fleche`, `couleurModule`, les lampes de la mission)
@@ -1437,6 +1438,16 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
   for (const v of table.voies) disques.push({ x: px(v.x), y: px(v.y) + 24, r: 7.5 });
   // les lampes de la mission, en arc au-dessus de l'élément du thème (de trois à cinq : les buts par défaut ; l'arc de cinq contient celui de trois)
   for (const but of [4, 5]) for (const l of lampesMission(table, theme, but)) disques.push({ x: l.x, y: l.y, r: 5.5 });
+  // lot PBG3 : la porte — ses deux murs et son battant sont des obstacles (un disque tous les 7 px), et sa plaque se pose près d'elle comme celle d'un module
+  const porte = geoPorte(table);
+  if (porte) {
+    const trait = (x0: number, y0: number, x1: number, y1: number): void => {
+      const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 7));
+      for (let k = 0; k <= n; k++) disques.push({ x: x0 + ((x1 - x0) * k) / n, y: y0 + ((y1 - y0) * k) / n, r: 9 });
+    };
+    trait(porte.a.x, porte.a.y, porte.b.x, porte.b.y);
+    for (const m of porte.murs) trait(m.x0, m.y0, m.x1, m.y1);
+  }
   // lot PBG1 : les rails, leurs bouches et leurs flèches, et la place du mini-batteur — **souples** : une plaque qui n'a aucune autre place peut les recouvrir (jamais un module, un poteau ni une autre plaque)
   for (const d of [...disquesDesRails(table), ...disquesDuMini(table)]) disques.push({ ...d, souple: true });
   // les disques rangés par case de 16 px : une plaque n'est comparée qu'à ceux de ses cases
@@ -1463,8 +1474,8 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
   };
   const fleches = flechesDesRails(table);
   /** Ce qu'une plaque nomme : `de` est le rang de la plaque (modules : leur rang ; rails : 1000 + leur rang). */
-  const ancresDe = (de: number): { x: number; y: number }[] => (de < 1000 ? [{ x: px(table.poses[de]!.x), y: px(table.poses[de]!.y) }] : fleches.filter((f) => f.rail === de - 1000).map((f) => ({ x: f.x, y: f.y })));
-  const toutesLesAncres = [...table.poses.map((_, i) => ({ de: i, ...ancresDe(i)[0]! })), ...fleches.map((f) => ({ de: 1000 + f.rail, x: f.x, y: f.y }))];
+  const ancresDe = (de: number): { x: number; y: number }[] => (de === 2000 ? [{ x: porte!.x, y: porte!.y }, { x: porte!.fleche.x, y: porte!.fleche.y }] : de < 1000 ? [{ x: px(table.poses[de]!.x), y: px(table.poses[de]!.y) }] : fleches.filter((f) => f.rail === de - 1000).map((f) => ({ x: f.x, y: f.y })));
+  const toutesLesAncres = [...table.poses.map((_, i) => ({ de: i, ...ancresDe(i)[0]! })), ...fleches.map((f) => ({ de: 1000 + f.rail, x: f.x, y: f.y })), ...(porte ? [{ de: 2000, x: porte.x, y: porte.y }] : [])];
   const variantesDe = (n: string): string[] => {
     const texte = n.toLocaleUpperCase();
     return [texte, ...coupures(texte).slice(0, 1)];
@@ -1489,6 +1500,9 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
     const n = nom(r.genre);
     if (n && fleches.some((f) => f.rail === k)) aPlacer.push({ i: table.poses.length + k, de: 1000 + k, type: r.genre, variantes: variantesDe(n), pose: null, places: [] });
   });
+  // lot PBG3 : la plaque de la porte, après celles des modules et des rails
+  const nomPorte = porte && table.passage ? nom("porte") : null;
+  if (porte && table.passage && nomPorte) aPlacer.push({ i: table.poses.length + table.rails.length, de: 2000, type: "porte", variantes: variantesDe(nomPorte), pose: { type: "porte", emplacement: -1, x: table.passage.x, y: table.passage.y, rang: 0, n: 0 }, places: [] });
   // 1. les places possibles de chaque plaque (`strict` : sans toucher aux rails ni au mini-batteur)
   const generer = (cible: Cible, strict: boolean): { e: Etiquette; cout: number }[] => {
     const { de, type, variantes, pose: m } = cible;
@@ -1643,6 +1657,32 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   }
   // lot PBG1 : une flèche de tir devant chaque bouche de rail, dans le sens de l'entrée (le rendu à plat la fait clignoter, comme celles des modules)
   for (const f of flechesDesRails(t)) fleche(c, P, f.x, f.y, f.a);
+  // lot PBG3 : la flèche de la porte (dans son passage), les lampes éteintes des couloirs de retour, le socle du poteau sauveur entre les batteurs, le pivot de l'aiguillage
+  const porte = geoPorte(t);
+  if (porte) fleche(c, P, porte.fleche.x, porte.fleche.y, porte.fleche.a);
+  for (const l of t.sauveur.lampes) {
+    c.beginPath();
+    c.arc(px(l.x), px(l.y), 6, 0, TAU);
+    c.fillStyle = P.sombre ? "rgba(255,246,224,.15)" : "rgba(255,255,255,.55)";
+    c.fill();
+    c.lineWidth = 2;
+    c.strokeStyle = ENCRE;
+    c.stroke();
+  }
+  c.beginPath();
+  c.ellipse(px(t.sauveur.x), px(t.sauveur.y), 10, 8, 0, 0, TAU);
+  c.fillStyle = "#1a120c";
+  c.fill();
+  c.lineWidth = 2;
+  c.strokeStyle = ENCRE;
+  c.stroke();
+  const aiguillage = geoAiguillage(t);
+  if (aiguillage) {
+    c.beginPath();
+    c.arc(aiguillage.x, aiguillage.y, 5, 0, TAU);
+    c.fillStyle = "#1a120c";
+    c.fill();
+  }
   // les multiplicateurs, au-dessus du trou
   c.font = `700 10px ${police}`;
   c.textAlign = "center";
@@ -1941,7 +1981,8 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
   let nbBilles = 0;
   function ajouterBille(ax: number, ay: number, x: number, y: number, couche: number, rang: number, s: number, alpha: number): void {
     const rail = couche === 1 ? t.rails[rang] : undefined;
-    const h = rail ? hauteurRail(rail, s) : 0;
+    // lot PBG3 : la bille dérivée par l'aiguillage (`rang` < 0) vole à 30 px au-dessus de la table
+    const h = rail ? hauteurRail(rail, s) : couche === 1 ? 30 : 0;
     const b = (billes[nbBilles] ??= { x: 0, y: 0, h: 0, k: 1 });
     nbBilles++;
     b.x = px(ax) + (px(x) - px(ax)) * alpha;
@@ -2015,6 +2056,67 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     g.globalAlpha = 1;
   }
   /** Lot PBG2 : le trou-verrou clignote tant qu'il est allumé ; l'élément du thème clignote pendant la multibille (le jackpot). */
+  /** Lot PBG3 : la porte, le poteau sauveur et l'aiguillage, à plat. Tout est fonction du pas (`deblocages.ts`, commun aux deux rendus) ; la lame de l'aiguillage se tourne de 0,06 rad par pas vers son angle visé. */
+  const porte = geoPorte(t);
+  const aiguillage = geoAiguillage(t);
+  let lame = aiguillage?.defaut ?? 0;
+  let tickLame = 0;
+  function deblocages(tick: number): void {
+    const fort = clignote(tick);
+    // la porte : le battant pivote contre le mur quand elle s'ouvre ; ouverte, le passage s'éclaire (une flèche moutarde qui clignote)
+    if (porte) {
+      const k = ouverturePorte(partie);
+      const b = boutLibre(porte, k);
+      g.lineCap = "round";
+      for (const [couleur, largeur] of [[ENCRE, 8], [k > 0 ? MOUTARDE : "#C0452F", 4.5]] as const) {
+        g.beginPath();
+        g.moveTo(porte.a.x, porte.a.y);
+        g.lineTo(b.x, b.y);
+        g.strokeStyle = couleur;
+        g.lineWidth = largeur;
+        g.stroke();
+      }
+      rond(porte.a.x, porte.a.y, 4, "#AEB4BC", 2);
+      if (k > 0 && fort) fleche(g, P, porte.fleche.x, porte.fleche.y, porte.fleche.a, MOUTARDE);
+    }
+    // les lampes des couloirs de retour et le poteau : sorti, un plot d'acier cerné d'une lueur qui clignote quand il est armé
+    t.sauveur.lampes.forEach((l, i) => {
+      if (partie.lampes[i]) rond(px(l.x), px(l.y), 6, MOUTARDE, 2);
+    });
+    const sortie = sortiePoteau(partie);
+    if (sortie > 0) {
+      const x = px(t.sauveur.x);
+      const y = px(t.sauveur.y);
+      const r = px(t.sauveur.r) * (0.4 + 0.6 * sortie);
+      if (partie.sauveurArme && fort) {
+        g.globalAlpha = 0.55;
+        rond(x, y, r + 6, null, 4);
+        g.globalAlpha = 1;
+      }
+      ombre(() => rond(x, y, r + 1, ENCRE, 0));
+      rond(x, y, r + 1, "#AEB4BC", 2.5);
+      rond(x - 1, y - 1, r * 0.45, partie.sauveurArme ? MOUTARDE : "#E9ECEF", 0);
+    }
+    // l'aiguillage : la lame bascule vers ce qu'il mène, et la flèche de sa rampe prend la couleur du trajet
+    if (aiguillage) {
+      const vers = partie.aiguillageVers;
+      lame = rapprocher(lame, angleVise(aiguillage, vers), 0.06 * Math.max(1, Math.min(30, tick - tickLame)));
+      tickLame = tick;
+      const couleur = couleurAiguillage(vers);
+      const l = 11;
+      g.lineCap = "round";
+      for (const [c2, largeur] of [[ENCRE, 8], [couleur ?? PAPIER, 4.5]] as const) {
+        g.beginPath();
+        g.moveTo(aiguillage.x - Math.cos(lame) * l, aiguillage.y - Math.sin(lame) * l);
+        g.lineTo(aiguillage.x + Math.cos(lame) * l, aiguillage.y + Math.sin(lame) * l);
+        g.strokeStyle = c2;
+        g.lineWidth = largeur;
+        g.stroke();
+      }
+      rond(aiguillage.x, aiguillage.y, 3.5, "#AEB4BC", 1.5);
+      if (couleur) for (const f of fleches) if (f.rail === aiguillage.rail) fleche(g, P, f.x, f.y, f.a, couleur);
+    }
+  }
   function halos(tick: number): void {
     const fort = clignote(tick);
     if (verrou && partie.verrouAllume) halo(px(verrou.x), px(verrou.y), px(verrou.r), fort, MOUTARDE, true);
@@ -2201,6 +2303,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
     });
     g.globalAlpha = 1;
     modules.dessus(g); // lot PBV4 : les spinners, les cibles et les bumpers du thème (`modeles/plat.ts`)
+    deblocages(s.tick); // lot PBG3 : la porte, le poteau sauveur et l'aiguillage
     // lot PBG1 : les rails passent par-dessus le sol et les modules ; la bille qui roule dessus a son ombre portée sur le plateau, sous eux
     billesDeLImage(s.alpha);
     for (let i = 0; i < nbBilles; i++) if (billes[i]!.h > 0) ombreBille(billes[i]!);

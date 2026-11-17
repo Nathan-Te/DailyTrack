@@ -8,7 +8,7 @@
     "ecrans-kit.spec.ts": 18,
     "rendu.spec.ts": 30,
     "themes.spec.ts": 6,
-    "essais.spec.ts": 21,
+    "essais.spec.ts": 45,
     "hud.spec.ts": 11,
     "hud-cadrage.spec.ts": 11
   },
@@ -19,7 +19,7 @@
     "poids.spec.ts": 1,
     "rendu.spec.ts": 30,
     "themes.spec.ts": 6,
-    "essais.spec.ts": 21,
+    "essais.spec.ts": 45,
     "hud.spec.ts": 11
   }
 }

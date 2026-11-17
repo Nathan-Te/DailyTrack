@@ -5,7 +5,7 @@ import type { Module } from "@cdj/pinball-sim";
 const COMMUNS: readonly string[] = ["bumpers", "cibles", "spinner", "trou"];
 /** Lot PBG1 : les rails ont un nom par thème, comme les modules communs (`module.rampe.foire` : « Montagnes russes »). */
 const RAILS: readonly string[] = ["rampe", "orbite"];
-const DE_THEME: readonly string[] = ["manege", "tourbillon", "trouNoir", "portailA", "portailB", "asteroide", "geyser", "coulee"];
+const DE_THEME: readonly string[] = ["porte", "manege", "tourbillon", "trouNoir", "portailA", "portailB", "asteroide", "geyser", "coulee"];
 
 /** Le nom lu d'un module (`t` : le traducteur du jeu), ou `null` pour un module sans nom (rien n'est alors écrit sur la table). `mini` (la paire de bumpers) prend le nom des bumpers. */
 export function nomDuModule(t: (cle: string) => string, theme: string, module: Module | string): string | null {

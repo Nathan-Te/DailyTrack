@@ -36,8 +36,8 @@ describe("« Pinball » : la fiche est prête pour l'aperçu", () => {
 });
 
 describe("« Pinball » : les textes sont complets, en français et en anglais", () => {
-  it("« Comment jouer » : huit points (lot PBG1 : les rails et le combo ; lot PBG2 : la boucle verrou, multibille, niveaux), chacun dans les deux langues, sans « À remplacer »", () => {
-    expect(DEFINITION.aide).toHaveLength(8);
+  it("« Comment jouer » : neuf points (lot PBG1 : les rails et le combo ; lot PBG2 : la boucle verrou, multibille, niveaux ; lot PBG3 : la porte, le poteau et l'aiguillage), chacun dans les deux langues, sans « À remplacer »", () => {
+    expect(DEFINITION.aide).toHaveLength(9);
     for (const langue of ["fr", "en"] as const) {
       const c = CATALOGUE_PINBALL[langue] as Record<string, string>;
       for (const cle of DEFINITION.aide) {

@@ -30,6 +30,8 @@ export interface EtatHud {
   verrouAllume: boolean;
   multibille: boolean;
   prochain: string;
+  /** Lot PBG3 : les lampes des couloirs de retour allumées (0 à 2) : le poteau sauveur est rentré (0), a une lampe (1) ou est armé (2). */
+  lampes: number;
 }
 
 export interface OptionsHud {
@@ -84,6 +86,9 @@ export function creerHud(o: OptionsHud): Hud {
 
   const billes = el("div", { classe: "pinball-hud__plaque pinball-hud__billes", attrs: { role: "img" } });
   for (let i = 0; i < o.billes; i++) billes.append(el("span", { classe: "pinball-hud__bille" }));
+  // Lot PBG3 : le poteau sauveur, en petit dans la bande du bas, à côté des billes — deux lampes (une par couloir de retour) ; les deux allumées, il est armé et clignote. Le nom est dit aux lecteurs d'écran.
+  const poteau = el("span", { classe: "pinball-hud__poteau", attrs: { role: "img", "data-etat": "rentre" } }, el("i"), el("i"));
+  billes.append(poteau);
 
   // Lot PBG1 : le compteur de combo — « COMBO ×3 » et une fine jauge de temps qui se vide jusqu'à ce que le combo se perde. **Toujours posé dans la grille** (caché, sans changer la mise en page : `visibility`) : le gabarit de la table lui laisse sa place.
   const comboTexte = el("span", { classe: "pinball-combo__texte" });
@@ -132,7 +137,7 @@ export function creerHud(o: OptionsHud): Hud {
     maj(e): void {
       // la jauge du combo se règle au quarantième : assez fin pour se voir couler, assez rare pour ne pas écrire un nœud à chaque image
       const reste = Math.round(Math.max(0, Math.min(1, e.reste)) * 40);
-      const k = `${e.score}|${e.mult}|${e.billes}|${e.mission}|${e.compteur}|${e.but}|${e.faite ? 1 : 0}|${e.lancee ? 1 : 0}|${e.combo}|${e.combo > 0 ? reste : 0}|${e.niveau}|${e.verrouillees}|${e.verrouAllume ? 1 : 0}|${e.multibille ? 1 : 0}|${e.multibille ? e.prochain : ""}`;
+      const k = `${e.score}|${e.mult}|${e.billes}|${e.mission}|${e.compteur}|${e.but}|${e.faite ? 1 : 0}|${e.lancee ? 1 : 0}|${e.combo}|${e.combo > 0 ? reste : 0}|${e.niveau}|${e.verrouillees}|${e.verrouAllume ? 1 : 0}|${e.lampes}|${e.multibille ? 1 : 0}|${e.multibille ? e.prochain : ""}`;
       if (k === cle) return;
       cle = k;
       if (e.score !== scoreAffiche) {
@@ -157,6 +162,10 @@ export function creerHud(o: OptionsHud): Hud {
       [...jauge.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < pleines ? "1" : "0"));
       missionVal.textContent = e.multibille ? t("hud.jackpot.prochain", { points: e.prochain }) : e.faite ? t("hud.mission.reussie") : `${e.compteur}/${e.but}`;
       mission.setAttribute("aria-label", e.multibille ? t("hud.multibille.aria", { points: e.prochain }) : t("hud.niveau.aria", { n: e.niveau }));
+      poteau.dataset.etat = e.lampes >= 2 ? "arme" : e.lampes === 1 ? "une" : "rentre";
+      [...poteau.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < e.lampes ? "1" : "0"));
+      poteau.setAttribute("aria-label", e.lampes >= 2 ? t("hud.poteau.arme.aria") : t("hud.poteau.aria", { n: e.lampes }));
+      poteau.title = e.lampes >= 2 ? t("hud.poteau.arme") : t("hud.poteau");
       verrou.dataset.etat = e.verrouAllume ? "allume" : e.verrouillees > 0 ? "plein" : "eteint";
       [...verrouBilles.children].forEach((b, i) => ((b as HTMLElement).dataset.plein = i < e.verrouillees ? "1" : "0"));
       verrouTexte.textContent = e.verrouAllume ? t("hud.verrou.allume") : t("hud.niveau", { n: e.niveau });

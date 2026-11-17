@@ -6,7 +6,8 @@ import { JOUR_ESSAI, avancer } from "./aide";
 // LES BILLES SE TOUCHENT (lot PBG2) : collision élastique entre billes de même masse, dans un ordre fixe ; aucune ne traverse l'autre ; aucune bille ne reste coincée pendant la multibille.
 
 /** Une partie en multibille (trois billes sur la table), sans pente ni batteurs levés : seules les collisions entre billes et les murs jouent. */
-function multibille(theme: ThemePinball = "ocean", plan = "doublette", pente = 0): Partie {
+// lot PBG3 : par défaut le plan « bretelle », dont le bas de la table (entre les lance-pierres, au-dessus des batteurs) est libre : les portes des autres plans y entrent un peu, et ces essais veulent un coin sans mur
+function multibille(theme: ThemePinball = "ocean", plan = "bretelle", pente = 0): Partie {
   const r = copierReglages();
   r.pente = pente;
   const p = new Partie(dailyPinball(JOUR_ESSAI, PINBALL_GENERATOR_VERSION, theme, plan), r);

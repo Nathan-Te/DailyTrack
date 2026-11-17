@@ -178,3 +178,51 @@ test.describe("Pinball : les sons (?debug&sons)", () => {
     await context.close();
   });
 });
+
+// Lot PBG3 — LA PORTE, LE POTEAU SAUVEUR ET L'AIGUILLAGE : `?essai=porte` ouvre la porte, `?essai=poteau` arme le poteau (hors production, jamais classés) ; le HUD dit l'état du poteau, la scène en décide les sons, les deux
+// rendus les dessinent sans erreur.
+test.describe("Pinball : la porte, le poteau et l'aiguillage (?essai=porte, ?essai=poteau)", () => {
+  for (const qualite of ["basse", "haute"] as const) {
+    test(`?essai=porte : la porte est ouverte et le plan en a une, rendu ${qualite}`, async ({ browser }) => {
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&qualite=${qualite}&plan=doublette&theme=foire&essai=porte`);
+      const erreurs: string[] = [];
+      page.on("pageerror", (e) => erreurs.push(e.message));
+      await lancer(page);
+      await page.evaluate(() => window.__jeu.avancer(120));
+      expect(await page.evaluate(() => window.__pinball!.partie().passageOuvert)).toBeGreaterThan(1000);
+      expect(await page.evaluate(() => window.__pinball!.partie().table.passage !== null)).toBe(true);
+      await page.waitForTimeout(200);
+      expect(erreurs).toEqual([]);
+      await context.close();
+    });
+    test(`?essai=poteau : le poteau est armé, le HUD le dit, la bille entre les batteurs est renvoyée, rendu ${qualite}`, async ({ browser }) => {
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&qualite=${qualite}&essai=poteau`);
+      const erreurs: string[] = [];
+      page.on("pageerror", (e) => erreurs.push(e.message));
+      await lancer(page);
+      await page.evaluate(() => window.__jeu.avancer(30));
+      await expect(page.locator(".pinball-hud__poteau")).toHaveAttribute("data-etat", "arme");
+      await page.keyboard.press("Shift"); // un geste : le son s'ouvre
+      await page.waitForFunction(() => window.__pinball!.sons().pret);
+      await page.evaluate(() => {
+        const p = window.__pinball!.partie();
+        p.dansLanceur = false;
+        p.x = 184 * 4096;
+        p.y = 600 * 4096;
+        p.px = p.x;
+        p.py = p.y;
+        p.vx = 0;
+        p.vy = 500 * 4096;
+        window.__jeu.avancer(90);
+      });
+      expect(await page.evaluate(() => window.__pinball!.partie().sauvetages)).toBe(1);
+      expect(await page.evaluate(() => window.__pinball!.partie().billes)).toBe(3);
+      await expect(page.locator(".pinball-hud__poteau")).toHaveAttribute("data-etat", "rentre");
+      const sons = await page.evaluate(() => window.__pinball!.sons().joues.map((j) => j.son));
+      expect(sons).toContain("sauveur");
+      await page.waitForTimeout(200);
+      expect(erreurs).toEqual([]);
+      await context.close();
+    });
+  }
+});

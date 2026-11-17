@@ -38,6 +38,25 @@ export interface DefMini {
   longueur: number;
 }
 
+/**
+ * **La porte** (lot PBG3) : un petit passage incliné, deux murs parallèles (`largeur` px entre eux, `profondeur` px de long) fermés à leur bout par un battant. **Fermé, le battant est un mur** (la bille qui vient d'en
+ * bas le heurte et ressort ; celle qui tombe dessus glisse sur son côté, d'où l'inclinaison) ; **ouvert, la bille passe** et le passage rapporte gros. `x`, `y` : le milieu du battant ; `angle` : la direction du passage en
+ * degrés autour de la verticale (0 : vers le haut, négatif : vers le haut et la gauche), un multiple de 5, **toujours vers le haut** (|angle| < 90) : le battant est le haut du passage, la bille qui est dedans retombe par le bas — une porte qui regarderait vers le bas ferait une coupe où la bille s'arrêterait. Les murs sont de la table (`construireTable`), le passage se lit sur la ligne du battant.
+ */
+export interface DefPorte {
+  x: number;
+  y: number;
+  angle: number;
+  largeur: number;
+  profondeur: number;
+}
+
+/** **L'aiguillage** (lot PBG3) : la dérivation d'une rampe du plan (son rang dans `rampes`). `partie` : où elle se trouve sur la rampe, en ‰ de sa longueur. Le point exact est calculé par la table. */
+export interface DefAiguillage {
+  rampe: number;
+  partie: number;
+}
+
 export interface Plan {
   id: string;
   emplacements: readonly Emplacement[];
@@ -45,6 +64,9 @@ export interface Plan {
   /** `null` seulement pour le plan d'essai (`PLAN_CLASSIQUE`) : tout plan du jour a son orbite. */
   orbite: DefRail | null;
   mini?: DefMini;
+  /** Lot PBG3 : la porte et l'aiguillage ; seul le plan d'essai n'en a pas. */
+  porte?: DefPorte;
+  aiguillage?: DefAiguillage;
 }
 
 /** L'emplacement de l'élément du thème : le manège, le tourbillon, le trou noir ou la coulée. */
@@ -89,6 +111,9 @@ export const PLANS: readonly Plan[] = [
       { genre: "rampe", points: [[292, 385], [292, 310], [276, 220], [218, 140], [138, 126], [68, 175], [35, 270], [32, 448]], hauteur: 44, demiPorte: 14 },
     ],
     orbite: orbite(38, 334, 300, 150, 20),
+    // la porte à gauche de l'axe, juste au-dessus des lance-pierres, hors de la route des deux rampes ; l'aiguillage est sur la rampe de gauche, qui passe près du trou
+    porte: { x: 150, y: 470, angle: -35, largeur: 34, profondeur: 36 },
+    aiguillage: { rampe: 0, partie: 130 },
   },
   {
     // « Tremplin » : une rampe qui monte au milieu et traverse la table, et un mini-batteur à droite qui l'alimente
@@ -104,6 +129,8 @@ export const PLANS: readonly Plan[] = [
     rampes: [{ genre: "rampe", points: [[214, 390], [214, 330], [226, 250], [250, 175], [262, 120], [214, 82], [150, 90], [80, 150], [38, 250], [32, 448]], hauteur: 32, demiPorte: 14 }],
     orbite: orbite(38, 334, 290, 146, 20),
     mini: { cote: 1, x: 52, y: 405, longueur: 38 },
+    porte: { x: 124, y: 448, angle: -35, largeur: 34, profondeur: 36 },
+    aiguillage: { rampe: 0, partie: 420 },
   },
   {
     // « Bretelle » : une rampe à gauche qui contourne le haut, une rampe courte à droite, et un mini-batteur à gauche
@@ -121,6 +148,8 @@ export const PLANS: readonly Plan[] = [
     ],
     orbite: orbite(38, 334, 310, 152, 22),
     mini: { cote: 0, x: 46, y: 405, longueur: 38 },
+    porte: { x: 270, y: 434, angle: -35, largeur: 34, profondeur: 36 },
+    aiguillage: { rampe: 0, partie: 560 },
   },
   {
     // « Boucle » : une grande boucle autour du haut qui part du bas de la table et revient du même côté, et les deux mini-bouches de l'orbite
@@ -137,6 +166,8 @@ export const PLANS: readonly Plan[] = [
       { genre: "rampe", points: [[292, 400], [292, 340], [302, 250], [272, 170], [210, 135], [150, 160], [100, 230], [60, 330], [32, 448]], hauteur: 34, demiPorte: 14 },
     ],
     orbite: orbite(38, 334, 280, 152, 20),
+    porte: { x: 202, y: 448, angle: -35, largeur: 34, profondeur: 36 },
+    aiguillage: { rampe: 0, partie: 470 },
   },
 ];
 

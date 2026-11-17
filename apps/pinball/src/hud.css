@@ -208,6 +208,41 @@
   box-shadow: none;
 }
 
+/* --- Le poteau sauveur (lot PBG3) : deux petites lampes à côté des billes — éteintes en creux, allumées en moutarde ; les deux allumées, le poteau est armé et clignote (jamais avec le mouvement réduit). --- */
+.pinball-hud__poteau {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+  padding-left: 8px;
+  border-left: var(--dj-trait) solid var(--dj-encre-douce);
+}
+.pinball-hud__poteau i {
+  width: 8px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background: var(--dj-creme-2);
+  border: var(--dj-trait) solid var(--dj-encre-douce);
+}
+.pinball-hud__poteau i[data-plein="1"] {
+  background: var(--dj-moutarde);
+  border-color: var(--dj-encre);
+}
+.pinball-hud__poteau[data-etat="arme"] i {
+  animation: pinball-poteau 0.5s steps(2, jump-none) infinite;
+}
+@keyframes pinball-poteau {
+  50% {
+    background: var(--dj-creme-2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pinball-hud__poteau[data-etat="arme"] i {
+    animation: none;
+  }
+}
+
 /* --- Le compteur de combo (lot PBG1) : « COMBO ×3 » et une fine jauge de temps qui se vide, tout au bas de la plaque. Dans la langue du multiplicateur (papier au rang 1, moutarde dès le rang 2). Toujours posé (caché par
    `visibility`, sans toucher la mise en page) : au coin haut gauche de la zone de la table en portrait (le coin vide de l'arc), sous les billes dans la marge de gauche en paysage — là où l'aide d'avant le lancer se pose,
    qui est partie quand un rail se joue. Petit (30 px de haut, une centaine de large) : il ne cache jamais le jeu. --- */

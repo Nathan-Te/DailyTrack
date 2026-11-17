@@ -3,12 +3,12 @@ import type { Controle } from "./constantes";
 import * as E from "./entiers";
 import { MISSION_DU_THEME, type Contenu, type Mission } from "./generateur";
 import { deriver, REGLAGES, type Derives, type Reglages } from "./reglages";
-import { construireTable, type Porte, type Segment, type Table } from "./table";
+import { construireTable, type Aiguillage, type Arrivee, type Porte, type Segment, type Table } from "./table";
 // Les constantes et les fonctions chaudes sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, deux à trois fois plus lent dans une boucle de millions de pas (le robot du
 // lot PB4 en joue des dizaines de millions). Rien ne change pour le jeu ni le serveur.
 const {
   AXE, DROITE, DUREE_MAX_TICKS, EV_BANQUE, EV_BUMPER, EV_CIBLE, EV_COULEE, EV_FIN, EV_GEYSER, EV_LANCE, EV_MANEGE, EV_MISSION, EV_MULT, EV_PERDUE, EV_PORTAIL, EV_SAUVEE, EV_COMBO, EV_ORBITE, EV_RAIL, EV_RAMPE, EV_RECUL, EV_SLING, EV_SPINNER, EV_TOURBILLON, EV_TROU, EV_VOIE,
-  EV_JACKPOT, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_VERROU_ALLUME, EV_VERROUILLEE, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, VERROU_BILLES,
+  EV_JACKPOT, EV_MULTI, EV_MULTI_FIN, EV_NIVEAU, EV_VERROU_ALLUME, EV_VERROUILLEE, EV2_AIGUILLAGE, EV2_LAMPE, EV2_PORTE_FERME, EV2_PORTE_OUVRE, EV2_PORTE_PASSAGE, EV2_SAUVEUR, EV2_SAUVEUR_ARME, GAUCHE, LANCE_X2, LANCE_Y, LANCEUR, MULT_MAX, NB_BILLES, NORME, PERDUE_Y, POINTS, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, VERROU_BILLES,
 } = K;
 const { cosinus, div, racine, sinus, unitaire } = E;
 
@@ -163,8 +163,9 @@ export class Partie {
   readonly spin: number[];
   readonly choc: number[];
   readonly chocSling: [number, number] = [0, 0];
-  /** Les événements du pas (bits `EV_*`) et ses gains de points. */
+  /** Les événements du pas (bits `EV_*`) et ses gains de points. Lot PBG3 : `ev2` porte ceux de la porte, du poteau sauveur et de l'aiguillage (bits `EV2_*`). */
   ev = 0;
+  ev2 = 0;
   readonly gains: Gain[] = [];
   /** Lot PB4 : vrai pour une copie d'essai du robot (`copier(true)`) : les gains de points ne sont pas gardés (le score, lui, compte). Aucun effet sur la partie. */
   sansGains = false;
@@ -231,6 +232,22 @@ export class Partie {
   comboFin = 0;
   comboMaxPartie = 0;
   readonly railsFaits: number[];
+  /**
+   * **Lot PBG3 : la porte, le poteau sauveur et l'aiguillage.** `passageOuvert` : les pas qu'il reste à la porte ouverte (0 : fermée, le battant est un mur) ; `passageServi` : une bille l'a déjà franchie pendant cette
+   * ouverture (un seul passage par ouverture) ; `ouvertures` et `passages` : leur nombre dans la partie (la validation les exige, les mesures les comptent). `lampes` : les deux lampes des couloirs de retour (gauche, droite),
+   * que la bille allume en y passant ; **les deux allumées, le poteau est armé** (`sauveurArme`) ; `sauveurTick` : le pas où il s'est armé ou a servi (le rendu le fait sortir et rentrer) ; `sauvetages` : les billes qu'il a
+   * renvoyées. `aiguillages` : les billes dérivées par l'aiguillage (une bille en transit a `couche` 1 et `rail` −2 vers le verrou, −3 vers l'élément du thème ; `railS` compte ses pas).
+   */
+  passageOuvert = 0;
+  passageServi = false;
+  ouvertures = 0;
+  passages = 0;
+  lampes: [boolean, boolean] = [false, false];
+  sauveurTick = -100000;
+  sauvetages = 0;
+  aiguillages = 0;
+  /** Les points que la porte a rapportés dans la partie (multiplicateur compris : les mesures du README du lot). */
+  portePoints = 0;
   private fin = false;
 
   constructor(
@@ -266,6 +283,16 @@ export class Partie {
     this.railsFaits = m ? m.railsFaits.slice() : tb.rails.map(() => 0);
     this.sansGains = sansGains;
     if (!m) return;
+    this.ev2 = m.ev2;
+    this.passageOuvert = m.passageOuvert;
+    this.passageServi = m.passageServi;
+    this.ouvertures = m.ouvertures;
+    this.passages = m.passages;
+    this.lampes = [m.lampes[0], m.lampes[1]];
+    this.sauveurTick = m.sauveurTick;
+    this.sauvetages = m.sauvetages;
+    this.aiguillages = m.aiguillages;
+    this.portePoints = m.portePoints;
     this.tick = m.tick;
     this.score = m.score;
     this.mult = m.mult;
@@ -376,6 +403,41 @@ export class Partie {
   /** Ce que rapportera **le prochain jackpot**, multiplicateur compris s'il s'applique (le HUD l'affiche). */
   get prochainJackpot(): number {
     return this.valeurJackpot(this.jackpots + 1) * (this.reglages.jackpotMultiplie ? this.mult : 1);
+  }
+
+  /** Le poteau sauveur est armé : les deux lampes des couloirs de retour sont allumées. */
+  get sauveurArme(): boolean {
+    return this.lampes[0] && this.lampes[1];
+  }
+
+  /** Où l'aiguillage mène la bille de la rampe maintenant : 0 vers le bout de la rampe, 1 vers le verrou (allumé), 2 vers l'élément du thème (pendant la multibille). */
+  get aiguillageVers(): 0 | 1 | 2 {
+    const a = this.table.aiguillage;
+    if (!a || !this.reglages.aiguillageActif) return 0;
+    if (this.multibille) return a.versElement ? 2 : 0;
+    return this.verrouAllume && a.versVerrou ? 1 : 0;
+  }
+
+  /** La porte s'ouvre pour `porteDuree` pas (la banque de cibles complète, ou l'orbite sur une table sans banque) ; rouverte pendant qu'elle l'est déjà, elle repart de zéro. Un nouveau passage est alors possible. */
+  private ouvrirPassage(): void {
+    if (!this.table.passage) return;
+    if (this.passageOuvert === 0 || this.passageServi) {
+      this.ouvertures++;
+      if (this.passageOuvert === 0) this.ev2 |= EV2_PORTE_OUVRE;
+    }
+    this.passageOuvert = this.reglages.porteDuree;
+    this.passageServi = false;
+  }
+
+  /** **Essais** (`?essai=porte`, hors production, jamais classé) : la porte est ouverte pour de bon ; `armerLeSauveur` (`?essai=poteau`) : les deux lampes sont allumées, le poteau est armé. */
+  ouvrirLaPorte(): void {
+    if (!this.table.passage) return;
+    this.passageOuvert = DUREE_MAX_TICKS * 2;
+    this.passageServi = false;
+  }
+  armerLeSauveur(): void {
+    this.lampes = [true, true];
+    this.sauveurTick = this.tick;
   }
 
   /** Un jackpot : une prise de l'élément du thème pendant la multibille. */
@@ -618,6 +680,7 @@ export class Partie {
   avancer(): void {
     if (this.fin) return;
     this.ev = 0;
+    this.ev2 = 0;
     this.gains.length = 0;
     const d = this.d;
     const r = this.reglages;
@@ -629,6 +692,8 @@ export class Partie {
       }
     }
     if (this.voiesDans > 0 && --this.voiesDans === 0) this.voiesAllumees.fill(false);
+    // lot PBG3 : la porte se referme quand son temps est écoulé
+    if (this.passageOuvert > 0 && --this.passageOuvert === 0) this.ev2 |= EV2_PORTE_FERME;
     for (let i = 0; i < this.choc.length; i++) if (this.choc[i]! > 0) this.choc[i] = this.choc[i]! - 1;
     // lot PB3 : tout ce qui bouge est une fonction du numéro de pas — l'astéroïde, et les pauses des éléments
     for (const b of t.bumpers) {
@@ -725,7 +790,8 @@ export class Partie {
     }
     if (principale) for (let i = 0; i < this.trouPause.length; i++) this.trouPause[i] = this.trouPause[i]! - 1;
     if (this.couche === 1) {
-      this.surRail(d, r, t);
+      if (this.rail >= 0) this.surRail(d, r, t);
+      else this.enTransit(r, t);
       return;
     }
     if (this.dansLanceur) {
@@ -757,6 +823,8 @@ export class Partie {
     this.y += div(this.vy, TICKS_PAR_SECONDE);
     // --- les collisions, dans l'ordre de la maquette : murs, poteaux, bumpers, cibles, batteurs
     for (const s of t.murs) if (s.type !== 2 && this.segment(s)) if (s.type === 1) this.choquerSling(s);
+    // lot PBG3 : fermée, la porte est un mur ; ouverte, la bille passe
+    if (t.passage && this.passageOuvert <= 0) this.segment(t.passage.battant);
     // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
     for (const g of t.portes) {
       this.porte(g, d);
@@ -782,6 +850,7 @@ export class Partie {
             this.ev |= EV_BANQUE;
             this.points(POINTS.banque);
             this.banqueDans[q] = r.banqueRelevee;
+            this.ouvrirPassage();
           }
         }
       }
@@ -790,6 +859,8 @@ export class Partie {
     this.batteur(DROITE, ORIGINE, PIVOT_Y, LONGUEUR);
     // lot PBG1 : le mini-batteur suit l'angle du batteur du même côté (le même appui : la rediffusion ne change pas de forme)
     if (t.mini) this.batteur(t.mini.cote, t.mini.x, t.mini.y, t.mini.longueur);
+    // lot PBG3 : le poteau sauveur, quand il est armé, renvoie la bille vers le haut une fois
+    if (this.lampes[0] && this.lampes[1]) this.sauveur(r, t);
     // --- les capteurs
     for (let i = 0; i < t.voies.length; i++) {
       const v = t.voies[i]!;
@@ -805,6 +876,19 @@ export class Partie {
         this.voiesDans = r.voiesRelevees;
       }
     }
+    // lot PBG3 : les lampes des couloirs de retour (la bille y descend), puis le passage de la porte
+    for (let i = 0; i < 2; i++) {
+      const l = t.sauveur.lampes[i]!;
+      if (!this.lampes[i] && oy < l.y && this.y >= l.y && Math.abs(this.x - l.x) < l.l) {
+        this.lampes[i] = true;
+        this.ev2 |= EV2_LAMPE;
+        if (this.lampes[0] && this.lampes[1]) {
+          this.ev2 |= EV2_SAUVEUR_ARME;
+          this.sauveurTick = this.tick;
+        }
+      }
+    }
+    if (t.passage && this.passageOuvert > 0 && !this.passageServi) this.franchirPassage(r, t);
     for (let i = 0; i < t.spinners.length; i++) {
       const c = t.spinners[i]!;
       if (Math.abs(this.x - c.x) < c.l && ((oy < c.y && this.y >= c.y) || (oy > c.y && this.y <= c.y))) {
@@ -851,6 +935,117 @@ export class Partie {
         } else this.nouvelleBille();
       }
     }
+  }
+
+  /**
+   * **Le poteau sauveur** (lot PBG3). Armé (les deux lampes allumées), il sort entre les batteurs ; la première bille qui le touche est renvoyée vers le haut (`sauveurForce` px/s) et un peu de côté (`sauveurDevie` px/s, du côté où elle l'a touché : jamais droit au milieu de la table),
+   * **une seule fois** : il redescend et les lampes s'éteignent. Pendant la multibille il sert à la première bille qui le touche, quelle qu'elle soit.
+   */
+  private sauveur(r: Reglages, t: Table): void {
+    const z = t.sauveur;
+    const m = z.r + RU;
+    const dx = this.x - z.x;
+    const dy = this.y - z.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= m * m) return;
+    // la bille est posée sur le poteau, puis lancée : vers le haut, de côté selon l'endroit du contact (6 px/s par pixel d'écart au centre)
+    if (d2 === 0) this.y = z.y - m;
+    else {
+      const dd = racine(d2);
+      this.x = z.x + div(unitaire(dx, dd) * m, NORME);
+      this.y = z.y + div(unitaire(dy, dd) * m, NORME);
+    }
+    // de côté : du côté où la bille a touché le poteau (sur l'axe exact : tantôt à gauche, tantôt à droite, selon les sauvetages déjà faits) — jamais droit au milieu de la table
+    const cote = dx > 0 ? 1 : dx < 0 ? -1 : this.sauvetages % 2 === 0 ? -1 : 1;
+    this.vy = -r.sauveurForce * UNITE;
+    this.vx = cote * r.sauveurDevie * UNITE + (this.x - z.x) * 3;
+    this.px = this.x;
+    this.py = this.y;
+    this.lampes = [false, false];
+    this.sauvetages++;
+    this.sauveurTick = this.tick;
+    this.ev2 |= EV2_SAUVEUR;
+  }
+
+  /** **Le passage de la porte** (lot PBG3) : la bille franchit la ligne du battant (dans un sens ou dans l'autre) pendant que la porte est ouverte. Rapporte `portePoints`, fait avancer la mission d'un cran (pendant la multibille : un jackpot de plus) ; la porte se referme `porteApres` pas plus tard. */
+  private franchirPassage(r: Reglages, t: Table): void {
+    const g = t.passage!;
+    const avant = div((this.px - g.x) * g.ux + (this.py - g.y) * g.uy, NORME);
+    const apres = div((this.x - g.x) * g.ux + (this.y - g.y) * g.uy, NORME);
+    if (avant < 0 === apres < 0) return;
+    const lat = div((this.x - g.x) * g.nx + (this.y - g.y) * g.ny, NORME);
+    if (Math.abs(lat) >= g.l) return;
+    this.passageServi = true;
+    this.passages++;
+    this.passageOuvert = Math.min(this.passageOuvert, r.porteApres);
+    const avantScore = this.score;
+    this.points(r.portePoints);
+    this.portePoints += this.score - avantScore;
+    this.ev2 |= EV2_PORTE_PASSAGE;
+    this.pourLaMission(this.mission);
+  }
+
+  /** **La bille quitte la rampe par l'aiguillage** (lot PBG3) : la rampe est réussie (points, combo), la bille traverse la table en ligne droite, au-dessus de tout, jusqu'au verrou ou à l'élément du thème. */
+  private aiguiller(a: Aiguillage, vers: 1 | 2, r: Reglages): void {
+    const rang = this.rail;
+    this.railReussi(rang, r);
+    const arrivee = (vers === 1 ? a.versVerrou : a.versElement)!;
+    this.rail = vers === 1 ? -2 : -3;
+    this.railS = 0;
+    this.railV = 0;
+    this.railDepuis = 0;
+    this.x = a.x;
+    this.y = a.y;
+    this.vx = div((arrivee.x - a.x) * TICKS_PAR_SECONDE, arrivee.pas);
+    this.vy = div((arrivee.y - a.y) * TICKS_PAR_SECONDE, arrivee.pas);
+    this.aiguillages++;
+    this.ev2 |= EV2_AIGUILLAGE;
+  }
+
+  /** Un pas d'une bille dérivée par l'aiguillage : elle avance en ligne droite et ne touche rien ; à l'arrivée elle est verrouillée, ou prend l'élément du thème (jackpot) et en ressort par le bas. */
+  private enTransit(r: Reglages, t: Table): void {
+    const a = t.aiguillage!;
+    const vers = this.rail === -2 ? a.versVerrou! : a.versElement!;
+    this.railS++;
+    this.railDepuis++;
+    if (this.railS < vers.pas) {
+      this.x = a.x + div((vers.x - a.x) * this.railS, vers.pas);
+      this.y = a.y + div((vers.y - a.y) * this.railS, vers.pas);
+      return;
+    }
+    const verrou = this.rail === -2;
+    this.couche = 0;
+    this.rail = -1;
+    this.railS = 0;
+    this.railV = 0;
+    this.railDepuis = 0;
+    this.x = vers.x;
+    this.y = vers.y;
+    this.px = this.x;
+    this.py = this.y;
+    if (verrou) {
+      // la bille tombe dans le verrou ; s'il n'est plus allumé (essai, réglage) le trou la garde comme à l'ordinaire
+      if (this.verrouAllume) return this.verrouiller(t.verrou, r);
+      this.captif = r.trouGarde;
+      this.captifDe = t.verrou;
+      this.vx = 0;
+      this.vy = 0;
+      this.trouPause[t.verrou] = r.trouPause;
+      this.ev |= EV_TROU;
+      this.points(POINTS.trou);
+      return;
+    }
+    // l'élément du thème : le jackpot est pour la bille qui arrive, elle ressort par le bas ; l'élément se repose un moment
+    const e = a.versElement!;
+    if (this.multibille) this.jackpot();
+    this.y = e.y + e.r + 12 * UNITE;
+    this.px = this.x;
+    this.py = this.y;
+    this.vx = 0;
+    this.vy = 150 * UNITE;
+    this.tourbillonPause.fill(r.tourbillonPause);
+    this.portailPause.fill(r.portailPause);
+    this.geyserAttente.fill(r.geyserPause);
   }
 
   /** Une autre bille attend-elle déjà dans le couloir du lanceur ? (Une seule y tient : la suivante reste posée sur elle jusqu'à son départ.) */
@@ -1100,8 +1295,15 @@ export class Partie {
     this.railV -= div(this.railV * d.railFrein, 1000000);
     if (this.railV > d.vitesseMax) this.railV = d.vitesseMax;
     else if (this.railV < -d.vitesseMax) this.railV = -d.vitesseMax;
+    const avant = this.railS;
     this.railS += div(this.railV, TICKS_PAR_SECONDE);
     this.railDepuis++;
+    // lot PBG3 : l'aiguillage — la bille qui monte la rampe et franchit son point est dérivée (vers le verrou allumé, vers l'élément du thème en multibille)
+    const ag = t.aiguillage;
+    if (ag && this.rail === ag.rail && this.railBout === 0 && this.railV > 0 && avant < ag.s && this.railS >= ag.s) {
+      const vers = this.aiguillageVers;
+      if (vers === 1 || vers === 2) return this.aiguiller(ag, vers, r);
+    }
     if (this.railDepuis > RAIL_DUREE_MAX && this.railV > 0 && this.railS < rl.len) this.railV = -this.railV; // un tracé plat ne garde jamais la bille : elle repart par où elle est venue
     if (this.railS >= rl.len || this.railS <= 0) {
       const sortie = this.railS >= rl.len;
@@ -1147,6 +1349,7 @@ export class Partie {
     this.comboMaxPartie = Math.max(this.comboMaxPartie, this.combo);
     this.railsFaits[rang] = this.railsFaits[rang]! + 1;
     this.ev |= rl.genre === "rampe" ? EV_RAMPE : EV_ORBITE;
+    if (rl.genre === "orbite" && this.table.passage && !this.table.passage.parBanque) this.ouvrirPassage();
     if (this.combo >= 2) this.ev |= EV_COMBO;
     this.points(div((rl.genre === "rampe" ? r.rampePoints : r.orbitePoints) * (100 + r.comboPas * (Math.min(this.combo, r.comboMax) - 1)), 100));
   }

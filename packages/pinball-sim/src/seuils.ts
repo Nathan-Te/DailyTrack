@@ -74,6 +74,11 @@ export interface AnalyseTable {
   /** Lot PBG2 : le robot a verrouillé une bille / lancé une multibille sur cette table (rapporté, pas exigé). */
   verrou?: boolean;
   multibille?: boolean;
+  /** Lot PBG3 : la porte s'est ouverte d'elle-même / a été franchie ; le poteau a renvoyé une bille ; l'aiguillage a dérivé une bille (rapportés ; les deux premiers sont exigés). */
+  porteOuverte?: boolean;
+  porteFranchie?: boolean;
+  sauveur?: boolean;
+  aiguillage?: boolean;
   ok?: boolean;
   raisons?: string[];
 }
@@ -135,7 +140,11 @@ export function* analyserTableEnTranches(contenu: Contenu, reglages: Reglages = 
   if (billes.coincee) raisons.push(`bille coincée : lâchée en (${billes.coincee.x}, ${billes.coincee.y}) à (${billes.coincee.vx}, ${billes.coincee.vy}) px/s`);
   for (const m of manquants) raisons.push(`module jamais touché : ${m}`);
   if (!suivi.mission) raisons.push("mission jamais réussie");
-  return { ...a, billes, manquants, missionRobot, mission: suivi.mission, verrou: suivi.verrou, multibille: suivi.multibille, ok: raisons.length === 0, raisons };
+  // lot PBG3 : la porte doit s'ouvrir (par la banque ou l'orbite, jouées par le robot) et être franchie au moins une fois
+  const aPorte = new Partie(contenu, reglages).table.passage !== null;
+  if (aPorte && !suivi.porteOuverte) raisons.push("porte jamais ouverte");
+  if (aPorte && !suivi.porteFranchie) raisons.push("porte jamais franchie");
+  return { ...a, billes, manquants, missionRobot, mission: suivi.mission, verrou: suivi.verrou, multibille: suivi.multibille, porteOuverte: suivi.porteOuverte, porteFranchie: suivi.porteFranchie, sauveur: suivi.sauveur, aiguillage: suivi.aiguillage, ok: raisons.length === 0, raisons };
 }
 
 /** `analyserTableEnTranches` d'un trait. */

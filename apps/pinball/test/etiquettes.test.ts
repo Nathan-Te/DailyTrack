@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { IDS_PLANS, Partie, dailyPinball } from "@cdj/pinball-sim";
+import { IDS_PLANS, Partie, UNITE, dailyPinball } from "@cdj/pinball-sim";
+import { geoPorte } from "../src/deblocages";
 import { GROSSISSEMENT_ETIQUETTE, boiteDeLEtiquette, lampesMission, boiteTouche, boitesSeRecouvrent, disquesDesRails, disquesDuMini, empreinteDuModule, flechesDesRails, largeurPlaque, largeurTexte, placerEtiquettes, px, styleEtiquette } from "../src/dessin";
 import { nomDuModule } from "../src/noms";
 import { CATALOGUE_FR } from "../src/catalogue.fr";
@@ -26,10 +27,11 @@ function noms(langue: keyof typeof LANGUES, theme: string): (module: string) => 
  * plus encombrés que la table des lots PB1 à PB4 : la « Doublette », où deux rampes se croisent sur les modules, est la plus serrée (son emplacement du haut n'a presque jamais de place).
  */
 const SEUILS: Readonly<Record<string, { reduites: number; ambigues: number; surUnRail: number }>> = {
+  // lot PBG3 : la porte ajoute ses murs aux obstacles et sa plaque à chaque table ; mesuré sur ces tables : plaques réduites 0,63 (tremplin, fr) à 0,67 (doublette, en) et 0,656 (boucle, fr) — seuils tremplin et boucle 0,65 → 0,7
   doublette: { reduites: 0.7, ambigues: 0.65, surUnRail: 0.3 },
-  tremplin: { reduites: 0.65, ambigues: 0.5, surUnRail: 0.1 },
+  tremplin: { reduites: 0.7, ambigues: 0.5, surUnRail: 0.1 },
   bretelle: { reduites: 0.6, ambigues: 0.5, surUnRail: 0.1 },
-  boucle: { reduites: 0.65, ambigues: 0.45, surUnRail: 0.1 },
+  boucle: { reduites: 0.7, ambigues: 0.45, surUnRail: 0.1 },
 };
 
 describe("les étiquettes ne se chevauchent plus (lots PBV2 et PBG1)", () => {
@@ -45,11 +47,13 @@ describe("les étiquettes ne se chevauchent plus (lots PBV2 et PBG1)", () => {
             const table = new Partie(dailyPinball(jour, undefined, theme, plan)).table;
             const etiquettes = placerEtiquettes(table, theme, noms(langue, theme));
             const quoi = `${langue} ${plan} ${theme} ${jour}`;
-            // une plaque par module nommé (tous les modules des tables du jeu portent un nom), puis une par rampe et une pour l'orbite
-            expect(etiquettes, quoi).toHaveLength(table.poses.length + table.rails.length);
-            expect(etiquettes.slice(table.poses.length).map((e) => e.module), quoi).toEqual(table.rails.map((r) => r.genre));
+            // une plaque par module nommé (tous les modules des tables du jeu portent un nom), puis une par rampe et une pour l'orbite, puis (lot PBG3) une pour la porte
+            expect(etiquettes, quoi).toHaveLength(table.poses.length + table.rails.length + 1);
+            expect(etiquettes.slice(table.poses.length, table.poses.length + table.rails.length).map((e) => e.module), quoi).toEqual(table.rails.map((r) => r.genre));
+            expect(etiquettes[etiquettes.length - 1]!.module, quoi).toBe("porte");
+            const porte = geoPorte(table)!;
             const rails = [...disquesDesRails(table), ...disquesDuMini(table)];
-            const toutesAncres = [...table.poses.map((m) => ({ x: px(m.x), y: px(m.y) })), ...flechesDesRails(table)];
+            const toutesAncres = [...table.poses.map((m) => ({ x: px(m.x), y: px(m.y) })), ...flechesDesRails(table), { x: porte.x, y: porte.y }, { x: porte.fleche.x, y: porte.fleche.y }];
             etiquettes.forEach((e, i) => {
               plaques++;
               if (e.taille < 1) reduites++;
@@ -61,6 +65,12 @@ describe("les étiquettes ne se chevauchent plus (lots PBV2 et PBG1)", () => {
               for (const p of table.poteaux) expect(boiteTouche(b, px(p.x), px(p.y), px(p.r)), `${quoi} : ${e.texte} / poteau`).toBe(false);
               for (const but of [3, 4, 5]) for (const l of lampesMission(table, theme, but)) expect(boiteTouche(b, l.x, l.y, 5.5), `${quoi} : ${e.texte} / lampe de la mission`).toBe(false);
               for (const v of table.voies) expect(boiteTouche(b, px(v.x), px(v.y) + 24, 6), `${quoi} : ${e.texte} / lampe de couloir`).toBe(false);
+              // lot PBG3 : la porte (ses murs et son battant, tous les 7 px) et les lampes des couloirs de retour ; la plaque de la porte est la seule à toucher son flanc (c'est la sienne : elle se pose contre elle)
+              for (const m of [{ x0: porte.a.x, y0: porte.a.y, x1: porte.b.x, y1: porte.b.y }, ...porte.murs]) {
+                const n = Math.ceil(Math.hypot(m.x1 - m.x0, m.y1 - m.y0) / 7);
+                for (let q = 0; q <= n; q++) expect(boiteTouche(b, m.x0 + ((m.x1 - m.x0) * q) / n, m.y0 + ((m.y1 - m.y0) * q) / n, 8), `${quoi} : ${e.texte} / porte`).toBe(false);
+              }
+              for (const l of table.sauveur.lampes) expect(boiteTouche(b, px(l.x), px(l.y), 6), `${quoi} : ${e.texte} / lampe de couloir de retour`).toBe(false);
               // les rails, leurs bouches et le mini-batteur : le dernier recours d'une plaque sans autre place les recouvre, et on le compte
               if (rails.some((d) => boiteTouche(b, d.x, d.y, d.r))) surUnRail++;
               // plus près d'un autre module (ou d'une autre bouche) que de ce qu'elle nomme : on lirait le nom du voisin
@@ -112,7 +122,10 @@ describe("les étiquettes ne se chevauchent plus (lots PBV2 et PBG1)", () => {
       for (const theme of THEMES) {
         const table = new Partie(dailyPinball(20802, undefined, theme, "doublette")).table;
         const e = placerEtiquettes(table, theme, noms(langue, theme));
-        const rails = e.slice(table.poses.length);
+        const rails = e.slice(table.poses.length, table.poses.length + table.rails.length);
+        // lot PBG3 : la porte a sa plaque, au mot « Porte » / « Gate » (la dernière), posée près d'elle
+        expect(e[e.length - 1]!.texte, `${langue} ${theme}`).toBe(cat["module.porte"]!.toLocaleUpperCase());
+        expect(Math.hypot(e[e.length - 1]!.x - table.passage!.x / UNITE, e[e.length - 1]!.y - table.passage!.y / UNITE), `${langue} ${theme}`).toBeLessThan(110);
         expect(rails.map((x) => x.texte.replace("\n", " ")), `${langue} ${theme}`).toEqual([cat[`module.rampe.${theme}`]!, cat[`module.rampe.${theme}`]!, cat[`module.orbite.${theme}`]!].map((t) => t.toLocaleUpperCase()));
         // chaque plaque de rail nomme les bouches de son rail (une pour une rampe, deux pour l'orbite)
         expect(rails.map((x) => x.ancres.length), `${langue} ${theme}`).toEqual([1, 1, 2]);

@@ -12,6 +12,10 @@ describe("les options d'essai de l'adresse", () => {
     expect(lireEssai("?essai=mission", false)).toMatchObject({ mission: true, essai: true });
   });
   it("une autre valeur de `essai`, ou aucune, ne change rien (classable)", () => {
+    // lot PBG3 : `?essai=porte` ouvre la porte, `?essai=poteau` arme le poteau sauveur (non classables)
+    expect(lireEssai("?essai=porte", false)).toMatchObject({ porte: true, poteau: false, verrou: false, essai: true });
+    expect(lireEssai("?essai=poteau", false)).toMatchObject({ porte: false, poteau: true, verrou: false, essai: true });
+    expect(lireEssai("?essai=poteau", true)).toMatchObject({ poteau: false, essai: false });
     expect(lireEssai("?essai=autre", false)).toMatchObject({ mission: false, essai: false });
     expect(lireEssai("", false)).toMatchObject({ mission: false, essai: false });
   });
@@ -26,7 +30,7 @@ describe("les options d'essai de l'adresse", () => {
     expect(lireEssai("?essai=autre", false)).toMatchObject({ verrou: false, multibille: false, essai: false });
   });
   it("sur la production (`restreint`), aucune option n'existe : `?essai=mission` ne fait rien", () => {
-    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, robot: null, plan: null, essai: false });
+    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, essai: false });
   });
 });
 

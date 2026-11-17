@@ -63,6 +63,8 @@ export const ROBOT_VALEUR_MULT = 3000;
 /** Lot PBG2 : ce que vaut une bille verrouillée (le verrou est allumé : deux billes verrouillées lancent la multibille et ses jackpots), et ce que coûte une bille perdue pendant la multibille (elle ne coûte pas de bille de la partie, mais la multibille s'arrête plus tôt). */
 export const ROBOT_VALEUR_VERROU = 15000;
 export const ROBOT_PERTE_MULTI = 4000;
+/** Lot PBG3 : ce que vaut un passage de la porte ouverte (en plus de ses points et du cran de mission qu'il donne : le robot vise la porte quand elle est ouverte). La rampe vers le verrou allumé, elle, vaut ce que vaut une bille verrouillée. */
+export const ROBOT_VALEUR_PORTE = 6000;
 /** Le lanceur : le robot tient la charge entre 800 et 1 000 (‰), après 60 à 180 pas d'attente. */
 const CHARGE_MIN = 800;
 const ATTENTE_LANCEUR = 60;
@@ -102,13 +104,14 @@ interface Depart {
   faite: boolean;
   verrous: number;
   perdues: number;
+  passages: number;
 }
 const progresDe = (p: Partie): number => {
   let m = p.compteur * 8;
   if (p.mission === "manege") for (const a of p.manegeAvance) m += a;
   return m;
 };
-const departDe = (p: Partie): Depart => ({ score: p.score, mult: p.mult, billes: p.billes, progres: progresDe(p), faite: p.missionFaite, verrous: p.verrouTotal, perdues: p.perduesMulti });
+const departDe = (p: Partie): Depart => ({ score: p.score, mult: p.mult, billes: p.billes, progres: progresDe(p), faite: p.missionFaite, verrous: p.verrouTotal, perdues: p.perduesMulti, passages: p.passages });
 
 const nouvelleVue = (): BilleVue => ({ id: -1, x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, couche: 0, captif: 0, dansLanceur: false, charge: 0 });
 
@@ -151,6 +154,7 @@ function noter(p: Partie, d: Depart): number {
   if (!d.faite) v += (progresDe(p) - d.progres) * (ROBOT_VALEUR_MISSION / 8);
   v += (p.mult - d.mult) * ROBOT_VALEUR_MULT;
   v += (p.verrouTotal - d.verrous) * ROBOT_VALEUR_VERROU;
+  v += (p.passages - d.passages) * ROBOT_VALEUR_PORTE;
   if (p.billes < d.billes) v -= ROBOT_PERTE;
   else if (p.ev & EV_SAUVEE) v -= Math.trunc(ROBOT_PERTE / 3);
   v -= (p.perduesMulti - d.perdues) * ROBOT_PERTE_MULTI;
@@ -192,8 +196,11 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[], id: number):
 export function noterFrappe(p: Partie, batteurs: readonly Batteur[], delai: number): number {
   const c = p.copier(true);
   const d = departDe(p);
+  // lot PBG3 : la bille suivie est celle que le robot joue (la plus menacée en multibille), comme dans `choisirEnTranches` — pas toujours la principale
+  const cible = nouvelleVue();
+  const id = plusMenacee(p, cible) ? cible.id : p.id;
   for (let i = 0; i < delai && !c.finie; i++) c.avancer();
-  return essayer(c, d, batteurs, p.id).note;
+  return essayer(c, d, batteurs, id).note;
 }
 
 /** Le résultat d'un choix : le coup (ou rien) et, sinon, quand regarder de nouveau. */

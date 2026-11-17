@@ -26,6 +26,15 @@ PLANS.forEach((plan, k) => {
     g += `<polyline fill="none" stroke="${couleurs[i % 4]}" stroke-width="5" stroke-opacity="0.55" points="${r.x.map((x, j) => `${px(x)},${px(r.y[j]!)}`).join(" ")}"/>`;
   });
   for (const o of t.portes) g += `<line x1="${px(o.seg.ax)}" y1="${px(o.seg.ay)}" x2="${px(o.seg.bx)}" y2="${px(o.seg.by)}" stroke="#000" stroke-width="3"/><circle cx="${px(o.x)}" cy="${px(o.y)}" r="3" fill="#000"/>`;
+  // lot PBG3 : le battant de la porte (en rouge), le poteau sauveur et ses lampes, l'aiguillage et ses deux trajets
+  if (t.passage) g += `<line x1="${px(t.passage.battant.ax)}" y1="${px(t.passage.battant.ay)}" x2="${px(t.passage.battant.bx)}" y2="${px(t.passage.battant.by)}" stroke="#e00" stroke-width="4"/>`;
+  g += `<circle cx="${px(t.sauveur.x)}" cy="${px(t.sauveur.y)}" r="${px(t.sauveur.r)}" fill="#0a0"/>`;
+  for (const l of t.sauveur.lampes) g += `<line x1="${px(l.x - l.l)}" y1="${px(l.y)}" x2="${px(l.x + l.l)}" y2="${px(l.y)}" stroke="#0a0" stroke-width="3"/>`;
+  if (t.aiguillage) {
+    const a = t.aiguillage;
+    g += `<circle cx="${px(a.x)}" cy="${px(a.y)}" r="5" fill="#f0f"/>`;
+    for (const v of [a.versVerrou, a.versElement]) if (v) g += `<line x1="${px(a.x)}" y1="${px(a.y)}" x2="${px(v.x)}" y2="${px(v.y)}" stroke="#f0f" stroke-dasharray="3 3"/>`;
+  }
   if (t.mini) {
     const sens = t.mini.cote === 0 ? 1 : -1;
     const x = t.mini.cote === 0 ? px(t.mini.x) : 368 - px(t.mini.x);
