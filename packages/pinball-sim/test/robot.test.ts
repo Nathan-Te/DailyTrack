@@ -112,7 +112,7 @@ describe("le robot vise : la mission du jour compte en premier", () => {
     expect(r.partie.missionFaite || r.partie.niveau > 1, `${theme} : mission ${r.partie.compteur} / ${r.partie.but}`).toBe(true); // lot PBG2 : la mission revient après la multibille
     expect(r.partie.score).toBeGreaterThan(20000);
   });
-  it("lot PBG1 : il vise les rails — sur chaque plan, ses quatre parties de deux minutes (celles des seuils) mènent chaque rail à son bout au moins une fois, avec un combo", () => {
+  it("lot PBG1 : il vise les rails — sur chaque plan, ses quatre parties de deux minutes mènent chaque rail à son bout au moins une fois, avec un combo", () => {
     for (const plan of IDS_PLANS) {
       const c = dailyPinball(JOUR + 4, undefined, "foire", plan);
       const faits = new Set<number>();
@@ -125,7 +125,7 @@ describe("le robot vise : la mission du jour compte en premier", () => {
       expect(faits.size, plan).toBe(new Partie(c).table.rails.length);
       expect(combo, plan).toBeGreaterThanOrEqual(2);
     }
-  });
+  }, 180_000); // 16 parties de deux minutes
 });
 
 describe("la copie d'une partie", () => {

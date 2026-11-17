@@ -20,8 +20,8 @@ describe("golden de Pinball", () => {
     const ref = j as (typeof golden.jours)[number];
     const c = dailyPinball(parseDay(ref.date)!);
     expect({ theme: c.theme, plan: c.plan, modules: c.modules, empreinte: empreinteContenu(c) }).toEqual({ theme: ref.theme, plan: ref.plan, modules: ref.modules, empreinte: ref.empreinte });
-    if (ref.seuils) expect(seuilsDuRobot(c)).toEqual(ref.seuils); // le robot (quelques secondes) : un jour de chaque thème
-  });
+    if (ref.seuils) expect(seuilsDuRobot(c)).toEqual(ref.seuils); // le robot (13 s, 30 s sur une machine de CI) : un jour de chaque thème
+  }, 120_000);
   it("le golden porte les seuils du robot d'un jour de chaque thème", () => {
     expect(golden.jours.filter((j) => j.seuils).map((j) => j.theme).sort()).toEqual(["espace", "foire", "ocean", "volcan"]);
   });

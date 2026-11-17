@@ -41,7 +41,7 @@ describe("Pinball sur le serveur", () => {
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/pinball/day/2026-11-11")).status).toBe(404);
-  });
+  }, 120_000); // lot PBG2 : les seuils du robot (quatre parties de six minutes) sont calculés ici
 
   it("rejoue chaque partie, classe dans l'ordre de la fiche (le score du plus grand au plus petit) et garde le résultat du serveur", async () => {
     const t = await monter();
