@@ -1,4 +1,5 @@
 import { bouton, creerCadre, barreJeu, el, type TraducteurCommun } from "@cdj/ui";
+import { pointsDAide } from "./bilan";
 import { commandesDuJeu, cleAction } from "./commandes";
 import type { ContexteJeu } from "./types";
 
@@ -28,7 +29,8 @@ export function monterAide<C>(c: ContexteJeu<C>): { ouvrir(): void } {
   function dessiner(): void {
     cadre.corps.replaceChildren(
       el("h2", { classe: "jeu-ecran__titre", texte: t("kit.aide.titre") }),
-      el("ul", { classe: "jeu-aide" }, ...c.def.aide.map((cle) => el("li", { texte: t(cle) }))),
+      // Lot PG2 : un pas peut avoir un petit dessin à côté (`DefinitionJeu.dessinsAide`, décoratif) ; sans dessin, c'est le `<li>` de texte d'avant.
+      el("ul", { classe: "jeu-aide" }, ...pointsDAide(c.def.aide, c.def.dessinsAide).map((p) => (p.dessin ? el("li", { classe: "jeu-aide__pas" }, el("span", { classe: "jeu-aide__dessin", attrs: { "aria-hidden": "true" } }, p.dessin()), el("span", { texte: t(p.cle) })) : el("li", { texte: t(p.cle) })))),
       // Lot « écrans du kit » : le rappel des commandes en schéma, une ligne par action, ses touches en petites touches (comme « Comment jouer » de Tower).
       el(
         "ul",
@@ -52,7 +54,9 @@ export function monterAide<C>(c: ContexteJeu<C>): { ouvrir(): void } {
       dessiner();
       cadre.majBarre();
       cadre.racine.hidden = false;
-      ok.focus();
+      // Lot PG2 : « Comment jouer » s'ouvre **toujours en haut** : le focus va sur « C'est parti » sans faire défiler (avec douze pas la fenêtre s'ouvrait défilée jusqu'au bouton, le titre coupé).
+      ok.focus({ preventScroll: true });
+      cadre.defile.scrollTop = 0;
     },
   };
 }

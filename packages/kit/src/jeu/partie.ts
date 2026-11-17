@@ -6,6 +6,7 @@ import { liaisonTenue } from "@cdj/ui/src/commandes";
 import { suivantDisponible } from "../fantome";
 import { ligneParDefaut, textePartage, adresseDePartage } from "../partage";
 import { commandesDuJeu } from "./commandes";
+import { ecrireBilan, type BilanEcrit } from "./bilan";
 import { creerFondFin } from "./fondFin";
 import { creerSurimpression } from "./surimpression";
 import { creerTenues } from "./tenues";
@@ -227,7 +228,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     pauseCadre.majBarre();
     pauseCadre.racine.hidden = false;
     c.musique.baisser(1);
-    (document.getElementById("jeu-reprendre") as HTMLElement | null)?.focus();
+    document.getElementById("jeu-reprendre")?.focus({ preventScroll: true }); // lot PG2 : un écran s'ouvre toujours en haut
+    pauseCadre.defile.scrollTop = 0;
   }
   function fermerPause(): void {
     if (phase !== "pause") return;
@@ -248,10 +250,12 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   });
   finCadre.racine.hidden = true;
   let desabonner: (() => void) | null = null;
+  let bilanFin: BilanEcrit | null = null; // lot PG2 : le bilan du jeu, lu une fois quand la partie finit (la partie est détruite à « Rejouer »)
   function terminer(): void {
     enfonce.toutRelacher();
     phase = "fin";
     resultat = partie.resultat();
+    bilanFin = ecrireBilan(partie.bilan?.(), (cle, params) => c.i18n.t(cle, params));
     fondFin.remonter();
     const med = def.sansMedaille ? null : def.medaille(resultat.score, def.seuils(c.contenu)); // lot B1 : un jeu sans médaille n'appelle ni l'un ni l'autre
     let nouveau = false;
@@ -264,7 +268,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     desabonner = d.envoi.surChangement(() => dessinerFin(med, nouveau));
     finCadre.majBarre();
     finCadre.racine.hidden = false;
-    (document.getElementById("jeu-rejouer") as HTMLElement | null)?.focus();
+    document.getElementById("jeu-rejouer")?.focus({ preventScroll: true }); // lot PG2 : l'écran de fin s'ouvre en haut (avec un bilan, il est plus long : le focus ne le fait plus défiler jusqu'à « Rejouer »)
+    finCadre.defile.scrollTop = 0;
     // Le classement après l'envoi : déjà dans la réponse du serveur ; à l'accueil de la partie suivante, `suite` se relit.
   }
   function messageEnvoi(): string {
@@ -310,6 +315,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
       el("h2", { classe: "jeu-ecran__titre", texte: t("kit.fin.titre") }),
       // Lot « écrans du kit » : le score, la médaille et le rang dans une tuile (papier bordé d'encre), puis le reste.
       el("section", { classe: "jeu-tuile jeu-resume" }, el("p", { classe: "jeu-fin__score", attrs: { id: "jeu-fin-score" }, texte: score }), ...(med ? [medailleUi(c.i18n.socle() as unknown as TraducteurCommun, { type: TYPE[med], obtenue: true, jeu: fiche.id as Jeu })] : []), rang),
+      ...(bilanFin ? [tuileBilan(bilanFin)] : []),
       ...(pseudo ? [pseudo] : []),
       ...(nouveau && !lu ? [el("p", { classe: "jeu-message", texte: t("kit.fin.record.nouveau") })] : []),
       ...(encore ? [encore] : []),
@@ -320,6 +326,16 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     );
     finCadre.pied.replaceChildren(hoteSuite);
     if (lu && readPlayerId(d.stockage ?? { getItem: () => null })) void chargerSuite(hoteSuite);
+  }
+  /** Lot PG2 — le bilan du jeu : une tuile sous le score (« Bilan », la cause en tête, puis une ligne libellé / valeur chacune), selon la charte (papier bordé d'encre). Textes en `textContent`, jamais `innerHTML`. */
+  function tuileBilan(b: BilanEcrit): HTMLElement {
+    return el(
+      "section",
+      { classe: "jeu-tuile jeu-bilan", attrs: { id: "jeu-fin-bilan", "aria-label": t("kit.fin.bilan") } },
+      el("h3", { classe: "jeu-tuile__legende", texte: t("kit.fin.bilan") }),
+      ...(b.cause ? [el("p", { classe: "jeu-bilan__cause", attrs: { id: "jeu-fin-cause" }, texte: b.cause })] : []),
+      ...(b.lignes.length > 0 ? [el("dl", { classe: "jeu-bilan__lignes" }, ...b.lignes.flatMap((l) => [el("dt", { texte: l.libelle }), el("dd", { texte: l.valeur })]))] : []),
+    );
   }
   let partagerEtat: HTMLElement | null = null;
   let suiteChargee = false;

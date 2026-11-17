@@ -53,6 +53,10 @@ test.describe("Cibles : le HUD en surimpression (kit, lot PG1)", () => {
       await page.setViewportSize({ width: taille.width, height: taille.height });
       await lancer(page);
       await expect(page.locator(".jeu-surimpression")).toBeVisible();
+      // Lot PG2 : on attend le texte de la barre **et** celui des zones avant de mesurer (l'instabilité de la CI : la mesure était faite avant que le HUD ait écrit son texte ; le kit l'écrit dès la création de la partie depuis le lot K9, ce
+      // contrôle en fait un état attendu et non plus une course).
+      for (const id of ["jeu-hud-score", "jeu-hud-temps"]) await expect(page.locator(`#${id}`)).not.toHaveText("");
+      for (const zone of ["haut-gauche", "centre", "haut-droite", "annonce"]) await expect(page.locator(`.jeu-surimpression [data-zone="${zone}"]`)).not.toBeEmpty();
       const m = await mesurer(page);
       const lieu = taille.nom;
       expect(m.fenetre.defilementH, `${lieu} : pas de défilement horizontal`).toBe(false);
