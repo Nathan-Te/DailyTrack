@@ -5,30 +5,30 @@ import { contratGravity } from "../src/gravity";
 import { GAMES } from "../src/registry";
 import { DAY_MS, makeApi, ouvrirJeu, playerId } from "./helpers";
 
-// Lot GR5 — **les anciennes versions, côté serveur** : un jour figé sous le générateur 3 et la simulation 2 est relu et rejoué avec ces versions-là **après** qu'une version suivante (factice ici, posée dans les registres) existe.
+// Lot GR5 — **les anciennes versions, côté serveur** : un jour figé sous le générateur 4 et la simulation 3 est relu et rejoué avec ces versions-là **après** qu'une version suivante (factice ici, posée dans les registres) existe.
 // Le jeu fait la même chose avec le même code (`packages/gravity-sim/test/versions.test.ts` : contenu, seuils, terrain, rejeu ; `apps/gravity/test/jourFige.test.ts` : la lecture du fichier par le jeu).
 const JOUR = daysFromCivil(2026, 11, 10);
 const DATE = formatDay(JOUR);
 const SEUILS = { bronze: 3100, silver: 6200, gold: 9300, author: 15500 };
 
 const poserVersionsFactices = (): void => {
-  GENERATEURS[4] = { morceauxParTheme: 7, ordre: (j) => [...GENERATEURS[3]!.ordre(j)].reverse(), morceau: (j, m, ordre, entree, precedent, regles) => genererMorceau(j + 1, m, ordre, entree, precedent, regles) };
-  SIMS[3] = { ...SIMS[2]!, gravite: 1800, ventGravite: 720, vitesseBase: 32768 };
+  GENERATEURS[5] = { morceauxParTheme: 7, ordre: (j) => [...GENERATEURS[4]!.ordre(j)].reverse(), morceau: (j, m, ordre, entree, precedent, regles) => genererMorceau(j + 1, m, ordre, entree, precedent, regles) };
+  SIMS[4] = { ...SIMS[3]!, gravite: 1800, ventGravite: 720, vitesseBase: 32768 };
 };
 afterEach(() => {
-  delete GENERATEURS[4];
-  delete SIMS[3];
+  delete GENERATEURS[5];
+  delete SIMS[4];
 });
 
 describe("Gravity : un jour figé sous une ancienne version se rejoue à l'identique sur le serveur", () => {
   const fichier = JSON.parse(JSON.stringify(figerJour(JOUR, SEUILS))) as Record<string, unknown>;
   const partie = () => {
     const contenu = dailyGravity(JOUR);
-    const appuis = jouerRobot(terrainDuJour(contenu), { maxTicks: 4000 }).appuis;
-    return { appuis, texte: enregistrer(contenu, appuis), attendu: jouer(terrainDuJour(contenu), appuis) };
+    const changements = jouerRobot(terrainDuJour(contenu), { maxTicks: 4000 }).changements;
+    return { changements, texte: enregistrer(contenu, changements), attendu: jouer(terrainDuJour(contenu), changements) };
   };
 
-  it("le contrat lit le fichier v3, ses seuils figés, et rejoue sa rediffusion : même résultat avant et après la version suivante", () => {
+  it("le contrat lit le fichier v4, ses seuils figés, et rejoue sa rediffusion : même résultat avant et après la version suivante", () => {
     const p = partie();
     const avant = (() => {
       const c = contratGravity({ frozen: { [DATE]: fichier } });
@@ -38,8 +38,8 @@ describe("Gravity : un jour figé sous une ancienne version se rejoue à l'ident
     poserVersionsFactices();
     const c = contratGravity({ frozen: { [DATE]: fichier } });
     const n = c.niveauDuJour(JOUR) as typeof avant.n;
-    expect(n.contenu).toMatchObject({ g: 3, sim: 2 });
-    expect(c.decoder(p.texte)).toMatchObject({ g: 3, sim: 2 });
+    expect(n.contenu).toMatchObject({ g: 4, sim: 3 });
+    expect(c.decoder(p.texte)).toMatchObject({ g: 4, sim: 3 });
     expect(c.rejouer(n, p.texte)).toEqual(avant.mesure);
     expect(c.rejouer(n, p.texte)).toEqual(p.attendu);
     expect(c.seuils(n)).toEqual(SEUILS);
@@ -52,24 +52,24 @@ describe("Gravity : un jour figé sous une ancienne version se rejoue à l'ident
     expect(n.contenu).toMatchObject({ g: GRAVITY_GENERATOR_VERSION, sim: GRAVITY_SIM_VERSION });
   });
 
-  it("par la route : le jour figé v3 est envoyé, rejoué et classé (la version courante est encore la 3)", async () => {
+  it("par la route : le jour figé v4 est envoyé, rejoué et classé (la version courante est encore la 3)", async () => {
     const p = partie();
     const t = await makeApi({ seed: false, games: GAMES, allowCopies: true, joursFiges: { gravity: { [DATE]: fichier } } });
     t.clock.now = JOUR * DAY_MS + 12 * 3_600_000;
     await ouvrirJeu(t, "gravity");
-    poserVersionsFactices(); // une version suivante existe dans le code : le jour v3 est toujours servi et rejoué tel qu'il a été figé
+    poserVersionsFactices(); // une version suivante existe dans le code : le jour v4 est toujours servi et rejoué tel qu'il a été figé
     const r = await t.call("POST", "/api/gravity/submit", { replay: p.texte, name: "Ancienne" }, { headers: { "X-Player-Id": playerId(1) } });
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.body.score).toEqual(scoreParColonnes(p.attendu));
     expect((await t.call("GET", `/api/gravity/day/${DATE}`)).body.medals).toEqual(SEUILS);
   });
 
-  it("limite connue de la plateforme (README du lot GR5) : `memeContenu` du module compare au SEUL générateur courant, donc une rediffusion v4 d'un jour v4 est refusée tant que le courant est la v3", async () => {
+  it("limite connue de la plateforme (README du lot GR5) : `memeContenu` du module compare au SEUL générateur courant, donc une rediffusion v5 d'un jour v5 est refusée tant que le courant est la v4", async () => {
     poserVersionsFactices();
-    const f4 = JSON.parse(JSON.stringify(figerJour(JOUR, SEUILS, 4, 3)));
-    const c4 = dailyGravity(JOUR, 4, 3);
-    const texte = enregistrer(c4, jouerRobot(terrainDuJour(c4), { maxTicks: 1500 }).appuis);
-    expect(decoderRediffusion(texte)).toMatchObject({ g: 4, sim: 3 }); // le décodeur de Gravity la lit
+    const f4 = JSON.parse(JSON.stringify(figerJour(JOUR, SEUILS, 5, 4)));
+    const c4 = dailyGravity(JOUR, 5, 4);
+    const texte = enregistrer(c4, jouerRobot(terrainDuJour(c4), { maxTicks: 1500 }).changements);
+    expect(decoderRediffusion(texte)).toMatchObject({ g: 5, sim: 4 }); // le décodeur de Gravity la lit
     const t = await makeApi({ seed: false, games: GAMES, allowCopies: true, joursFiges: { gravity: { [DATE]: f4 } } });
     t.clock.now = JOUR * DAY_MS + 12 * 3_600_000;
     await ouvrirJeu(t, "gravity");

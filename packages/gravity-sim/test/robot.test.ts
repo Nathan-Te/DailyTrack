@@ -126,7 +126,7 @@ describe("le robot est déterministe et sa partie est une vraie rediffusion", ()
     expect(rapport.piecesPrises / total).toBeGreaterThan(0.8);
     expect(partie.pieces).toBe(rapport.piecesPrises);
   });
-  it("il joue la boucle des cinq thèmes en moins de 2 secondes (le budget du robot)", () => {
+  it("il joue la boucle des cinq thèmes en moins de 3 secondes (le budget du robot, lot GR6 : 2 s avant les modes de vol)", () => {
     const t0 = performance.now();
     const { partie } = jouerRobot(terrainDuJour(dailyGravity(JOUR + 3)), { maxDistance: 5 * 19 * LARGEUR_MORCEAU });
     const ms = performance.now() - t0;
