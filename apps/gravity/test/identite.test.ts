@@ -45,8 +45,9 @@ describe("« Gravity » : l'illustration", () => {
 });
 
 describe("« Gravity » : les textes", () => {
-  it("« Comment jouer » : les trois pas, les six blocs, le bouclier, l'aimant et le multiplicateur — dans les deux langues, sans texte à remplacer", () => {
-    expect(DEFINITION.aide).toHaveLength(12);
+  it("« Comment jouer » : les trois pas, les six blocs, les trois modes de vol et les portails de vitesse (lot GR6), le bouclier, l'aimant et le multiplicateur — dans les deux langues, sans texte à remplacer", () => {
+    expect(DEFINITION.aide).toHaveLength(16);
+    expect(DEFINITION.aide).toEqual(expect.arrayContaining(["aide.mode.avion", "aide.mode.onde", "aide.mode.ressort", "aide.vitesse"]));
     for (const langue of ["fr", "en"] as const) {
       const c = CATALOGUE_GRAVITY[langue] as Record<string, string>;
       for (const cle of DEFINITION.aide) {
@@ -61,6 +62,14 @@ describe("« Gravity » : les textes", () => {
       for (const id of THEMES_GRAVITY) for (const cle of [`accueil.phrase.${id}`, `theme.${id}`, `theme.${id}.meca`]) expect(c[cle], `${langue} ${cle}`).toBeTruthy();
     }
     expect((CATALOGUE_GRAVITY.fr as Record<string, string>)["accueil.phrase.foret"]).toBe("Le sol, le plafond : même combat. Tant que tu touches quelque chose.");
+  });
+  it("lot GR6 : chaque mode a son nom et sa consigne, chaque portail de vitesse son annonce — en français et en anglais, courts", () => {
+    for (const langue of ["fr", "en"] as const) {
+      const c = CATALOGUE_GRAVITY[langue] as Record<string, string>;
+      for (const mode of ["gravite", "avion", "onde", "ressort"]) for (const cle of [`mode.${mode}`, `mode.${mode}.consigne`]) expect(c[cle], `${langue} ${cle}`).toBeTruthy();
+      for (const v of ["lent", "v1", "v2", "v3"]) expect(c[`portail.${v}`], `${langue} portail.${v}`).toBeTruthy();
+      for (const cle of ["aide.mode.avion", "aide.mode.onde", "aide.mode.ressort", "aide.vitesse"]) expect(c[cle]!.length, `${langue} ${cle}`).toBeLessThan(150); // « comment jouer » reste court
+    }
   });
   it("le panneau, le bilan de la mort et les causes ont leurs textes (les mêmes clés en français et en anglais)", () => {
     const fr = CATALOGUE_GRAVITY.fr as Record<string, string>;

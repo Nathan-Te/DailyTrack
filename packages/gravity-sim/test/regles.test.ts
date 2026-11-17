@@ -7,7 +7,9 @@ import { avancer, bonus, centreDe, couloirs, jusqua, morceau, partieSur, trou } 
 
 const jouer = (p: Partie, appuis: number[], pas: number): Partie => {
   for (let i = 0; i < pas && !p.finie; i++) {
+    // Lot GR6 : l'entrée est l'état du bouton ; un appui d'un pas (le doigt se lève au pas suivant), comme celui du robot en gravité.
     if (appuis.includes(p.tick)) p.appuyer();
+    else if (p.bouton) p.relacher();
     p.avancer();
   }
   return p;

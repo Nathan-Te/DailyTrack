@@ -23,7 +23,7 @@ import { type ContratMinimal, definirJeuNeuf, type FicheServeur, RefusJeu, type 
 
 // « Gravity » (`gravity`) : le serveur du coureur à gravité (lot GR1), arcade, classé au **score** du plus grand au plus petit (puis la durée en pas, du plus petit au plus grand). **Le contrat minimal d'un jeu neuf**, rien d'autre :
 // le niveau du jour (le fichier figé de l'image s'il se relit et se régénère à l'identique, sinon le générateur courant — avec les seuils des médailles **figés dans le fichier**, jamais recalculés pour un jour figé), le
-// décodage et le rejeu de la rediffusion (la liste des pas où le joueur a touché l'écran : le serveur rejoue jusqu'à la mort ou aux dix minutes et retrouve le score **lui-même** — la plateforme ne lit jamais un score
+// décodage et le rejeu de la rediffusion (la liste des pas où l'appui commence ou finit (lot GR6) : le serveur rejoue jusqu'à la mort ou aux dix minutes et retrouve le score **lui-même** — la plateforme ne lit jamais un score
 // annoncé par le client), les colonnes de classement de la fiche, l'empreinte des entrées (refus des copies). Les routes, l'ordre de validation, le classement, les copies, l'aperçu, l'effacement et les crochets sont
 // ceux du module des jeux (`jeux/`), la table est la table commune `resultats_jeu`. Les seuils viennent du robot (lot GR2, `seuils.ts` de `@cdj/gravity-sim`) : lus dans le fichier du jour figé, sinon calculés **une fois** par le module des jeux (qui garde le niveau d'un jour en mémoire), jamais à chaque partie ; pas d'empreinte de la partie de l'auteur (le robot ne sert ni de fantôme ni de preuve : `sansFantome`).
 
@@ -37,7 +37,7 @@ interface Niveau {
 }
 type Mesure = Resultat;
 interface Rejeu extends RejeuNeuf {
-  appuis: Rediffusion["appuis"];
+  changements: Rediffusion["changements"];
 }
 
 /** Les options propres de « Gravity » : les jours figés de l'image (date → contenu du fichier). */
@@ -45,7 +45,7 @@ export interface GravityOptions {
   frozen?: Readonly<Record<string, unknown>>;
 }
 
-const texteDesEntrees = (appuis: readonly number[]): string => `gravity|${appuis.join(",")}`;
+const texteDesEntrees = (changements: readonly number[]): string => `gravity|${changements.join(",")}`;
 
 /** Le contenu d'un jour : le fichier figé s'il se vérifie, sinon le générateur courant. */
 export function contenuDeGravity(jour: number, frozen: Readonly<Record<string, unknown>> = {}): Contenu {
@@ -85,7 +85,7 @@ export const contratGravity = (o: GravityOptions = {}): ContratMinimal<Niveau, R
   },
   score: (m) => scoreParColonnes(m), // les colonnes de la fiche : le score, puis la durée (`variante.ts`)
   seuils: (niveau) => niveau.seuils,
-  entrees: (r) => texteDesEntrees(r.appuis),
+  entrees: (r) => texteDesEntrees(r.changements),
   theme: (niveau) => themeDuJour(niveau.jour),
   mesures: (m) => ({ distance: m.distance, pieces: m.pieces, gemmes: m.gemmes, multMax: m.multMax }),
   ticksParSeconde: TICKS_PAR_SECONDE,

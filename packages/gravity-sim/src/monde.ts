@@ -1,5 +1,6 @@
 import * as K from "./constantes";
 const { CASE, CLIGNOTANT_ALLUME, CLIGNOTANT_CYCLE, ALTERNE_BATTEMENT, LARGEUR_MORCEAU, LIGNES } = K;
+import { FACTEUR_LENT, FACTEUR_V1, FACTEUR_V2, FACTEUR_V3, MODE_AVION, MODE_GRAVITE, MODE_ONDE, MODE_RESSORT, type ModeDeVol } from "./constantes";
 import type { Regles } from "./regles";
 import type { ThemeGravity } from "./themes";
 
@@ -40,7 +41,22 @@ export interface Etape {
   g: 1 | -1;
 }
 
-export type Motif = "calme" | "trouBas" | "trouHaut" | "zigzag" | "pilier" | "pics" | "milieu" | "escalier" | "etages" | "inverseur" | "ilots" | "special";
+/**
+ * Un portail (lot GR6) : **une colonne du morceau** que le joueur franchit (son centre dépasse le milieu de la colonne). Les portails de mode changent le mode de vol, `gravite` y revient (et la gravité retombe vers le sol) ;
+ * les portails de vitesse changent le facteur de vitesse de la caméra jusqu'au portail de vitesse suivant. Un portail n'est jamais solide : il est dans le niveau (`Morceau.portails`), pas dans les cases.
+ */
+export type TypePortail = "avion" | "onde" | "ressort" | "gravite" | "lent" | "v1" | "v2" | "v3";
+export interface Portail {
+  /** La colonne du morceau (0 à 15). */
+  c: number;
+  type: TypePortail;
+}
+/** Le mode que fait entrer un portail de mode (0 : le portail de retour à la gravité). `undefined` : un portail de vitesse. */
+export const MODE_DU_PORTAIL: Readonly<Record<string, ModeDeVol | undefined>> = { avion: MODE_AVION, onde: MODE_ONDE, ressort: MODE_RESSORT, gravite: MODE_GRAVITE };
+/** Le facteur de vitesse (en pour cent) d'un portail de vitesse. `undefined` : un portail de mode. */
+export const FACTEUR_DU_PORTAIL: Readonly<Record<string, number | undefined>> = { lent: FACTEUR_LENT, v1: FACTEUR_V1, v2: FACTEUR_V2, v3: FACTEUR_V3 };
+
+export type Motif = "calme" | "trouBas" | "trouHaut" | "zigzag" | "pilier" | "pics" | "milieu" | "escalier" | "etages" | "inverseur" | "ilots" | "special" | "avion" | "onde" | "ressort";
 
 export interface Morceau {
   /** Le numéro du morceau (0, 1, 2…). */
@@ -55,6 +71,13 @@ export interface Morceau {
   bonus: readonly Bonus[];
   /** Le chemin sûr (voir `Etape`). */
   chemin: readonly Etape[];
+  /** Lot GR6 : les portails de ce morceau (de mode et de vitesse), dans l'ordre des colonnes. */
+  portails: readonly Portail[];
+  /**
+   * Lot GR6 : **l'axe du chemin sûr d'une section à mode**, le centre de la boîte du joueur (en unités du monde, `y`) au milieu de chacune des 16 colonnes : le couloir de l'avion et de l'onde, la hauteur à tenir pour le
+   * ressort. Vide dans un morceau de gravité. Les pièces d'une section sont posées dessus ; le pilote du robot le suit (`robot.ts`).
+   */
+  axe: readonly number[];
   /** Le décalage du battement des cases qui battent de ce morceau (clignotants et alternées, en pas) : le générateur l'aligne sur l'arrivée attendue du joueur, pour que la traversée prévue soit possible. 0 pour les autres. */
   decalage: number;
   /** La gravité du chemin sûr à l'arrivée dans le morceau (celle de la sortie du précédent ; +1 au départ) et à sa sortie. */
@@ -99,7 +122,7 @@ export function solide(type: number, tick: number, decalage = 0): boolean {
 export const xDeColonne = (cx: number): number => cx * CASE;
 
 /** Un terrain écrit à la main (les tests) : une grille de texte par morceau. Une ligne par rangée (12 lignes), 16 caractères : `.` vide, `#` bloc, `^` pique, `>` tapis, `~` glace, `c` clignotant, `a` / `b` alterné, `i` inverseur, `v` vent. */
-export function terrainDeTest(grilles: readonly (readonly string[])[], objets: { pieces?: readonly Objet[]; gemmes?: readonly Objet[]; bonus?: readonly Bonus[] } = {}): Terrain {
+export function terrainDeTest(grilles: readonly (readonly string[])[], objets: { pieces?: readonly Objet[]; gemmes?: readonly Objet[]; bonus?: readonly Bonus[]; portails?: readonly (Portail & { m?: number })[] } = {}): Terrain {
   const CODES: Record<string, number> = { ".": VIDE, "#": BLOC, "^": PIQUE, ">": TAPIS, "~": GLACE, c: CLIGNOTANT, a: ALTERNE_A, b: ALTERNE_B, i: INVERSEUR, v: VENT };
   const couloir = Array.from({ length: LIGNES }, (_, r) => (r < 2 || r >= LIGNES - 2 ? "#".repeat(LARGEUR_MORCEAU) : ".".repeat(LARGEUR_MORCEAU)));
   const morceaux = new Map<number, Morceau>();
@@ -107,7 +130,7 @@ export function terrainDeTest(grilles: readonly (readonly string[])[], objets: {
     const g = grilles[k] ?? couloir;
     const cases = new Uint8Array(LARGEUR_MORCEAU * LIGNES);
     for (let r = 0; r < LIGNES; r++) for (let c = 0; c < LARGEUR_MORCEAU; c++) cases[c * LIGNES + r] = CODES[g[r]![c]!] ?? VIDE;
-    return { m: k, theme: "foret", motif: "calme", cases, pieces: k === 0 ? (objets.pieces ?? []) : [], gemmes: k === 0 ? (objets.gemmes ?? []) : [], bonus: k === 0 ? (objets.bonus ?? []) : [], chemin: [], decalage: 0, entree: 1, sortie: 1 };
+    return { m: k, theme: "foret", motif: "calme", cases, pieces: k === 0 ? (objets.pieces ?? []) : [], gemmes: k === 0 ? (objets.gemmes ?? []) : [], bonus: k === 0 ? (objets.bonus ?? []) : [], chemin: [], portails: (objets.portails ?? []).filter((p) => (p.m ?? 0) === k).map(({ c, type }) => ({ c, type })), axe: [], decalage: 0, entree: 1, sortie: 1 };
   };
   return {
     morceau(k) {
