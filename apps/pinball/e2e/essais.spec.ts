@@ -220,6 +220,21 @@ test.describe("Pinball : la porte, le poteau et l'aiguillage (?essai=porte, ?ess
       await expect(page.locator(".pinball-hud__poteau")).toHaveAttribute("data-etat", "rentre");
       const sons = await page.evaluate(() => window.__pinball!.sons().joues.map((j) => j.son));
       expect(sons).toContain("sauveur");
+      // lot PBL1 : une fois par bille — la bille servie redescend les deux couloirs de retour : rien ne se rallume, le poteau ne se réarme pas
+      await page.evaluate(() => {
+        const p = window.__pinball!.partie();
+        for (const x of [31, 337]) {
+          p.x = x * 4096;
+          p.y = 480 * 4096;
+          p.px = p.x;
+          p.py = p.y;
+          p.vx = 0;
+          p.vy = 120 * 4096;
+          window.__jeu.avancer(90);
+        }
+      });
+      expect(await page.evaluate(() => window.__pinball!.partie().lampes)).toEqual([false, false]);
+      await expect(page.locator(".pinball-hud__poteau")).toHaveAttribute("data-etat", "rentre");
       await page.waitForTimeout(200);
       expect(erreurs).toEqual([]);
       await context.close();

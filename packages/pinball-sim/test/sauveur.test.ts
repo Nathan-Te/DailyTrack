@@ -4,6 +4,7 @@ import { avancer, enJeu, evenements2, partiePlan } from "./aide";
 
 // LE POTEAU SAUVEUR (lot PBG3) : chaque couloir de retour a une lampe que la bille allume en y passant ; les deux allumées arment le poteau, qui sort entre les batteurs et renvoie la bille vers le haut une fois, puis
 // redescend (les lampes s'éteignent). Pendant la multibille il sert à la première bille qui le touche. Le bas de la table ne change pas : rentré, il n'existe pas.
+// LOT PBL1 : il ne s'arme qu'UNE FOIS PAR BILLE. Une bille qu'il a servie n'allume plus ses lampes et n'est plus servie avant la bille suivante : trois sauvetages au plus par partie (une fois par bille en multibille).
 
 const partie = (plan = "doublette", r = REGLAGES): Partie => partiePlan(plan, "foire", { 3: "mini", 4: "mini" }, r);
 /** Une bille qui descend le couloir de retour de gauche (x ≈ 31) ou de droite (x ≈ 337), au-dessus de la lampe. */
@@ -140,7 +141,7 @@ describe("le poteau armé", () => {
     // deux billes tombent entre les batteurs l'une derrière l'autre
     enJeu(p, AXE, 620, 0, 400);
     p.autres.length = 0;
-    p.autres.push({ ...Object.assign({}, { id: 99, x: AXE * UNITE, y: 560 * UNITE, vx: 0, vy: 400 * UNITE, px: AXE * UNITE, py: 560 * UNITE, captifDe: -1, captifTb: -1, captif: 0, dansLanceur: false, charge: 0, entree: 0, sauvee: true, geyserJets: 0, manegeSecteur: p.manegeSecteur.map(() => -1), couleeDedans: p.couleeDedans.map(() => false), couche: 0 as const, rail: -1, railS: 0, railV: 0, railDepuis: 0, railBout: 0 as const }) });
+    p.autres.push({ ...Object.assign({}, { id: 99, x: AXE * UNITE, y: 560 * UNITE, vx: 0, vy: 400 * UNITE, px: AXE * UNITE, py: 560 * UNITE, captifDe: -1, captifTb: -1, captif: 0, dansLanceur: false, charge: 0, entree: 0, sauvee: true, servie: false, geyserJets: 0, manegeSecteur: p.manegeSecteur.map(() => -1), couleeDedans: p.couleeDedans.map(() => false), couche: 0 as const, rail: -1, railS: 0, railV: 0, railDepuis: 0, railBout: 0 as const }) });
     avancer(p, 60);
     expect(p.sauvetages).toBe(1);
   });
@@ -187,4 +188,135 @@ describe("le poteau armé", () => {
       }
     }
   }, 120_000);
+});
+
+describe("une fois par bille (lot PBL1)", () => {
+  const sansSauvee = (): Partie => partie("doublette", { ...copierReglages(), sauvee: 0 });
+
+  it("une bille servie n'allume plus les lampes : elle descend les deux couloirs et le poteau ne s'arme pas", () => {
+    const p = sansSauvee();
+    p.armerLeSauveur();
+    entreLesBatteurs(p);
+    avancer(p, 120);
+    expect(p.sauvetages).toBe(1);
+    expect(p.servie).toBe(true);
+    expect(p.lampes).toEqual([false, false]);
+    // la même bille redescend les deux couloirs de retour
+    dansLeCouloir(p, false);
+    avancer(p, 90);
+    dansLeCouloir(p, true);
+    avancer(p, 90);
+    expect(p.lampes).toEqual([false, false]);
+    expect(p.sauveurArme).toBe(false);
+    expect(p.servie).toBe(true);
+  });
+
+  it("un poteau armé n'est plus un sauvetage pour la bille déjà servie (rien ne la renvoie)", () => {
+    const p = sansSauvee();
+    p.armerLeSauveur();
+    entreLesBatteurs(p);
+    avancer(p, 120);
+    p.armerLeSauveur(); // un essai force les lampes : le poteau ne sert pas pour autant la même bille deux fois
+    entreLesBatteurs(p, 2);
+    let perdue = false;
+    for (let i = 0; i < 600 && !perdue; i++) {
+      p.avancer();
+      perdue = (p.ev & EV_PERDUE) !== 0;
+    }
+    expect(perdue).toBe(true);
+    expect(p.sauvetages).toBe(1);
+  });
+
+  it("la bille suivante a de nouveau son poteau : perdue, la nouvelle bille peut l'armer et être sauvée", () => {
+    const p = sansSauvee();
+    p.armerLeSauveur();
+    entreLesBatteurs(p);
+    avancer(p, 120);
+    expect(p.sauvetages).toBe(1);
+    // la bille servie est perdue : la bille suivante arrive au lanceur, sans rien d'allumé
+    enJeu(p, 150, 790, 0, 100);
+    avancer(p, 5);
+    expect(p.billes).toBe(2);
+    expect(p.servie).toBe(false);
+    dansLeCouloir(p, false);
+    avancer(p, 90);
+    dansLeCouloir(p, true);
+    avancer(p, 90);
+    expect(p.sauveurArme).toBe(true);
+    entreLesBatteurs(p);
+    avancer(p, 120);
+    expect(p.sauvetages).toBe(2);
+    expect(p.billes).toBe(2);
+  });
+
+  it("au plus trois sauvetages dans une partie de trois billes, quoi que fasse la bille", () => {
+    const p = sansSauvee();
+    for (let essai = 0; essai < 8 && !p.finie; essai++) {
+      p.armerLeSauveur();
+      entreLesBatteurs(p, 0);
+      avancer(p, 200);
+      enJeu(p, 150, 790, 0, 100); // la bille est perdue quoi qu'il arrive
+      avancer(p, 5);
+    }
+    expect(p.sauvetages).toBeLessThanOrEqual(3);
+    expect(p.finie).toBe(true);
+  });
+
+  it("la bille sauvée (revenue au lanceur) garde son état : le poteau qui l'avait servie ne la sert pas deux fois", () => {
+    const p = partie("doublette"); // `sauvee` par défaut : une bille perdue dans les cinq secondes revient
+    p.armerLeSauveur();
+    entreLesBatteurs(p);
+    avancer(p, 120);
+    expect(p.sauvetages).toBe(1);
+    enJeu(p, 150, 790, 0, 100);
+    avancer(p, 5);
+    // sauvée par la fonction « bille sauvée » : la même bille, une vie de plus intacte
+    expect(p.billes).toBe(3);
+    expect(p.sauvee).toBe(true);
+    expect(p.servie).toBe(true);
+  });
+
+  it("en multibille, chaque bille est servie une fois : la deuxième bille l'est après la première, jamais deux fois la même", () => {
+    const p = partie("doublette");
+    p.lancerLaMultibille();
+    avancer(p, 800);
+    expect(p.autres.length).toBeGreaterThanOrEqual(1);
+    /** Pose la bille `b` (une `Bille` de `autres`) entre les batteurs, tombant sur le poteau. */
+    const poser = (b: (typeof p.autres)[number], y: number): void => {
+      b.x = AXE * UNITE;
+      b.y = y * UNITE;
+      b.px = b.x;
+      b.py = b.y;
+      b.vx = 0;
+      b.vy = 400 * UNITE;
+      b.dansLanceur = false;
+      b.captif = 0;
+      b.captifDe = -1;
+      b.couche = 0;
+      b.rail = -1;
+    };
+    // la bille principale tombe sur le poteau armé : elle est servie
+    enJeu(p, AXE, 620, 0, 400);
+    p.armerLeSauveur();
+    avancer(p, 60);
+    expect(p.sauvetages).toBe(1);
+    expect(p.servie).toBe(true);
+    expect(p.lampes).toEqual([false, false]);
+    // une autre bille, que le poteau n'a pas servie, arme à son tour (les deux lampes) et est servie
+    const autre = p.autres[0]!;
+    expect(autre.servie).toBe(false);
+    p.armerLeSauveur();
+    enJeu(p, 230, 250, 0, 0); // la bille servie est loin, en haut : elle ne gêne pas la deuxième
+    poser(autre, 600);
+    avancer(p, 120);
+    expect(p.sauvetages).toBe(2);
+    expect(autre.servie).toBe(true);
+    // les deux billes sont servies : le poteau armé de force ne sert plus ni l'une ni l'autre
+    p.armerLeSauveur();
+    enJeu(p, AXE, 620, 0, 400); // la principale, déjà servie, retombe sur le poteau armé
+    poser(autre, 300);
+    avancer(p, 60);
+    expect(p.sauvetages).toBe(2);
+    expect(p.servie).toBe(true);
+  });
 });

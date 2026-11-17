@@ -532,8 +532,6 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
         multi: Math.max(0, 1 - (maintenant - tMulti) / 1400),
         message: maintenant - tMessage < MESSAGE_MS ? { texte: message, vie: 1 - (maintenant - tMessage) / MESSAGE_MS } : null,
         secousse: o.reduit ? 0 : Math.max(0, 1 - (maintenant - tMulti) / 450),
-        plaqueVerrou: o.t("plaque.verrou"),
-        plaqueJackpot: o.t("plaque.jackpot"),
         texteSauvee: o.t("scene.sauvee"),
         gains: gains.map((g) => ({ x: g.x, y: g.y, points: g.points, vie: (g.fin - partie.tick) / (g.texte ? JACKPOT_VIE : TICKS_PAR_SECONDE), ...(g.texte ? { texte: g.texte } : {}) })),
       });
