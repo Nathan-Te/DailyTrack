@@ -7,7 +7,7 @@ import type { TypePortail } from "@cdj/gravity-sim";
 import { CHEVRONS_DU_PORTAIL, estPortailDeVitesse } from "./modesLogique";
 
 /** La demi-largeur d'une arche de portail (cases) et l'épaisseur de son cadre. */
-export const ARCHE = { demiLargeur: 0.34, cadre: 0.17, bande: 0.08, rayonIcone: 0.38 } as const;
+export const ARCHE = { demiLargeur: 0.44, cadre: 0.17, bande: 0.08, rayonIcone: 0.38 } as const;
 const Z = { voile: 0.0, cadre: 0.0, bande: 0.001, icone: 0.0, glyphe: 0.002 } as const;
 
 /** La couleur d'un portail : celle de son mode (avion, onde, ressort), le papier pour le retour à la gravité, le bleu-violet des portails de vitesse. */

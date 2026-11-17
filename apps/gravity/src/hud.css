@@ -244,7 +244,8 @@
   opacity: 0;
   transition: opacity 0.3s;
   white-space: nowrap;
-  max-width: calc(100vw - 24px);
+  width: max-content; /* sa largeur est celle de son texte (la zone du kit est étroite : sans cela la consigne s'écrase en colonne) */
+  max-width: min(calc(100vw - 24px), 380px);
 }
 .g-mode--vu,
 .g-vitesse--vu {

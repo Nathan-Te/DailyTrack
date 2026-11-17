@@ -1,6 +1,6 @@
 import { dailyGravity, jouer, jouerRobot, terrainDuJour, type Resultat } from "@cdj/gravity-sim";
 import { parseDay } from "@cdj/core";
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import type { Browser, BrowserContext, BrowserContextOptions, Page } from "@playwright/test";
 
 // Un appareil neuf : l'horloge du serveur d'essai (le 06/11/2026 à midi UTC, comme `GRAVITY_AUJOURDHUI`), l'aide « Comment jouer » déjà vue (elle a son propre test), les droits du presse-papiers.
 export const API = "http://127.0.0.1:8798";
@@ -23,8 +23,8 @@ declare global {
   }
 }
 
-export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ baseURL: "http://localhost:4188", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"] });
+export async function appareil(browser: Browser, adresse = `/?api=${API}&debug&manuel&tactile=0`, aideVue = true, options: BrowserContextOptions = {}): Promise<{ context: BrowserContext; page: Page }> {
+  const context = await browser.newContext({ baseURL: "http://localhost:4188", locale: "fr-FR", permissions: ["clipboard-read", "clipboard-write"], ...options });
   const decalage = Date.UTC(2026, 10, 6, 12) - Date.now();
   await context.addInitScript(
     ({ decalage, aideVue }) => {

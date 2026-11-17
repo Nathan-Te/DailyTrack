@@ -92,7 +92,7 @@ describe("l'introduction : le rang du thème décide du premier mode, pas le th�
   });
   it("premierMorceauDuMode donne le premier morceau de la première section d'un mode (pour ?mode=)", () => {
     const { plan, t } = contexte(JOUR);
-    for (const mode of [MODE_AVION, MODE_ONDE, MODE_RESSORT]) {
+    for (const mode of [MODE_AVION, MODE_ONDE, MODE_RESSORT] as const) {
       const m = plan.premierMorceauDuMode(mode);
       expect(m).toBeGreaterThan(3);
       expect(modeDuMotif(t.morceau(m).motif)).toBe(mode);
@@ -147,7 +147,7 @@ describe("la composition d'une section : portail, couloir libre, motif, retour p
   it("le couloir libre : environ 1 s (120 pas) après le portail d'entrée, toute la hauteur est libre", () => {
     for (const j of jours.slice(0, 6)) {
       const { t, plan } = contexte(j);
-      for (const mode of [MODE_AVION, MODE_ONDE, MODE_RESSORT]) {
+      for (const mode of [MODE_AVION, MODE_ONDE, MODE_RESSORT] as const) {
         const m = plan.premierMorceauDuMode(mode);
         const colonnePortail = m * LARGEUR_MORCEAU + COLONNE_PORTAIL;
         const fin = plan.trajectoire.tickOuLeJoueurArrive(colonnePortail * CASE) + 100; // un peu moins d'une seconde
