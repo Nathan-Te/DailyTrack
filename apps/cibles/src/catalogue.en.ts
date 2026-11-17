@@ -20,6 +20,7 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "bilan.theme": "Theme",
   "bilan.vide": "Empty line (ignored)",
   "bilan.duree": "Game length",
+  "bilan.dureeValeur": "30 s",
   "bilan.cibles": "Total to aim for",
   "commandes.action.gauche": "Cursor left",
   "commandes.action.droite": "Cursor right",

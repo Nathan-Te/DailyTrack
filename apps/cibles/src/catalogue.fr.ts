@@ -17,6 +17,7 @@ export const CATALOGUE_FR = {
   "bilan.theme": "Thème",
   "bilan.vide": "Ligne vide (ignorée)",
   "bilan.duree": "Durée de la partie",
+  "bilan.dureeValeur": "30 s",
   "bilan.cibles": "Total à viser",
   "commandes.action.gauche": "Curseur à gauche",
   "commandes.action.droite": "Curseur à droite",

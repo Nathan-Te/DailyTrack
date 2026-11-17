@@ -68,7 +68,7 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
     essai("bilan") === "1"
       ? (contenu, hote, o) => {
           const p = nouvellePartieCibles(contenu, hote, o);
-          return { ...p, bilan: () => ({ cause: { cle: "bilan.cause" }, lignes: [{ cle: "bilan.touches", valeur: String(p.resultat().score[0] ?? 0) }, { cle: "bilan.theme", valeur: o.t(`theme.${o.theme}`) }, { cle: "bilan.vide", valeur: "" }, { cle: "bilan.duree", valeur: "30 s" }, { cle: "bilan.cibles", valeur: "20" }] }) };
+          return { ...p, bilan: () => ({ cause: { cle: "bilan.cause" }, lignes: [{ cle: "bilan.touches", valeur: String(p.resultat().score[0] ?? 0) }, { cle: "bilan.theme", valeur: o.t(`theme.${o.theme}`) }, { cle: "bilan.vide", valeur: "" }, { cle: "bilan.duree", valeur: o.t("bilan.dureeValeur") }, { cle: "bilan.cibles", valeur: "20" }] }) };
         }
       : nouvellePartieCibles,
   rediffusionDiamant: (c) => enregistrer(c, touchesDuBot(c)),
