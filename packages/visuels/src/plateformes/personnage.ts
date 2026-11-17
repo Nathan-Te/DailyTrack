@@ -149,7 +149,10 @@ export function feetTarget(m: Readonly<Motion>, stride: number): { pose: FeetPos
       const k = Math.min(1, Math.abs(m.vx) / Math.max(0.1, m.runSpeed));
       const theta = 2 * Math.PI * stridePhase(stride);
       const d = m.vx > 0 ? 1 : -1;
-      const foot = (base: number, ph: number) => [base + d * STEP.swing * k * Math.cos(ph), STEP.lift * k * Math.max(0, Math.sin(ph))] as const;
+      // Lot PG2 : un pied est levé quand sin(ph) > 0 (ph de 0 à π), posé sinon. **Le pied posé recule par rapport au corps** (il va de l'avant vers
+      // l'arrière, à l'opposé de la course : `−d · cos`, qui croît de −1 à 1 quand ph va de π à 2π), le pied levé revient vers l'avant. Avant PG2 le
+      // signe était inverse : le pied levé reculait et le pied posé avançait (la pédale tournait à l'envers). Seul le signe change : amplitude, levée et cadence sont celles d'avant.
+      const foot = (base: number, ph: number) => [base - d * STEP.swing * k * Math.cos(ph), STEP.lift * k * Math.max(0, Math.sin(ph))] as const;
       const [lx, ly] = foot(-f, theta);
       const [rx, ry] = foot(f, theta + Math.PI);
       return { pose, feet: [lx, ly, rx, ry], bob: STEP.bob * k * Math.abs(Math.sin(theta)) };

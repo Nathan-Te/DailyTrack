@@ -71,6 +71,18 @@ export interface OptionsPartie {
   volumeEffets(): number;
 }
 
+/**
+ * Lot PG2 — **le bilan d'une partie** (facultatif), montré par le kit **dans l'écran de fin**, sous le score et la médaille : la cause de la fin et des lignes « libellé / valeur » (la distance, les pièces, le thème…).
+ * Le jeu donne des **clés de son catalogue** (fr + en : le kit les traduit, jamais un texte en dur) et des valeurs **déjà écrites** (un nombre mis en forme avec la langue de la partie, `OptionsPartie.langue` et `.t`).
+ * **Il n'y a plus d'écran de fin propre à un jeu** : le jeu ne montre en scène que son animation de fin (la mort, « Plus de place ! ») ; le bilan est écrit **une fois**, dans le vrai écran de fin.
+ */
+export interface BilanPartie {
+  /** La cause de la fin (« Tombé dans un pic »), montrée en tête du bilan ; `params` sont ceux de la clé. */
+  cause?: { cle: string; params?: Readonly<Record<string, string | number>> };
+  /** Les lignes, dans l'ordre : `cle` est le libellé (catalogue du jeu), `valeur` le texte déjà écrit. Au plus `LIGNES_BILAN_MAX` sont montrées ; une valeur vide est ignorée. */
+  lignes: readonly { cle: string; valeur: string }[];
+}
+
 /** Une partie en cours, côté jeu : son état, son rendu et ses entrées de scène. Le kit en tient la boucle, le HUD, la pause et la fin. */
 export interface PartieDuJeu {
   /** Un pas de la simulation (appelé `ticksParSeconde` fois par seconde, jamais pendant la pause). */
@@ -95,6 +107,12 @@ export interface PartieDuJeu {
   hud(): { principal: string; secondaire: string };
   /** Le résultat : les colonnes de classement (dans l'ordre de la fiche) et la rediffusion à envoyer. */
   resultat(): { score: number[]; rediffusion: string };
+  /**
+   * Facultatif (lot PG2) — **le bilan de la partie finie** (`BilanPartie`), appelé **une fois**, quand `finie()` devient vrai, juste avant l'écran de fin : le kit le montre dans l'écran de fin, avec le score et la médaille.
+   * `null` ou absente : rien de plus à l'écran (**un jeu sans bilan ne change pas**). Le passage va de l'animation de fin du jeu à l'écran de fin **sans écran intermédiaire** : le jeu laisse `finie()` faux pendant son
+   * animation (ou dit `finEnCours()`), puis le vrai quand elle est jouée ; il ne dessine pas son propre bilan.
+   */
+  bilan?(): BilanPartie | null;
   /** Le fantôme change (la rediffusion à montrer, ou `null`). */
   fantome(rediffusion: string | null): void;
   detruire(): void;
@@ -134,8 +152,13 @@ export interface DefinitionJeu<C> {
    * Absent : rien. Le gabarit, les séparateurs et les émojis restent ceux du kit.
    */
   extrasPartage?(score: readonly number[], langue: "fr" | "en", t: Traduire): string[];
-  /** Les « points » de l'aide « Comment jouer » (clés du catalogue du jeu), dans l'ordre. */
+  /** Les « points » de l'aide « Comment jouer » (clés du catalogue du jeu), dans l'ordre. « Comment jouer » s'ouvre toujours en haut (lot PG2). */
   aide: readonly string[];
+  /**
+   * Lot PG2 — **un petit dessin à côté d'un pas de « Comment jouer »** (facultatif) : une table `clé d'un pas de `aide` → fonction qui construit le dessin` (un `<svg>` décoratif aux traits de la charte, construit par le jeu :
+   * jamais d'image externe ni de `innerHTML` ; le kit le pose à gauche du texte, 56 × 56 px, caché aux lecteurs d'écran). Un pas sans entrée reste une ligne de texte ; absente : « Comment jouer » est celui d'avant.
+   */
+  dessinsAide?: Readonly<Record<string, () => SVGElement>>;
   /**
    * Lot B1 — **cette partie est-elle classable ?** Reçoit l'adresse de la page (`location.search`). `false` : une partie d'essai (scénario, réglage `?debug&tune`…) — le kit ne la classe pas, ne l'envoie pas,
    * ne la garde pas dans les records et le dit au joueur (« Partie d'essai : non classée »), **sans passer la page en archive**. Absente : toute partie du jour est classable. Un jeu ne répond `false` que hors production

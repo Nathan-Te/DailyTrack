@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, scoreParColonnes, seuilsDe, seuilsValides, themeDuJour, planDuJour, NB_PLANS, IDS_PLANS, type Evenement } from "@cdj/pinball-sim";
+import { PINBALL_GENERATOR_VERSION, PINBALL_SIM_VERSION, DUREE_MAX_TICKS, MAX_EVENEMENTS, DROITE, GAUCHE, LANCEUR, dailyPinball, enregistrer, figerJour, jouer, jouerRobot, scoreParColonnes, seuilsDe, seuilsValides, themeDuJour, planDuJour, NB_PLANS, IDS_PLANS, type Evenement } from "@cdj/pinball-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_PINBALL } from "../scripts/pinball-essais";
 import { contenuDePinball } from "../src/pinball";
@@ -41,7 +41,7 @@ describe("Pinball sur le serveur", () => {
     expect(jour.body.theme).toBe(themeDuJour(JOUR));
     expect(JSON.stringify(jour.body)).not.toMatch(/replay|preuve/);
     expect((await t.call("GET", "/api/pinball/day/2026-11-11")).status).toBe(404);
-  });
+  }, 120_000); // lot PBG2 : les seuils du robot (quatre parties de six minutes) sont calculés ici
 
   it("rejoue chaque partie, classe dans l'ordre de la fiche (le score du plus grand au plus petit) et garde le résultat du serveur", async () => {
     const t = await monter();
@@ -86,6 +86,19 @@ describe("Pinball sur le serveur", () => {
     expect([...themes].sort()).toEqual(["espace", "foire", "ocean", "volcan"]);
     expect([...plans].sort()).toEqual([...IDS_PLANS].sort());
   });
+
+  it("lot PBG2 : une partie qui passe par une multibille (verrou, trois billes, jackpots, mission du niveau suivant) : le serveur rejoue les mêmes événements et retrouve le même score", async () => {
+    const t = await monter({ frozen: { [DATE]: figerJour(JOUR, { bronze: 1000, silver: 3000, gold: 8000, author: 20000 }) } });
+    const c = dailyPinball(JOUR);
+    const r = jouerRobot(c, 7, { maxTicks: 216000 }); // 6 minutes du robot
+    expect(r.partie.multibilles, "la partie passe par une multibille").toBeGreaterThanOrEqual(1);
+    expect(r.partie.jackpotsPartie).toBeGreaterThanOrEqual(1);
+    const attendu = scoreParColonnes(jouer(c, r.evenements));
+    const rep = await t.call("POST", "/api/pinball/submit", { replay: enregistrer(c, r.evenements), name: "Multi" }, { headers: entete(77) });
+    expect(rep.status, JSON.stringify(rep.body)).toBe(200);
+    expect(rep.body.score).toEqual(attendu);
+    expect(attendu.score).toBeGreaterThanOrEqual(r.partie.score); // le serveur joue la fin de la partie : jamais moins que ce que le robot avait déjà
+  }, 60_000);
 
   it("range la durée de la partie (en pas) comme départage, à côté du score (cle1 = −score, cle2 = pas)", async () => {
     const t = await monter();

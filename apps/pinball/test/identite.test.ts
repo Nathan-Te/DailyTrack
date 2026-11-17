@@ -36,8 +36,8 @@ describe("« Pinball » : la fiche est prête pour l'aperçu", () => {
 });
 
 describe("« Pinball » : les textes sont complets, en français et en anglais", () => {
-  it("« Comment jouer » : sept points (lot PBG1 : les rails et le combo), chacun dans les deux langues, sans « À remplacer »", () => {
-    expect(DEFINITION.aide).toHaveLength(7);
+  it("« Comment jouer » : huit points (lot PBG1 : les rails et le combo ; lot PBG2 : la boucle verrou, multibille, niveaux), chacun dans les deux langues, sans « À remplacer »", () => {
+    expect(DEFINITION.aide).toHaveLength(8);
     for (const langue of ["fr", "en"] as const) {
       const c = CATALOGUE_PINBALL[langue] as Record<string, string>;
       for (const cle of DEFINITION.aide) {
@@ -54,7 +54,7 @@ describe("« Pinball » : les textes sont complets, en français et en anglais",
     const fr = CATALOGUE_PINBALL.fr as Record<string, string>;
     const en = CATALOGUE_PINBALL.en as Record<string, string>;
     const cles = Object.keys(fr).filter((k) => /^(aujourdhui|hud)\./.test(k));
-    for (const k of ["aujourdhui.mission", "aujourdhui.table", "aujourdhui.medailles", "hud.aide.lancer", "hud.mission.reussie", "hud.score.aria", "hud.mult.aria", "hud.billes.aria", "hud.combo", "hud.combo.aria", "hud.rail.gain", "aujourdhui.plan"]) expect(cles, k).toContain(k);
+    for (const k of ["aujourdhui.mission", "aujourdhui.table", "aujourdhui.medailles", "hud.aide.lancer", "hud.mission.reussie", "hud.score.aria", "hud.mult.aria", "hud.billes.aria", "hud.combo", "hud.combo.aria", "hud.rail.gain", "aujourdhui.plan", "aujourdhui.boucle", "hud.multibille", "hud.niveau", "hud.verrou.aria"]) expect(cles, k).toContain(k);
     for (const k of cles) {
       expect(fr[k], `fr ${k}`).toBeTruthy();
       expect(en[k], `en ${k}`).toBeTruthy();

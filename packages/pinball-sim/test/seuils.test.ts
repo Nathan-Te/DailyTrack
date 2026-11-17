@@ -40,5 +40,6 @@ describe("le robot donne les seuils d'une table", () => {
     expect(a.seuils.author).toBeGreaterThanOrEqual(Math.max(...a.scores) - 50);
     expect(seuilsDuRobot(c)).toEqual(a.seuils); // le calcul d'un trait, en mémoire par table, donne les mêmes
     expect(seuilsDuRobot({ ...c, jour: c.jour + 400 })).toEqual(a.seuils); // le verdict ne dépend que de la table, pas du jour
-  });
+  }, 120_000); // lot PBG2 : quatre parties de six minutes (≈ 13 s), jouées deux fois
+
 });

@@ -183,7 +183,9 @@ export function creerModules(theme: ThemePinball, partie: Partie, groupe: Group)
       });
       const vusT = etats.get(trous)!;
       trous.instances.forEach((ins) => {
-        const garde = p.captif > 0 && p.captifDe === ins.i ? 0.75 + 0.25 * Math.sin(sec * 14) : 0;
+        // lot PBG2 : le trou-verrou clignote tant que le verrou est allumé (comme les flèches de la mission : 150 pas allumé, 150 éteint)
+        const verrou = p.verrouAllume && p.table.verrou === ins.i && Math.floor(p.tick / 150) % 2 === 0 ? 0.9 : 0;
+        const garde = p.captif > 0 && p.captifDe === ins.i ? 0.75 + 0.25 * Math.sin(sec * 14) : verrou;
         if (garde === vusT[ins.k]) return;
         const premiere = vusT[ins.k]! < 0;
         vusT[ins.k] = garde;

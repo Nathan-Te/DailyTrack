@@ -61,5 +61,5 @@ describe("« Pinball » : le client suit sa fiche", () => {
     const exemple = VARIANTE.score({ score: 4582, ticks: 3600 });
     expect(DEFINITION.formatScore(exemple, "fr", (cle) => cle)).toBe(VARIANTE.formatScore(exemple, "fr"));
     expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe(VARIANTE.scorePartage(exemple, "en"));
-  });
+  }, 120_000); // `seuilsDe` : le robot joue quatre parties de six minutes (lot PBG2)
 });

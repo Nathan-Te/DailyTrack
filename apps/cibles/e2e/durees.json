@@ -7,7 +7,8 @@
     "poids.spec.ts": 2,
     "ecrans-kit.spec.ts": 12,
     "chargement-partie.spec.ts": 3,
-    "surimpression.spec.ts": 12
+    "surimpression.spec.ts": 12,
+    "fin-et-aide.spec.ts": 20
   },
   "essentiel": {
     "determinisme.spec.ts": 3,

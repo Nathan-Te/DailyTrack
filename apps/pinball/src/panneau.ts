@@ -67,7 +67,7 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
     try {
       const rendu = creerRendu(apercu, new Partie(contenu, REGLAGES), theme, () => null, t(`theme.${theme}`), police);
       rendu.redimensionner(LARGEUR_APERCU, HAUTEUR_APERCU);
-      rendu.dessiner({ tick: 0, debug: false, alpha: 0, sauvee: 0, eclat: 0, texteSauvee: "", gains: [] });
+      rendu.dessiner({ tick: 0, debug: false, alpha: 0, sauvee: 0, eclat: 0, texteSauvee: "", gains: [], multi: 0, message: null, secousse: 0, plaqueVerrou: "", plaqueJackpot: "" });
     } catch {
       apercu.remove(); // pas de canvas 2D : le panneau se lit sans
     }
@@ -84,6 +84,8 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
     el("p", "p-mission__texte", t(`mission.texte.${mission}`, { but })),
     jauge,
     el("p", "p-mission__gain", t("aujourdhui.mission.gain", { points: grouper(POINTS.mission, ctx.langue) })),
+    // lot PBG2 : la boucle de la partie, en une ligne
+    el("p", "p-mission__boucle", t("aujourdhui.boucle")),
   );
 
   const modules = modulesDeLaTable(contenu, (cle) => t(cle));

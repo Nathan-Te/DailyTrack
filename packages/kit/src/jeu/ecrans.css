@@ -29,6 +29,39 @@
   margin: 0;
   font-weight: 700;
 }
+/* Lot PG2 — le bilan du jeu : une tuile sous le score (la cause en tête, puis libellé / valeur en deux colonnes). */
+.jeu-bilan {
+  gap: var(--dj-espace-2);
+}
+.jeu-bilan > h3 {
+  margin: 0;
+}
+.jeu-bilan__cause {
+  margin: 0;
+  font-family: var(--jeu-police);
+  font-size: var(--dj-taille-16);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.jeu-bilan__lignes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--dj-espace-4);
+  row-gap: var(--dj-espace-1);
+  margin: 0;
+  font-size: var(--dj-taille-14);
+}
+.jeu-bilan__lignes dt {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.jeu-bilan__lignes dd {
+  margin: 0;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
 .jeu-medailles {
   display: flex;
   flex-wrap: wrap;
@@ -64,6 +97,24 @@
   font-size: var(--dj-taille-15);
   font-weight: 600;
   line-height: 1.35;
+}
+/* Lot PG2 — un pas de « Comment jouer » avec son dessin : le dessin à gauche (taille fixe), le texte à droite. */
+.jeu-aide__pas {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-4);
+  margin-left: calc(-1 * var(--jeu-esp-grand));
+}
+.jeu-aide__dessin {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+}
+.jeu-aide__dessin > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .jeu-aide__commandes {
   list-style: none;
