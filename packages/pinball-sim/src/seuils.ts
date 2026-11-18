@@ -14,12 +14,12 @@ import { billesCoincees, SuiviModules, tirsDisperses, type RapportBilles } from 
 // **Un jour figé fige aussi ses seuils** (`jours.ts`) : le fichier de jour porte `seuils` et `bot` ; `seuilsDuJour` lit ceux du fichier avant tout calcul. Changer le robot ou ces constantes
 // (`PINBALL_BOT_VERSION`) ne change donc jamais un jour figé, et change l'empreinte d'un jour protégé sans fichier (la mise en production s'arrête).
 //
-// **Qui calcule, et quand.** Le robot met de 3 à 5 secondes à jouer une table (mesures : README du lot PB4) : il ne tourne **jamais à chaque partie**. (1) `npm run figer:pinball` (job `figer` de « Mettre en production »)
+// **Qui calcule, et quand.** Le robot met de 3 à 5 secondes à jouer une table (3,3 s en moyenne, 4,8 s au pire sur 30 jours, depuis le lot PBR1 : budget ci-dessous, README du lot) : il ne tourne **jamais à chaque partie**. (1) `npm run figer:pinball` (job `figer` de « Mettre en production »)
 // et `npm run preparer:pinball` (les jours à venir : `preparer` de la fiche) écrivent les seuils dans le fichier de chaque jour : le serveur et le jeu les y lisent, le robot ne tourne pas. (2) Un jour sans fichier
 // (un jour d'archive, d'essai, de recette) est calculé **une fois** par table (`cleDeTable` : le résultat ne dépend que d'elle) : par le serveur (le module des jeux garde le niveau d'un jour) et, côté jeu, **en
 // arrière-plan** pendant la première partie (`seuilsEnTranches`, `apps/pinball/src/niveau.ts`).
 
-/** Le robot joue 4 parties par table, de 6 minutes chacune au plus (216 000 pas : lot PBG2, avec la boucle mission-verrou-multibille une bonne partie dure bien plus que les 2 minutes du lot PB4 ; le coût d'une table est celui de 24 minutes de jeu, ≈ 12 secondes). Mesures et justification : README du lot PBG2. */
+/** Le robot joue 4 parties par table, de 6 minutes chacune au plus (216 000 pas : lot PBG2, avec la boucle mission-verrou-multibille une bonne partie dure bien plus que les 2 minutes du lot PB4 ; le coût d'une table est celui de 24 minutes de jeu : ≈ 14 secondes au lot PBG2, ≈ 3,3 depuis le lot PBR1). Mesures et justification : README du lot PBG2. */
 export const PARTIES_DU_ROBOT = 4;
 export const DUREE_PARTIE_ROBOT = 360 * TICKS_PAR_SECONDE;
 /**
