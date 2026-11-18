@@ -173,6 +173,8 @@
   "apps/web/test/quarantaine.test.ts": 1,
   "apps/web/test/revisionIdentite.test.ts": 1,
   "apps/web/test/salon.test.ts": 1,
+  "apps/web/test/salonSessionJouable-200.test.ts": 72,
+  "apps/web/test/salonSessionJouable.test.ts": 2,
   "apps/web/test/scene.test.ts": 1,
   "apps/web/test/session.test.ts": 1,
   "apps/web/test/settings.test.ts": 1,
