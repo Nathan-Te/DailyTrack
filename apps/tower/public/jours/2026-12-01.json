@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "jeu": "tower",
+  "date": "2026-12-01",
+  "g": 3,
+  "tirage": 0,
+  "sim": 5,
+  "contenu": {
+    "pieces": "LZIOTSJSLITOJZJZSIOLTZSOLJTITLIJOSZJZOIT",
+    "plateformeDemi8": 28,
+    "paliers": [{"metres":8,"effet":"petite"},{"metres":16,"effet":"glissante"},{"metres":24,"effet":"figee"},{"metres":32,"effet":"vent"},{"metres":40,"effet":"lierre"},{"metres":48,"effet":"geante"}],
+    "ventSens": -1,
+    "theme": "jungle"
+  },
+  "medailles": { "auteur": 29400, "or": 14700, "argent": 8820, "bronze": 4410 },
+  "preuve": "AQUDALSiARQEOAMMAwgnDAEIKQwBCgEIKAoCCCsMAwoCCCcMAQgpDAEKAQhUDAEKBQgqDAEKAQgrDAMKAgglCgMIKgwBCgUIIwoECCgMAwoECCIKBQgnDAEKBQgjDAEKBAgeCgQIKAwDCgQIIgwBCgUIIAwBCgQIJAoFCC0KBQgnDAMKBQghDAMKAwgjDAIKAggqCQQIiQI"
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "jeu": "pinball",
+  "date": "2026-12-02",
+  "g": 8,
+  "sim": 9,
+  "bot": 8,
+  "seuils": {
+    "bronze": 769600,
+    "silver": 1795700,
+    "gold": 3078400,
+    "author": 5130600
+  },
+  "contenu": {
+    "theme": "ocean",
+    "plan": "bretelle",
+    "modules": [
+      "tourbillon",
+      "trou",
+      "cibles",
+      "mini",
+      "bumpers",
+      "mini"
+    ],
+    "empreinte": "57c75e2c"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "jeu": "gravity",
+  "date": "2026-11-20",
+  "g": 5,
+  "sim": 4,
+  "bot": 4,
+  "seuils": {
+    "bronze": 1600,
+    "silver": 4140,
+    "gold": 6400,
+    "author": 9990
+  },
+  "contenu": {
+    "ordre": [
+      "glace",
+      "foret",
+      "nuit",
+      "neon",
+      "usine"
+    ],
+    "empreinte": "cd6898f5"
+  }
+}
