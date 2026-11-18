@@ -86,13 +86,20 @@ interface LigneMembre {
   avatar: string | null;
   hidden: number;
 }
+/** Un membre qui compte pour son groupe (lot U6) : sa référence publique, son pseudo, l'empreinte de son image. */
+interface MembreDuTrio {
+  ref: string;
+  pseudo: string;
+  avatar: string | null;
+}
 /** Une vue du classement des groupes : `cumul` ou le dossier d'un jeu (`site`). */
 interface VueGroupes {
   vue: string;
   /** Lot A3 : la vue d'un jeu d'arcade (après le séparateur « Arcade » des onglets). */
   arcade?: true;
   sens: Sens;
-  classes: { id: string; nom: string; avatar: string | null; rang: number; score: number; classesN: number }[];
+  /** Lot U6 : `trio` — les trois membres dont le résultat compte (du meilleur au moins bon), de quoi dessiner leurs photos sur le podium ; lus dans la requête d'appartenance, aucune lecture de plus. */
+  classes: { id: string; nom: string; avatar: string | null; rang: number; score: number; classesN: number; trio: MembreDuTrio[] }[];
   moins: { id: string; nom: string; avatar: string | null; classesN: number }[];
 }
 
@@ -358,10 +365,19 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     const classes = new Set<string>([...c.cumul.map((l) => l.id), ...(c.hauteurs ?? []).flatMap((h) => h.classes.map((x) => x.playerId))]);
     const ids = [...classes];
     const appartenance = new Map<string, string>(); // joueur → groupe, s'il compte ce jour-là
+    // Lot U6 : la même requête rend aussi le pseudo, l'image et la référence du joueur (une jointure sur la clé primaire de `players` : le trio du podium n'a besoin d'aucune lecture de plus).
+    const membres = new Map<string, MembreDuTrio>();
     for (let i = 0; i < ids.length; i += PAR_LOT) {
       const lot = ids.slice(i, i + PAR_LOT);
-      const rows = await db.all<{ player_id: string; groupe: string; arrivee: number }>(`SELECT player_id, groupe, arrivee FROM groupe_membres WHERE player_id IN (${lot.map(() => "?").join(",")})`, lot);
-      for (const r of rows) if (r.arrivee <= day) appartenance.set(r.player_id, r.groupe);
+      const rows = await db.all<{ player_id: string; groupe: string; arrivee: number; name: string; avatar: string | null; ref: string | null }>(
+        `SELECT m.player_id, m.groupe, m.arrivee, p.name, p.avatar, p.ref FROM groupe_membres m JOIN players p ON p.id = m.player_id WHERE m.player_id IN (${lot.map(() => "?").join(",")})`,
+        lot,
+      );
+      for (const r of rows) {
+        if (r.arrivee > day) continue;
+        appartenance.set(r.player_id, r.groupe);
+        membres.set(r.player_id, { ref: r.ref ?? (await refOfPlayer(r.player_id)), pseudo: r.name, avatar: r.avatar });
+      }
     }
     const groupesIds = [...new Set(appartenance.values())];
     const meta = new Map<string, { nom: string; avatar: string | null }>();
@@ -386,7 +402,7 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
         vue: nom,
         ...(arcade ? { arcade: true as const } : {}),
         sens,
-        classes: cl.map((g) => ({ id: g.id, nom: meta.get(g.id)!.nom, avatar: meta.get(g.id)!.avatar, rang: g.rang, score: g.score.score!, classesN: g.score.classes })),
+        classes: cl.map((g) => ({ id: g.id, nom: meta.get(g.id)!.nom, avatar: meta.get(g.id)!.avatar, rang: g.rang, score: g.score.score!, classesN: g.score.classes, trio: g.score.retenus.flatMap((m) => (membres.has(m) ? [membres.get(m)!] : [])) })),
         moins: moins.map((g) => ({ id: g.id, nom: meta.get(g.id)!.nom, avatar: meta.get(g.id)!.avatar, classesN: g.score.classes })),
       };
     };
@@ -432,7 +448,7 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     if (!un) throw new HttpError(400, "invalid_view", "Vue attendue : cumul ou le dossier d'un jeu de ce jour");
     const ouvert = vue().jourOuvert(day);
     return new WithHeaders(
-      { date: formatDay(day), ouvert, vue: un.vue, sens: un.sens, vues: jours.map((x) => x.vue), ...(jours.some((x) => x.arcade) ? { arcade: jours.filter((x) => x.arcade).map((x) => x.vue) } : {}), min: CLASSES_MIN, groupes: un.classes.map((g) => ({ rang: g.rang, id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), score: g.score, classes: g.classesN })), moins: un.moins.map((g) => ({ id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), classes: g.classesN })) },
+      { date: formatDay(day), ouvert, vue: un.vue, sens: un.sens, vues: jours.map((x) => x.vue), ...(jours.some((x) => x.arcade) ? { arcade: jours.filter((x) => x.arcade).map((x) => x.vue) } : {}), min: CLASSES_MIN, groupes: un.classes.map((g) => ({ rang: g.rang, id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), score: g.score, classes: g.classesN, trio: g.trio.map((m) => ({ ref: m.ref, pseudo: m.pseudo, ...(m.avatar ? { avatar: m.avatar } : {}) })) })), moins: un.moins.map((g) => ({ id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), classes: g.classesN })) },
       { "Cache-Control": "public, max-age=15, s-maxage=30" },
     );
   }

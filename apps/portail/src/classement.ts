@@ -11,6 +11,7 @@ import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
 import "./amisPortail.css";
+import "@cdj/ui/src/classement.css"; // lot U6 : le composant de classement (podium, lignes, seuils, « Ta course »), après les feuilles de base qu'il remplace
 import "./salle.css"; // lot U2 : la barre, le fronton et la barre d'onglets de la salle de jeux
 import "./classementSalle.css";
 import { parisDay } from "@cdj/clock";
@@ -18,6 +19,9 @@ import { formatDay, parseDay } from "@cdj/core";
 import { adresseAvatar, clientAmis, clientAvatar, ecrireLangue, lireFiltre, lireLangue, readIdentity, readPlayerId, type FiltreAmis, type Langue } from "@cdj/profile";
 import { CATALOGUE_COMMUN, avatar, cheminMentions, bouton, choixLangue, el, formatDate, formatNombre, formatNumeroJour, formatRang, formatScore, formatTemps, logo, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
 import { initiales } from "@cdj/ui/src/avatar";
+import { CATALOGUE_CLASSEMENT } from "@cdj/ui/src/catalogue.classement";
+import { ligne as ligneDuComposant, podium, type PlaceClassement } from "@cdj/ui/src/classement";
+import type { Seuil } from "@cdj/ui/src/classementLogique";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { FICHES, ficheDuRegistre } from "./jeuxFiches";
 import { formatDeVue } from "./formatDeVue";
@@ -29,8 +33,9 @@ import { baseApi, formatCompte, prochainMinuit } from "./jour";
 import { jourGarde } from "./cacheJour";
 import { nonLue } from "./nouveautesDonnees";
 import { barreSalle, emblemeDeGroupe, navigation } from "./salle";
-import { clocheDePage, frontonDePage, itemsDeNavigation, podium, type PlacePodium } from "./classementSalle";
-import { EMBLEME_LIGNE, groupeDeLigne, jeuxDuCumul, lignesDuPodium, nombreDeColonnes, resteDuHaut } from "./classementPodium";
+import { clocheDePage, frontonDePage, itemsDeNavigation } from "./classementSalle";
+import { avanceDuPremier, ecartAuPremier, sensDeLaVue, valeurDeLigne } from "./classementEcarts";
+import { EMBLEME_LIGNE, PHOTOS, groupeDeLigne, jeuxDuCumul, lignesDuPodium, nombreDeColonnes, resteDuHaut } from "./classementPodium";
 import { VUE_CUMUL, aSeparation, ongletVoisin, onglets, vueDeLAdresse } from "./classementVues";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
@@ -53,8 +58,16 @@ activerManette(() => import("./manette").then((m) => m.pour("classement")));
 // Un échec du filtre (hors ligne, `invalid_filter`, profil inconnu…) : un message discret et « Tous ». Les pseudos du serveur sont toujours posés en `textContent`.
 
 const stockage = stockageDuPortail();
+/** Lot U6 : les places gagnées ou perdues viennent d'un module à la demande, demandé tout de suite (en même temps que la lecture du classement) : il ne pèse rien dans le premier chargement de la page. */
+const rangsPrets = import("./classementRangs").catch(() => null);
+/** Le module des places gagnées, une fois arrivé (avant le premier dessin d'un classement). */
+let rangsModule: Awaited<typeof rangsPrets> = null;
+/** Lot U6 : les seuils des médailles, à la demande aussi (seules les vues par jeu en ont) ; demandés tout de suite si l'adresse ouvre une vue par jeu. */
+const chargerSeuils = () => import("./classementSeuils").catch(() => null);
+let seuilsModule: Awaited<ReturnType<typeof chargerSeuils>> = null;
+if (vueDeLAdresse(location.search) !== "cumul") void chargerSeuils();
 let langue: Langue = lireLangue(stockage, navigator.languages).langue;
-const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN);
+const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN, CATALOGUE_CLASSEMENT);
 type T = ReturnType<typeof traduire>;
 type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
@@ -111,44 +124,45 @@ function caseDeJeu(t: T, jeu: { jeu: string; nom: string }, r: ResultatClassemen
 const texteDeLigne = (c: Classement, l: LigneClassement): string | null =>
   l.score ? formatScore(formatDeVue(c.vue, "hauteur"), l.score.valeur, langue) : l.tempsMs === null ? null : formatTemps(l.tempsMs, langue);
 
-function tempsDeLigne(t: T, c: Classement, l: LigneClassement): HTMLElement {
-  const texte = texteDeLigne(c, l);
-  return texte === null
-    ? el("span", { classe: "classement-temps" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: t.t("classement.pasFini") }))
-    : el("span", { classe: ["classement-temps", l.score && "classement-hauteur"], texte });
-}
-
 /** Lot U2 : l'emblème du groupe (22 px, carré) à côté du pseudo — seulement quand le serveur dit le groupe de la ligne. */
 function emblemeDeLigne(l: LigneClassement): HTMLElement | null {
   const g = groupeDeLigne(l);
   return g ? emblemeDeGroupe({ initiales: initiales(g.nom, langue), image: adresseAvatar(baseApi(), g.avatar), taille: EMBLEME_LIGNE }) : null;
 }
 
+/** Comment s'écrit la valeur de la vue : au temps, ou celui que dit la fiche du jeu (hauteur, points). */
+const formatDeLaVue = (c: Pick<Classement, "vue" | "unite">): "temps" | "hauteur" | "entier" => formatDeVue(c.vue, c.unite ? "hauteur" : "temps");
+
+/** Les rangs que la page voit (référence publique → rang) : le haut du classement et ta ligne. */
+const rangsDe = (c: Classement): Record<string, number> => Object.fromEntries([...c.top, ...(c.moi ? [c.moi] : [])].filter((l) => l.ref && l.rang).map((l) => [l.ref!, l.rang]));
+
+/** Lot U6 : les places gagnées ou perdues depuis la dernière visite (référence → places), lues au chargement du classement (`suivreLesRangs`). */
+let mouvements = new Map<string, number>();
+
 /**
- * Une ligne (lot U2) : la place, la photo de 48 px (44 px sur téléphone), le pseudo avec l'emblème de son groupe, une colonne par jeu du jour (ordinateur ; le nom du jeu est lu, la médaille dite), puis le temps de la vue
- * (« — » au cumul d'un joueur qui n'a pas tout fini). Lot F2 : la ligne d'un autre joueur est un bouton (sa feuille s'ouvre), la tienne reste un texte ; dans « Amis », la place est le rang entre amis.
+ * Une ligne pour le composant commun (lot U6, `@cdj/ui/src/classement`) : la place, la photo (à la taille que le composant demande : 112 · 92 px au podium, 48 px dans la liste — 44 sur téléphone, la feuille), le pseudo
+ * avec l'emblème de son groupe, le temps de la vue (« — » au cumul d'un joueur qui n'a pas tout fini) et **l'écart au premier**, et, dans la liste, une colonne par jeu du jour (ordinateur ; le nom du jeu est lu, la médaille
+ * dite). Lot F2 : la ligne d'un autre joueur est un bouton (sa feuille s'ouvre), la tienne reste un texte ; dans « Amis », la place est le rang entre amis.
  */
-function ligne(t: T, c: Classement, l: LigneClassement, moi: boolean): HTMLElement {
+function placeDe(t: T, c: Classement, l: LigneClassement, moi: boolean, premier: LigneClassement | undefined, colonnes: boolean): PlaceClassement {
   const cumul = c.vue === VUE_CUMUL;
   // Lot TP : le cumul ne montre que les jeux au temps (un jeu à la hauteur n'y entre jamais).
   const jeux = cumul ? jeuxDuCumul(c.jeux) : c.jeux.filter((j) => j.site === c.vue);
-  const touchable = ligneTouchable(l);
-  const corps = [
-    el("span", { classe: "classement-rang", texte: formatNombre(l.rang, langue) }),
-    avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: 48, decoratif: true }),
-    el("span", { classe: "classement-pseudo" }, l.pseudo, emblemeDeLigne(l), moi ? el("span", { classe: "classement-toi", texte: t.t("classement.toi") }) : null),
-    el("span", { classe: "classement-ligne__jeux" }, ...jeux.map((j) => caseDeJeu(t, j, l.resultats[j.jeu] ?? null, cumul))),
-    tempsDeLigne(t, c, l),
-  ];
-  const contenu = touchable
-    ? el("button", { classe: "classement-ligne__corps classement-ligne__bouton", attrs: { type: "button", "aria-haspopup": "dialog", "data-cle": `ligne-${l.ref}` } }, ...corps)
-    : el("div", { classe: "classement-ligne__corps" }, ...corps);
-  if (touchable) contenu.addEventListener("click", () => void ouvrirFiche(l.ref!, l.pseudo));
-  return el(
-    "li",
-    { classe: ["classement-ligne", moi && "classement-ligne--moi", touchable && "classement-ligne--touchable"], attrs: { "data-rang": String(l.rang), ...(moi ? { "data-moi": "oui", "aria-current": "true" } : {}) } },
-    contenu,
-  );
+  return {
+    rang: l.rang,
+    rangLu: formatRang(l.rang, langue),
+    nom: l.pseudo,
+    visuel: (taille) => avatar(t, { pseudo: l.pseudo, ref: l.ref, image: adresseAvatar(baseApi(), l.avatar), taille: taille === "premier" ? PHOTOS.premier : taille === "suivant" ? PHOTOS.suivants : PHOTOS.ligne, decoratif: true }),
+    valeur: texteDeLigne(c, l),
+    ecart: ecartAuPremier(c, l, premier, formatDeLaVue(c), langue),
+    moi,
+    toi: moi ? t.t("classement.toi") : null,
+    mouvement: l.ref && rangsModule ? rangsModule.mouvement(t, mouvements.get(l.ref) ?? 0) : null,
+    ouvrir: ligneTouchable(l) ? () => void ouvrirFiche(l.ref!, l.pseudo) : null,
+    repere: l.ref,
+    embleme: emblemeDeLigne(l),
+    suite: colonnes ? el("span", { classe: "classement-ligne__jeux" }, ...jeux.map((j) => caseDeJeu(t, j, l.resultats[j.jeu] ?? null, cumul))) : null,
+  };
 }
 
 /** Lot F2 : un ami qui n'a rien fini ce jour-là, en bas de « Amis » : sa photo (ses initiales : le serveur ne dit pas son image), son pseudo et « pas encore joué » (sans temps) ; un bouton, comme les autres lignes. */
@@ -223,37 +237,26 @@ function entetesDeColonnes(t: T, c: Classement): HTMLElement {
   );
 }
 
-/** Le podium de la vue : les trois premières lignes, leurs photos en grand. */
-function podiumDe(t: T, c: Classement, lignes: readonly LigneClassement[]): HTMLElement {
-  const places: PlacePodium[] = lignes.map((l) => ({
-    rang: l.rang,
-    pseudo: l.pseudo,
-    ref: l.ref,
-    image: adresseAvatar(baseApi(), l.avatar),
-    valeur: texteDeLigne(c, l) ?? "—", // i18n-ok: le tiret des sans-résultat (le podium n'en a jamais : voir `lignesDuPodium`)
-    moi: l.moi === true,
-    toi: l.moi === true ? t.t("classement.toi") : null,
-    rangLu: formatRang(l.rang, langue),
-    embleme: emblemeDeLigne(l),
-    ouvrir: ligneTouchable(l) ? () => void ouvrirFiche(l.ref!, l.pseudo) : null,
-  }));
-  return podium(t, places);
-}
-
 /**
- * Le haut du classement. Lot U2 : avec au moins 3 classés, le podium (1er, 2e, 3e) ; la liste garde le reste. Au cumul, les joueurs qui n'ont pas tout fini viennent sous un titre « Un jeu sur deux » : deux listes
- * numérotées qui se suivent (une liste ne contient que des éléments de liste).
+ * Le haut du classement (lot U6) : **le podium, toujours** (de zéro à trois classés ; les marches sans personne sont libres), puis la liste. Chaque ligne dit son écart au premier ; dans la vue d'un jeu, **les seuils des
+ * médailles** (« Or · 32,000 s ») séparent ceux qui ont la médaille de ceux qui la visent. Au cumul, les joueurs qui n'ont pas tout fini viennent sous un titre « Un jeu sur deux » : deux listes numérotées qui se suivent
+ * (une liste ne contient que des éléments de liste ; les lignes de seuil et les marches libres n'en sont pas).
  */
-function listeDuHaut(t: T, c: Classement): HTMLElement {
+function listeDuHaut(t: T, c: Classement, seuils: readonly Seuil[] | null): HTMLElement {
   const places = lignesDuPodium(c);
   const reste = resteDuHaut(c);
+  const premier = c.top[0];
+  const format = formatDeLaVue(c);
   const coupe = aSeparation(reste);
-  const lignes = reste.top.map((l) => ligne(t, c, l, l.moi === true));
+  const lignes = reste.top.map((l) => ligneDuComposant(t, placeDe(t, c, l, l.moi === true, premier, true), { absent: t.t("classement.pasFini") }));
+  // Les seuils : entre les lignes de la liste, d'après la valeur de chacune et celle de la 3e place du podium.
+  const avant = seuilsModule?.seuilsAvant(reste.top.map(valeurDeLigne), seuils, sensDeLaVue(c), places.length === 3 ? valeurDeLigne(places[2]!) : null) ?? new Map<number, Seuil[]>();
+  const lignesDeSeuil = new Map([...avant].map(([i, liste]) => [i, liste.map((s) => seuilsModule!.seuil(s.type, `${t.t(`medaille.${s.type}`)} · ${formatScore(format, s.valeur, langue)}`))]));
   const colonnes = nombreDeColonnes(c.vue === VUE_CUMUL ? jeuxDuCumul(c.jeux).length : 1);
-  const enfants: (HTMLElement | null)[] = [places ? podiumDe(t, c, places) : null];
+  const enfants: (HTMLElement | null)[] = [podium(t, places.map((l) => placeDe(t, c, l, l.moi === true, premier, false)), { avance: avanceDuPremier(places[0], places[1], format, langue) })];
   if (lignes.length > 0) {
     enfants.push(entetesDeColonnes(t, c));
-    if (coupe === null) enfants.push(el("ol", { classe: "classement-liste" }, ...lignes));
+    if (coupe === null) enfants.push(...(seuilsModule ? seuilsModule.listeAvecSeuils(lignes, lignesDeSeuil) : [el("ol", { classe: "classement-liste", attrs: { start: String(reste.top[0]!.rang) } }, ...lignes)]));
     else
       enfants.push(
         coupe > 0 ? el("ol", { classe: "classement-liste" }, ...lignes.slice(0, coupe)) : null,
@@ -432,6 +435,9 @@ function rendre(): void {
   // --- Lot U2 : la salle — la barre, le fronton, les onglets de vue, puis la liste et, à droite (sous la liste sur téléphone), les groupes ---
   const identite = readIdentity(stockage);
   const copie = copieDeLAccueil();
+  // Lot U6 : les seuils des médailles du jour, ceux que le serveur a déjà donnés à l'accueil (`GET /api/portail/jour`, copie gardée dans le navigateur : aucune requête de plus) ; pas de seuils pour un jour passé, une vue sans
+  // médaille ou un jeu dont le niveau n'est pas prêt : aucune ligne de seuil.
+  const seuils = c && copie && seuilsModule && c.vue !== VUE_CUMUL && c.date === copie.date ? seuilsModule.seuilsDuServeur(copie.jeux.find((j) => j.site === c.vue)?.seuils) : null;
   const reponses = copie?.joueur?.messagesNonLus ?? 0;
   const nouveaute = nonLue(copie?.nouveaute, stockage);
   const items = itemsDeNavigation((cle) => t.t(cle));
@@ -449,7 +455,7 @@ function rendre(): void {
     titre: t.t("classement.fronton"),
     date: formatDate(day, langue, { capitale: true }),
     journee: numero ? t.t("portail.journee", { numero: formatNumeroJour(numero, langue) }) : null,
-    legende: t.t("portail.compte.legende"),
+    legende: t.t(date === aujourdhui ? "classement.compte.legende" : "portail.compte.legende"), // lot U6 : « Il reste pour faire mieux » sur le jour en cours
     compte: formatCompte(prochainMinuit(null, maintenant) - maintenant),
   });
 
@@ -469,13 +475,13 @@ function rendre(): void {
     el(
       "div",
       { classe: "classement-panneau", attrs: { id: "classement-panneau", role: "tabpanel", "aria-labelledby": `vue-${vueActive(c)}` } },
-      c && c.top.length > 0 ? listeDuHaut(t, c) : null,
+      c ? listeDuHaut(t, c, seuils) : null,
       c?.moi && !topMoi
         ? el(
             "div",
             { classe: "classement-hors-haut", attrs: { id: "classement-moi", "data-jeux": String(nombreDeColonnes(c.vue === VUE_CUMUL ? jeuxDuCumul(c.jeux).length : 1)) } },
             el("p", { classe: "classement-coupure", attrs: { "aria-hidden": "true" }, texte: "…" }),
-            el("ol", { classe: "classement-liste", attrs: { start: String(c.moi.rang) } }, ligne(t, c, c.moi, true)),
+            el("ol", { classe: "classement-liste", attrs: { start: String(c.moi.rang) } }, ligneDuComposant(t, placeDe(t, c, c.moi, true, c.top[0], true), { absent: t.t("classement.pasFini") })),
           )
         : null,
       pasDeLigne ? el("p", { classe: "classement-invite", attrs: { id: "classement-invite" }, texte: t.t("classement.invite") }) : null,
@@ -513,7 +519,13 @@ function rendre(): void {
           "div",
           { classe: "classement-grille" },
           el("div", { classe: "classement-gauche" }, ...liste),
-          el("aside", { classe: "classement-droite salle-panneau", attrs: { id: "classement-groupes", "aria-labelledby": "classement-groupes-titre" } }, el("h2", { classe: "salle-panneau__titre", attrs: { id: "classement-groupes-titre" }, texte: t.t("classement.groupes.titre") }), el("div", { attrs: { id: "classement-groupes-zone" } })),
+          // Lot U6 : « Ta course » en tête de la colonne de droite (sur téléphone la feuille la fixe au-dessus des onglets), puis le panneau des groupes.
+          el(
+            "div",
+            { classe: "classement-droite" },
+            el("div", { classe: "classement-course-zone", attrs: { id: "classement-course-zone" } }),
+            el("aside", { classe: "salle-panneau", attrs: { id: "classement-groupes", "aria-labelledby": "classement-groupes-titre" } }, el("h2", { classe: "salle-panneau__titre", attrs: { id: "classement-groupes-titre" }, texte: t.t("classement.groupes.titre") }), el("div", { attrs: { id: "classement-groupes-zone" } })),
+          ),
         ),
   );
   racine.replaceChildren(
@@ -529,7 +541,12 @@ function rendre(): void {
     // La barre d'onglets du téléphone (fixe, en bas) : la même navigation, avec des icônes.
     navigation({ items, ici: "classements", aria: t.t("portail.nav.aria"), place: "bas", racine: "../" }),
   );
-  const options = { tr: t, langue, base: baseApi(), id: identifiant(), date: jourAffiche, vue: vueAffichee, surVue: changerVue };
+  // Lot U6 : « Ta course » arrive à la demande (module, feuille et textes), seulement si tu es classé dans la vue.
+  if (c && !groupes && c.moi) {
+    const contexte = { langue, format: formatDeLaVue(c), nomDuJeu: (j: { jeu: string; nom: string }) => nomDuJeu(t, j), nomMedaille: (type: Seuil["type"]) => t.t(`medaille.${type}`), rangLu: (r: number) => formatRang(r, langue), seuils, racine: "../" };
+    void import("./taCourse").then((m) => m.monterLaCourse(racine.querySelector<HTMLElement>("#classement-course-zone"), c, langue, contexte));
+  }
+  const options = { tr: t, langue, base: baseApi(), id: identifiant(), date: jourAffiche, vue: vueAffichee, surVue: changerVue, pseudo: identite.exists ? identite.name : null, stockage };
   const zoneGroupes = racine.querySelector<HTMLElement>("#groupes-zone");
   if (zoneGroupes) void import("./classementGroupes").then((m) => m.monterGroupes(zoneGroupes, options));
   const zonePanneau = racine.querySelector<HTMLElement>("#classement-groupes-zone");
@@ -616,6 +633,10 @@ async function charger(date: string | null): Promise<void> {
   }
   if (mien !== sequence) return; // un autre jour, une autre vue ou un autre filtre a été demandé entre-temps
   lecture = l;
+  rangsModule = await rangsPrets;
+  if (l.classement && l.classement.vue !== VUE_CUMUL) seuilsModule ??= await chargerSeuils();
+  if (mien !== sequence) return;
+  mouvements = l.classement && rangsModule ? rangsModule.suivreLesRangs(stockage, `${l.classement.date}|${l.classement.vue}|${l.classement.filtre ?? "tous"}`, rangsDe(l.classement), l.classement.ouvert) : new Map();
   // Aujourd'hui, tel que le serveur l'a dit (une lecture sans date).
   if (date === null && l.classement) aujourdhui = l.classement.date;
   if (l.classement && filtre === "tous") totalTous = l.classement.classes;

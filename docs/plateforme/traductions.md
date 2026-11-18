@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-3018 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3047 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -103,6 +103,16 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `bientot.titre` | Bientôt | Coming soon |
 | `bientot.texte` | {nom} n'est pas encore ouvert. Reviens bientôt ! | {nom} isn't open yet. Come back soon! |
 | `bientot.retour` | ‹ Du Jour | ‹ Du Jour |
+
+### Classement (`classement.*`, `packages/ui/src/catalogue.classement.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `classement.podium.aria` | Podium | Podium |
+| `classement.libre` | Place à prendre | Spot up for grabs |
+| `classement.avance` | {ecart} d'avance | {ecart} ahead |
+| `classement.monte` | one : {n} place gagnée depuis ta dernière visite · other : {n} places gagnées depuis ta dernière visite | one : {n} place gained since your last visit · other : {n} places gained since your last visit |
+| `classement.descend` | one : {n} place perdue depuis ta dernière visite · other : {n} places perdues depuis ta dernière visite | one : {n} place lost since your last visit · other : {n} places lost since your last visit |
 
 ### Commandes (`commandes.*`, `packages/ui/src/catalogue.commandes.ts`)
 
@@ -371,6 +381,21 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `retrouver.echec` | Impossible d'enregistrer le profil sur cet appareil. | Couldn't save the profile on this device. |
 | `retrouver.passer` | Commencer sans profil | Start without a profile |
 
+### Ta course (barre des classements) (`tacourse.*`, `packages/ui/src/catalogue.tacourse.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `tacourse.titre` | Ta course | Your race |
+| `tacourse.passerPremier` | {ecart} pour passer 1er | {ecart} to take 1st |
+| `tacourse.doubler` | {ecart} pour doubler {nom} | {ecart} to pass {nom} |
+| `tacourse.avanceSur` | {ecart} d'avance sur {nom} | {ecart} ahead of {nom} |
+| `tacourse.perte` | {nom} te prend {ecart} sur {jeu} | {nom} beats you by {ecart} in {jeu} |
+| `tacourse.medaille` | Prochaine médaille : {medaille}, à {ecart} | Next medal: {medaille}, {ecart} away |
+| `tacourse.rejouer` | Rejouer {jeu} | Replay {jeu} |
+| `tacourse.jouer` | Jouer | Play |
+| `tacourse.groupeCompte` | Ton temps compte : tu es {rang} de ton groupe | Your time counts: you are {rang} in your group |
+| `tacourse.groupeNonCompte` | Ton temps ne compte pas encore : seuls les 3 meilleurs comptent | Your time doesn't count yet: only the 3 best do |
+
 ### Un bug ? Une idée ? (`retours.*`, `packages/ui/src/catalogue.retours.ts`)
 
 | Clé | Français | Anglais |
@@ -495,11 +520,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.mode.joueurs` | Joueurs | Players |
 | `classement.mode.groupes` | Groupes | Groups |
 | `classement.groupes.toi` | Ton groupe | Your group |
-| `classement.groupes.classes` | one : {n} classé · other : {n} classés | one : {n} ranked · other : {n} ranked |
+| `classement.groupes.detail` | one : {n} classé · les 3 meilleurs comptent · other : {n} classés · les 3 meilleurs comptent | one : {n} ranked · the 3 best count · other : {n} ranked · the 3 best count |
+| `classement.groupes.encore` | one : {n} classé · encore {reste} pour entrer · other : {n} classés · encore {reste} pour entrer | one : {n} ranked · {reste} more to get in · other : {n} ranked · {reste} more to get in |
+| `classement.groupes.pasClasse` | pas classé | not ranked |
 | `classement.groupes.regle` | Au chrono : la moyenne des 3 meilleurs de chaque groupe ({min} classés au moins). | Against the clock: the average of each group's 3 best ({min} ranked at least). |
 | `classement.groupes.compte` | one : {n} groupe classé · other : {n} groupes classés | one : {n} group ranked · other : {n} groups ranked |
 | `classement.groupes.vide` | Aucun groupe classé ce jour-là. | No group ranked that day. |
 | `classement.fronton` | Classements | Leaderboards |
+| `classement.compte.legende` | Il reste pour faire mieux | Time left to do better |
 | `classement.groupes.titre` | Groupes | Groups |
 | `classement.groupes.tous` | Tous les groupes › | All groups › |
 | `classement.colonne.joueur` | Joueur | Player |
@@ -902,6 +930,17 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.contraste.ok` | passe | pass |
 | `vitrine.contraste.ko` | échoue | fail |
 | `vitrine.contraste.exemple` | Aa | Aa |
+| `vitrine.section.classement` | Classements (podium, liste, seuils, « Ta course ») | Leaderboards (podium, list, thresholds, “Your race”) |
+| `vitrine.classement.podium` | Le podium : plein, avec une marche libre (deux classés), vide ; sur crème et sur asphalte | The podium: full, with a free step (two ranked), empty; on cream and on asphalt |
+| `vitrine.classement.liste` | La liste : écart au premier, places gagnées et perdues, ta ligne, seuils des médailles ; sur crème et sur asphalte | The list: gap to first, places gained and lost, your row, medal thresholds; on cream and on asphalt |
+| `vitrine.classement.groupes` | Le podium des groupes : emblème carré, trois photos des membres qui comptent ; plein et avec une marche libre | The groups podium: square emblem, photos of the three members who count; full and with a free step |
+| `vitrine.classement.course` | « Ta course » : derrière un joueur, dans une vue par jeu, premier, un groupe ; sur crème et sur asphalte | “Your race”: behind a player, in a game view, first, a group; on cream and on asphalt |
+| `vitrine.classement.toi` | Toi | You |
+| `vitrine.classement.tonGroupe` | Ton groupe | Your group |
+| `vitrine.classement.pasFini` | pas fini | not finished |
+| `vitrine.classement.diamant` | Diamant | Diamond |
+| `vitrine.classement.or` | Or | Gold |
+| `vitrine.classement.argent` | Argent | Silver |
 | `vitrine.section.amis` | Les amis | Friends |
 | `vitrine.amis.selecteur` | Sélecteur Tous / Amis (portail, Track, Jump, Tower) | All / Friends selector (portal, Track, Jump, Tower) |
 | `vitrine.amis.feuille` | Feuille d'un joueur | Player sheet |

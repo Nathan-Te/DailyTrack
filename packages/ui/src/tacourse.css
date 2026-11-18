@@ -1,0 +1,76 @@
+/* Lot U6 — la feuille de « Ta course » (`tacourse.ts`), chargée à la demande avec la barre. Jetons seulement ; sur fond sombre (classe `dj-sombre`, un jeu) la barre est claire. La page la positionne. */
+
+/* --- « Ta course » : ta place, l'écart au joueur de devant, le bouton --------------------------------------------------------------------------------------- */
+.classement-course {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 12px;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: 8px;
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+  box-shadow: 0 0 0 2px var(--dj-moutarde);
+}
+.classement-course__ou {
+  color: var(--dj-moutarde);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-22);
+  line-height: 1;
+  text-shadow: 2px 2px 0 var(--dj-terre);
+}
+.classement-course__ou sup {
+  font-size: 0.5em;
+}
+.classement-course__ou small {
+  display: block;
+  margin-top: 2px;
+  color: var(--dj-creme);
+  font-family: var(--dj-police-texte);
+  font-weight: 700;
+  font-size: var(--dj-taille-legende-petite);
+  letter-spacing: 0.6px;
+  text-shadow: none;
+  text-transform: uppercase;
+}
+.classement-course__texte {
+  margin: 0;
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  line-height: 1.25;
+}
+.classement-course__texte b {
+  color: var(--dj-moutarde);
+  font-family: var(--dj-police-chiffres);
+}
+.classement-course__sous {
+  display: block;
+  color: var(--dj-ecran-texte);
+  font-weight: 500;
+  font-size: var(--dj-taille-12);
+}
+.classement-course__bouton {
+  max-width: 9rem;
+  padding-inline: 12px;
+  font-size: var(--dj-taille-13);
+  line-height: 1.15;
+  text-align: center;
+}
+.dj-sombre .classement-course {
+  border-color: var(--track-texte);
+  background: var(--track-texte);
+  color: var(--dj-encre);
+  box-shadow: 0 0 0 2px var(--dj-moutarde);
+}
+.dj-sombre .classement-course__ou {
+  color: var(--dj-terre);
+  text-shadow: none;
+}
+.dj-sombre .classement-course__ou small,
+.dj-sombre .classement-course__sous {
+  color: var(--dj-encre);
+}
+.dj-sombre .classement-course__texte b {
+  color: var(--dj-terre);
+}

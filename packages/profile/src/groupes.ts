@@ -46,6 +46,12 @@ export interface PageGroupe extends FicheGroupe {
   classement: RangGroupe[];
   min: number;
 }
+/** Lot U6 : un membre dont le résultat compte pour son groupe (les trois meilleurs, du meilleur au moins bon) : de quoi dessiner sa photo sur le podium des groupes. */
+export interface MembreDuTrio {
+  ref: string;
+  pseudo: string;
+  avatar?: string;
+}
 export interface LigneGroupe {
   id: string;
   nom: string;
@@ -53,6 +59,8 @@ export interface LigneGroupe {
   rang?: number;
   score?: number;
   classes: number;
+  /** Lot U6 : les membres qui comptent (absent : un vieux serveur, ou un groupe à moins de 3 classés). */
+  trio?: MembreDuTrio[];
 }
 export interface ClassementGroupes {
   date: string;
@@ -118,7 +126,11 @@ export function lireClassementGroupes(corps: unknown): ClassementGroupes | null 
   const ligne = (x: unknown): LigneGroupe | null => {
     const r = x as Record<string, unknown> | null;
     if (!r || typeof r.id !== "string" || typeof r.nom !== "string") return null;
-    return { id: r.id, nom: r.nom, ...avatarDe(r.avatar), ...(entier(r.rang) !== null ? { rang: entier(r.rang)! } : {}), ...(entier(r.score) !== null ? { score: entier(r.score)! } : {}), classes: entier(r.classes) ?? 0 };
+    const trio = (Array.isArray(r.trio) ? r.trio : []).flatMap((x): MembreDuTrio[] => {
+      const m = x as Record<string, unknown> | null;
+      return m && typeof m.ref === "string" && typeof m.pseudo === "string" ? [{ ref: m.ref, pseudo: m.pseudo, ...avatarDe(m.avatar) }] : [];
+    });
+    return { id: r.id, nom: r.nom, ...avatarDe(r.avatar), ...(entier(r.rang) !== null ? { rang: entier(r.rang)! } : {}), ...(entier(r.score) !== null ? { score: entier(r.score)! } : {}), classes: entier(r.classes) ?? 0, ...(trio.length > 0 ? { trio } : {}) };
   };
   const groupes = o.groupes.map(ligne).filter((l): l is LigneGroupe & { rang: number; score: number } => l !== null && l.rang !== undefined && l.score !== undefined);
   const moins = (Array.isArray(o.moins) ? o.moins : []).map(ligne).filter((l): l is LigneGroupe => l !== null);

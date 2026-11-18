@@ -45,6 +45,13 @@ export const PAIRES: readonly PaireCouleurs[] = [
   { couleur: "dj-blanc", fond: "dj-discord", taille: "normal", usage: "bouton Discord" },
   { couleur: "dj-encre", fond: "dj-moutarde", taille: "normal", usage: "avatar, coque Jump" },
   { couleur: "dj-ambre", fond: "dj-ecran", taille: "normal", usage: "chiffres de l'afficheur" },
+  // Lot U6 : le composant de classement (écart au premier, places perdues, « Ta course », sur fond clair et sur l'asphalte d'un jeu).
+  { couleur: "dj-terre", fond: "dj-papier", taille: "normal", usage: "écart au premier, places perdues (ligne de classement)" },
+  { couleur: "dj-ecran-texte", fond: "dj-encre", taille: "normal", usage: "seconde ligne de « Ta course »" },
+  { couleur: "track-texte-doux", fond: "track-piste", taille: "normal", usage: "rang et détail d'une ligne de classement sur l'asphalte" },
+  { couleur: "track-livree-texte", fond: "track-piste", taille: "normal", usage: "écart au premier sur l'asphalte" },
+  { couleur: "dj-terre", fond: "track-texte", taille: "normal", usage: "« Ta course » sur l'asphalte (la barre claire)" },
+  { couleur: "dj-encre", fond: "track-texte", taille: "normal", usage: "texte de « Ta course » sur l'asphalte" },
   { couleur: "dj-ecran-texte", fond: "dj-ecran", taille: "normal", usage: "légende de l'afficheur" },
   { couleur: "dj-diamant-texte", fond: "dj-diamant", taille: "normal", usage: "médaille Diamant obtenue" },
   { couleur: "dj-medaille-texte", fond: "dj-or", taille: "normal", usage: "médaille or obtenue" },

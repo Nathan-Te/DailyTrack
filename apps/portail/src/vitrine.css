@@ -258,3 +258,35 @@
 .vitrine-plateformes__legende {
   font-size: var(--dj-taille-12);
 }
+
+/* --- Lot U6 : la section « Classements » (le composant commun dans tous ses états) ---------------------------------------------------------------- */
+.vitrine-classement__podiums {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--dj-espace-7);
+  align-items: end;
+}
+.vitrine-classement__courses {
+  display: grid;
+  gap: var(--dj-espace-5);
+  max-width: 560px;
+}
+.vitrine-classement__liste {
+  max-width: 560px;
+}
+.vitrine-asphalte.dj-sombre > .classement-liste,
+.vitrine-asphalte.dj-sombre > .classement-seuil {
+  max-width: 560px;
+}
+.vitrine-classement__embleme {
+  display: grid;
+  place-items: center;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: 10px;
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+}
+.vitrine-creme-large {
+  padding: var(--dj-espace-5) 0;
+}

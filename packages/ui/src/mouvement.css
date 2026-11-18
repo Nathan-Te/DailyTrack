@@ -1,0 +1,23 @@
+/* Lot U6 — la feuille des places gagnées ou perdues (`mouvement.ts`), chargée à la demande avec le suivi des rangs. Jetons seulement. */
+
+.classement-mouvement {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-legende-petite);
+  line-height: 1;
+}
+.classement-mouvement svg {
+  fill: currentColor;
+}
+.classement-mouvement--monte {
+  color: var(--cl-texte); /* le sens se lit à la forme du triangle ; pas de vert dans la charte */
+}
+.classement-mouvement--descend {
+  color: var(--cl-ecart);
+}
+.classement-ligne--moi .classement-mouvement {
+  color: var(--dj-encre);
+}

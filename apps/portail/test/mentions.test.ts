@@ -174,6 +174,16 @@ describe("page des mentions légales et de la confidentialité", () => {
     expect(readFileSync(join(ROOT, "packages/profile/src/generation.ts"), "utf8")).toContain(`"${cle}"`);
   });
 
+  it("lot U6 : cdj:classement:rangs (les places gagnées ou perdues depuis la dernière visite) est nommé dans les deux langues et effacé par le nouveau départ", () => {
+    const cle = /export const CLE_RANGS = "([^"]+)"/.exec(readFileSync(join(ROOT, "packages/ui/src/classementRangs.ts"), "utf8"))?.[1];
+    expect(cle).toBe("cdj:classement:rangs");
+    for (const page of [PAGE, PAGE_EN]) expect(page).toContain(`<code>${cle}</code>`);
+    expect(PAGE).toContain("places gagnées ou perdues");
+    expect(PAGE_EN).toContain("places gained or lost");
+    // Une donnée de jeu : pas dans les réglages gardés.
+    expect(readFileSync(join(ROOT, "packages/profile/src/generation.ts"), "utf8")).not.toContain(`"${cle}"`);
+  });
+
   // La copie de la dernière réponse de l'accueil (`cdj:portail:jour`) : nommée dans les deux langues, lue dans le source du module, et effacée au « Nouveau départ ».
   it("la copie de l'accueil (cdj:portail:jour) est nommée dans les deux langues et n'est pas un réglage gardé", () => {
     const cle = /export const CLE_CACHE_JOUR = "([^"]+)"/.exec(readFileSync(join(ROOT, "apps/portail/src/cacheJour.ts"), "utf8"))?.[1];

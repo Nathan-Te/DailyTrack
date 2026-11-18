@@ -1,10 +1,9 @@
 import type { KeyValueStore, Langue } from "@cdj/profile";
-import { avatar, el, type TraducteurCommun } from "@cdj/ui";
+import { el } from "@cdj/ui";
 import type { TraducteurCloche } from "./clocheLignes";
 import { compteDuFronton, pictogramme, type ItemNav } from "./salle";
-import { photoDePlace } from "./classementPodium";
 
-// Lot U2 (charte rév. 19, § 9) — les pièces de présentation de `/classement/` : le fronton d'une page (titre, date, compte à rebours), la cloche de la barre, le podium. Des fonctions pures : elles reçoivent des
+// Lot U2 (charte rév. 19, § 9) — les pièces de présentation de `/classement/` : le fronton d'une page (titre, date, compte à rebours), la cloche de la barre. Lot U6 : le podium et les lignes sont le composant commun de `@cdj/ui` (`classement.ts`). Des fonctions pures : elles reçoivent des
 // textes déjà traduits et des lignes déjà prêtes, et ne lisent ni le serveur ni le stockage. Feuille : `classementSalle.css`.
 
 /** Les quatre onglets de la navigation, textes déjà traduits. */
@@ -68,58 +67,4 @@ export function clocheDePage(o: { nom: string; nonLu: boolean; contexte: Context
   });
   if (etatCloche.ouverte) afficher(false); // la page s'est redessinée pendant que la feuille était ouverte
   return racine;
-}
-
-/** Une place du podium, déjà prête (textes traduits, adresse de l'image, valeur formatée). */
-export interface PlacePodium {
-  rang: number;
-  pseudo: string;
-  ref?: string;
-  image?: string;
-  /** Le temps (ou la hauteur, ou les points) de la vue, déjà formaté ; `null` : aucun. */
-  valeur: string;
-  moi: boolean;
-  /** « Toi » (déjà traduit), seulement pour ta place. */
-  toi: string | null;
-  /** Le rang dit aux lecteurs d'écran (« 1er »). */
-  rangLu: string;
-  /** L'emblème du groupe (22 px), déjà construit, quand le serveur le dit. */
-  embleme: HTMLElement | null;
-  /** Toucher la place ouvre la feuille du joueur (jamais la tienne). */
-  ouvrir: (() => void) | null;
-}
-
-/**
- * Le podium : une liste de trois places **dans l'ordre du classement** (1er, 2e, 3e — l'ordre que lisent les lecteurs d'écran), que la feuille de style range en 2e · 1er · 3e. Chaque place : la photo ronde
- * (112 px pour la première, 92 px pour les deux suivantes), la pastille moutarde de la place posée en bas à droite, le pseudo, le temps et la marche d'encre. `li.classement-ligne` comme une ligne de la liste :
- * mêmes repères pour les tests (`data-rang`, `data-moi`, `.classement-pseudo`, `.classement-rang`).
- */
-export function podium(t: TraducteurCommun, places: readonly PlacePodium[]): HTMLElement {
-  return el(
-    "ol",
-    { classe: "classement-podium" },
-    ...places.map((p, i) => {
-      const corps = [
-        el(
-          "span",
-          { classe: "classement-place__photo" },
-          avatar(t, { pseudo: p.pseudo, ref: p.ref, image: p.image, taille: photoDePlace(i + 1), decoratif: true }),
-          el("span", { classe: "classement-rang classement-badge", texte: String(p.rang) }),
-          el("span", { classe: "dj-cache", texte: p.rangLu }),
-        ),
-        el("span", { classe: "classement-pseudo" }, p.pseudo, p.embleme, p.toi ? el("span", { classe: "classement-toi", texte: p.toi }) : null),
-        el("span", { classe: "classement-temps", texte: p.valeur }),
-        el("span", { classe: "classement-marche", attrs: { "aria-hidden": "true" }, texte: String(p.rang) }),
-      ];
-      const contenu = p.ouvrir
-        ? el("button", { classe: "classement-ligne__corps classement-ligne__bouton classement-place__corps", attrs: { type: "button", "aria-haspopup": "dialog", "data-cle": `ligne-${p.ref}` } }, ...corps)
-        : el("div", { classe: "classement-ligne__corps classement-place__corps" }, ...corps);
-      if (p.ouvrir) contenu.addEventListener("click", p.ouvrir);
-      return el(
-        "li",
-        { classe: ["classement-ligne", "classement-place", `classement-place--${i + 1}`, p.moi && "classement-ligne--moi", p.ouvrir && "classement-ligne--touchable"], attrs: { "data-rang": String(p.rang), ...(p.moi ? { "data-moi": "oui", "aria-current": "true" } : {}) } },
-        contenu,
-      );
-    }),
-  );
 }

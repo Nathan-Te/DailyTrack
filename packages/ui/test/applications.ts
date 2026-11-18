@@ -40,6 +40,10 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", "CATALOGUE_COMMUNAUTE"],
   // Lot F2 : le vocabulaire des amis (sélecteur, feuille d'un joueur, liste, invitation), commun au portail et aux trois jeux (chargé à la demande avec les composants).
   ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", "CATALOGUE_AMIS"],
+  // Lot U6 : le podium, la liste et « Ta course » des classements, communs au portail et (lot U7) aux jeux (chargés à la demande avec le composant).
+  ["packages/ui (classement)", "packages/ui/src/catalogue.classement.ts", "CATALOGUE_CLASSEMENT"],
+  // Lot U6 : « Ta course » (la barre des classements), chargée à la demande avec sa feuille.
+  ["packages/ui (ta course)", "packages/ui/src/catalogue.tacourse.ts", "CATALOGUE_TACOURSE"],
   // Lot C1 : « Un bug ? Une idée ? » et « Mes messages » (dialogue d'envoi, page du portail), communs au portail et aux trois jeux (chargés à la demande avec le dialogue).
   ["packages/ui (retours)", "packages/ui/src/catalogue.retours.ts", "CATALOGUE_RETOURS"],
   ["packages/ui (version)", "packages/ui/src/catalogue.version.ts", "CATALOGUE_VERSION"],

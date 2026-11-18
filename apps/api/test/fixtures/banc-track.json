@@ -4010,7 +4010,21 @@
      "id": "<identifiant>",
      "nom": "Les Hauts",
      "score": 39546,
-     "classes": 4
+     "classes": 4,
+     "trio": [
+      {
+       "ref": "19d8d35c06ab",
+       "pseudo": "Joueur3"
+      },
+      {
+       "ref": "e0cca2965509",
+       "pseudo": "Joueur1"
+      },
+      {
+       "ref": "d2b1f1d83f0a",
+       "pseudo": "Joueur2"
+      }
+     ]
     }
    ],
    "moins": []
@@ -4039,7 +4053,21 @@
      "id": "<identifiant>",
      "nom": "Les Hauts",
      "score": 39546,
-     "classes": 4
+     "classes": 4,
+     "trio": [
+      {
+       "ref": "19d8d35c06ab",
+       "pseudo": "Joueur3"
+      },
+      {
+       "ref": "e0cca2965509",
+       "pseudo": "Joueur1"
+      },
+      {
+       "ref": "d2b1f1d83f0a",
+       "pseudo": "Joueur2"
+      }
+     ]
     }
    ],
    "moins": []

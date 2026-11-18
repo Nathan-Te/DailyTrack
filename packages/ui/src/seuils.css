@@ -1,0 +1,46 @@
+/* Lot U6 — la feuille des lignes de seuil des médailles (`seuils.ts`), chargée à la demande avec elles. Jetons seulement ; clair et `dj-sombre`. */
+
+.classement-seuil {
+  --cl-doux: var(--dj-encre-douce);
+  --cl-trait: var(--dj-encre);
+}
+.dj-sombre .classement-seuil {
+  --cl-doux: var(--track-texte-doux);
+  --cl-trait: var(--track-texte);
+}
+/* --- Un seuil de médaille : « Or · 32,000 s » entre deux traits en pointillés -------------------------------------------------------------------------- */
+.classement-seuil {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  margin: 3px 0;
+  color: var(--cl-doux);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-12);
+  letter-spacing: 0.5px;
+}
+.classement-seuil::before,
+.classement-seuil::after {
+  content: "";
+  flex: 1;
+  border-top: var(--dj-trait) dashed currentColor;
+}
+.classement-seuil__point {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: var(--dj-trait) solid var(--cl-trait);
+  border-radius: var(--dj-rayon-avatar);
+}
+.classement-seuil__point--diamant {
+  background: var(--dj-diamant);
+}
+.classement-seuil__point--or {
+  background: var(--dj-or);
+}
+.classement-seuil__point--argent {
+  background: var(--dj-argent);
+}
+.classement-seuil__point--bronze {
+  background: var(--dj-bronze);
+}

@@ -1,6 +1,10 @@
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/favoris.css";
 import "@cdj/ui/src/cadre.css";
+import "@cdj/ui/src/avatar.css";
+import "@cdj/ui/src/avatar-liste.css";
+import "@cdj/ui/src/avatar-grand.css"; // lot U6 : les photos du podium (84 à 112 px)
+import "@cdj/ui/src/classement.css"; // lot U6 : le composant de classement
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -55,6 +59,7 @@ import {
 import { CATALOGUE_VITRINE } from "./catalogueVitrine";
 import { remplirAmis } from "./vitrineAmis";
 import { remplirBlocs } from "./vitrineBlocs";
+import { remplirClassement } from "./vitrineClassement";
 import { remplirPlateformes } from "./vitrinePlateformes";
 import { stockageDuPortail } from "./stockage";
 
@@ -232,6 +237,8 @@ function bloc(l: Langue): HTMLElement {
     ),
     // Lot F2 : les composants des amis (chargés à la demande, comme dans les pages qui les utilisent).
     section(t.t("vitrine.section.amis"), `amis-${l}`, remplirAmis(l, (cle) => t.t(cle as never))),
+    // Lot U6 : le composant de classement (podium, liste, seuils, « Ta course »), chargé à la demande comme dans la page.
+    section(t.t("vitrine.section.classement"), `classement-${l}`, remplirClassement(l, (cle) => t.t(cle as never))),
     section(
       t.t("vitrine.section.boutons"),
       `boutons-${l}`,
