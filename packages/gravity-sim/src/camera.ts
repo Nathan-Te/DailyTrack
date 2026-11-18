@@ -1,19 +1,42 @@
 import * as K from "./constantes";
 import { REGLES_COURANTES, type Regles } from "./regles";
-const { CIBLE_CAMERA, DUREE_MAX_TICKS, FACTEUR_NORMAL, TAILLE, TICKS_PAR_SECONDE, VITESSE_PLAFOND } = K;
+const { CASE, CIBLE_CAMERA, COURBE_DOUCE, CROISIERE_PLUS, DUREE_MAX_TICKS, FACTEUR_NORMAL, LARGEUR_MORCEAU, NB_THEMES, PENTE_APRES_CROISIERE, RAMPE_BOUCLE, TAILLE, TICKS_PAR_SECONDE, VITESSE_PLAFOND } = K;
 
 // La caméra défile toute seule, plus vite avec la distance (maquette : `7 + distance / 220`, plafonnée à 12,5 cases/s). Sa trajectoire ne dépend de rien d'autre que du temps : le générateur s'en sert pour savoir QUAND le
 // joueur arrive à une colonne (les cases qui battent d'un morceau sont alignées sur cette arrivée, `generateur.ts`).
 
-/** Ce que la caméra lit des règles (lot GR5 : les valeurs de la version de la simulation du jour, ou d'un essai). Sans règles : celles de la version courante. */
-type Vitesses = Pick<Regles, "vitesseBase" | "vitesseMax" | "distanceParCran">;
+/** Ce que la caméra lit des règles (lot GR5 : les valeurs de la version de la simulation du jour, ou d'un essai). Sans règles : celles de la version courante. Lot GR7 : la forme de la courbe et la longueur d'une boucle. */
+type Vitesses = Pick<Regles, "vitesseBase" | "vitesseMax" | "distanceParCran" | "courbe" | "morceauxParTheme">;
 
 /**
- * La vitesse de la caméra (unités par seconde) quand elle est à `cam` unités du départ. Entier. **Lot GR6** : la montée normale (plafonnée à `vitesseMax`) est multipliée par le facteur du dernier portail de vitesse
- * (`facteur`, en pour cent ; 100 sans portail), puis **plafonnée à `VITESSE_PLAFOND`** : la vitesse réelle, celle que suit la caméra, ne dépasse jamais 17 cases/s.
+ * **La vitesse de la montée normale** (sans portail de vitesse) quand la caméra est à `cam` unités du départ. Entier. Lot GR7 :
+ *  - **avant la croisière** : en courbe douce (`COURBE_DOUCE`), une parabole qui part vite et arrive à plat sur la croisière à `(vitesseMax − vitesseBase) × distanceParCran` unités ; en courbe linéaire, 1 unité/s tous les
+ *    `distanceParCran` unités (la courbe d'avant le GR7, pour les réglages d'essai) ;
+ *  - **après** : la courbe continue plus doucement (`PENTE_APRES_CROISIERE`), **bornée par la croisière de la boucle** : `vitesseMax` à la 1re boucle, plus `CROISIERE_PLUS` ensuite, la croisière montant de celle d'avant en `RAMPE_BOUCLE`
+ *    unités au début de chaque boucle.
  */
-export const vitesseCamera = (cam: number, r: Vitesses = REGLES_COURANTES, facteur: number = FACTEUR_NORMAL): number =>
-  Math.min(VITESSE_PLAFOND, Math.trunc((Math.min(r.vitesseMax, r.vitesseBase + Math.trunc(cam / r.distanceParCran)) * facteur) / 100));
+export function vitesseNormale(cam: number, r: Vitesses): number {
+  const dv = r.vitesseMax - r.vitesseBase;
+  const fin = dv * r.distanceParCran;
+  let v: number;
+  if (cam >= fin) v = r.vitesseMax + Math.trunc((cam - fin) / PENTE_APRES_CROISIERE);
+  else if (r.courbe === COURBE_DOUCE) v = r.vitesseBase + Math.trunc((dv * Math.trunc((2 * fin * cam - cam * cam) / fin)) / fin);
+  else v = r.vitesseBase + Math.trunc(cam / r.distanceParCran);
+  const boucle = Math.trunc(cam / (r.morceauxParTheme * NB_THEMES * LARGEUR_MORCEAU * CASE));
+  if (boucle === 0) return Math.min(v, r.vitesseMax);
+  const longueur = r.morceauxParTheme * NB_THEMES * LARGEUR_MORCEAU * CASE;
+  const avant = r.vitesseMax + CROISIERE_PLUS[Math.min(boucle - 1, CROISIERE_PLUS.length - 1)]!;
+  const apres = r.vitesseMax + CROISIERE_PLUS[Math.min(boucle, CROISIERE_PLUS.length - 1)]!;
+  const dans = cam - boucle * longueur;
+  const plafond = avant + Math.trunc(((apres - avant) * Math.min(dans, RAMPE_BOUCLE)) / RAMPE_BOUCLE);
+  return Math.min(v, plafond);
+}
+
+/**
+ * La vitesse de la caméra (unités par seconde) quand elle est à `cam` unités du départ. Entier. **Lot GR6** : la montée normale est multipliée par le facteur du dernier portail de vitesse (`facteur`, en pour cent ; 100 sans
+ * portail), puis **plafonnée à `VITESSE_PLAFOND`** : la vitesse réelle, celle que suit la caméra, ne dépasse jamais 17 cases/s.
+ */
+export const vitesseCamera = (cam: number, r: Vitesses = REGLES_COURANTES, facteur: number = FACTEUR_NORMAL): number => Math.min(VITESSE_PLAFOND, Math.trunc((vitesseNormale(cam, r) * facteur) / 100));
 
 /** Un pas de la caméra. */
 export const avancerCamera = (cam: number, r: Vitesses = REGLES_COURANTES, facteur: number = FACTEUR_NORMAL): number => cam + Math.trunc(vitesseCamera(cam, r, facteur) / TICKS_PAR_SECONDE);
@@ -21,7 +44,7 @@ export const avancerCamera = (cam: number, r: Vitesses = REGLES_COURANTES, facte
 const tables = new Map<string, Int32Array>();
 /** La position de la caméra à chaque pas de la partie (calculée une fois par jeu de règles : 72 001 entiers ; huit jeux au plus gardés). */
 function positions(r: Regles): Int32Array {
-  const cle = `${r.vitesseBase}.${r.vitesseMax}.${r.distanceParCran}`;
+  const cle = `${r.vitesseBase}.${r.vitesseMax}.${r.distanceParCran}.${r.courbe}.${r.morceauxParTheme}`;
   const connue = tables.get(cle);
   if (connue) return connue;
   const t = new Int32Array(DUREE_MAX_TICKS + 1);

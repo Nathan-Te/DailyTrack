@@ -17,7 +17,6 @@ import {
   dailyGravity,
   difficulte,
   empreinteContenu,
-  motifBrut,
   planDuJour,
   reglesDuContenu,
   terrainDuJour,
@@ -278,7 +277,6 @@ describe("les portails de vitesse", () => {
     expect(total).toBeGreaterThan(20);
   });
   it("rapides là où l'on respire, lents avant un passage technique (ou avant une onde)", () => {
-    const TECHNIQUES = ["zigzag", "milieu", "escalier", "etages", "inverseur", "ilots", "special"];
     let lents = 0;
     let rapides = 0;
     for (const j of jours) {
@@ -286,7 +284,7 @@ describe("les portails de vitesse", () => {
       for (let m = MORCEAUX_PAR_THEME; m < nbMorceaux; m++) {
         const vit = plan.info(m).vitesse;
         if (!vit) continue;
-        const technique = TECHNIQUES.includes(motifBrut(j, m, difficulte(m, plan.regles)));
+        const technique = plan.info(m).pioche!.technique;
         const avantOnde = plan.info(m).avantSection && modeDuMotif(t.morceau(m + 1).motif) === MODE_ONDE;
         if (vit === "lent") {
           lents++;

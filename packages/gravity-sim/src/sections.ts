@@ -1,6 +1,6 @@
 import { mixSeed, Rng } from "@cdj/core";
-import { CASE, CIBLE_CAMERA, LARGEUR_MORCEAU, LIGNES, MODE_AVION, MODE_ONDE } from "./constantes";
-import { BLOC, PIQUE, VIDE, type Motif, type Objet, type Portail } from "./monde";
+import { CASE, CIBLE_CAMERA, LARGEUR_MORCEAU, LASER_ALLUME, LASER_CYCLE, LIGNES, MODE_AVION, MODE_ONDE } from "./constantes";
+import { BLOC, PIQUE, VIDE, type Laser, type Motif, type Objet, type Portail, type Scie } from "./monde";
 import { COLONNE_PORTAIL, type InfoSection, type PlanDuJour } from "./plan";
 
 // LES SECTIONS À MODE (lot GR6) : le contenu des morceaux d'une section d'avion, d'onde ou de ressort. **Tout est posé dans le TEMPS, pas dans les colonnes** : un couloir qui ondule dure autant de secondes à 7 cases/s qu'à
@@ -41,6 +41,8 @@ export interface SortieSection {
   gemmes: Objet[];
   axe: number[];
   portails: Portail[];
+  scies: Scie[];
+  lasers: Laser[];
   motif: Motif;
 }
 
@@ -62,6 +64,8 @@ export function genererSection(e: EntreeSection): SortieSection {
   const gemmes: Objet[] = [];
   const axe: number[] = new Array<number>(LARGEUR_MORCEAU).fill(0);
   const portails: Portail[] = [];
+  const scies: Scie[] = [];
+  const lasers: Laser[] = [];
   const poser = (c: number, r: number, type: number): void => {
     if (c >= 0 && c < LARGEUR_MORCEAU && r >= 0 && r < LIGNES) cases[c * LIGNES + r] = type;
   };
@@ -77,7 +81,8 @@ export function genererSection(e: EntreeSection): SortieSection {
   const aFin = (premier + info.longueur) * LARGEUR_MORCEAU - OUVERT_FIN; // exclue
   const tc = t(aDebut); // le pas du début du contenu
   const tirageStyle = new Rng(mixSeed(mixSeed(e.jour, 0x4a21c7), premier)).int(100);
-  const champ = info.mode === MODE_AVION ? info.facile || tirageStyle < 55 : !info.facile && tirageStyle < 55;
+  // Lot GR7 : la variante de la section (0 à 5) règle le style et la taille ; une section à danger est toujours un champ (les dangers sont des obstacles en l'air).
+  const champ = info.danger ? true : info.mode === MODE_AVION ? info.facile || (info.variante % 2 === 0 ? tirageStyle < 80 : tirageStyle < 30) : !info.facile && (info.variante % 2 === 0 ? tirageStyle < 80 : tirageStyle < 30);
 
   if (info.mode === MODE_AVION) return { ...avion(), motif: "avion" };
   if (info.mode === MODE_ONDE) return { ...onde(), motif: "onde" };
@@ -86,7 +91,7 @@ export function genererSection(e: EntreeSection): SortieSection {
   /** L'axe est le même, sur les colonnes libres, que celui de la première colonne de contenu : le pilote y est déjà quand le contenu commence. */
   function finir(axeDe: (a: number) => number): SortieSection {
     for (let c = 0; c < LARGEUR_MORCEAU; c++) axe[c] = axeDe(x0 + c);
-    return { cases, pieces, gemmes, axe, portails, motif: "avion" };
+    return { cases, pieces, gemmes, axe, portails, scies, lasers, motif: "avion" };
   }
 
   /**
@@ -103,13 +108,19 @@ export function genererSection(e: EntreeSection): SortieSection {
   function champAerien(): SortieSection {
     const avion = info.mode === MODE_AVION;
     const facile = info.facile;
-    const espace = avion ? (facile ? 170 : d < 50 ? 135 : 110) : facile ? 170 : d < 50 ? 150 : 125;
+    // La taille (variante 0 à 5, `Math.trunc(variante / 2)` : 0 à 2) règle l'espace entre deux obstacles : 0, 0,1 ou 0,2 s de plus que le rythme de base (jamais plus serré : la preuve du robot en dépend).
+    const rythme = [0, 12, 24][Math.trunc(info.variante / 2)]!;
+    const espace = (avion ? (facile ? 170 : d < 50 ? 135 : 110) : facile ? 170 : d < 50 ? 150 : 125) + (facile ? 0 : rythme);
     interface Obs {
       a0: number;
       a1: number;
       r0: number;
       r1: number;
       cell: number;
+      /** Lot GR7 : un danger qui bouge : une scie sur un rail vertical, un laser (le rayon va de la rangée `r0` à `r1`). */
+      kind?: "scie" | "laser";
+      /** Scie : en bas (vrai) ou en haut (faux) du rail quand on arrive. */
+      bas?: boolean;
     }
     const obstacles: Obs[] = [];
     const MILIEU = 11 * (CASE >> 1); // 5,5 cases
@@ -117,13 +128,18 @@ export function genererSection(e: EntreeSection): SortieSection {
     const tMax = t(aFin);
     for (let k = 0, tk = tc + 70; tk < tMax; k++, tk += espace) {
       const a0 = colonneAu(tk);
-      if (a0 < aDebut + 1 || a0 >= aFin - 3) continue;
+      // Après le dernier obstacle l'axe revient au milieu : l'onde ne monte que d'une rangée par colonne (45°), il lui faut la place (jusqu'à 3 rangées de retour, de l'obstacle de 2 colonnes au bout).
+      if (a0 < aDebut + 1 || a0 >= aFin - (avion ? 3 : 6)) continue;
       const rng = new Rng(mixSeed(mixSeed(e.jour, 0x31c9d5), premier * 64 + k));
       const g = rng.int(100);
       const rs = 3 + rng.int(5); // 3 à 7
       const longue = facile ? 3 : 3 + rng.int(2); // une colonne qui tombe ou monte : 3 ou 4 rangées
       let o: Obs;
-      if (avion) {
+      // Lot GR7 : dans une section à danger, un obstacle sur deux est le danger de la section (le premier : on le voit venir, il est seul).
+      const danger = info.danger !== null && k % 2 === 0;
+      if (danger && info.danger === "scies") o = { a0, a1: a0 + 1, r0: 3, r1: 10, cell: BLOC, kind: "scie" };
+      else if (danger) o = { a0, a1: a0 + 1, r0: 9 - longue, r1: 10, cell: BLOC, kind: "laser" }; // un rayon qui monte du sol : l'axe passe au-dessus, un joueur qui ne fait rien reste en bas
+      else if (avion) {
         if (g < 35) o = { a0, a1: a0 + 2, r0: rs, r1: rs + 2, cell: BLOC }; // un îlot suspendu
         else if (g < 55 && !facile) o = { a0, a1: a0 + 1, r0: rs, r1: rs + 2, cell: PIQUE }; // une mine de piques
         else if (g < 78) o = { a0, a1: a0 + 2, r0: 2, r1: 2 + longue, cell: BLOC }; // une colonne du plafond
@@ -138,7 +154,16 @@ export function genererSection(e: EntreeSection): SortieSection {
       const bas = (o.r1 + 10) * (CASE >> 1);
       const okHaut = o.r0 - 2 >= 3;
       const okBas = 10 - o.r1 >= 3;
-      const y = okHaut && okBas ? (Math.abs(haut - avant) <= Math.abs(bas - avant) ? haut : bas) : okHaut ? haut : bas;
+      let y = okHaut && okBas ? (Math.abs(haut - avant) <= Math.abs(bas - avant) ? haut : bas) : okHaut ? haut : bas;
+      if (o.kind === "laser") y = 3 * CASE + 819; // un rayon qui monte du sol : l'axe passe tout en haut, loin de sa pointe (le pilote de l'onde zigzague de près d'une case à grande vitesse)
+      if (o.kind === "scie") {
+        // Une scie sur toute la hauteur : l'axe passe du côté d'où il vient, et la scie est de l'autre côté quand on arrive.
+        // (lot GR7 : toujours en haut, la scie en bas : un joueur qui ne fait rien reste en bas, il la rencontre)
+        y = 4 * CASE;
+        o.bas = true;
+      }
+      // Lot GR7 : l'avion ne rejoint pas en un souffle (1,1 s) un axe à plus de 3,5 rangées de l'axe d'avant : un obstacle qui l'exigerait n'est pas posé (la preuve du robot, à grande vitesse et en boucle 2).
+      if (avion && Math.abs(y - avant) > 3 * CASE + (CASE >> 1)) continue;
       obstacles.push(o);
       waypoints.push({ a: o.a0 - 1, y }, { a: o.a1, y });
     }
@@ -152,7 +177,26 @@ export function genererSection(e: EntreeSection): SortieSection {
       }
       return waypoints[waypoints.length - 1]!.y;
     };
-    for (const o of obstacles) for (let a = o.a0; a < o.a1; a++) for (let r = o.r0; r < o.r1; r++) if (a >= x0 && a < x0 + LARGEUR_MORCEAU) poser(a - x0, r, o.cell);
+    for (const o of obstacles) {
+      if (o.kind === "scie") {
+        // Le rail va de la rangée 3 à la rangée 9 (les centres) dans la colonne : le disque est en bas ou en haut quand on y arrive.
+        const col = o.a0;
+        if (col >= x0 && col < x0 + LARGEUR_MORCEAU) {
+          const P = 90 + 12 * (info.variante % 3);
+          const u = o.bas ? P : 0;
+          const p2 = 2 * P;
+          const tA = t(col);
+          scies.push({ x0: col * CASE + (CASE >> 1), y0: 3 * CASE + (CASE >> 1), x1: col * CASE + (CASE >> 1), y1: 9 * CASE + (CASE >> 1), periode: P, decalage: (((u - tA) % p2) + p2) % p2 });
+        }
+      } else if (o.kind === "laser") {
+        const col = o.a0;
+        if (col >= x0 && col < x0 + LARGEUR_MORCEAU) {
+          const tA = t(col);
+          lasers.push({ c: col - x0, r0: o.r0, r1: o.r1 - 1, decalage: (((LASER_CYCLE - LASER_ALLUME / 2 - tA) % LASER_CYCLE) + LASER_CYCLE) % LASER_CYCLE });
+          // Le rayon part du sol (c'est son émetteur) : rien n'est posé en l'air.
+        }
+      } else for (let a = o.a0; a < o.a1; a++) for (let r = o.r0; r < o.r1; r++) if (a >= x0 && a < x0 + LARGEUR_MORCEAU) poser(a - x0, r, o.cell);
+    }
     for (let c = 0; c < LARGEUR_MORCEAU; c++) {
       const a = x0 + c;
       if (a >= aDebut && a < aFin && (a - aDebut) % 2 === 0) pieces.push({ x: centreX(c), y: centreDe(a) });
@@ -246,7 +290,7 @@ export function genererSection(e: EntreeSection): SortieSection {
     const SOL = 10;
     const NORMAL = 8 * CASE + 819; // 8,2 cases : le centre qu'on tient au-dessus du sol (un bond part du sol à 9,6)
     /** Les obstacles du morceau : `{ a0, a1, haut }` (colonnes absolues, `haut` > 0 : une colonne de `haut` cases ; 0 : un trou). Tirés dans l'ordre du temps, pour que le même morceau donne les mêmes obstacles. */
-    const obstacles: { a0: number; a1: number; haut: number; piques?: boolean }[] = [];
+    const obstacles: { a0: number; a1: number; haut: number; piques?: boolean; scie?: boolean }[] = [];
     const tMax = t(aFin);
     for (let k = 0, tk = tc + 60; tk < tMax; k++, tk += espace) {
       const genre = new Rng(mixSeed(mixSeed(e.jour, 0x7d1c5b), premier * 64 + k)).int(100);
@@ -254,9 +298,10 @@ export function genererSection(e: EntreeSection): SortieSection {
       if (a0 + 2 < aDebut || a0 >= aFin - 2) continue;
       if (genre < 40) obstacles.push({ a0, a1: Math.max(a0 + 2, colonneAu(tk + (facile ? 40 : 60))), haut: 0 });
       else if (genre < 68 || facile) obstacles.push({ a0, a1: a0 + 1 + (genre % 2), haut: 1 + (genre >= 80 ? hauteurMax - 1 : 0) });
+      else if (info.danger === "scies") obstacles.push({ a0, a1: a0 + 2, haut: 2, scie: true }); // lot GR7 : une scie sur le sol, sur un rail court : on la saute (l'axe se tient plus haut : le ressort bondit plus tôt)
       else obstacles.push({ a0, a1: a0 + 2 + (genre % 2), haut: 1, piques: true }); // des piques au sol (le rouge) : on les saute comme une colonne basse
     }
-    const dans = (a: number): { a0: number; a1: number; haut: number; piques?: boolean } | undefined => obstacles.find((o) => a >= o.a0 && a < o.a1);
+    const dans = (a: number): { a0: number; a1: number; haut: number; piques?: boolean; scie?: boolean } | undefined => obstacles.find((o) => a >= o.a0 && a < o.a1);
     const centreDe = (a: number): number => {
       const o = obstacles.find((q) => a >= q.a0 - 1 && a <= q.a1);
       return o && o.haut > 0 ? (SOL - o.haut) * CASE - CASE - 819 : NORMAL;
@@ -268,7 +313,15 @@ export function genererSection(e: EntreeSection): SortieSection {
       if (o && o.haut === 0) {
         poser(c, SOL, VIDE);
         poser(c, SOL + 1, VIDE);
-      } else if (o) for (let h = 1; h <= o.haut; h++) poser(c, SOL - h, o.piques ? PIQUE : BLOC);
+      } else if (o && !o.scie) for (let h = 1; h <= o.haut; h++) poser(c, SOL - h, o.piques ? PIQUE : BLOC);
+    }
+    // Lot GR7 : les scies du sol (un rail de 3 colonnes, au milieu quand on y arrive).
+    for (const o of obstacles) {
+      if (!o.scie || o.a0 < x0 - 3 || o.a0 >= x0 + LARGEUR_MORCEAU) continue;
+      const P = 80 + 10 * (info.variante % 3);
+      const tA = t(o.a0 + 1);
+      const p2 = 2 * P;
+      scies.push({ x0: o.a0 * CASE + (CASE >> 1), y0: 9 * CASE + (CASE >> 1), x1: (o.a0 + 2) * CASE + (CASE >> 1), y1: 9 * CASE + (CASE >> 1), periode: P, decalage: (((Math.trunc(P / 2) - tA) % p2) + p2) % p2 });
     }
     // Des pièces en arc au-dessus de chaque obstacle (cinq, sur une parabole), sinon trois pièces d'une colonne sur trois à la hauteur normale.
     for (const o of obstacles) {

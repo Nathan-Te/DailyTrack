@@ -4,6 +4,7 @@
 import { BLOCK_STYLE, HAZARD, HAZARD_OUTLINE, mix, type BlockStyle } from "@cdj/visuels/plateformes";
 import { Art } from "@cdj/visuels/plateformes/three";
 import { ALTERNE_BATTEMENT, CLIGNOTANT_ALLUME, CLIGNOTANT_CYCLE, ALTERNE_A, ALTERNE_B, CLIGNOTANT } from "@cdj/gravity-sim";
+/* Lot GR7 : les dessins des dangers sont en bas du fichier. */
 
 const BLANC = 0xffffff;
 const Z = { piques: 0.05, bloc: 0.02, repere: 0.03, objet: 0.1, aura: 0.2, bandeau: 0.06 } as const;
@@ -215,3 +216,116 @@ export function dessinChevrons(longueur: number, couleur: number, sens: 1 | -1):
   }
   return a;
 }
+
+// ——— Les dangers du GR7 : tout est ROUGE (HAZARD), cerné de sombre : le rouge reste réservé aux dangers ———
+
+/** Une scie : un disque rouge à dents, cerné de sombre, un moyeu papier et trois ouvertures. Centré en (0, 0), rayon visuel 0,5 case (la collision de la simulation est un peu plus petite : 0,4). */
+export function dessinScie(encre: number, papier: number): Art {
+  const a = new Art();
+  const z = 0.08;
+  const DENTS = 12;
+  const dent = (marge: number, rayonBase: number, rayonPointe: number, zz: number, couleur: number): void => {
+    for (let k = 0; k < DENTS; k++) {
+      const t = (k / DENTS) * Math.PI * 2;
+      const b = (da: number, r: number): [number, number] => [Math.cos(t + da) * r, Math.sin(t + da) * r];
+      const [x0, y0] = b(-0.17 - marge * 0.1, rayonBase);
+      const [x1, y1] = b(0.17 + marge * 0.1, rayonBase);
+      const [x2, y2] = b(0.3, rayonPointe + marge);
+      const v = [a.vertex(x0, y0, zz, couleur), a.vertex(x1, y1, zz, couleur), a.vertex(x2, y2, zz, couleur)];
+      a.tri(v[0]!, v[1]!, v[2]!);
+    }
+  };
+  dent(0.04, 0.4, 0.5, z, HAZARD_OUTLINE);
+  a.disc(0, 0, 0.43, z + 0.001, HAZARD_OUTLINE, 28);
+  dent(0, 0.38, 0.49, z + 0.002, HAZARD);
+  a.disc(0, 0, 0.39, z + 0.003, HAZARD, 28);
+  for (let k = 0; k < 3; k++) {
+    const t = (k / 3) * Math.PI * 2 + 0.5;
+    a.disc(Math.cos(t) * 0.24, Math.sin(t) * 0.24, 0.07, z + 0.004, HAZARD_OUTLINE, 10);
+  }
+  a.disc(0, 0, 0.12, z + 0.004, encre, 14);
+  a.disc(0, 0, 0.065, z + 0.005, papier, 12);
+  return a;
+}
+
+/** Le rail d'une scie : un trait d'encre de `longueur` cases le long de l'axe x, à (0, 0) ; deux petits arrêts aux bouts. */
+export function dessinRail(longueur: number, encre: number): Art {
+  const a = new Art();
+  const z = 0.04;
+  a.rect(0, -0.035, longueur, 0.035, z, encre);
+  a.rect(-0.04, -0.13, 0.04, 0.13, z, encre);
+  a.rect(longueur - 0.04, -0.13, longueur + 0.04, 0.13, z, encre);
+  return a;
+}
+
+/** Un sol fragile, à quatre états : `niveau` 0 intact, 1 une fissure, 2 deux fissures et un éclat, 3 il va tomber (fissures partout, plus clair). Case entière (0 à 1). Les fissures grandissent avec le niveau. */
+export function dessinFragile(niveau: 0 | 1 | 2 | 3, encre: number): Art {
+  const a = new Art();
+  const z = 0.025;
+  const fond = mix(HAZARD, encre, 0.62);
+  a.rect(0, 0, 1, 1, z, niveau === 3 ? mix(fond, BLANC, 0.18) : fond);
+  const l = 0.09;
+  a.rect(0, 0, 1, l, z + 0.001, HAZARD);
+  a.rect(0, 1 - l, 1, 1, z + 0.001, HAZARD);
+  a.rect(0, l, l, 1 - l, z + 0.001, HAZARD);
+  a.rect(1 - l, l, 1, 1 - l, z + 0.001, HAZARD);
+  // les planches : deux traits sombres
+  a.rect(0.12, 0.34, 0.88, 0.37, z + 0.002, mix(fond, 0x000000, 0.4));
+  a.rect(0.12, 0.63, 0.88, 0.66, z + 0.002, mix(fond, 0x000000, 0.4));
+  const fissure = (pts: number[], largeur: number): void => {
+    for (let i = 0; i + 3 < pts.length; i += 2) {
+      const [x0, y0, x1, y1] = [pts[i]!, pts[i + 1]!, pts[i + 2]!, pts[i + 3]!];
+      const dx = y1 - y0;
+      const dy = x0 - x1;
+      const n = Math.hypot(dx, dy) || 1;
+      const ox = (dx / n) * largeur;
+      const oy = (dy / n) * largeur;
+      a.quad([x0 - ox, y0 - oy, x1 - ox, y1 - oy, x1 + ox, y1 + oy, x0 + ox, y0 + oy], z + 0.004, 0x1a0f0a);
+    }
+  };
+  if (niveau >= 1) fissure([0.5, 1, 0.44, 0.78, 0.56, 0.6, 0.48, 0.42], 0.018);
+  if (niveau >= 2) {
+    fissure([0.5, 0.6, 0.72, 0.5, 0.8, 0.3], 0.02);
+    fissure([0.44, 0.78, 0.2, 0.7, 0.12, 0.52], 0.02);
+  }
+  if (niveau >= 3) {
+    fissure([0.48, 0.42, 0.4, 0.2, 0.46, 0], 0.026);
+    fissure([0.8, 0.3, 0.94, 0.12], 0.024);
+    fissure([0.2, 0.7, 0.06, 0.82], 0.024);
+    a.quad([0.62, 1, 0.78, 1, 0.7, 0.82, 0.58, 0.86], z + 0.003, 0x1a0f0a);
+  }
+  return a;
+}
+
+/** La lentille d'un émetteur de laser : un disque rouge cerné de sombre, un cœur clair. Centrée en (0, 0). */
+export function dessinLentille(encre: number): Art {
+  const a = new Art();
+  const z = 0.09;
+  a.disc(0, 0, 0.27, z, encre, 16);
+  a.disc(0, 0, 0.21, z + 0.001, HAZARD_OUTLINE, 16);
+  a.disc(0, 0, 0.16, z + 0.002, HAZARD, 16);
+  a.disc(0, 0, 0.07, z + 0.003, 0xffffff, 12);
+  return a;
+}
+
+/** Le rayon d'un laser : une bande rouge et son cœur clair, de 0 à 1 en hauteur (le maillage est étiré à la longueur du rayon), centrée sur x = 0. */
+export function dessinFaisceau(): Art {
+  const a = new Art();
+  a.rect(-0.25, 0, 0.25, 1, 0.07, HAZARD);
+  a.rect(-0.1, 0, 0.1, 1, 0.071, 0xffffff);
+  return a;
+}
+/** Le mince trait pâle qui annonce un laser, de 0 à 1 en hauteur, centré sur x = 0. */
+export function dessinAnnonceLaser(): Art {
+  const a = new Art();
+  a.rect(-0.035, 0, 0.035, 1, 0.065, 0xffffff);
+  return a;
+}
+
+/** Le niveau de fissure (0 à 3) d'un sol fragile touché depuis `age` pas (−1 : pas touché) : il grandit avec l'âge jusqu'à la chute (`delai` pas). Pure. */
+export function niveauDeFissure(age: number, delai: number): 0 | 1 | 2 | 3 {
+  if (age < 0) return 0;
+  return Math.min(3, 1 + Math.trunc((age * 3) / delai)) as 1 | 2 | 3;
+}
+/** Combien de pas un sol tombé s'affiche encore en chutant (0,25 s) avant de disparaître. */
+export const CHUTE_VISIBLE = 30;

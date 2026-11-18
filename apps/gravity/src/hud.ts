@@ -6,6 +6,7 @@
 import { grouper, type Seuils } from "@cdj/gravity-sim";
 import type { OptionsPartie, ZonesSurimpression } from "@cdj/kit/jeu/types";
 import { CHEVRONS_DU_PORTAIL, MODE_AFFICHE, VITESSE_AFFICHEE, nomDuMode, type AnnonceMode, type AnnonceVitesse, type NomDeMode } from "./modesLogique";
+import { DANGER_AFFICHE, type AnnonceDanger, type NomDeDanger } from "./dangersLogique";
 import "./hud.css";
 
 export interface EtatHud {
@@ -32,6 +33,8 @@ export interface EtatHud {
   tick: number;
   annonceMode: (AnnonceMode & { couleur: string }) | null;
   annonceVitesse: AnnonceVitesse | null;
+  /** Lot GR7 : l'annonce « Nouveau : les scies » du premier passage d'un danger (une fois par danger et par partie). */
+  annonceDanger: AnnonceDanger | null;
   /** Lot GR5 : la mention des réglages d'essai (« Réglage d'essai · départ 8 m/s »), ou null : une partie normale n'en montre pas. */
   reglage: string | null;
 }
@@ -68,6 +71,12 @@ const ICONES_MODE: Readonly<Record<NomDeMode, { d: string; trait: boolean }>> = 
   onde: { d: "M2 14 6 5 10 14 14 5 18 14", trait: true },
   ressort: { d: "M10 2 5 4.5 15 7.5 5 10.5 15 13.5 5 16.5 10 18", trait: true },
 };
+/** Les icônes des dangers (lot GR7), dans un carré de 20 : la scie (un disque à dents), le sol fragile (une planche fendue), le laser (un rayon entre deux lentilles). */
+const ICONES_DANGER: Readonly<Record<NomDeDanger, { d: string; trait: boolean }>> = {
+  scies: { d: "M10 1l2 3 3-1 .5 3.5 3.5.5-1 3 3 2-3 2 1 3-3.5.5-.5 3.5-3-1-2 3-2-3-3 1-.5-3.5L2.5 14l1-3-3-2 3-2-1-3L6 3.5 6.5 1 9.5 2z", trait: false },
+  fragiles: { d: "M2 6h16v8H2zM10 6 8 10l3 1-2 3", trait: true },
+  lasers: { d: "M10 2v16M6 2h8M6 18h8", trait: true },
+};
 /** L'icône d'un portail de vitesse : `n` chevrons (›), ou deux tirets pour le portail lent. */
 const iconeDeVitesse = (n: number): { d: string; trait: boolean } => ({ d: n === 0 ? "M3 7.5h14M3 12.5h14" : Array.from({ length: n }, (_, i) => `M${n === 1 ? 7 : n === 2 ? 4 + i * 6 : 2 + i * 6} 4l6 6-6 6`).join(""), trait: true });
 const remplacerIcone = (hote: Element, icone: { d: string; trait: boolean }): void => {
@@ -99,12 +108,16 @@ export class Hud {
   private readonly vitesseTexte = el("span", "g-vitesse__texte");
   private readonly vitesse = el("div", "g-vitesse", el("span", "g-vitesse__icone"), this.vitesseTexte);
   private readonly iconeMode = el("span", "g-modeicone");
+  /** Lot GR7 : l'annonce d'un danger (« Nouveau : les scies » et sa consigne), la même carte que celle d'un mode, l'accent rouge. */
+  private readonly dangerNom = el("b", "g-danger__nom");
+  private readonly dangerConsigne = el("small", "g-danger__consigne");
+  private readonly danger = el("div", "g-danger", el("span", "g-danger__icone"), el("div", "g-danger__texte", this.dangerNom, this.dangerConsigne));
   private readonly robot = el("div", "g-robot");
   private readonly reglage = el("div", "g-reglage");
   private readonly mortCause = el("b", "g-mort__cause");
   private readonly bilanValeurs = [0, 1, 2, 3, 4].map(() => el("b", "g-bilan__valeur"));
   private readonly mort = el("div", "g-mort", this.mortCause);
-  private dernier = { ligne: "", mult: 1, med: "", bouclier: false, aimant: -1, themeId: "", mort: "", score: -1, vuTheme: false, modeId: 0, vuMode: false, vitesseId: 0, vuVitesse: false, mode: -1 };
+  private dernier = { ligne: "", mult: 1, med: "", bouclier: false, aimant: -1, themeId: "", mort: "", score: -1, vuTheme: false, modeId: 0, vuMode: false, vitesseId: 0, vuVitesse: false, mode: -1, dangerId: 0, vuDanger: false };
 
   constructor(
     hote: HTMLElement,
@@ -135,7 +148,8 @@ export class Hud {
     zones.centre.append(el("div", "g-score", this.score, this.ligne, el("div", "g-score__rang", this.mult, this.iconeMode)));
     zones.hautDroite.append(this.medaille);
     zones.hautGauche.append(this.bonus);
-    zones.annonce.append(this.theme, this.mode, this.vitesse);
+    this.danger.hidden = false;
+    zones.annonce.append(this.theme, this.mode, this.vitesse, this.danger);
     this.racine.append(this.robot, this.reglage, this.mort);
     this.mult.addEventListener("animationend", () => this.mult.classList.remove("g-mult--chute"));
     hote.append(this.racine);
@@ -236,6 +250,20 @@ export class Hud {
       d.vuVitesse = vuVitesse;
       this.vitesse.classList.toggle("g-vitesse--vu", vuVitesse);
     }
+    // Lot GR7 : « Nouveau : les scies » (3 s, une fois par danger et par partie)
+    const ad = e.annonceDanger;
+    if (ad && ad.id !== d.dangerId) {
+      d.dangerId = ad.id;
+      this.dangerNom.textContent = t("danger.nouveau", { danger: t(`danger.${ad.danger}`) });
+      this.dangerConsigne.textContent = t(`danger.${ad.danger}.consigne`);
+      this.danger.style.setProperty("--g-accent", ad.couleur);
+      remplacerIcone(this.danger.firstElementChild!, ICONES_DANGER[ad.danger]);
+    }
+    const vuDanger = ad !== null && e.tick - ad.depuis >= 0 && e.tick - ad.depuis <= DANGER_AFFICHE && e.mort === null;
+    if (vuDanger !== d.vuDanger) {
+      d.vuDanger = vuDanger;
+      this.danger.classList.toggle("g-danger--vu", vuDanger);
+    }
     this.robot.hidden = !e.robot;
     if (e.reglage !== (this.reglage.hidden ? null : this.reglage.textContent)) {
       this.reglage.hidden = e.reglage === null;
@@ -258,6 +286,6 @@ export class Hud {
   detruire(): void {
     this.racine.remove();
     // les zones du kit sont vidées à chaque partie (`surimpression.vider`) ; on retire pourtant ce qu'on y a posé : la scène peut être détruite avant
-    for (const e of [this.score.parentElement, this.medaille, this.bonus, this.theme, this.mode, this.vitesse]) e?.remove();
+    for (const e of [this.score.parentElement, this.medaille, this.bonus, this.theme, this.mode, this.vitesse, this.danger]) e?.remove();
   }
 }

@@ -50,8 +50,8 @@ describe("tout l'état d'une partie est entier", () => {
     expect(JSON.stringify(c.resultat())).toBe(JSON.stringify(p.resultat()));
     // Aucun champ oublié : la copie est égale champ pour champ (la copie de planification du robot est écrite champ par champ).
     expect(JSON.stringify({ ...c, terrain: 0, hCx: 0, hCy: 0, hType: 0 })).toBe(JSON.stringify({ ...p, terrain: 0, hCx: 0, hCy: 0, hType: 0 }));
-    for (let i = 0; i < 300; i++) c.avancer();
+    for (let i = 0; i < 100; i++) c.avancer();
     expect(p.tick).toBe(500);
-    expect(c.tick).toBe(800);
+    expect(c.tick).toBe(600); // (lot GR7 : un joueur qui ne fait rien meurt vite, la copie en joue moins)
   });
 });

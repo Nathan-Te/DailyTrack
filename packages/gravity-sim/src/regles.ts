@@ -1,4 +1,4 @@
-import { DISTANCE_PAR_CRAN, GRAVITE, GRAVITY_SIM_VERSION, MORCEAUX_PAR_THEME, VENT_GRAVITE, VITESSE_BASE, VITESSE_MAX } from "./constantes";
+import { COURBE_DOUCE, DISTANCE_PAR_CRAN, GRAVITE, GRAVITY_SIM_VERSION, MORCEAUX_PAR_THEME, VENT_GRAVITE, VITESSE_BASE, VITESSE_MAX } from "./constantes";
 
 // Les règles sous lesquelles une partie se joue (lot GR5) : **ce qu'un jour figé garde de la simulation** et **ce que les essais de calibrage règlent**, au même endroit.
 //
@@ -17,15 +17,17 @@ export interface ReglesSim {
   vitesseMax: number;
   /** La vitesse de la caméra gagne 1 unité par seconde tous les `distanceParCran` unités parcourues : 220 donne 1 case/s tous les 220 m (maquette : `7 + distance / 220`). */
   distanceParCran: number;
+  /** Lot GR7 : la forme de la montée de la vitesse avant la croisière : `COURBE_LINEAIRE` (1 : comme avant le GR7) ou `COURBE_DOUCE` (2 : vite au début, puis plus doucement). */
+  courbe: number;
   /** La gravité : unités par seconde ajoutées à chaque pas. */
   gravite: number;
   /** La gravité dans le vent (le rapport 2/5 de la gravité : 628 pour 1 570). */
   ventGravite: number;
 }
-/** Les versions jouables de la simulation. **On en ajoute, on n'en change pas** : un jour figé sous la version 3 se rejoue avec cette ligne tant qu'on la garde. */
+/** Les versions jouables de la simulation. **On en ajoute, on n'en change pas** : un jour figé sous la version 4 se rejoue avec cette ligne tant qu'on la garde. */
 export const SIMS: Record<number, ReglesSim> = {
-  // Lot GR6 : la version 2 est retirée (le jeu est `off`, aucun jour n'est figé : aucun fichier ne la nomme) ; les valeurs de la caméra et de la gravité de la version 3 sont celles de la 2, les modes sont des constantes de la simulation.
-  3: { vitesseBase: VITESSE_BASE, vitesseMax: VITESSE_MAX, distanceParCran: DISTANCE_PAR_CRAN, gravite: GRAVITE, ventGravite: VENT_GRAVITE },
+  // Lot GR7 : la version 3 est retirée (le jeu est `off`, aucun jour n'est figé : aucun fichier ne la nomme). La version 4 : la courbe de vitesse (départ 8 cases/s, croisière à 549 m, `courbe` douce) et les dangers (constantes de la simulation).
+  4: { vitesseBase: VITESSE_BASE, vitesseMax: VITESSE_MAX, distanceParCran: DISTANCE_PAR_CRAN, courbe: COURBE_DOUCE, gravite: GRAVITE, ventGravite: VENT_GRAVITE },
 };
 /** Les versions de la simulation que ce code sait jouer. */
 export const versionsSimJouables = (): number[] => Object.keys(SIMS).map(Number);
@@ -35,12 +37,14 @@ export interface ReglagesEssai {
   vitesseBase?: number;
   vitesseMax?: number;
   distanceParCran?: number;
+  /** Lot GR7 : la forme de la courbe de vitesse (1 : linéaire comme avant, 2 : douce). */
+  courbe?: number;
   gravite?: number;
   /** La longueur d'un thème, en morceaux (19 : 304 m). */
   morceauxParTheme?: number;
   pourcent?: number;
 }
-export const CHAMPS_D_ESSAI = ["vitesseBase", "vitesseMax", "distanceParCran", "gravite", "morceauxParTheme", "pourcent"] as const;
+export const CHAMPS_D_ESSAI = ["vitesseBase", "vitesseMax", "distanceParCran", "courbe", "gravite", "morceauxParTheme", "pourcent"] as const;
 
 /** Les règles d'une partie : la version de la simulation (ses valeurs, réglées s'il y a un essai) et la longueur d'un thème (celle du générateur du jour, réglée s'il y a un essai). */
 export interface Regles extends ReglesSim {
@@ -65,6 +69,7 @@ export function reglesDe(sim: number, morceauxParTheme: number, essai?: Reglages
     if (essai.vitesseBase !== undefined) r.vitesseBase = essai.vitesseBase;
     if (essai.vitesseMax !== undefined) r.vitesseMax = essai.vitesseMax;
     if (essai.distanceParCran !== undefined) r.distanceParCran = essai.distanceParCran;
+    if (essai.courbe !== undefined) r.courbe = essai.courbe;
     if (essai.gravite !== undefined) {
       r.gravite = essai.gravite;
       r.ventGravite = Math.trunc((essai.gravite * 2) / 5); // le vent allège toujours la gravité aux 2/5
@@ -78,4 +83,4 @@ export function reglesDe(sim: number, morceauxParTheme: number, essai?: Reglages
 export const REGLES_COURANTES: Regles = Object.freeze(reglesDe(GRAVITY_SIM_VERSION, MORCEAUX_PAR_THEME));
 
 /** Une clé qui change avec les règles et l'essai : les tables et les terrains gardés en mémoire en dépendent. */
-export const cleDesRegles = (r: Regles): string => `${r.sim}.${r.vitesseBase}.${r.vitesseMax}.${r.distanceParCran}.${r.gravite}.${r.ventGravite}.${r.morceauxParTheme}`;
+export const cleDesRegles = (r: Regles): string => `${r.sim}.${r.vitesseBase}.${r.vitesseMax}.${r.distanceParCran}.${r.courbe}.${r.gravite}.${r.ventGravite}.${r.morceauxParTheme}`;

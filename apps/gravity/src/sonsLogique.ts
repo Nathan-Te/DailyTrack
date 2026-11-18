@@ -1,7 +1,7 @@
 // Les SONS de « Gravity » (lot GR4), la **décision** : de chaque événement de la simulation, la liste des notes à jouer (hauteur, durée, forme, niveau). **Pur** : aucun `AudioContext` ici, `sons.ts` ne fait que les lire. Web Audio
 // procédural, sans fichier (rien à télécharger : le poids du premier chargement ne bouge pas), sur le modèle de Blocks. **Présentation seulement : rien ici ne touche la simulation ni la rediffusion.**
 // Le caractère : net mais jamais punitif — des sinus et des triangles, jamais d'onde carrée, des niveaux bas (le plus fort est la mort, à 0,3) ; la chute du multiplicateur et la mort descendent doucement.
-import { EV_ATTERRISSAGE, EV_BOND, EV_BONUS, EV_BOUCLIER, EV_GEMME, EV_INVERSEUR, EV_INVERSION, EV_MANQUEE, EV_MORT, EV_PIECE, EV_PORTAIL, EV_VIRAGE, type TypePortail } from "@cdj/gravity-sim";
+import { CASE, EV_ATTERRISSAGE, EV_BOND, EV_BONUS, EV_BOUCLIER, EV_CRAQUE, EV_EFFONDREMENT, EV_GEMME, EV_INVERSEUR, EV_INVERSION, EV_MANQUEE, EV_MORT, EV_PIECE, EV_PORTAIL, EV_VIRAGE, LARGEUR_MORCEAU, TAILLE, etatLaser, positionScie, type Partie, type Terrain, type TypePortail } from "@cdj/gravity-sim";
 
 export type FormeOnde = "sine" | "triangle";
 export interface Note {
@@ -32,7 +32,13 @@ export type Evenement =
   // Lot GR6 : un portail franchi (un son par type), le changement de sens de l'onde, le bond du ressort.
   | { son: "portail"; type: TypePortail }
   | { son: "virage"; vers: "haut" | "bas" }
-  | { son: "bond" };
+  | { son: "bond" }
+  // Lot GR7 : une scie qui passe près, un sol fragile qui craque puis qui tombe, un laser qui se charge puis qui brûle.
+  | { son: "scie" }
+  | { son: "craquement" }
+  | { son: "effondrement" }
+  | { son: "laserCharge" }
+  | { son: "laserBrule" };
 
 /** Ce que la scène lit de la simulation avant et après un pas : de quoi savoir ce qui vient de changer. */
 export interface Photo {
@@ -70,8 +76,53 @@ export function sonsDuPas(ev: number, avant: Photo, apres: Photo): Evenement[] {
   if ((ev & EV_PORTAIL) !== 0 && apres.portail !== null) sons.push({ son: "portail", type: apres.portail });
   if (ev & EV_VIRAGE) sons.push({ son: "virage", vers: apres.monte ? "haut" : "bas" });
   if (ev & EV_BOND) sons.push({ son: "bond" });
+  if (ev & EV_CRAQUE) sons.push({ son: "craquement" });
+  if (ev & EV_EFFONDREMENT) sons.push({ son: "effondrement" });
   if (ev & EV_MORT) sons.push({ son: "mort" });
   return sons;
+}
+
+/** Combien de cases autour du joueur un danger se fait entendre : la scie qui passe à moins de 2,6 cases (on l'entend arriver), le laser à moins de 9 colonnes. */
+export const PORTEE_SCIE = 2.6;
+export const PORTEE_LASER = 9;
+/**
+ * **La veille des dangers** (lot GR7) : de pas en pas, les sons des dangers qui ne sont pas des événements de la simulation — la scie qui passe près (une fois par passage : elle doit s'éloigner de plus de 4 cases avant de pouvoir
+ * se faire entendre de nouveau) et le laser qui change d'état près du joueur (il se charge quand le trait pâle s'allume, il brûle quand le rayon s'allume). Pure : lit le terrain et la partie, garde sa mémoire ; jamais de son hors de la
+ * portée du joueur.
+ */
+export class VeilleDesDangers {
+  private readonly proches = new Set<string>();
+  private readonly etats = new Map<string, number>();
+  pas(terrain: Terrain, partie: Partie): Evenement[] {
+    const sons: Evenement[] = [];
+    const cx = partie.x + TAILLE / 2;
+    const cy = partie.y + TAILLE / 2;
+    const k0 = Math.trunc(cx / (LARGEUR_MORCEAU * CASE));
+    for (let k = Math.max(0, k0 - 1); k <= k0 + 1; k++) {
+      const m = terrain.morceau(k);
+      m.scies.forEach((sc, i) => {
+        const [sx, sy] = positionScie(sc, partie.tick);
+        const d = Math.hypot(sx - cx, sy - cy) / CASE;
+        const cle = `${k}:${i}`;
+        if (d < PORTEE_SCIE && !this.proches.has(cle)) {
+          this.proches.add(cle);
+          sons.push({ son: "scie" });
+        } else if (d > PORTEE_SCIE + 1.4) this.proches.delete(cle);
+      });
+      m.lasers.forEach((l, i) => {
+        const cle = `${k}:${i}`;
+        const etat = etatLaser(partie.tick, l.decalage);
+        const avant = this.etats.get(cle) ?? 0;
+        this.etats.set(cle, etat);
+        if (etat === avant) return;
+        const distance = Math.abs((k * LARGEUR_MORCEAU + l.c + 0.5) * CASE - cx) / CASE;
+        if (distance > PORTEE_LASER) return;
+        if (etat === 1) sons.push({ son: "laserCharge" });
+        else if (etat === 2) sons.push({ son: "laserBrule" });
+      });
+    }
+    return sons;
+  }
 }
 
 export function notesDe(e: Evenement): Note[] {
@@ -118,6 +169,21 @@ export function notesDe(e: Evenement): Note[] {
     case "bond":
       // Un « boing » : un sinus qui monte vite, un triangle plus haut qui le suit.
       return [note(0, 210, 0.16, 0.2, "sine", 520), note(0.03, 420, 0.12, 0.08, "triangle", 880)];
+    case "scie":
+      // Un « zzzip » : un glissement qui descend vite, deux fois (le disque qui passe), jamais fort.
+      return [note(0, 1100, 0.09, 0.1, "triangle", 620), note(0.06, 880, 0.09, 0.06, "triangle", 480)];
+    case "craquement":
+      // Trois petits claquements secs, de plus en plus graves : le bois qui cède.
+      return [note(0, 230, 0.04, 0.2, "triangle", 160), note(0.05, 190, 0.04, 0.18, "triangle", 130), note(0.11, 270, 0.03, 0.14, "triangle", 150)];
+    case "effondrement":
+      // Un « toum » sourd qui s'éloigne.
+      return [note(0, 130, 0.28, 0.24, "triangle", 48), note(0.02, 260, 0.1, 0.07, "sine", 90)];
+    case "laserCharge":
+      // Il se charge : un sinus qui monte, du grave à l'aigu.
+      return [note(0, 280, 0.45, 0.11, "sine", 1100), note(0.1, 560, 0.35, 0.05, "sine", 1400)];
+    case "laserBrule":
+      // Il brûle : un bourdonnement grave, sans onde carrée.
+      return [note(0, 140, 0.4, 0.15, "triangle", 150), note(0, 281, 0.4, 0.07, "sine", 300)];
     case "theme":
       // Un changement de décor : un glissement qui s'ouvre, puis un accord qui se pose.
       return [note(0, 392, 0.4, 0.15, "sine", 784), note(0.18, 523, 0.3, 0.12, "triangle"), note(0.18, 659, 0.3, 0.12, "triangle")];

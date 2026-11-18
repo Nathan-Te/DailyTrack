@@ -227,6 +227,7 @@
 /* l'annonce d'un mode (lot GR6) : la même carte que le nom du thème, sa couleur à gauche ; le nom, puis la consigne la première fois seulement. Elle se pose sur la place de l'annonce du thème et passe dessous quand les deux se
    montrent ensemble. */
 .g-mode,
+.g-danger,
 .g-vitesse {
   position: absolute;
   top: 0;
@@ -248,32 +249,45 @@
   max-width: min(calc(100vw - 24px), 380px);
 }
 .g-mode--vu,
+.g-danger--vu,
 .g-vitesse--vu {
   opacity: 1;
 }
 .g-theme--vu ~ .g-mode {
   top: calc(100% + 10px);
 }
-.g-mode__icone svg {
+/* l'annonce d'un danger (lot GR7) : la même carte, l'accent rouge des dangers ; elle passe sous le nom du thème et sous l'annonce d'un mode quand ils se montrent ensemble */
+.g-danger {
+  top: calc(100% + 10px);
+  transform: translateX(-50%) rotate(-1.2deg);
+}
+.g-theme--vu ~ .g-danger {
+  top: calc(100% + 70px);
+}
+.g-mode__icone svg,
+.g-danger__icone svg {
   display: block;
   width: 28px;
   height: 28px;
   fill: var(--dj-encre);
 }
-.g-mode__texte {
+.g-mode__texte,
+.g-danger__texte {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   white-space: normal;
 }
-.g-mode__nom {
+.g-mode__nom,
+.g-danger__nom {
   font-size: clamp(22px, 6vmin, 28px);
   font-weight: 400;
   line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.g-mode__consigne {
+.g-mode__consigne,
+.g-danger__consigne {
   font-family: var(--dj-police-chiffres, sans-serif);
   font-weight: 700;
   font-size: 13px;

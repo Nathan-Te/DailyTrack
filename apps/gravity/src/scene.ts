@@ -22,7 +22,9 @@ import {
   LIGNES,
   MODE_AVION,
   MORT_BORD,
+  MORT_LASER,
   MORT_PIQUE,
+  MORT_SCIE,
   MORT_TEMPS,
   MORT_VIDE,
   NB_THEMES,
@@ -49,13 +51,14 @@ import { Hud } from "./hud";
 import { Monde } from "./monde3d";
 import { couleurDuPortail } from "./dessinsModes";
 import { Annonces, estPortailDeVitesse, type AnnonceMode, type AnnonceVitesse } from "./modesLogique";
+import { COLONNES_AVANT_ANNONCE, couleurDuDanger, type AnnonceDanger } from "./dangersLogique";
 import { LignesDeVitesse, TAUX_LIGNES, TAUX_RECUL, intensiteLignes, lisser, reculVoulu } from "./vitesse";
 import { musique } from "./musiqueDuJeu";
 import { Sons } from "./sons";
-import { sonsDuPas, type Photo } from "./sonsLogique";
+import { VeilleDesDangers, sonsDuPas, type Photo } from "./sonsLogique";
 
 /** Les textes de mort du catalogue, par cause. */
-const CLE_MORT: Record<number, string> = { [MORT_VIDE]: "vide", [MORT_PIQUE]: "pique", [MORT_BORD]: "bord", [MORT_TEMPS]: "temps" };
+const CLE_MORT: Record<number, string> = { [MORT_VIDE]: "vide", [MORT_PIQUE]: "pique", [MORT_BORD]: "bord", [MORT_TEMPS]: "temps", [MORT_SCIE]: "scie", [MORT_LASER]: "laser" };
 /** Combien de temps (ms) la mort se montre avant l'écran de fin ; rien avec « réduire les animations ». */
 const DELAI_MORT_MS = 1500;
 const MILIEU = -LIGNES / 2;
@@ -118,6 +121,11 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
   // Les sons (lot GR4, règle S2 : `sons.ts` ouvre son contexte par `ouvrirContexteAudio`) : aucun avant le premier geste du joueur, le volume des effets est celui du kit.
   const sons = new Sons({ niveau: o.volumeEffets });
   const annonces = new Annonces();
+  const veille = new VeilleDesDangers();
+  /** Lot GR7 : l'annonce « Nouveau : les scies » (une seule fois par danger et par partie : l'état vit avec la partie). */
+  const dangersAnnonces = new Set<string>();
+  let annonceDanger: AnnonceDanger | null = null;
+  let compteurDanger = 0;
   let annonceMode: (AnnonceMode & { couleur: string }) | null = null;
   let annonceVitesse: AnnonceVitesse | null = null;
   const geste = (): void => sons.deverrouiller();
@@ -325,6 +333,7 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       tick: partie.tick,
       annonceMode,
       annonceVitesse,
+      annonceDanger,
     });
   }
 
@@ -356,6 +365,13 @@ export function nouvellePartieGravity(contenu: Contenu, hote: HTMLElement, o: Op
       heros.avancerPas((partie.x - partie.precX) / CASE, partie.sol, partie.mode, (partie.x + TAILLE / 2) / CASE, -(partie.y + TAILLE / 2) / CASE, -partie.vy / CASE);
       evenements();
       for (const e of sonsDuPas(partie.ev, avant, photo())) sons.jouer(e);
+      for (const e of veille.pas(terrain, partie)) sons.jouer(e);
+      // Lot GR7 : le morceau qui introduit un danger se voit venir : l'annonce paraît quelques colonnes avant lui, une seule fois par partie.
+      const devant = terrain.morceau(Math.trunc((partie.x + COLONNES_AVANT_ANNONCE * CASE) / (LARGEUR_MORCEAU * CASE)));
+      if (devant.intro && !dangersAnnonces.has(devant.intro)) {
+        dangersAnnonces.add(devant.intro);
+        annonceDanger = { id: ++compteurDanger, danger: devant.intro as AnnonceDanger["danger"], depuis: partie.tick, couleur: enCss(couleurDuDanger(couleurs.danger)) };
+      }
       effets.avancerPas();
     },
     // L'écran de fin attend un instant : on voit la mort et sa cause (rien avec « réduire les animations »).

@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CASE, FACTEUR_V3, VITESSE_MAX, VITESSE_PLAFOND, vitesseCamera, REGLES_COURANTES } from "@cdj/gravity-sim";
+import { CASE, CROISIERE_PLUS, FACTEUR_V3, VITESSE_MAX, VITESSE_PLAFOND, vitesseCamera, REGLES_COURANTES } from "@cdj/gravity-sim";
 import { NB_LIGNES, RECUL_MAX, SEUIL_LIGNES, VITESSE_PLEINE, departDuTrait, intensiteLignes, lisser, reculVoulu, tirerLesTraits } from "../src/vitesse";
 
 // Lot GR6 — les lignes de vitesse et le recul de la caméra : un seuil nommé, une intensité et un recul proportionnels à (vitesse − seuil), bornés, lissés ; rien de tout cela ne touche la simulation.
 describe("le seuil, l'intensité et le recul", () => {
-  it("le seuil est juste au-dessus de la montée normale (12,5 cases/s) : seul un portail de vitesse le franchit", () => {
+  it("le seuil est juste au-dessus de la plus haute croisière (12,5 cases/s, plus 2,5 à la 3e boucle : lot GR7) : seul un portail de vitesse le franchit", () => {
     expect(VITESSE_MAX / CASE).toBe(12.5);
-    expect(SEUIL_LIGNES).toBeGreaterThan(VITESSE_MAX / CASE);
+    expect(SEUIL_LIGNES).toBeGreaterThan((VITESSE_MAX + CROISIERE_PLUS[CROISIERE_PLUS.length - 1]!) / CASE);
     expect(vitesseCamera(10 ** 9, REGLES_COURANTES, 100) / CASE).toBeLessThan(SEUIL_LIGNES); // sans portail : jamais de lignes
     expect(vitesseCamera(10 ** 9, REGLES_COURANTES, FACTEUR_V3) / CASE).toBeGreaterThan(SEUIL_LIGNES); // ››› : des lignes
     expect(VITESSE_PLEINE).toBe(VITESSE_PLAFOND / CASE);
