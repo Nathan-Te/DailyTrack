@@ -8,7 +8,7 @@ import { IMAGES_DEMO } from "./avatarsDemo";
 
 // Lot C1, partie C (plateforme) : **trois groupes** sur la recette, pour juger la page d'un groupe, le classement des groupes et le filtre « Mon groupe » en deux clics. « Les Noctambules » (le chef est « Démo », 4 membres
 // classés), « Les Rapides » (5 membres classés, un emblème), « Les Deux » (2 membres classés : « Moins de 3 classés », sans rang). Les groupes viennent du **vrai `createApi`** (`POST /api/groupes`, lien d'invitation, `rejoindre`,
-// `demoPlayers: true`, jamais réglé en production) ; seule l'arrivée est avancée à la veille (sinon personne ne compterait avant demain). Constaté d'abord (une lecture) : relancé, il n'écrit rien.
+// `demoPlayers: true`, jamais réglé en production) ; chacun compte dès aujourd'hui (lot C1d : l'arrivée est le jour même). Constaté d'abord (une lecture) : relancé, il n'écrit rien.
 
 export const GROUPES_DEMO = [
   { nom: "Les Noctambules", description: "On joue le soir, après le dîner.", chef: "Démo", membres: ["Démo Fjord", "Démo Givre", "Démo Hibou"] },
@@ -40,12 +40,10 @@ export async function seedGroupesDemo(o: { db: SqlDb; today: number }): Promise<
   let crees = 0;
   for (const g of GROUPES_DEMO) {
     const chef = idDe(g.chef);
-    const c = await appel("POST", "/api/groupes", chef, { nom: g.nom, description: g.description });
+    await appel("POST", "/api/groupes", chef, { nom: g.nom, description: g.description });
     const moi = await appel("GET", "/api/groupes/moi", chef);
     for (const m of g.membres) await appel("POST", "/api/groupes/rejoindre", idDe(m), { jeton: moi.groupe.invitation });
     if ("emblem" in g) await appel("POST", "/api/groupes/emblem", chef, { image: IMAGES_DEMO[g.emblem] });
-    // Ils comptent dès aujourd'hui (l'arrivée de la vraie vie est le lendemain).
-    await db.run("UPDATE groupe_membres SET arrivee = ? WHERE groupe = ?", [o.today - 1, c.id]);
     crees++;
   }
   return { deja: false, crees };

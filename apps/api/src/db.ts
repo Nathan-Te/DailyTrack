@@ -1,6 +1,7 @@
 import { PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX, migratePseudos } from "./pseudos";
 import { JEUX_PUBLICS } from "@cdj/core/jeux";
 import { GAMES } from "./registry";
+import { ARRIVEES_GROUPES_MIGRATION_ID, migrerArriveesDesGroupes } from "./groupesArrivee";
 
 /** Accès SQL minimal, satisfait par SQLite (Node) et par D1 (Cloudflare) : le cœur ne connaît que ceci. */
 export type SqlValue = string | number | null;
@@ -78,7 +79,7 @@ export const MIGRATIONS: string[] = [
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */
-const MIGRATION_MARKS = [PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX];
+const MIGRATION_MARKS = [PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX, ARRIVEES_GROUPES_MIGRATION_ID];
 
 /**
  * Tables de la plateforme (lot P0), communes à tous les jeux : joueurs (pseudo réservé), codes révoqués, compteurs de débit. Créées au premier
@@ -315,7 +316,7 @@ export const PLATFORM_SCHEMA: string[] = [
   // `groupes` : `id` public (12 hexadécimaux tirés au hasard, pas un secret), `name` / `name_key` (unicité sur la forme normalisée, comme les pseudos), `description`, `chef`, `avatar` (l'empreinte de l'emblème visible,
   // comme `players.avatar`), `invitation` (le jeton du lien : 32 hexadécimaux tirés au hasard, **gardé tel quel** pour que tout membre puisse le montrer ; le renouveler tue l'ancien), `renomme_le` (un renommage par
   // semaine), `classement_masque` (l'administration l'écarte des classements), `cree_le`. `groupe_membres` : une ligne par joueur (clé primaire = un seul groupe par joueur), `rejoint_le` et `arrivee` (le premier jour
-  // de Paris où il compte : le lendemain de son arrivée). Liées à un joueur : vidées par la remise à zéro, effacées avec lui (le chef part : le plus ancien le devient, sinon le groupe est dissous).
+  // de Paris où il compte : le jour même de son arrivée depuis le lot C1d, `migrerArriveesDesGroupes`). Liées à un joueur : vidées par la remise à zéro, effacées avec lui (le chef part : le plus ancien le devient, sinon le groupe est dissous).
   `CREATE TABLE IF NOT EXISTS groupes (
      id TEXT PRIMARY KEY,
      name TEXT NOT NULL,
@@ -386,6 +387,8 @@ export async function ensureSchemaOn(db: SqlDb): Promise<boolean> {
   if (migration.renamed.length) {
     await db.run("INSERT INTO meta (key, value) VALUES ('pseudo_migration', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [JSON.stringify(migration)]);
   }
+  // Lot C1d : les membres déjà inscrits comptent dès le jour de leur arrivée (appliquée par le serveur déployé, idempotente).
+  await migrerArriveesDesGroupes(db);
   await semerJeux(db);
   await db.run("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [version]);
   return false;

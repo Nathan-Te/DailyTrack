@@ -11,7 +11,7 @@ import { startSite } from "./domaine-serveurs";
 //   - la page publique d'un groupe (`/groupe/<nom>`, la réécriture de Hosting) : description, emblème, membres, rang du jour dans chaque vue ; « Les Deux » dit « Moins de 3 classés » ;
 //   - `/classement/?mode=groupes` : les groupes classés par la moyenne de leurs 3 meilleurs, « Moins de 3 classés » dessous ; le filtre « Mon groupe » est offert à « Démo » ;
 //   - « Démo » voit son groupe dans son profil, avec le lien d'invitation ;
-//   - un joueur sans groupe ouvre le lien d'invitation de « Les Rapides » : le jeton quitte l'adresse tout de suite, « Rejoindre le groupe » l'y fait entrer (il compte dès demain) ; l'identifiant n'est dans aucune adresse.
+//   - un joueur sans groupe ouvre le lien d'invitation de « Les Rapides » : le jeton quitte l'adresse tout de suite, « Rejoindre le groupe » l'y fait entrer (il compte dès le jour de son arrivée) ; l'identifiant n'est dans aucune adresse.
 // Serveurs lancés ici (ports réservés à ce fichier) : site 4242, API 8842 (la recette garnie le 24/10, le vrai serveur et le vrai `recette:seed`).
 test.setTimeout(150_000);
 const expect = baseExpect.configure({ timeout: 25_000 });

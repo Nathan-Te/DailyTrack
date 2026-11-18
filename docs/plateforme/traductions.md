@@ -529,8 +529,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `groupePage.membres.titre` | Membres | Members |
 | `groupePage.invite` | Tu es invité dans « {nom} » | You're invited to “{nom}” |
 | `groupePage.rejoindre` | Rejoindre le groupe | Join the group |
-| `groupePage.rejoindre.aide` | Tu compteras dans son classement dès demain. Tu ne peux être que dans un seul groupe. | You'll count in its ranking from tomorrow. You can only be in one group. |
-| `groupePage.rejoint` | Tu fais partie du groupe. Tu compteras dans son classement dès demain. | You're in the group. You'll count in its ranking from tomorrow. |
+| `groupePage.rejoindre.aide` | Tu comptes dans son classement dès ton arrivée. Tu ne peux être que dans un seul groupe. | You count in its ranking as soon as you join. You can only be in one group. |
+| `groupePage.rejoint` | Tu fais partie du groupe. Tu comptes dans son classement dès aujourd'hui. | You're in the group. You count in its ranking from today. |
 | `groupePage.plein` | Ce groupe est complet. | This group is full. |
 | `groupePage.dejaMembre` | Tu fais déjà partie d'un groupe : quitte-le d'abord (Profil › Mon groupe). | You're already in a group: leave it first (Profile › My group). |
 | `groupePage.sansProfil` | Finis un jeu pour ouvrir ton profil, puis rouvre ce lien. | Finish a game to open your profile, then open this link again. |

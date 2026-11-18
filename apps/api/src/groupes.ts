@@ -19,13 +19,13 @@ import { parisDayStart } from "@cdj/clock";
 //   GET    /api/groupes/nom/<nom>                 la page publique d'un groupe : description, emblème, membres, son rang du jour dans chaque vue
 //   GET    /api/groupes/classement?date=&vue=     le classement des groupes d'un jour (Cumulé, ou un jeu) : les classés, puis « Moins de 3 classés »
 //   GET    /api/groupes/invitation/<jeton>        la carte d'invitation (sans identité)
-//   POST   /api/groupes/rejoindre { jeton }       rejoint le groupe ; il compte à partir du lendemain
+//   POST   /api/groupes/rejoindre { jeton }       rejoint le groupe ; il compte dès le jour de son arrivée
 //   POST   /api/groupes/quitter                   quitte le groupe (le plus ancien devient chef, ou le groupe est dissous)
 //   chef : POST renouveler · retirer { ref } · chef { ref } · renommer { nom } (une fois par semaine) · decrire { description } · dissoudre · emblem { image } · DELETE emblem
 //   Administration : GET /api/admin/groupes?q=&page=, GET …/<id>, POST …/<id>/renommer | emblem-retirer | retirer | chef | masquer | dissoudre
 //
-// **Le score d'un groupe** (`groupesScore.ts`) : la moyenne des 3 meilleurs résultats de ses membres ce jour-là dans la vue ; 3 classés au moins, sinon « Moins de 3 classés ». Un membre compte à partir du
-// **lendemain** de son arrivée ; un membre parti ne compte plus tout de suite ; un joueur masqué (N1) ne compte jamais (le classement du jour l'écarte déjà). Le calcul lit le classement du jour que le portail
+// **Le score d'un groupe** (`groupesScore.ts`) : la moyenne des 3 meilleurs résultats de ses membres ce jour-là dans la vue ; 3 classés au moins, sinon « Moins de 3 classés ». Un membre compte dès le
+// **jour** de son arrivée (lot C1d : le risque d'arriver en fin de journée, ses temps faits, est accepté) ; un membre parti ne compte plus tout de suite ; un joueur masqué (N1) ne compte jamais (le classement du jour l'écarte déjà). Le calcul lit le classement du jour que le portail
 // garde en mémoire et **les seuls joueurs classés ce jour-là** (une recherche par clé primaire chacun), jamais toute la table des membres.
 
 export const GROUPE_MEMBRES_MAX = 30;
@@ -215,7 +215,7 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     try {
       await ecrire([
         { sql: "INSERT INTO groupes (id, name, name_key, description, chef, avatar, invitation, renomme_le, classement_masque, cree_le) VALUES (?, ?, ?, ?, ?, NULL, ?, NULL, 0, ?)", params: [gid, nom, nameKey(nom), description, id, hasard(16), t] },
-        { sql: "INSERT INTO groupe_membres (player_id, groupe, rejoint_le, arrivee) VALUES (?, ?, ?, ?)", params: [id, gid, t, platform.today() + 1] },
+        { sql: "INSERT INTO groupe_membres (player_id, groupe, rejoint_le, arrivee) VALUES (?, ?, ?, ?)", params: [id, gid, t, platform.today()] },
       ]);
     } catch (e) {
       if (String((e as Error)?.message ?? e).includes("UNIQUE") || String((e as Error)?.message ?? e).includes("constraint")) throw new HttpError(409, "group_name_taken", "Ce nom de groupe est déjà pris");
@@ -245,10 +245,10 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     if (await db.first("SELECT 1 AS x FROM groupe_membres WHERE player_id = ?", [id])) throw new HttpError(409, "already_in_group", "Tu es déjà dans un groupe");
     // Le plafond est vérifié **à l'écriture** : deux arrivées en même temps ne dépassent pas 30.
     const t = now();
-    await db.run("INSERT INTO groupe_membres (player_id, groupe, rejoint_le, arrivee) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM groupe_membres WHERE groupe = ?) < ?", [id, g.id, t, platform.today() + 1, g.id, GROUPE_MEMBRES_MAX]);
+    await db.run("INSERT INTO groupe_membres (player_id, groupe, rejoint_le, arrivee) SELECT ?, ?, ?, ? WHERE (SELECT COUNT(*) FROM groupe_membres WHERE groupe = ?) < ?", [id, g.id, t, platform.today(), g.id, GROUPE_MEMBRES_MAX]);
     if (!(await db.first("SELECT 1 AS x FROM groupe_membres WHERE player_id = ?", [id]))) throw new HttpError(409, "group_full", "Ce groupe est complet");
     cacheGroupes.clear();
-    return { id: g.id, nom: g.name, arrivee: formatDay(platform.today() + 1) };
+    return { id: g.id, nom: g.name, arrivee: formatDay(platform.today()) };
   }
   async function quitter(req: Request, info: RequestInfo): Promise<unknown> {
     const id = await exiger(req, info, true);

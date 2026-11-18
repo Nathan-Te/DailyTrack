@@ -3814,7 +3814,7 @@
     "moi": true,
     "chef": true,
     "invitation": "<aléatoire>",
-    "arrivee": "2026-10-15",
+    "arrivee": "2026-10-14",
     "renommerDans": 0
    }
   }
@@ -3829,7 +3829,7 @@
   "corps": {
    "id": "<identifiant>",
    "nom": "Les Hauts",
-   "arrivee": "2026-10-15"
+   "arrivee": "2026-10-14"
   }
  },
  {
@@ -3842,7 +3842,7 @@
   "corps": {
    "id": "<identifiant>",
    "nom": "Les Hauts",
-   "arrivee": "2026-10-15"
+   "arrivee": "2026-10-14"
   }
  },
  {
@@ -3855,7 +3855,7 @@
   "corps": {
    "id": "<identifiant>",
    "nom": "Les Hauts",
-   "arrivee": "2026-10-15"
+   "arrivee": "2026-10-14"
   }
  },
  {
