@@ -2,6 +2,7 @@ import { declareFrozenGenerators } from "@cdj/jump-sim";
 import { dailyCircuit, replayTicks, type PaletteName, type ThemeName } from "@cdj/sim";
 import { trackInputs } from "./copies";
 import { computeJumpDay } from "./jump";
+import type { GameDefinition } from "./games";
 import type { ExecuteurRejeu } from "./jeux/fil";
 
 // Lot D3 (C9) — **le calcul du niveau du jour hors du fil principal.** Le niveau de Jump coûte 1,9 s et le circuit de Track 0,4 s (D1 § 6 bis) ; calculés dans le fil de Node, ils bloquaient toute l'instance
@@ -63,3 +64,63 @@ export function executeurNiveauxPrincipal(): ExecuteurNiveaux {
 
 /** Le délai d'un calcul de niveau dans le fil : un niveau de Jump mesuré à 1,9 s en local, 3 à 5 fois plus sur Cloud Run (D1), sous les 30 s d'une requête. */
 export const DELAI_NIVEAU_MS = 25_000;
+
+// Lot D4 — **le niveau du jour d'un jeu du kit, dans le même fil de calcul, sans nommer aucun jeu.** Le robot qui donne les seuils des médailles d'un jeu coûte des secondes (Pinball : 17 à 28 s par table, mesuré au README
+// du lot D4) : dans le fil principal il figeait toute l'instance (l'accueil, le classement, `/api/jeux` tombaient en délai dépassé). Un jeu du kit (`definirJeuNeuf`) expose `niveauDuJour(options, jour)` sur sa
+// `GameDefinition` ; le fil l'appelle par le code du jeu, avec **pour seul état les options de la demande** (le fichier figé de ce jour). Le résultat traverse le fil : des données seulement (clone structuré), le
+// module des jeux le garde en base en JSON (`defauts.ts`). Un fil **à part** de celui de Jump et Track (même script, `server.ts` en lance un second) : 28 s de robot ne font jamais attendre Jump ni Track.
+
+/** Ce que demande le serveur : le niveau du jour du jeu `code`, avec le seul fichier figé de ce jour (date → contenu) s'il y en a un. */
+export interface DemandeKit {
+  jeu: "kit";
+  code: string;
+  day: number;
+  frozen: Readonly<Record<string, unknown>>;
+}
+/** Ce que le fil rend : le niveau tel que le contrat du jeu le calcule et les seuils de ses médailles, calculés avec lui (des données). */
+export interface ReponseKit {
+  niveau: unknown;
+  seuils: unknown;
+}
+export type ExecuteurKit = ExecuteurRejeu<DemandeKit, ReponseKit>;
+
+/**
+ * Le délai d'un calcul de niveau d'un jeu du kit dans le fil : le robot de Pinball met 17 à 28 s par table en local, 3 à 5 fois plus sur Cloud Run (D1) — et un calcul de fond n'a le processeur que pendant une
+ * requête (Cloud Run) : le délai est une garde contre un calcul qui ne finit jamais, pas une durée attendue.
+ */
+export const DELAI_NIVEAU_KIT_MS = 300_000;
+/** La file du fil des jeux du kit : au démarrage chaque jeu ouvert demande aujourd'hui puis demain (`preparerLesNiveaux`) ; au-delà, `503 busy`. */
+export const FILE_NIVEAU_KIT = 32;
+
+/** Le calcul d'un jeu du kit : le même qu'ailleurs, fait par le fil (ou, en repli, sur place). */
+export async function calculerNiveauKit(d: DemandeKit, jeux: readonly Pick<GameDefinition<never>, "code" | "niveauDuJour">[]): Promise<ReponseKit> {
+  const jeu = jeux.find((j) => j.code === d.code);
+  if (!jeu?.niveauDuJour) throw new Error(`le jeu ${d.code} ne calcule pas son niveau hors du fil principal`);
+  return await jeu.niveauDuJour({ frozen: d.frozen } as never, d.day);
+}
+
+/** Le repli : le calcul des jeux du kit dans le fil principal (tests qui comparent le fil et la place). */
+export function executeurKitPrincipal(jeux: readonly Pick<GameDefinition<never>, "code" | "niveauDuJour">[]): ExecuteurKit {
+  return { nom: "principal" as const, rejouer: (d) => calculerNiveauKit(d, jeux) };
+}
+
+/** Le port d'un fil (`parentPort` de `worker_threads`), tel que `servirNiveaux` s'en sert. */
+export interface PortDuFil {
+  on(evenement: "message", fn: (m: { id: number } & (DemandeNiveau | DemandeKit)) => void): unknown;
+  postMessage(m: unknown): void;
+}
+
+/**
+ * La boucle du fil de calcul des niveaux (`niveauxFilTravail.ts`) : reçoit `{ id, ...demande }`, répond `{ id, resultat }` ou `{ id, panne }` (protocole de `jeux/fil.ts`). `jeux` : les jeux dont le fil sait calculer
+ * le niveau (le registre ; un test passe un jeu fictif). Les demandes se font l'une après l'autre (le fil les enchaîne : un seul à la fois, `executeurFil`).
+ */
+export function servirNiveaux(port: PortDuFil, jeux: readonly Pick<GameDefinition<never>, "code" | "niveauDuJour">[]): void {
+  port.on("message", (m) => {
+    const { id, ...demande } = m;
+    const calcul = (async () => (demande.jeu === "kit" ? await calculerNiveauKit(demande as DemandeKit, jeux) : calculerNiveau(demande as DemandeNiveau)))();
+    calcul.then(
+      (resultat) => port.postMessage({ id, resultat }),
+      () => port.postMessage({ id, panne: true }),
+    );
+  });
+}

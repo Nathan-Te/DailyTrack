@@ -125,6 +125,9 @@ Audit : S-08, S-16 (`docs/plateforme/audit-securite-2026-10.md`). **→ Détail 
 ## Minuit, mémoire et blocages (lot D3)
 **Le niveau du lendemain est calculé avant minuit.** Dans la **demi-heure qui précède minuit de Paris**, la première requête qui arrive sur une instance lance, sans que sa réponse […] **→ Détail : [docs/regles/api/minuit-memoire-et-blocages-lot-d3.md](../../docs/regles/api/minuit-memoire-et-blocages-lot-d3.md)**
 
+## Le niveau du jour des jeux du kit (lot D4)
+**Aucun calcul de niveau dans le fil principal, quel que soit le jeu ; un niveau calculé se garde.** Le niveau d'un jeu du kit **et les seuils de ses médailles** (le robot : Pinball 14 à 21 s par table) se calculent dans un fil de calcul (`niveauxFil.ts`, second fil de `niveaux-fil.mjs`), se gardent en base (`meta`, avec la version du code) et **l'accueil n'attend jamais un niveau en cours de calcul** (`provisoire`, thème du calendrier : `themeDuJour`). Toute autre méthode du contrat reste brève. **→ Détail : [docs/regles/api/le-niveau-du-jour-des-jeux-du-kit-lot-d4.md](../../docs/regles/api/le-niveau-du-jour-des-jeux-du-kit-lot-d4.md)**
+
 ## Turso sobre (lot R14)
 **Jamais de Turso dans un test ou un outil de mesure** : `openTestDb` = `:memory:` ou un fichier libSQL ; `openLibsql` lève sous Vitest (`VITEST`) devant tout hôte hors de la machine […] **→ Détail : [docs/regles/api/turso-sobre-lot-r14.md](../../docs/regles/api/turso-sobre-lot-r14.md)**
 

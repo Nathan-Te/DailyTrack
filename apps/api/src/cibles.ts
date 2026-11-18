@@ -86,6 +86,7 @@ export const contratCibles = (o: CiblesOptions = {}): ContratMinimal<Niveau, Rej
   seuils: (niveau) => seuilsDe(niveau.contenu),
   entrees: (r) => texteDesEntrees(r.touches),
   theme: (niveau) => themeDuJour(niveau.jour),
+  themeDuJour, // lot D4 : le thème du calendrier du jeu, sans calculer le niveau (l'accueil le montre pendant que le niveau se calcule)
   empreinteAuteur: (niveau) => niveau.authorHash,
   mesures: (m) => ({ ratees: m.ratees }),
   ticksParSeconde: 30,

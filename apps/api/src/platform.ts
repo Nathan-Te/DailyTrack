@@ -3,6 +3,7 @@ import { ensureSchemaOn, schemaVersion, type SqlDb } from "./db";
 import { HttpError } from "./errors";
 import type { Platform, RequestInfo, Statement } from "./games";
 import type { Logger } from "./log";
+import type { ExecuteurKit } from "./niveauxFil";
 import { createPlayers } from "./players";
 import { PLAYER_ID } from "./validate";
 
@@ -66,6 +67,10 @@ export interface PlatformOptions {
   allowCopies: boolean;
   /** Les lignes des jeux qui suivent un « Changer mon code » (dans la même transaction que la plateforme). */
   rotateStatements: (oldId: string, newId: string) => Statement[];
+  /** Lot D4 : le fil qui calcule le niveau du jour des jeux du kit (absent : sur place). */
+  niveauxKit?: ExecuteurKit;
+  /** Lot D4 : la version du code qui sert (`ApiOptions.revision`). */
+  revision?: string;
 }
 
 export type PlatformKit = Platform & { ensureSchema(): Promise<void> };
@@ -272,6 +277,8 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
     spendReplays,
     readJson,
     playerIdOf,
+    niveauxKit: options.niveauxKit,
+    revision: options.revision,
     ensureSchema,
   };
 }

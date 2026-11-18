@@ -1,6 +1,7 @@
 import type { CategorieJeu } from "@cdj/core/jeux";
 import type { SqlDb, SqlValue } from "./db";
 import type { Logger } from "./log";
+import type { ExecuteurKit } from "./niveauxFil";
 import type { Players } from "./players";
 
 // Le registre des jeux (lot P0 de la plateforme) : **une définition par jeu**. Ce fichier ne contient que des types (aucune dépendance à
@@ -77,6 +78,13 @@ export interface Platform {
   limits: { windowMs: number; perClient: number; perPlayer: number };
   readJson(req: Request): Promise<Record<string, unknown>>;
   playerIdOf(value: unknown): string;
+  /**
+   * Lot D4 : ce qui calcule le niveau du jour d'un jeu du kit **hors du fil principal** (le fil de calcul `niveaux-fil.mjs`, `server.ts`). Absent : sur place, dans le fil principal (tests, outils, développement),
+   * comme avant le lot D4. Le niveau est le même ; seul le fil qui le calcule change.
+   */
+  niveauxKit?: ExecuteurKit;
+  /** Lot D4 : la version du code qui sert (révision Cloud Run, commit). Un niveau gardé en base n'est relu que par la **même** version du code : un robot ou un générateur modifié ne se retrouve jamais servi par l'ancien calcul. */
+  revision?: string;
 }
 
 // --- Lot I2 (phase 3) : ce que le portail montre de chaque jeu -------------------------------------------------------------------
@@ -109,6 +117,11 @@ export interface JourPortail {
   seuils: Record<MedaillePortail, number> | null;
   /** Lot TP : l'unité des `seuils` quand ce n'est pas la milliseconde (`mm` : Tower). Absente pour un jeu au temps (sa réponse ne change pas). */
   unite?: "mm" | "points";
+  /**
+   * Lot D4 : vrai quand le niveau du jour d'un jeu n'est pas encore prêt (il se calcule dans le fil de calcul) : le jour n'a que son numéro et son thème. L'accueil ne garde alors sa réponse publique que `PORTAIL_PROVISOIRE_MAX_S`
+   * secondes. Absent (jamais écrit à `false`) pour tout jeu dont le niveau est prêt : sa réponse ne change pas d'un octet.
+   */
+  provisoire?: true;
 }
 
 /**
@@ -248,6 +261,8 @@ export interface GameInstance {
   route(path: string, req: Request, url: URL, info: RequestInfo): Promise<unknown>;
   /** Le niveau (ou circuit) du jour d'une date, tel que le serveur le calcule. */
   dailyLevel(day: number): Promise<unknown>;
+  /** Lot D4 : vrai pour un jeu dont le niveau se calcule dans le fil de calcul : la plateforme le prépare au démarrage de l'instance (aujourd'hui et demain), sans que personne l'attende (`api.ts`). */
+  prepareAuDemarrage?: boolean;
   /**
    * La validation d'un essai envoyé : le serveur **rejoue** la rediffusion sur le niveau du jour (seule source d'un temps) et rend son propre
    * résultat, ou lève `HttpError`. DailyTrack : `replayRace` sur le circuit du jour ; DailyJump (lot P1) : `replayAttempt` sur le niveau du jour
@@ -306,4 +321,10 @@ export interface GameDefinition<O = unknown> {
   versions(): Record<string, number>;
   /** Crée le jeu sur la plateforme. `options` : ce que `createApi` lui transmet (fichiers figés, réglages). */
   create(platform: Platform, options: O): GameInstance;
+  /**
+   * Lot D4 : le niveau du jour **et les seuils de ses médailles**, calculés **sans plateforme** (ni base, ni requête) : ce que le fil de calcul exécute pour un jeu du kit (`definirJeuNeuf` le fournit). Les seuils sont calculés avec le niveau : un
+   * robot qui joue la partie coûte des secondes, qu'il tourne dans `niveauDuJour` ou, paresseusement, dans `seuils` (Rush) — le fil principal n'en rappelle plus que le résultat. Pure et déterministe ; son résultat traverse un fil
+   * (des données seulement). Absent : le jeu n'a pas de calcul à part (Track, Jump, Tower ont le leur).
+   */
+  niveauDuJour?(options: O | undefined, jour: number): Promise<{ niveau: unknown; seuils: unknown }>;
 }

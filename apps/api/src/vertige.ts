@@ -87,6 +87,7 @@ export const contratVertige = (o: VertigeOptions = {}): ContratMinimal<Niveau, R
   seuils: (niveau) => seuilsDuJour(niveau.contenu), // lot V3 : ceux du fichier du jour s'il est figé, sinon le temps du robot et le barème de la fiche
   entrees: (r) => texteDesEntrees(r.commandes),
   theme: (niveau) => themeDuJour(niveau.jour),
+  themeDuJour, // lot D4 : le thème du calendrier du jeu, sans calculer le niveau (l'accueil le montre pendant que le niveau se calcule)
   empreinteAuteur: (niveau) => niveau.authorHash,
   mesures: (m) => ({ pas: m.pas, gemmes: m.gemmes, chutes: m.chutes }),
   ticksParSeconde: 120,

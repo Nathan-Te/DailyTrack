@@ -91,6 +91,7 @@ export const contratBlocks = (o: BlocksOptions = {}): ContratMinimal<Niveau, Rej
   seuils: (niveau) => seuilsDeBlocks(niveau.contenu), // le Diamant (bot) et ses fractions : `@cdj/blocks-sim` (lot B3)
   entrees: (r) => texteDesEntrees(r.actions),
   theme: (niveau) => themeDuJour(niveau.jour),
+  themeDuJour, // lot D4 : le thème du calendrier du jeu, sans calculer le niveau (l'accueil le montre pendant que le niveau se calcule)
   mesures: (m) => ({ poses: m.poses }),
   joursFiges: Object.keys(o.frozen ?? {}).sort(),
   premier: true, // `GET /api/blocks/day/<date>/first` : la partie du n° 1 du jour, pour la revoir (lot « manques de Blocks »)

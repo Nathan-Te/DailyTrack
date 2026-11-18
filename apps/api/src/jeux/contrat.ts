@@ -106,6 +106,16 @@ export interface ContratJeu<Niveau, Rejeu, Mesure> {
   calculer(jour: number): Promise<NiveauCalcule<Niveau>>;
   /** Le niveau retrouvé depuis sa ligne gardée ; lève si la ligne est abîmée (le module recalcule). */
   restaurer(jour: number, ligne: LigneNiveau): Niveau;
+  /**
+   * Lot D4 : le module garde la ligne de `calculer` dans `meta` (`niveau:<jeu>:<jour>`, avec la version du code qui l'a calculée) quand le jeu n'a pas de table de niveaux (`AdaptateurTable.niveaux`) : une instance qui
+   * se réveille relit le niveau au lieu de rejouer le robot de seuils. Absent : rien n'est gardé (le niveau se recalcule, en mémoire de l'instance).
+   */
+  garderEnBase?: boolean;
+  /**
+   * Lot D4 : **le jour que l'accueil montre quand le niveau n'est pas encore prêt** (numéro et thème du calendrier du jeu, sans seuils). Présent : `portail.jour` n'attend jamais un niveau **en cours de calcul** — il lance
+   * le calcul et rend ce jour-là ; un niveau qu'il suffit de relire en base est attendu (quelques millisecondes). Absent : `portail.jour` attend le niveau (Tower, Jump, Track : calculs courts ou déjà gardés).
+   */
+  jourSansNiveau?(jour: number): JourPortail;
   /** Ce que le journal dit d'un jour calculé (aucune donnée de joueur). */
   champsJournalJour(niveau: Niveau): Record<string, unknown>;
   /** `GET <jeu>/day/<date>` : le contenu du jour tel que le serveur le rend (jamais la preuve de l'auteur). */

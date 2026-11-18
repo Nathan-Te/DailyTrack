@@ -88,6 +88,7 @@ export const contratPinball = (o: PinballOptions = {}): ContratMinimal<Niveau, R
   seuils: (niveau) => niveau.seuils,
   entrees: (r) => texteDesEntrees(r.evenements),
   theme: (niveau) => themeDuJour(niveau.jour),
+  themeDuJour, // lot D4 : le thème du calendrier du jeu, sans calculer le niveau (l'accueil le montre pendant que le niveau se calcule)
   mesures: (m) => ({ billes: m.billes, multMax: m.multMax }),
   ticksParSeconde: TICKS_PAR_SECONDE,
   joursFiges: Object.keys(o.frozen ?? {}).sort(),

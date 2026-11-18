@@ -23,7 +23,7 @@ import { DEFAULT_LIMITS, createPlatform } from "./platform";
 import { createPortailRoutes } from "./portail";
 import type { TowerOptions } from "./tower";
 import type { ExecuteurRejeu } from "./towerRejeu";
-import type { ExecuteurNiveaux } from "./niveauxFil";
+import type { ExecuteurKit, ExecuteurNiveaux } from "./niveauxFil";
 import { jeuxPourEnvironnement } from "./registry";
 import { salonSessionMs, type SalonLimits } from "./salon";
 
@@ -122,6 +122,11 @@ export interface ApiOptions {
    */
   niveauxExecuteur?: ExecuteurNiveaux;
   /**
+   * Lot D4 : ce qui calcule le niveau du jour des **jeux du kit** (`server.ts` : un second fil du même script `niveaux-fil.mjs`, à lui : le robot de seuils d'un jeu peut durer des dizaines de secondes et ne doit jamais faire
+   * attendre Jump ni Track). Absent : sur place, comme avant le lot D4 (tests, outils, développement).
+   */
+  niveauxKitExecuteur?: ExecuteurKit;
+  /**
    * Lot I2 : le registre des jeux (les jeux des fiches par défaut, `jeuxPourEnvironnement`). **Tests seulement** (un faux jeu n° 3 prouve que le portail ne change pas) : `server.ts`
    * ne le règle jamais. Un faux jeu n'a pas de tables (le schéma est celui de `GAMES`).
    */
@@ -163,6 +168,8 @@ export function createApi(options: ApiOptions) {
     etape: mesures ? (e) => mesures.marquer(e) : undefined,
     allowCopies: options.allowCopies === true,
     rotateStatements: (oldId, newId) => instances.flatMap((g) => g.instance.rotateStatements?.(oldId, newId) ?? []),
+    niveauxKit: options.niveauxKitExecuteur,
+    revision: options.revision,
   });
   const ensureSchema = platform.ensureSchema;
   let adminRef: Admin | null = null;
@@ -386,6 +393,54 @@ export function createApi(options: ApiOptions) {
     return preparation.en;
   }
 
+  /**
+   * Lot D4 — **les niveaux d'aujourd'hui et de demain, préparés au démarrage de l'instance** pour les jeux dont le niveau se calcule dans le fil de calcul (`GameInstance.prepareAuDemarrage` : les jeux du kit sur le serveur).
+   * La première requête d'une instance lance, sans que sa réponse l'attende, `dailyLevel` d'aujourd'hui puis de demain de chaque jeu **non éteint** (un jeu `off` n'a rien à préparer), l'un après l'autre : le fil de calcul
+   * n'en fait qu'un à la fois, aujourd'hui avant demain. Le niveau se garde en base : une instance qui se réveille le relit au lieu de rejouer le robot de seuils. Un échec est retenté au plus toutes les 2 min ; il ne casse
+   * jamais une requête. La demi-heure d'avance de `preparerLeLendemain` prépare ensuite le jour suivant, comme pour Jump et Track.
+   */
+  let demarrage: { jour: number; en: Promise<void> | null; reussie: boolean; echecA: number } = { jour: -1, en: null, reussie: false, echecA: -Infinity };
+  function preparerAuDemarrage(): Promise<void> | null {
+    if (!instances.some((g) => g.instance.prepareAuDemarrage)) return null;
+    const aujourdhui = platform.today();
+    const t = now();
+    if (demarrage.jour === aujourdhui && (demarrage.en || demarrage.reussie || t - demarrage.echecA < REPRISE_PREPARATION_MS)) return demarrage.en;
+    demarrage = {
+      jour: aujourdhui,
+      reussie: false,
+      echecA: -Infinity,
+      en: (async () => {
+        try {
+          await interrupteur.charger();
+          let echec = false;
+          for (const jour of [aujourdhui, aujourdhui + 1]) {
+            for (const g of instances) {
+              if (!g.instance.prepareAuDemarrage) continue;
+              const site = interrupteur.siteDe(g.code);
+              if (!site || interrupteur.etat(site) === "off") continue;
+              if (g.instance.portail && jour < g.instance.portail.premierJour) continue;
+              const debut = performance.now();
+              try {
+                await g.instance.dailyLevel(jour);
+                log("INFO", "niveau préparé au démarrage", { jeu: g.code, jour: formatDay(jour), ms: Math.round(performance.now() - debut) });
+              } catch (e) {
+                echec = true;
+                log("WARNING", "niveau préparé au démarrage : calcul impossible, il se fera à la première demande", { jeu: g.code, jour: formatDay(jour), code: e instanceof HttpError ? e.code : "inconnu" });
+              }
+            }
+          }
+          if (echec) demarrage.echecA = now();
+          else demarrage.reussie = true;
+        } catch {
+          demarrage.echecA = now(); // la base ne répond pas : on réessaie dans 2 minutes
+        } finally {
+          demarrage.en = null;
+        }
+      })(),
+    };
+    return demarrage.en;
+  }
+
   /** Lot D3 : chaque requête est suivie (route, étapes, temps en SQL) quand l'instance est mesurée ; la réponse ne change pas. */
   const handle = (req: Request, info: RequestInfo = {}): Promise<Response> =>
     mesures && req.method !== "OPTIONS" ? mesures.suivre(routeDe(new URL(req.url).pathname.replace(/\/+$/, "")), () => traiter(req, info)) : traiter(req, info);
@@ -400,6 +455,7 @@ export function createApi(options: ApiOptions) {
       if (path === "/api/health" && req.method === "GET") return await health(reply);
       if (path === "/api/sonde/entetes" && req.method === "GET" && options.environment === "recette") return reply(200, probeHeaders(req, info));
       await ensureSchema();
+      void preparerAuDemarrage(); // lot D4 : aujourd'hui et demain des jeux dont le niveau se calcule dans le fil, sans que cette requête les attende
       void preparerLeLendemain(); // lot D3 : dans la demi-heure d'avant minuit, le niveau du lendemain se prépare sans que cette requête l'attende
       await platform.generation(); // lot R8 : une ligne par instance et par 30 s ; une génération changée vide la mémoire de l'instance
       // Lot N1 : les journaux et les rediffusions retirées passent leur durée (au plus une fois par heure et par instance). Jamais pendant une lecture : une lecture
@@ -460,5 +516,5 @@ export function createApi(options: ApiOptions) {
   /** Le registre en marche : code et préfixe de chaque jeu (documentation, tests). */
   const games = instances.map((g) => ({ code: g.code, prefix: g.prefix }));
 
-  return { handle, tick, salon, games, preparerLeLendemain };
+  return { handle, tick, salon, games, preparerLeLendemain, preparerAuDemarrage };
 }
