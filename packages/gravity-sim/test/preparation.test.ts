@@ -10,12 +10,20 @@ afterEach(() => {
   delete GENERATEURS[9];
   delete GENERATEURS[8];
 });
-/** Un générateur qui est celui de la version 4 sauf au morceau `MORCEAU_PIEGE` : une colonne de blocs sur 16 colonnes, du plafond au sol — aucun humain ne passe. */
+/** Un couloir : un plafond et un sol de deux cases. */
+const couloir = (): Uint8Array => {
+  const c = new Uint8Array(LARGEUR_MORCEAU * LIGNES);
+  for (let x = 0; x < LARGEUR_MORCEAU; x++) for (let r = 0; r < LIGNES; r++) c[x * LIGNES + r] = r < 2 || r >= LIGNES - 2 ? BLOC : 0;
+  return c;
+};
+/** Un générateur qui est celui de la version 5 sauf au morceau `MORCEAU_PIEGE` : une colonne de blocs sur 16 colonnes, du plafond au sol — aucun humain ne passe. */
 const poserGenerateurPiege = (): void => {
   GENERATEURS[9] = {
-    ...GENERATEURS[4]!,
+    ...GENERATEURS[5]!,
     morceau: (j, m, ordre, entree, precedent, regles, plan) => {
       const sain = genererMorceau(j, m, ordre, entree, precedent, regles, plan);
+      // Le morceau d'avant le piège est un couloir (lot GR7 : le motif du jour y serait un trou ou un pilier, le robot y mourrait avant d'atteindre le mur).
+      if (m === MORCEAU_PIEGE - 1) return { ...sain, motif: "calme", cases: couloir(), scies: [], lasers: [], pieces: [], gemmes: [], bonus: [] };
       if (m !== MORCEAU_PIEGE) return sain;
       return { ...sain, motif: "zigzag", cases: new Uint8Array(LARGEUR_MORCEAU * LIGNES).fill(BLOC), pieces: [], gemmes: [], bonus: [] };
     },
@@ -52,7 +60,7 @@ describe("preparerJour", () => {
   });
 
   it("le même générateur sans le piège passe : c'est bien le mur qui fait échouer, pas la distance demandée", () => {
-    GENERATEURS[8] = { ...GENERATEURS[4]! }; // (un autre numéro : le terrain d'une version est gardé en mémoire, celui du piège ne doit pas servir ici)
+    GENERATEURS[8] = { ...GENERATEURS[5]! }; // (un autre numéro : le terrain d'une version est gardé en mémoire, celui du piège ne doit pas servir ici)
     expect(verifierFranchissable(dailyGravity(JOUR, 8), 400).ok).toBe(true);
   });
 });

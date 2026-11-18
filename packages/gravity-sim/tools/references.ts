@@ -22,7 +22,7 @@ const reds = [
 });
 
 const sortie = {
-  _: "Golden de Gravity (lots GR1, GR2 et GR6). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
+  _: "Golden de Gravity (lots GR1, GR2, GR6 et GR7). Régénérer : npm run golden:gravity -w @cdj/gravity-sim, seulement en montant la version concernée.",
   sim: GRAVITY_SIM_VERSION,
   generateur: GRAVITY_GENERATOR_VERSION,
   bot: GRAVITY_BOT_VERSION,

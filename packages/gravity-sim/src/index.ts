@@ -17,3 +17,8 @@ export type { Medaille, Seuils } from "./types";
 export * from "./robot";
 export * from "./pilote";
 export * from "./sections";
+export * from "./mesures";
+export * from "./labo";
+export * from "./catalogue";
+export * from "./motifs";
+export * from "./traversee";

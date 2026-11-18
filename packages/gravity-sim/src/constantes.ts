@@ -3,14 +3,14 @@
 // écrites en entiers, avec en commentaire (virgule française) la valeur physique qu'elles figurent.
 
 /**
- * La version des RÈGLES (la physique, les cases, le score, les morts). Elle monte à tout changement qui change une partie rejouée. v1 : le squelette « Cibles » (30 s, 8 × 6, jamais joué). v2 (lot GR1) : le vrai jeu. v3 (lot GR6) : les modes de vol (avion, onde, ressort), les portails (de mode et de vitesse), l'entrée devient l'état du bouton.
+ * La version des RÈGLES (la physique, les cases, le score, les morts). Elle monte à tout changement qui change une partie rejouée. v1 : le squelette « Cibles » (30 s, 8 × 6, jamais joué). v2 (lot GR1) : le vrai jeu. v3 (lot GR6) : les modes de vol (avion, onde, ressort), les portails (de mode et de vitesse), l'entrée devient l'état du bouton. v4 (lot GR7) : la courbe de vitesse (départ à 8 cases/s, croisière à 550 m, une croisière plus haute à chaque boucle) et les trois dangers (scies, sols fragiles, lasers).
  * **On monte la version, jamais une date** : un jour figé nomme la version qui l'a produit.
  */
-export const GRAVITY_SIM_VERSION = 3;
-/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. v3 (lot GR2) : les îlots, les étages et le néon suivent la vitesse du morceau, les étages finissent au plafond, l'escalier montant et les îlots qui ne tiennent pas à grande vitesse deviennent des trous (le robot prouve le chemin sûr). v4 (lot GR6) : les sections à mode (avion, onde, ressort), leurs portails, les portails de vitesse, l'introduction des modes selon le rang du thème. */
-export const GRAVITY_GENERATOR_VERSION = 4;
-/** La version du calcul des SEUILS des médailles (et du robot qui les produit). v1 (lot GR1) : provisoire, « sur le papier ». v2 (lot GR2) : le robot (`robot.ts`), 60 % de son score aux points d'arrêt de `seuils.ts`. v3 (lot GR6) : le robot joue l'état du bouton et les trois modes. **Tout changement du robot, du pourcentage ou des points d'arrêt la monte.** Un jour figé garde les seuils de son fichier. */
-export const GRAVITY_BOT_VERSION = 3;
+export const GRAVITY_SIM_VERSION = 4;
+/** La version du GÉNÉRATEUR (les morceaux, l'ordre des thèmes, les objets). Elle monte à tout changement de ce que `dailyGravity` et `genererMorceau` produisent. v1 : le squelette. v2 (lot GR1) : les morceaux de la maquette. v3 (lot GR2) : les îlots, les étages et le néon suivent la vitesse du morceau, les étages finissent au plafond, l'escalier montant et les îlots qui ne tiennent pas à grande vitesse deviennent des trous (le robot prouve le chemin sûr). v4 (lot GR6) : les sections à mode (avion, onde, ressort), leurs portails, les portails de vitesse, l'introduction des modes selon le rang du thème. v5 (lot GR7) : le catalogue de motifs à variantes et à difficulté, la courbe en vagues, l'anti-répétition, « jamais tout droit » (Nuit, Néon…), les trois dangers introduits selon le rang du thème. */
+export const GRAVITY_GENERATOR_VERSION = 5;
+/** La version du calcul des SEUILS des médailles (et du robot qui les produit). v1 (lot GR1) : provisoire, « sur le papier ». v2 (lot GR2) : le robot (`robot.ts`), 60 % de son score aux points d'arrêt de `seuils.ts`. v3 (lot GR6) : le robot joue l'état du bouton et les trois modes. v4 (lot GR7) : le robot joue les dangers mobiles et les sols fragiles, la vitesse change donc les seuils. **Tout changement du robot, du pourcentage ou des points d'arrêt la monte.** Un jour figé garde les seuils de son fichier. */
+export const GRAVITY_BOT_VERSION = 4;
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------
 // Le temps : 120 pas par seconde — **la fréquence de Jump** (`TICK_RATE` de `@cdj/jump-sim`), pour la même raison : à 17 m/s une case se traverse en 7 pas, la collision par axe ne saute jamais une case, et la
@@ -39,10 +39,23 @@ export const DEPART_Y = 37682;
 export const GRAVITE = 1570;
 /** |vy| ≤ 17 cases/s. */
 export const VY_MAX = 69632;
-/** Vitesse de la caméra : 7 cases/s plus 1 case/s tous les 220 m (`base + distance / 220`), plafonnée à 12,5 cases/s. */
-export const VITESSE_BASE = 28672;
+/**
+ * Vitesse de la caméra (lot GR7, simulation 4) : **8 cases/s au départ**, la croisière de la première boucle (12,5 cases/s) atteinte à **549 m** (`DISTANCE_PAR_CRAN` × l'écart de vitesse), **vite au début puis plus doucement**
+ * (`COURBE_DOUCE` : la vitesse suit une parabole qui arrive à plat sur la croisière) ; avant le GR7 : 7 cases/s plus 1 case/s tous les 220 m, croisière à 1 210 m (`COURBE_LINEAIRE`, gardée pour les réglages d'essai `?courbe=1`).
+ * **Chaque boucle relève la croisière** (`CROISIERE_PLUS` : +1,5 cases/s à la 2e boucle, +2,5 à la 3e et après), qui monte pendant `RAMPE_BOUCLE` unités (150 m) au début de la boucle ; le plafond absolu (`VITESSE_PLAFOND`) borne le tout, portails compris.
+ */
+export const VITESSE_BASE = 32768;
 export const VITESSE_MAX = 51200;
-export const DISTANCE_PAR_CRAN = 220;
+/** La pente : 1 unité/s de plus tous les `DISTANCE_PAR_CRAN` unités de distance (courbe linéaire) ; en courbe douce la croisière est atteinte à `(VITESSE_MAX − VITESSE_BASE) × DISTANCE_PAR_CRAN` = 2 248 704 unités (549 m). */
+export const DISTANCE_PAR_CRAN = 122;
+export const COURBE_LINEAIRE = 1;
+export const COURBE_DOUCE = 2;
+/** Après la croisière de la première boucle, la courbe continue de monter d'1 unité/s tous les 220 unités : c'est la croisière de la boucle qui la borne. */
+export const PENTE_APRES_CROISIERE = 220;
+/** Ce qu'une boucle ajoute à la croisière (unités/s) : rien à la 1re, 1,5 case/s à la 2e (6 144), 2,5 cases/s à la 3e et après (10 240). */
+export const CROISIERE_PLUS: readonly number[] = [0, 6144, 10240];
+/** La croisière d'une boucle monte de celle de la précédente en 614 400 unités (150 m) : jamais d'à-coup au passage d'une boucle. */
+export const RAMPE_BOUCLE = 614400;
 /** Le joueur est visé à caméra + 4,2 cases ; en retard il court 2,2 cases/s de plus ; à plus de 2 cases au-delà de la cible il ralentit à 90 %. */
 export const CIBLE_CAMERA = 17203;
 export const RATTRAPAGE = 9011;
@@ -133,3 +146,17 @@ export const FACTEUR_V2 = 130;
 export const FACTEUR_V3 = 150;
 /** **Le plafond absolu de la vitesse** de la caméra, portails compris : 17 cases/s (69 632 unités par seconde : à cette vitesse une case se traverse en 7 pas, la collision par axe ne saute rien). */
 export const VITESSE_PLAFOND = 69632;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------
+// Les dangers du GR7 (simulation 4) : **tous rouges**. Les scies, les sols fragiles, les lasers. Place laissée au GR8 : les écraseurs, les plateformes mobiles, les projectiles (mêmes données dans le morceau : une liste par danger).
+/** Sol fragile : il craque au premier contact (on se pose dessus), puis tout le tronçon tombe 54 pas plus tard (0,45 s) et ne revient pas dans la partie. */
+export const FRAGILE_DELAI = 54;
+/** Scie : le disque a un rayon de 0,5 case à l'écran ; sa collision est un peu réduite, 0,4 case (1 638 unités). */
+export const SCIE_RAYON = 1638;
+export const SCIE_RAYON_VISU = 2048;
+/** Laser : un cycle de 300 pas (2,5 s) ; il s'annonce par un mince trait pâle pendant 60 pas (0,5 s), puis brûle 90 pas (0,75 s) ; le rayon est large de 0,4 case (de 0,3 à 0,7 de la colonne). */
+export const LASER_CYCLE = 300;
+export const LASER_ANNONCE = 60;
+export const LASER_ALLUME = 90;
+export const LASER_X0 = 1229;
+export const LASER_X1 = 2867;

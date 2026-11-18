@@ -1,9 +1,9 @@
 import { mixSeed, Rng } from "@cdj/core";
-import { vitesseCamera } from "./camera";
-import { ALTERNE_BATTEMENT, CASE, CIBLE_CAMERA, CLIGNOTANT_CYCLE, FACTEUR_NORMAL, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, NB_THEMES, TICKS_PAR_SECONDE, VY_MAX } from "./constantes";
+import { CASE, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, NB_THEMES } from "./constantes";
 import { REGLES_COURANTES, cleDesRegles, reglesDe, type ReglagesEssai, type Regles } from "./regles";
-import { ALTERNE_A, ALTERNE_B, BLOC, CLIGNOTANT, GLACE, INVERSEUR, PIQUE, TAPIS, VENT, VIDE, type Bonus, type Etape, type Morceau, type Motif, type Objet, type Portail, type Terrain } from "./monde";
-import { COLONNE_PORTAIL, difficulte, motifBrut, planDuJour, SEL_MORCEAU, type PlanDuJour } from "./plan";
+import { BLOC, VIDE, type Bonus, type Morceau, type Motif, type Terrain } from "./monde";
+import { CONSTRUCTIONS, creerCtx } from "./motifs";
+import { COLONNE_PORTAIL, difficulte, planDuJour, SEL_MORCEAU, type PlanDuJour } from "./plan";
 import { genererSection } from "./sections";
 import { ordreDesThemes, THEMES_GRAVITY, type ThemeGravity } from "./themes";
 import type { Seuils } from "./types";
@@ -77,115 +77,51 @@ const versionsSimJouablesConnues = (sim: number): boolean => {
   }
 };
 
-/** Le nombre de pas d'une traversée verticale de `h` unités, partie de l'arrêt (la gravité de la partie, plafonnée à `VY_MAX`) : le temps d'un vol d'une surface à l'autre. Entier, comme tout ici. */
-export function pasDeTraversee(h: number, regles: Regles = REGLES_COURANTES): number {
-  let vy = 0;
-  let y = 0;
-  let pas = 0;
-  while (y < h && pas < 1000) {
-    vy = Math.min(VY_MAX, vy + regles.gravite);
-    y += Math.trunc(vy / TICKS_PAR_SECONDE);
-    pas++;
-  }
-  return pas;
-}
-/** Combien de colonnes (arrondi au-dessus) le joueur parcourt en `pas` pas quand il arrive à la colonne `colonne` : la vitesse de la caméra y est connue d'avance (elle ne dépend que de la distance). **C'est ce qui permet de poser les surfaces à la vitesse à laquelle le morceau sera abordé.** */
-export function colonnesParcourues(pas: number, colonne: number, regles: Regles = REGLES_COURANTES, facteur: number = FACTEUR_NORMAL): number {
-  const parPas = Math.trunc(vitesseCamera(Math.max(0, colonne * CASE - CIBLE_CAMERA), regles, facteur) / TICKS_PAR_SECONDE);
-  return Math.trunc((pas * parPas + CASE - 1) / CASE);
-}
+export { colonnesParcourues, pasDeTraversee } from "./traversee";
+import { colonnesParcourues, pasDeTraversee } from "./traversee";
 
 /** Les 12 cases d'une colonne vide : un plafond et un sol de deux cases. */
 const colonneVide = (): number[] => Array.from({ length: LIGNES }, (_, r) => (r < 2 || r >= LIGNES - 2 ? BLOC : VIDE));
 
 /**
  * Le morceau `m` d'un jour : **pure**, la même chose pour le même (graine du jour, numéro, ordre, gravité d'entrée). `entree` est la gravité du chemin sûr à la fin du morceau précédent (+1 : sur le sol, −1 : au plafond ;
- * +1 pour le tout premier) : le motif est posé **à l'endroit ou en miroir** pour que le chemin sûr commence du côté où l'on arrive (un morceau ne demande jamais une inversion dans ses deux premières colonnes : à 12 cases/s
- * elle n'aurait pas la place d'être faite). Les inversions que le motif exige sont dans le motif, avec la place pour les faire. `precedent` : le motif du morceau d'avant (lot GR2 : certains motifs ne se posent pas
- * après certains autres à grande vitesse, voir le tirage).
+ * +1 pour le tout premier) : le motif est posé **à l'endroit ou en miroir** pour que le chemin sûr commence du côté où l'on arrive. **Lot GR7 : ce que le morceau contient est choisi par le plan du jour** (`plan.info(m).pioche` :
+ * le motif du catalogue, sa variante, sa difficulté), construit par `motifs.ts`. `precedent` n'est plus lu (le plan se souvient des motifs d'avant : pas deux fois le même à moins de 6 morceaux).
  */
-export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGravity[], entree: 1 | -1 = 1, precedent: Motif | null = null, regles: Regles = REGLES_COURANTES, plan: PlanDuJour = planDuJour(jour, regles)): Morceau {
+export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGravity[], entree: 1 | -1 = 1, _precedent: Motif | null = null, regles: Regles = REGLES_COURANTES, plan: PlanDuJour = planDuJour(jour, regles, ordre)): Morceau {
   const rng = new Rng(mixSeed(mixSeed(jour, SEL), m));
   const REG = regles;
   const parTheme = REG.morceauxParTheme;
-    const theme = ordre[Math.trunc(m / parTheme) % NB_THEMES]!;
-  /** La difficulté de 0 à 100 : monte sur le tour des cinq thèmes, repart de la base relevée de 35 % à la boucle suivante. */
+  const theme = ordre[Math.trunc(m / parTheme) % NB_THEMES]!;
+  /** La difficulté de 0 à 100 : règle encore les dimensions des sections (`sections.ts`). */
   const d = difficulte(m, REG);
   const x0 = m * LARGEUR_MORCEAU;
   const info = plan.info(m);
-  /** Les colonnes que le joueur parcourt en `pas` pas à la colonne `colonne`, **sous le facteur de vitesse qui y vaut** (lot GR6 : les portails de vitesse). */
-  const cp = (pas: number, colonne: number): number => colonnesParcourues(pas, colonne, REG, plan.facteurAu(colonne * CASE + (CASE >> 1)));
-
-  const cases = new Uint8Array(LARGEUR_MORCEAU * LIGNES);
-  for (let c = 0; c < LARGEUR_MORCEAU; c++) cases.set(colonneVide(), c * LIGNES);
-  const pieces: Objet[] = [];
-  const gemmes: Objet[] = [];
-  const bonus: Bonus[] = [];
-  const chemin: Etape[] = [];
-  /** Lot GR6 : les portails du morceau (le portail de vitesse de la colonne 1, ou celui de retour d'un morceau de retour ; ceux d'entrée sont posés par `genererSection`). */
-  const portails: Portail[] = [];
-  if (info.vitesse) portails.push({ c: COLONNE_PORTAIL, type: info.vitesse });
-  let decalage = 0;
-  /** La rangée où le bonus est posé quand aucune étape du chemin ne couvre la colonne 8 (une trajectoire en l'air). */
-  let rangeeEnLAir: number | null = null;
-  /** Le miroir : toutes les rangées et les gravités sont renversées (le sol devient le plafond). Décidé par chaque motif avant de poser quoi que ce soit. */
-  let miroir = false;
-  const R = (r: number): number => (miroir ? LIGNES - 1 - r : r);
-  const G = (g: 1 | -1): 1 | -1 => (miroir ? ((-g) as 1 | -1) : g);
-  /** Le motif est écrit pour une première étape de gravité `g1` ; `meme` : on veut arriver du côté de cette étape (sol → sol), sinon du côté opposé (une inversion d'entrée, courte : on passe de la surface à la plateforme voisine). */
-  const orienter = (g1: 1 | -1, meme: boolean): void => {
-    miroir = meme ? g1 !== entree : g1 === entree;
-  };
-
-  const poser = (c: number, r: number, type: number): void => {
-    const rr = R(r);
-    if (c >= 0 && c < LARGEUR_MORCEAU && rr >= 0 && rr < LIGNES) cases[c * LIGNES + rr] = type;
-  };
-  /** Le centre de la colonne `c`, à la rangée `r` (le centre de la case). */
-  const centre = (c: number, r: number): Objet => ({ x: (x0 + c) * CASE + DEMI, y: (2 * R(r) + 1) * DEMI });
-  /** Un trou au sol (`haut` faux) ou au plafond : les deux cases de la surface disparaissent. */
-  const trou = (de: number, a: number, haut: boolean): void => {
-    for (let c = de; c < Math.min(a, LARGEUR_MORCEAU); c++) {
-      poser(c, haut ? 0 : LIGNES - 2, VIDE);
-      poser(c, haut ? 1 : LIGNES - 1, VIDE);
-    }
-  };
-  /** Une étape du chemin sûr, avec des pièces toutes les deux colonnes sur la rangée du joueur. */
-  const voie = (de: number, a: number, rangee: number, g: 1 | -1): void => {
-    chemin.push({ c0: de, c1: a, y: R(rangee), g: G(g) });
-    for (let c = de; c < a; c += 2) pieces.push(centre(c, rangee));
-  };
-  /** Une étape du chemin sûr sans pièces. */
-  const etape = (de: number, a: number, rangee: number, g: 1 | -1): void => void chemin.push({ c0: de, c1: a, y: R(rangee), g: G(g) });
-  /** Des pièces en l'air (la trajectoire que le vent porte). */
-  const enLAir = (de: number, a: number, rangee: number): void => {
-    rangeeEnLAir = R(rangee);
-    for (let c = de; c < a; c += 2) pieces.push(centre(c, rangee));
-  };
-  const n = (): number => 3 + rng.int(2 + Math.trunc((d * 4) / 100));
-  /** La rangée de l'étape qui couvre la colonne `c` (sinon la dernière étape, sinon le sol). */
-  const rangeeEn = (c: number): number => chemin.find((e) => e.c0 <= c && c < e.c1)?.y ?? chemin[chemin.length - 1]?.y ?? 9;
-  /** Une gemme à la rangée `r` du motif (avant miroir). */
-  const gemme = (c: number, r: number): void => void gemmes.push(centre(c, r));
 
   // **Lot GR6 : un morceau de contenu d'une section à mode** (avion, onde, ressort) est écrit par `genererSection` (`sections.ts`) ; le morceau de retour et celui d'avant une section sont des morceaux de gravité calmes.
   if (info.section && info.section.rang < info.section.longueur) {
     const sec = genererSection({ jour, m, info: info.section, plan, d: info.section.facile ? 0 : d, rng });
     const bonusSection: Bonus[] = [];
     const axeMilieu = sec.axe[8]!;
-    const mil = { x: (x0 + 8) * CASE + DEMI, y: axeMilieu };
+    const mil = { x: (x0 + 8) * CASE + (CASE >> 1), y: axeMilieu };
     if (m % 23 === 11) bonusSection.push({ ...mil, type: "bouclier" });
     if (m % 23 === 19) bonusSection.push({ ...mil, type: "aimant" });
     return {
       m,
       theme,
       motif: sec.motif,
+      ...(info.section.danger ? { danger: info.section.danger } : {}),
+      variante: info.section.variante,
+      difficulte: info.section.facile ? 1 : Math.max(2, Math.min(5, 2 + Math.trunc(d / 35))),
+      ...(info.section.rang > 0 ? { suiteDeSection: true } : {}),
       cases: sec.cases,
       pieces: sec.pieces,
       gemmes: sec.gemmes,
       bonus: bonusSection,
       chemin: [{ c0: 0, c1: LARGEUR_MORCEAU, y: Math.trunc(axeMilieu / CASE), g: 1 }],
       portails: sec.portails,
+      scies: sec.scies,
+      lasers: sec.lasers,
       axe: sec.axe,
       decalage: 0,
       entree,
@@ -193,239 +129,55 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
     };
   }
 
-  let motif: Motif;
-  if (m < 3) {
-    // Les trois premiers morceaux sont calmes : un couloir, des pièces sur une rangée.
-    motif = "calme";
-    if (m % 2) voie(2, 14, 2, -1);
-    else voie(2, 14, 9, 1);
-  } else {
-    // Un morceau sur trois environ porte la case spéciale du thème ; sinon un motif commun (les sept premiers tant que la difficulté est basse).
-    const special = rng.chance(38);
-    const LISTE: readonly Motif[] = ["trouBas", "trouHaut", "zigzag", "pilier", "pics", "milieu", "escalier", "etages", "inverseur", "ilots"];
-    motif = special ? "special" : LISTE[rng.int(d < 30 ? 7 : LISTE.length)]!;
-    // Lot GR6 : le morceau de retour d'une section (le portail de retour, puis un sol) et celui qui la précède (on entre dans un mode avec la gravité vers le bas) sont calmes et finissent sur le sol.
-    if (info.section) motif = "calme";
-    else if (info.avantSection) motif = entree === 1 ? "calme" : "inverseur";
-    // **Lot GR2 : deux motifs que le robot ne passe pas partout à grande vitesse.** (1) L'escalier montant : arrivé du sol, on s'accroche sous la première marche, puis sous la seconde, puis le plafond vous reprend — trois vols de
-    // 3, 5 et 5 colonnes à 12,5 m/s, plus les temps de se poser : plus que les 16 colonnes, et le morceau finirait à mi-hauteur, là où le suivant n'attend personne. Au-delà de 10 m/s (un vol de 3 cases fait 5 colonnes) il
-    // devient un trou, qui finit au plafond ; l'escalier qui descend (arrivée du plafond) finit au sol et reste. (2) Les îlots demandent un vol de 5 cases dès la colonne 2 : après un morceau dont le dernier vol atterrit
-    // dans le suivant (étages, milieu, escalier : on touche la surface après le bout du morceau) il n'y a plus la place de s'y préparer à grande vitesse : l'îlot devient un trou.
-    const vite = cp(pasDeTraversee(3 * CASE, REG), x0 + 8) >= 5;
-    if (motif === "escalier" && entree === 1 && vite) motif = "trouBas";
-    if (motif === "ilots" && vite && precedent !== null && (precedent === "etages" || precedent === "milieu" || precedent === "escalier")) motif = "trouHaut";
-    if (info.section) portails.push({ c: COLONNE_PORTAIL, type: "gravite" });
-    switch (motif) {
-      case "calme":
-        voie(2, 14, 9, 1);
-        break;
-      case "trouBas":
-      case "trouHaut": {
-        // Un trou : on est du côté qui reste (le motif est en miroir au besoin, `trouBas` et `trouHaut` ne diffèrent que par leur nom).
-        orienter(-1, true);
-        const l = n();
-        trou(4, 4 + l, false);
-        voie(3, 5 + l, 2, -1);
-        break;
-      }
-      case "zigzag": {
-        orienter(-1, true);
-        trou(2, 2 + n(), false);
-        trou(9, 9 + Math.min(6, n()), true);
-        voie(2, 7, 2, -1);
-        voie(10, 15, 9, 1);
-        break;
-      }
-      case "pilier": {
-        orienter(-1, true);
-        for (const c of [8, 9]) for (let y = 0; y < 4; y++) poser(c, 9 - y, BLOC);
-        rng.chance(50);
-        voie(3, 14, 2, -1);
-        break;
-      }
-      case "pics": {
-        orienter(-1, true);
-        const l = 4 + rng.int(3 + Math.trunc((d * 4) / 100));
-        for (let c = 4; c < Math.min(LARGEUR_MORCEAU, 4 + l); c++) poser(c, 9, PIQUE);
-        voie(3, 4 + l, 2, -1);
-        break;
-      }
-      case "milieu": {
-        // Une plateforme de deux cases au milieu, sol et plafond troués : on se tient dessus (rangée 4) ou dessous (rangée 7), du côté qu'on atteint d'une inversion depuis la surface d'où l'on vient.
-        // **Lot GR2 : la plateforme finit assez tôt pour qu'on ait rejoint le sol ou le plafond avant le bout du morceau** (le suivant n'attend personne à mi-hauteur) : la descente depuis la plateforme fait 5 cases,
-        // `sortie` colonnes de course (4 à 7 m/s, 7 à 12,5 m/s), plus une de marge ; la plateforme dépasse le trou d'une colonne de chaque côté, comme avant (13 colonnes de trou à basse vitesse, 5 à 12,5 m/s).
-        orienter(1, false);
-        const sortie = cp(pasDeTraversee(5 * CASE, REG), x0 + 12) + 1;
-        const fin = Math.max(8, Math.min(13, LARGEUR_MORCEAU - sortie));
-        trou(3, fin, false);
-        trou(3, fin, true);
-        for (let c = 2; c < fin + 1; c++) {
-          poser(c, 5, BLOC);
-          poser(c, 6, BLOC);
-        }
-        voie(3, fin, 4, 1);
-        rng.chance(50);
-        if (rng.chance(25)) gemme(Math.min(8, fin - 2), rng.chance(50) ? 4 : 7);
-        break;
-      }
-      case "inverseur": {
-        // Trois cases d'inverseur sur une surface, et cette même surface trouée plus loin : on les touche, la gravité s'inverse, on traverse jusqu'à la surface d'en face.
-        orienter(1, true);
-        rng.chance(50);
-        for (let c = 6; c < 9; c++) poser(c, 10, INVERSEUR);
-        trou(10, 15, false);
-        voie(4, 9, 9, 1);
-        voie(10, 15, 2, -1);
-        break;
-      }
-      case "escalier": {
-        // Deux plateformes au milieu, en marches : d'en bas on s'accroche sous la première puis sous la seconde (une inversion au début) ; en miroir, d'en haut on descend de marche en marche sans rien toucher.
-        orienter(-1, false);
-        trou(3, 16, false);
-        trou(3, 15, true);
-        for (let c = 1; c < 8; c++) poser(c, 7, BLOC);
-        for (let c = 6; c < 14; c++) poser(c, 4, BLOC);
-        voie(3, 8, 8, -1);
-        voie(8, 14, 5, -1);
-        break;
-      }
-      case "etages": {
-        // Deux étages au milieu de l'écran : l'étage haut (rangée 4) troué en A, l'étage bas (rangée 7) long de 13 colonnes ; sous eux le sol est un vide, et le plafond reste là pour finir. Par-dessus l'étage haut (arrivée
-        // du plafond), on tombe dans le trou A sur l'étage bas, puis on s'accroche sous lui jusqu'à son bout et on monte au plafond ; par-dessous l'étage bas (arrivée du sol), on le suit jusqu'à son bout et le plafond d'en haut
-        // vous prend. Pas de miroir : les deux chemins existent, et **les deux finissent au plafond**, comme le morceau suivant l'attend (lot GR2 : l'étage haut ne retenait plus le joueur jusqu'au bord du morceau).
-        // **Le trou A suit la vitesse.** Pour traverser un étage d'une case la boîte (0,8) doit descendre de 1,8 case : 34 pas, soit `trav` colonnes de course (3 à 9 m/s, 4 à 12,5 m/s) ; le trou est large de `trav + 3` colonnes
-        // (de quoi y tenir, plus une fenêtre) ; l'étage haut commence par 5 colonnes, de quoi se poser en arrivant du plafond (le morceau d'avant finit souvent à la colonne 16 sous un îlot : le plafond se rejoint aux premières colonnes).
-        const trav = cp(pasDeTraversee(Math.trunc((9 * CASE) / 5), REG), x0 + 8);
-        const chute = cp(pasDeTraversee(3 * CASE, REG), x0 + 8);
-        const a0 = 5;
-        const a1 = Math.min(LARGEUR_MORCEAU - 4, a0 + trav + 3);
-        for (let c = 0; c < LARGEUR_MORCEAU; c++) {
-          if (c < a0 || (c >= a1 && c < a1 + 3)) poser(c, 4, BLOC);
-          if (c < 13) poser(c, 7, BLOC);
-        }
-        trou(2, 14, false);
-        rng.chance(50);
-        rng.chance(50);
-        if (entree === -1) {
-          voie(1, a0 + 1, 3, 1);
-          voie(Math.min(a0 + chute - 1, 10), 13, 6, 1);
-        } else voie(1, 13, 8, -1);
-        voie(14, 16, 2, -1);
-        if (rng.chance(35)) gemme(14, 2);
-        break;
-      }
-      case "ilots": {
-        // Des îlots flottants, en bas puis en haut, au-dessus du vide : on saute de l'un à l'autre en inversant (on arrive du plafond sur le premier ; en miroir, du sol sous le premier).
-        // **Lot GR2 : l'écart entre deux îlots suit la vitesse** — un vol d'un îlot bas (rangée 8) à un îlot haut (rangée 3) dure 45 pas et fait 3 colonnes à 7 m/s, 5 à 12,5 m/s : les îlots sont posés tous les
-        // `vol + 3` colonnes (de quoi se poser, attendre `ROBOT_ECART_MIN` pas et repartir avec une fenêtre), larges de `vol − 1` (3 à 4 colonnes), et le vide s'arrête après le dernier.
-        orienter(1, false);
-        const vol = cp(pasDeTraversee(Math.trunc((13 * CASE) / 4), REG), x0 + 8);
-        const largeur = Math.max(3, Math.min(5, vol));
-        const ecart = vol + 4;
-        // Après le dernier îlot on quitte sa surface pour rejoindre le sol ou le plafond (2 cases de vol, 2 à 4 colonnes) : il finit assez tôt pour que ce soit fait avant le bout du morceau, que le suivant attend sur
-        // une surface (à 12,5 m/s il ne reste de la place que pour un seul îlot).
-        const queue = cp(pasDeTraversee(2 * CASE, REG), x0 + 14) + 1;
-        const iles: number[] = [];
-        for (let c = 2; c + largeur + queue <= LARGEUR_MORCEAU && iles.length < 4; c += ecart) iles.push(c);
-        if (iles.length === 0) iles.push(2);
-        const finVide = Math.min(LARGEUR_MORCEAU, iles[iles.length - 1]! + largeur + 2);
-        trou(2, finVide, false);
-        trou(2, finVide, true);
-        iles.forEach((c0, k) => {
-          const bas = k % 2 === 0;
-          for (let c = c0; c < c0 + largeur; c++) poser(c, bas ? 8 : 3, BLOC);
-          voie(c0, c0 + largeur, bas ? 7 : 4, bas ? 1 : -1);
-        });
-        break;
-      }
-      case "special": {
-        switch (theme) {
-          case "usine": {
-            // Des tapis roulants au sol et au plafond, un trou en face de la course : il faut quitter le sol (il pousse plus vite) avant qu'il s'arrête.
-            orienter(1, true);
-            for (let c = 1; c < 15; c++) {
-              poser(c, 10, TAPIS);
-              poser(c, 1, TAPIS);
-            }
-            const l = Math.min(5, n());
-            const haut = rng.chance(50);
-            trou(9, 9 + l, haut);
-            if (haut) voie(2, 15, 9, 1);
-            else {
-              voie(2, 5, 9, 1);
-              voie(10, 15, 2, -1);
-            }
-            break;
-          }
-          case "glace": {
-            // Une surface de glace : on ne peut pas y prendre appui. On court sur la surface d'en face, puis un trou après la glace oblige à passer de l'autre côté.
-            orienter(1, true);
-            rng.chance(50);
-            for (let c = 2; c < 10; c++) poser(c, 1, GLACE);
-            trou(10, 15, false);
-            voie(2, 10, 9, 1);
-            voie(10, 15, 2, -1);
-            break;
-          }
-          case "nuit": {
-            // Cinq colonnes de cases qui battent (clignotantes) sur une surface, l'autre surface est trouée : on traverse en rythme. Le battement est aligné sur l'arrivée du joueur : la traversée prévue est possible.
-            orienter(1, true);
-            rng.chance(50);
-            for (let c = 5; c < 10; c++) {
-              poser(c, 10, CLIGNOTANT);
-              poser(c, 11, CLIGNOTANT);
-            }
-            trou(4, 12, true);
-            voie(3, 13, 9, 1);
-            const arrivee = plan.trajectoire.tickOuLeJoueurArrive((x0 + 4) * CASE);
-            decalage = (CLIGNOTANT_CYCLE - (arrivee % CLIGNOTANT_CYCLE)) % CLIGNOTANT_CYCLE;
-            break;
-          }
-          case "neon": {
-            // Deux couleurs, une seule solide à la fois : on court sur la première, on inverse au battement, on se pose sur la seconde. Le battement est aligné sur l'arrivée du joueur.
-            // **Lot GR2 : la seconde couleur est posée là où le vol d'une surface à l'autre atterrit.** Du plafond au sol il y a 7,25 cases : 75 pas, soit `vol` colonnes de course (5 à 7 m/s, 8 à 12,5 m/s) ; partant de
-            // la première couleur (colonnes 3 à 7) on atterrit à `vol` colonnes de plus, la seconde commence donc `vol − 1` colonnes après sa première colonne et le vide la suit.
-            orienter(1, true);
-            const vol = cp(pasDeTraversee(Math.trunc((29 * CASE) / 4), REG), x0 + 8);
-            const b0 = Math.min(LARGEUR_MORCEAU - 3, 2 + vol);
-            const b1 = Math.min(LARGEUR_MORCEAU, 9 + vol);
-            trou(3, b1, false);
-            trou(3, b1, true);
-            for (let c = 3; c < 8; c++) poser(c, 10, ALTERNE_A);
-            for (let c = b0; c < b1; c++) poser(c, 1, ALTERNE_B);
-            voie(3, 8, 9, 1);
-            voie(b0 + 1, b1, 2, -1);
-            const bascule = plan.trajectoire.tickOuLeJoueurArrive((x0 + 7) * CASE);
-            decalage = (((ALTERNE_BATTEMENT - bascule) % (2 * ALTERNE_BATTEMENT)) + 2 * ALTERNE_BATTEMENT) % (2 * ALTERNE_BATTEMENT);
-            break;
-          }
-          default: {
-            // Forêt : un courant d'air au-dessus d'un trou du sol. On quitte le sol avant le trou, le vent porte d'un coup jusqu'au plafond (poussée vers le haut, gravité allégée) ; arrivé du plafond, on y reste. Le vent ne se renverse pas : pas de miroir.
-            trou(4, 12, false);
-            for (let c = 5; c < 11; c++) for (let y = 3; y < 10; y++) poser(c, y, VENT);
-            if (entree === 1) {
-              etape(2, 4, 9, 1);
-              etape(7, 16, 2, -1);
-            } else etape(2, 16, 2, -1);
-            enLAir(4, 12, 5);
-            break;
-          }
-        }
-        if (rng.chance(30)) gemme(13, R(rangeeDeLEtape(chemin, 13)));
-        break;
-      }
-    }
+  /** Le morceau de retour d'une section n'a pas de pioche : il est calme. */
+  const pioche = info.pioche ?? { id: "calme", variante: 0, diff: 1, souffle: true, intro: null, technique: false };
+  const vite = colonnesParcourues(pasDeTraversee(3 * CASE, REG), x0 + 8, REG, plan.facteurAu((x0 + 8) * CASE + (CASE >> 1))) >= 5;
+  const ctx = creerCtx({ m, x0, d, entree, theme, REG, rng, plan, vite });
+  if (info.vitesse) ctx.portails.push({ c: COLONNE_PORTAIL, type: info.vitesse });
+  let id = pioche.id;
+  let variante = pioche.variante;
+  // Les trois premiers morceaux sont calmes ; le morceau d'avant une section finit sur le sol (calme, ou un inverseur quand on arrive du plafond) ; celui de retour d'une section est calme et porte le portail de retour.
+  if (info.section) {
+    id = "calme";
+    ctx.portails.push({ c: COLONNE_PORTAIL, type: "gravite" });
+  } else if (info.avantSection) id = entree === 1 ? "calme" : "inverseur";
+  else if (m < 3) {
+    // Le départ : un couloir, des pièces sur une rangée, une rangée sur deux au plafond.
+    id = "calme";
   }
+  if (id === "calme" && m < 3 && m % 2) {
+    ctx.orienter(-1, true);
+    ctx.voie(2, 14, 2, -1);
+    ctx.miroir = false;
+  } else CONSTRUCTIONS[id === "calme" ? "calme" : id]!(ctx, variante);
+  if (ctx.chemin.length === 0) throw new ErreurGenerateur(`morceau ${m} : le motif ${id} n'a posé aucun chemin`);
   // Les bonus : posés par le niveau, aux mêmes endroits pour toutes les parties.
-  const rangeeBonus = rangeeEnLAir ?? rangeeEn(8);
+  const rangeeBonus = ctx.rangeeEnLAir ?? ctx.rangeeEn(8);
+  const bonus: Bonus[] = [];
   const bonusEn = (type: Bonus["type"]): Bonus => ({ x: (x0 + 8) * CASE + DEMI, y: (2 * rangeeBonus + 1) * DEMI, type });
   if (m % 23 === 11) bonus.push(bonusEn("bouclier"));
   if (m % 23 === 19) bonus.push(bonusEn("aimant"));
-  return { m, theme, motif, cases, pieces, gemmes, bonus, chemin, portails, axe: [], decalage, entree, sortie: chemin[chemin.length - 1]!.g };
+  const nom = info.avantSection && id === "inverseur" ? "transition" : id === "trou" ? (entree === 1 ? "trouBas" : "trouHaut") : id.startsWith("special-") ? "special" : id;
+  return {
+    m,
+    theme,
+    motif: nom,
+    variante,
+    difficulte: id === "calme" || id === "souffle" || pioche.souffle ? 1 : pioche.diff,
+    cases: ctx.cases,
+    pieces: ctx.pieces,
+    gemmes: ctx.gemmes,
+    bonus,
+    chemin: ctx.chemin,
+    portails: ctx.portails,
+    scies: ctx.scies,
+    lasers: ctx.lasers,
+    axe: [],
+    decalage: ctx.decalage,
+    entree,
+    sortie: ctx.chemin[ctx.chemin.length - 1]!.g,
+  };
 }
-
-/** La rangée (déjà en miroir) de l'étape qui couvre la colonne `c`, sinon celle de la dernière étape. */
-const rangeeDeLEtape = (chemin: readonly Etape[], c: number): number => (chemin.find((e) => e.c0 <= c && c < e.c1) ?? chemin[chemin.length - 1]!).y;
 
 // Les terrains du jour sont gardés en mémoire (un jour est rejoué des centaines de fois par le serveur) ; au plus huit.
 const GARDES = new Map<string, Terrain>();
@@ -437,7 +189,7 @@ export function terrainDuJour(contenu: Pick<Contenu, "jour" | "ordre" | "g" | "s
   const garde = GARDES.get(cle);
   if (garde) return garde;
   const gen = GENERATEURS[contenu.g]!;
-  const plan = planDuJour(contenu.jour, regles);
+  const plan = planDuJour(contenu.jour, regles, contenu.ordre);
   const morceaux: Morceau[] = [];
   // Les morceaux se tirent dans l'ordre : chacun a besoin de la gravité de sortie du précédent (`entree`).
   const terrain: Terrain = {
@@ -477,6 +229,9 @@ export function empreinteContenu(contenu: Contenu): string {
     for (const e of m.chemin) for (const v of [e.c0, e.c1, e.y, e.g + 1]) entier(v);
     for (const q of m.portails) for (const v of [q.c, PORTAILS.indexOf(q.type)]) entier(v);
     for (const v of m.axe) entier(v);
+    for (const q of m.scies) for (const v of [q.x0, q.y0, q.x1, q.y1, q.periode, q.decalage]) entier(v);
+    for (const q of m.lasers) for (const v of [q.c, q.r0, q.r1, q.decalage]) entier(v);
+    entier(m.variante ?? 0);
     entier(m.decalage);
     entier(m.entree + 1);
   }
@@ -486,7 +241,7 @@ export function empreinteContenu(contenu: Contenu): string {
 const PORTAILS: readonly string[] = ["avion", "onde", "ressort", "gravite", "lent", "v1", "v2", "v3"];
 
 /**
- * Le générateur de la version 4 (lot GR6 : les sections à mode, leurs portails, les portails de vitesse) : `genererMorceau`, avec l'ordre des thèmes de Jump et 19 morceaux par thème. **Les versions 2 et 3 sont retirées** :
+ * Le générateur de la version 5 (lot GR7 : le catalogue de motifs à variantes, la courbe en vagues, les trois dangers ; avant : lot GR6, les sections à mode) : `genererMorceau`, avec l'ordre des thèmes de Jump et 19 morceaux par thème. **Les versions 2, 3 et 4 sont retirées** :
  * le jeu est `off`, aucun jour n'est figé, aucun fichier ne les nomme (`packages/gravity-sim/CLAUDE.md`, « Les anciennes versions »).
  */
-GENERATEURS[4] = { morceauxParTheme: MORCEAUX_PAR_THEME, ordre: ordreDesThemes, morceau: genererMorceau };
+GENERATEURS[5] = { morceauxParTheme: MORCEAUX_PAR_THEME, ordre: ordreDesThemes, morceau: genererMorceau };

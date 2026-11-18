@@ -19,6 +19,9 @@ import {
   ordreDesThemes,
   colonnesParcourues,
   pasDeTraversee,
+  META,
+  TOUS_LES_MOTIFS,
+  nomDuMotif,
   planDuJour,
   reglesDuContenu,
   terrainDuJour,
@@ -79,19 +82,23 @@ describe("le générateur du jour", () => {
       expect(mor.gemmes.length + mor.bonus.length).toBe(0);
     }
   });
-  it("tous les motifs et toutes les cases du jeu apparaissent sur un tour des cinq thèmes (sur quelques jours)", () => {
+  it("tous les motifs du catalogue et toutes les cases du jeu apparaissent sur deux tours des cinq thèmes (sur quelques jours)", () => {
     const motifs = new Set<string>();
     const types = new Set<number>();
-    for (let j = 0; j < 12; j++) {
+    for (let j = 0; j < 30; j++) {
       const t = terrainDuJour(dailyGravity(JOUR + j));
-      for (let m = 0; m < MORCEAUX_PAR_BOUCLE; m++) {
+      for (let m = 0; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
         const mor = t.morceau(m);
-        motifs.add(mor.motif);
+        motifs.add(nomDuMotif(mor));
         for (const v of mor.cases) types.add(v);
       }
     }
-    expect([...motifs].sort()).toEqual(["avion", "calme", "escalier", "etages", "ilots", "inverseur", "milieu", "onde", "pics", "pilier", "ressort", "special", "trouBas", "trouHaut", "zigzag"]);
-    expect([...types].sort()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    // Les motifs d'une section avec un danger qu'aucun tirage ne rencontre sur 30 jours ne sont pas exigés ; tous les autres, si.
+    const attendus = TOUS_LES_MOTIFS.filter((x) => !x.startsWith("ressort+lasers"));
+    const manquants = attendus.filter((x) => !motifs.has(x));
+    expect(manquants, `motifs jamais posés : ${manquants.join(", ")}`).toEqual([]);
+    for (const x of motifs) expect(TOUS_LES_MOTIFS, `motif hors catalogue : ${x}`).toContain(x);
+    expect([...types].sort((x, y) => x - y)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
   it("les gemmes sont rares ; le bouclier et l'aimant sont à des endroits fixes (un morceau sur 23)", () => {
     const t = terrainDuJour(dailyGravity(JOUR));
@@ -254,27 +261,19 @@ describe("les surfaces suivent la vitesse à laquelle le morceau est abordé (lo
       expect(Math.max(...colonnes), `un îlot finit trop tard : ${colonnes.join()}`).toBeLessThanOrEqual(LARGEUR_MORCEAU - 4);
     }
   });
-  it("au-delà de 10 m/s : plus d'escalier montant (arrivée du sol), et plus d'îlots après des étages, un milieu ou un escalier", () => {
-    let escaliers = 0;
-    let ilots = 0;
+  it("les motifs qui ne tiennent pas à grande vitesse (`pasVite`) ne sont jamais posés au-delà de 10 m/s (un vol de 3 cases : 5 colonnes ou plus)", () => {
+    let vus = 0;
     for (let j = 0; j < 40; j++) {
       const t = terrainDuJour(dailyGravity(JOUR + j));
       for (let m = 40; m < 2 * MORCEAUX_PAR_BOUCLE; m++) {
         const mor = t.morceau(m);
-        // La vitesse réelle du morceau (lot GR6 : les portails de vitesse), comme le fait le générateur (un vol de 3 cases : 5 colonnes ou plus).
-        const vite = vitesseDuMorceau(JOUR + j, m) > 10.5 * CASE;
-        if (mor.motif === "escalier") {
-          escaliers++;
-          if (vite) expect(mor.entree, `jour ${j}, morceau ${m}`).toBe(-1);
-        }
-        if (mor.motif === "ilots") {
-          ilots++;
-          if (vite) expect(["etages", "milieu", "escalier"], `jour ${j}, morceau ${m}`).not.toContain(t.morceau(m - 1).motif);
-        }
+        if (META.get(mor.motif)?.pasVite !== true) continue;
+        vus++;
+        const colonnes = colonnesParcourues(pasDeTraversee(3 * CASE), m * LARGEUR_MORCEAU + 8, reglesDuContenu(dailyGravity(JOUR + j)), planDuJour(JOUR + j, reglesDuContenu(dailyGravity(JOUR + j))).facteurAu(m * LARGEUR_MORCEAU * CASE + 8 * CASE));
+        expect(colonnes, `jour ${j}, morceau ${m} (${mor.motif})`).toBeLessThan(5);
       }
     }
-    expect(escaliers).toBeGreaterThan(10);
-    expect(ilots).toBeGreaterThan(10);
+    expect(vus).toBeGreaterThan(10);
   });
   it("les étages finissent au plafond (le morceau suivant l'attend) et leur trou est plus large à grande vitesse", () => {
     const largeurs: { v: number; w: number }[] = [];
