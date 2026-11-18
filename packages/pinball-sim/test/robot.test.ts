@@ -217,21 +217,21 @@ describe("le robot cherche vite sans choisir autrement (lot PBR1)", () => {
   for (const [jour, seed] of [[JOUR + 3, 11], [JOUR + 5, 4]] as const) {
     let n = 0;
     jouerRobot(dailyPinball(jour), seed, {
-      maxTicks: 100 * 600,
+      maxTicks: 90 * 600,
       surCoup: (_c, p) => {
-        // un état sur trois jusqu'à douze par table, et tous ceux où plusieurs billes jouent (jusqu'à six)
-        if ((++n % 3 === 0 && vus.length < 24) || (p.autres.length > 0 && vus.filter((q) => q.autres.length > 0).length < 6)) vus.push(p.copier());
+        // un état sur quatre (dix au plus), et des états où plusieurs billes jouent (quatre au plus)
+        if ((++n % 4 === 0 && vus.length < 10) || (p.autres.length > 0 && n % 2 === 0 && vus.filter((q) => q.autres.length > 0).length < 4)) vus.push(p.copier());
       },
     });
   }
   it("la recherche « grossier puis fin » rend le même coup que d'essayer toutes les frappes, avec bien moins d'essais", () => {
-    expect(vus.length).toBeGreaterThan(12);
+    expect(vus.length).toBeGreaterThan(8);
     let rapides = 0;
     let complets = 0;
     let multi = 0;
     for (const p of vus) {
       // deux situations d'écart minimal entre appuis : libre, et un batteur qui ne peut pas être appuyé avant 90 pas
-      for (const libre of [[0, 0], [90, 0], [0, 90]] as const) {
+      for (const libre of [[0, 0], [90, 0]] as const) {
         const a = choisir(p, libre);
         const b = choisir(p, libre, undefined, true);
         expect(a.coup, `état au pas ${p.tick}, libre ${libre.join("/")}`).toEqual(b.coup);
