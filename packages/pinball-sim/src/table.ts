@@ -183,22 +183,23 @@ export interface Table {
   passage: Passage | null;
   sauveur: Sauveur;
   aiguillage: Aiguillage | null;
-  /** Lot PBR1 : **la grille des murs** — pour chaque case de 32 px (`caseDe`), les murs (hors cibles) qui peuvent toucher une bille qui s'y trouve, dans l'ordre de `murs`. Les mêmes collisions dans le même ordre, sans essayer les 70 murs à chaque pas. */
+  /** Lot PBR1 : **la grille des murs** — pour chaque case de 16 px (`caseDe`), les murs (hors cibles) qui peuvent toucher une bille qui s'y trouve, dans l'ordre de `murs`. Les mêmes collisions dans le même ordre, sans essayer les 70 murs à chaque pas. */
   grille: Segment[][];
   /** Lot PBR1 : la bande de y (unités) hors de laquelle une bille ne peut toucher ni un poteau ni un capteur de voie : `[bas, haut]`, bornes exclues. */
   bandePoteaux: [number, number];
   bandeVoies: [number, number];
 }
 
-/** La grille des murs (lot PBR1) : des cases de 2^17 unités (32 px), `COLONNES` × `LIGNES` ; une bille hors de la table est rangée dans la case du bord. */
-export const CASE_BITS = 17;
-export const COLONNES = 12;
-export const LIGNES = 24;
+/** La grille des murs (lot PBR1) : des cases de 2^16 unités (16 px), `COLONNES` × `LIGNES` ; une bille hors de la table est rangée dans la case du bord. */
+export const CASE_BITS = 16;
+export const COLONNES = 24;
+export const LIGNES = 48;
 /**
  * **La marge de la grille** : un mur est rangé dans une case s'il est à moins de `RAYON + MARGE_GRILLE` de la case. Pendant le pas d'une bille, un mur qui la touche la pousse (de 9 px au plus) avant que le suivant soit
- * essayé : la marge couvre une chaîne d'une dizaine de poussées, plus qu'aucun coin de la table n'en peut faire (`test/grille.test.ts`).
+ * essayé : la poussée d'un pas ne dépasse pas 2,5 px (la bille avance de 2,5 px au plus, elle ne pénètre donc un mur que de cela : 2,3 px mesurés sur des parties entières du robot) ; la marge de 32 px couvre plus de dix poussées
+ * à la suite, plus qu'aucun coin de la table n'en peut faire (`test/grille.test.ts`).
  */
-export const MARGE_GRILLE = 96 * UNITE;
+export const MARGE_GRILLE = 32 * UNITE;
 const LOIN = 2 ** 40;
 export const caseDe = (x: number, y: number): number => {
   const cx = x >> CASE_BITS;
