@@ -22,6 +22,9 @@
 - **Écarts à la maquette** : photos de 112 / 92 px (charte § 9, la maquette a 120 / 96) ; écart sous le podium en encre douce (la terre fait 4,07:1 sur la crème) ; ▲ en encre et ▼ en terre (pas de vert dans la charte) ; « Or · 32,000 s » sans capitales (le « s »).
 - Au cumul, « Ta course » n'existe que si le joueur a tout fini ; hors du haut (50) l'écart est celui au premier.
 
+## Bancs de réponses : références à régénérer (décision à confirmer)
+La CI est rouge sur `bancTrack`, `bancJump` et `bancTower` : **la seule différence est `trio` dans `GET /api/groupes/classement`** (changement voulu par le lot). Les références `apps/api/test/fixtures/banc-*.json` doivent être régénérées (`UPDATE_BANC=1 npx vitest run --project sqlite apps/api/test/banc`) ; l'outil de session a refusé de réécrire ces fichiers, je ne l'ai donc pas fait. Après régénération, vérifier que le diff ne touche que les entrées « classement des groupes ».
+
 ## Budget `portail.classement` — à valider
 Mesuré (`node scripts/budgets.mjs`) : **53 232 o avant, 56 974 o après, plafond 57 Ko : marge de 26 o.** Tenu en mettant à la demande « Ta course » (module, feuille, textes), les places gagnées et le podium des groupes. **Je propose de relever le plafond à 60 Ko** (mesure + 5 %) : la prochaine retouche de cette page le dépassera. Je n'ai pas modifié `budgets.md`. `portail.premier` : 43 519 → 43 575 o (feuille partagée allégée, plafond 47 Ko).
 
