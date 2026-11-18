@@ -802,6 +802,54 @@ function solVolcan(c: CanvasRenderingContext2D, titre: string, police: string): 
 }
 
 /** Ce qu'il faut savoir d'une partie pour dessiner son sol : le thème (palette), la table (les modules posés, les couloirs du haut), le nom du thème peint sur la table et la police du jeu. */
+/**
+ * **L'éventail des tirs** (lot PBL2, `?debug&tirs`) : ce que `tune-tirs.ts` calcule avec la simulation et que `dessinerSol` peint sur le sol (donc dans les deux rendus) — la zone de tir (cases de 4 px, `COLONNES_TIRS` de large),
+ * une trajectoire par moment de frappe retenu, de la couleur de ce que la bille touche en premier, et la fenêtre de chaque objectif en ms.
+ */
+export interface TirsAffiches {
+  zone: Uint8Array;
+  traces: { objectif: string; x: number[]; y: number[] }[];
+  fenetres: { objectif: string; ms: number; ok: boolean }[];
+}
+export const COLONNES_TIRS = 94;
+/** La couleur de chaque objectif dans l'éventail : les mêmes que les intentions des flèches (jaune la mission, bleu le verrou) ; vert les rails, rose la porte. */
+export const COULEURS_TIRS: Readonly<Record<string, string>> = { mission: "#FFC22E", verrou: "#35D6FF", rampe1: "#7CF05A", rampe2: "#4CD07A", orbite: "#B6F05A", porte: "#FF4FB0" };
+let TIRS: TirsAffiches | null = null;
+/** Pose (ou retire, `null`) l'éventail que le prochain sol dessinera. */
+export const poserLesTirs = (t: TirsAffiches | null): void => {
+  TIRS = t;
+};
+function dessinerLesTirs(c: CanvasRenderingContext2D, t: TirsAffiches): void {
+  c.save();
+  // la zone de tir : un voile bleu
+  c.fillStyle = "rgba(90,150,255,.22)";
+  for (let k = 0; k < t.zone.length; k++) if (t.zone[k]) c.fillRect((k % COLONNES_TIRS) * 4, Math.floor(k / COLONNES_TIRS) * 4, 4, 4);
+  // les trajectoires : grises quand elles ne touchent aucun objectif, en couleur sinon
+  c.lineJoin = "round";
+  for (const pass of [false, true]) {
+    for (const tr of t.traces) {
+      const couleur = COULEURS_TIRS[tr.objectif];
+      if (!!couleur !== pass) continue;
+      c.beginPath();
+      tr.x.forEach((x, i) => (i === 0 ? c.moveTo(x, tr.y[i]!) : c.lineTo(x, tr.y[i]!)));
+      c.lineWidth = couleur ? 1.8 : 0.8;
+      c.strokeStyle = couleur ?? "rgba(255,255,255,.28)";
+      c.stroke();
+    }
+  }
+  // la légende : l'objectif et sa fenêtre (la plus longue plage de moments de frappe qui l'atteignent, en ms) ; « ! » sous le seuil
+  c.font = "700 9px sans-serif";
+  c.textBaseline = "middle";
+  t.fenetres.forEach((f, i) => {
+    const y = 134 + i * 12;
+    c.fillStyle = "rgba(0,0,0,.6)";
+    c.fillRect(28, y - 6, 92, 11);
+    c.fillStyle = COULEURS_TIRS[f.objectif] ?? "#fff";
+    c.fillText(`${f.objectif} ${f.ms} ms${f.ok ? "" : " !"}`, 31, y);
+  });
+  c.restore();
+}
+
 export interface DonneesSol {
   theme: ThemePinball;
   table: Table;
@@ -1198,7 +1246,8 @@ export function pastille(c: CanvasRenderingContext2D, police: string, x: number,
     const ca = Math.cos(ex.pointe);
     const sa = Math.sin(ex.pointe);
     const t = Math.min(Math.abs(ca) < 1e-6 ? Infinity : w / 2 / Math.abs(ca), Math.abs(sa) < 1e-6 ? Infinity : demiH / Math.abs(sa));
-    const portee = ex.portee ?? POINTE_PLAQUE;
+    // lot PBL2 : `portee` est la distance **du centre de la plaque au bout de la pointe** (px de plaque) : le bout ne dépend pas de la taille de la boîte, donc ni de l'état de la plaque (une ou plusieurs lignes) ; le trait part du bord
+    const portee = Math.max(POINTE_PLAQUE, (ex.portee ?? 0) - t);
     const tete = Math.min(portee, 7);
     c.lineJoin = "round";
     c.lineCap = "round";
@@ -1512,6 +1561,8 @@ export interface Etiquette {
   /** Le texte de base, déjà en capitales, et tous les mots que la plaque peut dire (le texte de base compris : « JACKPOT » sur la plaque de la mission) ; **la plaque a la taille du plus large**. */
   texte: string;
   mots: string[];
+  /** Lot PBL2 : le nombre de lignes du plus haut des mots (le verrou éteint dit « après la mission » sur une deuxième ligne) : la place réservée à la plaque. */
+  lignes: number;
   /** Le centre de la plaque sur la table (px). */
   x: number;
   y: number;
@@ -1524,13 +1575,21 @@ export interface Etiquette {
   ancres: readonly { x: number; y: number }[];
   /** **Collée à son élément** : l'angle (radians, y vers le bas) de la pointe, de la plaque vers l'élément, et l'écart (px) entre la boîte et ce que la plaque nomme. */
   pointe: number;
-  /** La longueur du trait de la plaque à son élément, en px de plaque (avant le grossissement) : `POINTE_PLAQUE` au moins. */
+  /** Lot PBL2 : la distance du centre de la plaque au bout de sa pointe, en px de plaque (avant le grossissement). */
   portee: number;
   ecart: number;
   /** Une plaque permanente est toujours à l'écran (la mission et le verrou) ; celle de la porte ne l'est que porte ouverte. */
   permanente: boolean;
   /** Dernier recours : la plaque n'a trouvé de place que sur un rail (le test les compte : un emplacement à déplacer, voir le README du lot PBL1). */
   surUnRail: boolean;
+}
+/**
+ * **Le bout de la pointe d'une plaque** (lot PBL2) : le point de la table (px) où le petit triangle de la pointe se termine, à `portee` px de plaque du centre de la plaque, dans la direction `pointe` (`pastille` le dessine
+ * ainsi, au grossissement de la plaque : **il ne dépend pas de la boîte**, donc pas de l'état de la plaque). C'est ce point — et non le centre de la plaque ni sa boîte — qui doit tomber dans l'emprise de l'élément que la plaque nomme (`test/ancrage.test.ts`).
+ */
+export function pointeDeLEtiquette(e: Pick<Etiquette, "x" | "y" | "taille" | "pointe" | "portee">, _lignes?: number): { x: number; y: number } {
+  const d = e.portee * e.taille * GROSSISSEMENT_ETIQUETTE;
+  return { x: e.x + Math.cos(e.pointe) * d, y: e.y + Math.sin(e.pointe) * d };
 }
 export const boiteDeLEtiquette = (e: Pick<Etiquette, "x" | "y" | "l" | "h">): { x0: number; y0: number; x1: number; y1: number } => ({ x0: e.x - e.l / 2, y0: e.y - e.h / 2, x1: e.x + e.l / 2, y1: e.y + e.h / 2 });
 /** Une boîte et un disque se recouvrent-ils ? */
@@ -1556,6 +1615,21 @@ export const ECART_MAX_PLAQUE = 44;
 export const POINTE_PLAQUE = 8;
 /** La distance d'un point à une boîte (0 : dedans). */
 const distanceBoite = (b: { x0: number; y0: number; x1: number; y1: number }, x: number, y: number): number => Math.hypot(x - Math.min(b.x1, Math.max(b.x0, x)), y - Math.min(b.y1, Math.max(b.y0, y)));
+/** La profondeur où la pointe d'une plaque entre dans l'emprise de son élément : 55 % de son rayon (lot PBL2). */
+export const PROFONDEUR_POINTE = 0.55;
+/**
+ * **La portée de la pointe** (lot PBL2, px de plaque) : la longueur qui amène le bout de la pointe **dans l'emprise de l'élément que la plaque nomme**, à `PROFONDEUR_POINTE` de son rayon sous son bord (au moins `POINTE_PLAQUE`).
+ * Avant ce lot elle se déduisait de l'écart le plus court entre la boîte et l'élément, qui n'est pas la distance le long de la pointe : une plaque posée en diagonale avait son bout jusqu'à 5 px **hors** de l'emprise, au
+ * bord d'un voisin (« le geyser et le verrou pointent sur le même cratère »). `test/ancrage.test.ts` garde le bout dans l'emprise sur les 500 tables.
+ */
+function porteeDeLaPointe(p: { x: number; y: number; taille: number; l: number; h: number }, ancre: { x: number; y: number }, pointe: number, rayon: number): number {
+  // la distance du centre de la plaque au bout de la pointe, en px de plaque : jusqu'à `PROFONDEUR_POINTE` du rayon sous le bord de l'élément ; au moins le bord de la boîte (la plus haute) et la tête de la pointe
+  const ca = Math.cos(pointe);
+  const sa = Math.sin(pointe);
+  const t = Math.min(Math.abs(ca) < 1e-6 ? Infinity : p.l / 2 / Math.abs(ca), Math.abs(sa) < 1e-6 ? Infinity : p.h / 2 / Math.abs(sa));
+  const jusqueLa = Math.hypot(ancre.x - p.x, ancre.y - p.y) - rayon * (1 - PROFONDEUR_POINTE);
+  return Math.max(t + POINTE_PLAQUE * p.taille * GROSSISSEMENT_ETIQUETTE, jusqueLa) / (p.taille * GROSSISSEMENT_ETIQUETTE);
+}
 /** **La règle des plaques (lot PBL1).** Seules trois choses sont nommées : **l'élément de la mission** (le manège, le tourbillon, le portail A — « Portails » —, le geyser ; « JACKPOT » pendant la multibille), **le verrou** (éteint, puis allumé qui
  *  clignote) et **la porte** (quand elle est ouverte) ; ni les bumpers, ni les cibles, ni le spinner, ni le trou simple, ni les rails n'ont de plaque (leurs noms restent dans le panneau « Aujourd'hui » et le « Comment jouer »).
  *  **Chaque plaque est collée à son élément** : on cherche, autour de lui, la plus petite distance entre sa boîte et lui (au plus `ECART_MAX_PLAQUE` px) à une place qui ne recouvre rien de fixe — ni un autre module, ni un poteau, ni
@@ -1615,6 +1689,7 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
   const poser = (module: string, role: RoleEtiquette, mots: string[], empreinte: readonly Disque[], centre: { x: number; y: number }, rayon: number, ancres: { x: number; y: number }[], permanente: boolean): void => {
     const texte = mots[0]!;
     const large = mots.reduce((a, b) => (largeurPlaque(b, style) > largeurPlaque(a, style) ? b : a));
+    const lignes = Math.max(...mots.map((m) => m.split("\n").length));
     type Candidat = { x: number; y: number; ecart: number; cout: number; taille: number; l: number; h: number };
     let meilleur = null as Candidat | null;
     let surUnRail = false;
@@ -1622,7 +1697,7 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
     for (const [tailles, creux, sansRails] of [[[1, 0.92, 0.84, 0.76, 0.68], 0, false], [[1, 0.92, 0.84, 0.76, 0.68, 0.6], 0, false], [[1, 0.92, 0.84, 0.76, 0.68, 0.6], 0.55, false], [[1, 0.92, 0.84, 0.76, 0.68, 0.6, 0.52], 0.55, true]] as const) {
       for (const taille of tailles) {
         const l = largeurPlaque(large, style) * taille * GROSSISSEMENT_ETIQUETTE;
-        const h = hauteurPlaque(1) * taille * GROSSISSEMENT_ETIQUETTE;
+        const h = hauteurPlaque(lignes) * taille * GROSSISSEMENT_ETIQUETTE;
         for (let a = 0; a < 360; a += 10) {
           const cosA = Math.cos((a * Math.PI) / 180);
           const sinA = Math.sin((a * Math.PI) / 180);
@@ -1651,16 +1726,18 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
     }
     if (meilleur) {
       const ap = ancres[0]!;
-      posees.push({ module, role, texte, mots, x: meilleur.x, y: meilleur.y, taille: meilleur.taille, l: meilleur.l, h: meilleur.h, ancres, pointe: Math.atan2(ap.y - meilleur.y, ap.x - meilleur.x), portee: Math.max(POINTE_PLAQUE, meilleur.ecart / (meilleur.taille * 1.4) + 1), ecart: Math.max(0, meilleur.ecart), permanente, surUnRail });
+      const pointe = Math.atan2(ap.y - meilleur.y, ap.x - meilleur.x);
+      posees.push({ module, role, texte, mots, lignes, x: meilleur.x, y: meilleur.y, taille: meilleur.taille, l: meilleur.l, h: meilleur.h, ancres, pointe, portee: porteeDeLaPointe(meilleur, ap, pointe, empreinte[0]?.r ?? rayon), ecart: Math.max(0, meilleur.ecart), permanente, surUnRail });
       return;
     }
     // aucune place : l'endroit habituel, au-dessous, à la plus petite taille (ne devrait pas arriver : le test le garde)
     const taille = 0.68;
     const ap = ancres[0]!;
     const l = largeurPlaque(large, style) * taille * GROSSISSEMENT_ETIQUETTE;
-    const h = hauteurPlaque(1) * taille * GROSSISSEMENT_ETIQUETTE;
+    const h = hauteurPlaque(lignes) * taille * GROSSISSEMENT_ETIQUETTE;
     const y = centre.y + rayon + h / 2 + 2;
-    posees.push({ module, role, texte, mots, x: centre.x, y, taille, l, h, ancres, pointe: Math.atan2(ap.y - y, ap.x - centre.x), portee: POINTE_PLAQUE, ecart: 2, permanente, surUnRail: true });
+    const pointe = Math.atan2(ap.y - y, ap.x - centre.x);
+    posees.push({ module, role, texte, mots, lignes, x: centre.x, y, taille, l, h, ancres, pointe, portee: porteeDeLaPointe({ x: centre.x, y, taille, l, h }, ap, pointe, empreinte[0]?.r ?? rayon), ecart: 2, permanente, surUnRail: true });
   };
   // 1. l'élément de la mission (le portail A pour l'espace, qui compte pour les deux portails : « Portails »)
   const element = table.poses.find((m) => comptePourLaMission(theme, m.type) && m.type !== "portailB");
@@ -1677,7 +1754,9 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
   if (table.verrou >= 0 && nomVerrou) {
     const v = table.trous[table.verrou]!;
     const c = { x: px(v.x), y: px(v.y) };
-    poser("trou", "verrou", [nomVerrou.toLocaleUpperCase()], [obstacles[table.poses.findIndex((m) => m.type === "trou" && m.x === v.x && m.y === v.y)]!], c, empreinteDuModule("trou"), [c], true);
+    // lot PBL2 : éteinte, la plaque dit ce qui l'allume (« VERROU » puis, sur une deuxième ligne, « APRÈS LA MISSION ») ; allumée, elle ne dit que « VERROU »
+    const annonce = nom("verrou.annonce");
+    poser("trou", "verrou", [nomVerrou.toLocaleUpperCase(), ...(annonce ? [`${nomVerrou}\n${annonce}`.toLocaleUpperCase()] : [])], [obstacles[table.poses.findIndex((m) => m.type === "trou" && m.x === v.x && m.y === v.y)]!], c, empreinteDuModule("trou"), [c], true);
   }
   // 3. la porte (sa plaque ne s'affiche que porte ouverte, mais sa place est prise une fois pour toutes)
   const nomPorte = nom("porte");
@@ -1794,6 +1873,7 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
     c.stroke();
   }
   masque(c, d.hors ?? ENCRE);
+  if (TIRS) dessinerLesTirs(c, TIRS);
 }
 
 export interface Surimpression {
@@ -1893,7 +1973,10 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       } else if (e.role === "verrou") {
         if (partie.verrouAllume) {
           if (fort) extra.allumee = COULEURS_INTENTION.verrou;
-        } else extra.eteinte = true;
+        } else {
+          extra.eteinte = true;
+          texte = e.mots[1] ?? e.texte;
+        }
       } else if (partie.multibille) {
         texte = e.mots[1] ?? e.texte;
         if (fort) extra.allumee = COULEURS_INTENTION.jackpot;

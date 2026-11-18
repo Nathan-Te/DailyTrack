@@ -82,7 +82,11 @@ export function creerHud(o: OptionsHud): Hud {
   const missionNom = el("span", { classe: "pinball-mission__nom" });
   const jauge = el("span", { classe: "pinball-mission__jauge", attrs: { "aria-hidden": "true" } });
   const missionVal = el("span", { classe: "pinball-mission__val" });
-  mission.append(missionNom, jauge, missionVal);
+  // lot PBL2 : ce que la mission débloque (« → verrou »), tant qu'elle n'est pas réussie
+  const missionSuite = el("span", { classe: "pinball-mission__suite", attrs: { "aria-hidden": "true" } });
+  // le nom et, dessous, ce que la mission débloque : deux lignes dans la même colonne (la plaque reste étroite : elle ne gêne jamais celle des billes)
+  const missionTitre = el("span", { classe: "pinball-mission__titre" }, missionNom, missionSuite);
+  mission.append(missionTitre, jauge, missionVal);
 
   const billes = el("div", { classe: "pinball-hud__plaque pinball-hud__billes", attrs: { role: "img" } });
   for (let i = 0; i < o.billes; i++) billes.append(el("span", { classe: "pinball-hud__bille" }));
@@ -161,7 +165,10 @@ export function creerHud(o: OptionsHud): Hud {
       jauge.dataset.dense = cases > 5 ? "1" : "0";
       [...jauge.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < pleines ? "1" : "0"));
       missionVal.textContent = e.multibille ? t("hud.jackpot.prochain", { points: e.prochain }) : e.faite ? t("hud.mission.reussie") : `${e.compteur}/${e.but}`;
-      mission.setAttribute("aria-label", e.multibille ? t("hud.multibille.aria", { points: e.prochain }) : t("hud.niveau.aria", { n: e.niveau }));
+      // lot PBL2 : « Geysers 1/4 → verrou » — la plaque dit ce que la mission débloque ; réussie ou en multibille, le verrou parle de lui-même
+      const annonce = !e.multibille && !e.faite;
+      missionSuite.textContent = annonce ? t("hud.mission.suite") : "";
+      mission.setAttribute("aria-label", e.multibille ? t("hud.multibille.aria", { points: e.prochain }) : `${t("hud.niveau.aria", { n: e.niveau })}${annonce ? ` · ${t("hud.mission.suite.aria")}` : ""}`);
       poteau.dataset.etat = e.lampes >= 2 ? "arme" : e.lampes === 1 ? "une" : "rentre";
       [...poteau.children].forEach((c, i) => ((c as HTMLElement).dataset.plein = i < e.lampes ? "1" : "0"));
       poteau.setAttribute("aria-label", e.lampes >= 2 ? t("hud.poteau.arme.aria") : t("hud.poteau.aria", { n: e.lampes }));

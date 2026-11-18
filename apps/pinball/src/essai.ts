@@ -7,6 +7,7 @@
 //   · `?essai=verrou` (lot PBG2) : la mission est réussie et le verrou allumé ; `?essai=multibille` : la partie commence en multibille (jamais classés) ;
 //   · `?essai=porte` (lot PBG3) : la porte est ouverte ; `?essai=poteau` : le poteau sauveur est armé (jamais classés) ;
 //   · `?plan=<id>` (lot PBG1) : la table de ce plan (doublette, tremplin, bretelle, boucle) ce jour-là, **combinable avec `?theme=`** (jamais classée) ; un plan inconnu est ignoré par `niveau.ts` (la table du jour) ;
+//   · `?debug&tirs` (lot PBL2) : l'éventail des tirs d'un humain dessiné sur la table — la zone de tir et, en couleur, ce que la bille touche en premier à chaque moment de frappe, avec la fenêtre de chaque objectif en ms (jamais en production) ;
 //   · `?debug&sons` (lot PBS1) : la table des sons, un panneau où chaque bouton joue un son (jamais en production) ;
 //   · `?robot` (lot PB4) : on regarde le robot jouer la table du jour (sa première partie ; `?robot=2` : la troisième) avec la mention « Le robot joue » ; `?jour=AAAA-MM-JJ&robot` pour un autre jour (jamais classé).
 // Ce fichier est dans le premier chargement (la définition y lit `classable`) : **il ne fait que lire l'adresse**, tout le reste (bornes, validation, panneau) est à la demande.
@@ -17,6 +18,8 @@ export interface Essai {
   fps: boolean;
   /** `?debug&sons` (lot PBS1) : le panneau de la table des sons. */
   sons: boolean;
+  /** `?debug&tirs` (lot PBL2) : l'éventail des tirs et les fenêtres de tir de chaque objectif, dessinés sur la table. */
+  tirs: boolean;
   /** Le niveau de rendu imposé par l'adresse, ou `null` (haute, avec le passage automatique en basse). */
   qualite: Qualite | null;
   /** Les réglages collés dans l'adresse (le JSON lu, non vérifié : `bornes.ts` le fait, à la demande), ou `null`. */
@@ -38,7 +41,7 @@ export interface Essai {
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { tune: false, fps: false, sons: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, essai: false };
+  const vide: Essai = { tune: false, fps: false, sons: false, tirs: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const debug = q.has("debug");
@@ -65,5 +68,5 @@ export function lireEssai(search: string, restreint: boolean): Essai {
   // `?plan=` : un identifiant en lettres minuscules ; autre chose est ignoré
   const brutPlan = q.get("plan");
   const plan = brutPlan !== null && /^[a-z]{1,20}$/.test(brutPlan) ? brutPlan : null;
-  return { tune, fps: debug && q.has("fps"), sons: debug && q.has("sons"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, verrou, multibille, porte, poteau, robot, plan, essai: tune || reglages !== null || mission || verrou || multibille || porte || poteau || robot !== null || plan !== null };
+  return { tune, fps: debug && q.has("fps"), sons: debug && q.has("sons"), tirs: debug && q.has("tirs"), qualite: niveau === "haute" || niveau === "basse" ? niveau : null, reglages, mission, verrou, multibille, porte, poteau, robot, plan, essai: tune || reglages !== null || mission || verrou || multibille || porte || poteau || robot !== null || plan !== null };
 }

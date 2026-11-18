@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDS_PLANS, Partie, REGLAGES, dailyPinball } from "@cdj/pinball-sim";
+import { IDS_PLANS, Partie, REGLAGES, dailyPinball, planDe } from "@cdj/pinball-sim";
 import { PAS_PORTE, PAS_POTEAU_RENTRE, PAS_POTEAU_SORT, angleVise, boutLibre, couleurAiguillage, geoAiguillage, geoPorte, ouverturePorte, rapprocher, sortiePoteau } from "../src/deblocages";
 
 // Lot PBG3 : ce que les deux rendus lisent de la porte, du poteau sauveur et de l'aiguillage — des fonctions du seul pas, communes à three.js et au rendu à plat.
@@ -7,13 +7,15 @@ const table = (plan: string, theme: "foire" | "ocean" | "espace" | "volcan" = "f
 const etat = (o: Partial<{ passageOuvert: number; lampes: [boolean, boolean]; sauveurTick: number; tick: number }>) => ({ passageOuvert: 0, lampes: [false, false] as [boolean, boolean], sauveurTick: -100000, tick: 1000, reglages: REGLAGES, ...o });
 
 describe("la géométrie de la porte", () => {
-  it.each(IDS_PLANS)("%s : un battant de 34 px, deux murs de 36 px, une flèche dans le passage", (plan) => {
+  it.each(IDS_PLANS)("%s : un battant, deux murs de la profondeur du plan, une flèche dans le passage", (plan) => {
+    // lot PBL2 : la porte ferme la bouche d'une orbite ; sa largeur et sa profondeur sont celles du plan (`porteDeLOrbite`)
+    const def = planDe(plan).porte!;
     const g = geoPorte(table(plan))!;
-    expect(Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y)).toBeCloseTo(34, 0);
+    expect(Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y)).toBeCloseTo(def.largeur, 0);
     expect(g.murs).toHaveLength(2);
-    for (const m of g.murs) expect(Math.hypot(m.x1 - m.x0, m.y1 - m.y0)).toBeCloseTo(36, 0);
+    for (const m of g.murs) expect(Math.hypot(m.x1 - m.x0, m.y1 - m.y0)).toBeCloseTo(def.profondeur, 0);
     // la flèche est entre les deux murs, à mi-profondeur
-    expect(Math.hypot(g.fleche.x - g.x, g.fleche.y - g.y)).toBeCloseTo(18, 0);
+    expect(Math.hypot(g.fleche.x - g.x, g.fleche.y - g.y)).toBeCloseTo(def.profondeur / 2, 0);
   });
   it("le plan d'essai n'a ni porte ni aiguillage", () => {
     const t = new Partie({ jour: 0, g: 6, theme: "foire", plan: "classique", modules: ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"] }).table;
@@ -25,7 +27,7 @@ describe("la géométrie de la porte", () => {
     const ferme = boutLibre(g, 0);
     expect([ferme.x, ferme.y]).toEqual([g.b.x, g.b.y]);
     const ouvert = boutLibre(g, 1);
-    expect(Math.hypot(ouvert.x - g.a.x, ouvert.y - g.a.y)).toBeCloseTo(34, 3);
+    expect(Math.hypot(ouvert.x - g.a.x, ouvert.y - g.a.y)).toBeCloseTo(planDe("bretelle").porte!.largeur, 2);
     // l'angle entre le battant fermé et ouvert : 1,4 rad
     const a0 = Math.atan2(ferme.y - g.a.y, ferme.x - g.a.x);
     const a1 = Math.atan2(ouvert.y - g.a.y, ouvert.x - g.a.x);

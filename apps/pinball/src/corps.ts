@@ -1345,9 +1345,9 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   for (const e of placerEtiquettes(t, o.theme, o.nom)) {
     const largeur = Math.max(...e.mots.map((m) => largeurPlaque(m, style)));
     // la toile garde, autour de la plaque, la place du trait qui la relie à son élément
-    const marge = Math.ceil(e.portee) + 4;
+    const marge = Math.ceil(Math.max(0, e.portee - Math.min(largeur / 2, hauteurPlaque(e.lignes) / 2))) + 4;
     const l = largeur + 6 + 2 * marge;
-    const hPlan = hauteurPlaque(1) + 4 + 2 * marge;
+    const hPlan = hauteurPlaque(e.lignes) + 4 + 2 * marge;
     const mat2 = new MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, toneMapped: false });
     aLiberer.push(mat2);
     const plaque = new Mesh(geo(new PlaneGeometry(l, hPlan)), mat2);
@@ -1623,7 +1623,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         if (ouverte) clignotePBG2 ? dire(p, p.e.texte, "allumee", COULEURS_INTENTION.mission) : dire(p, p.e.texte, "normale");
       } else if (p.e.role === "verrou") {
         if (partie.verrouAllume) clignotePBG2 ? dire(p, p.e.texte, "allumee", COULEURS_INTENTION.verrou) : dire(p, p.e.texte, "normale");
-        else dire(p, p.e.texte, "eteinte");
+        else dire(p, p.e.mots[1] ?? p.e.texte, "eteinte");
       } else if (partie.multibille) {
         const jackpot = p.e.mots[1] ?? p.e.texte;
         clignotePBG2 ? dire(p, jackpot, "allumee", COULEURS_INTENTION.jackpot) : dire(p, jackpot, "normale");

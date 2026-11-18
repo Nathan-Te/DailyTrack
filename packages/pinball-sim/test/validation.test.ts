@@ -10,10 +10,10 @@ const JOUR = daysFromCivil(2026, 11, 9);
 
 describe("toutes les tables que le générateur peut tirer", () => {
   const toutes = toutesLesTables();
-  it("500 tables, chacune une seule fois (quatre plans × quatre thèmes ; l'espace n'en a que deux par plan : presque tous ses emplacements sont fixes)", () => {
-    expect(toutes).toHaveLength(500);
-    expect(new Set(toutes.map(cleDeTable)).size).toBe(500);
-    for (const [theme, n] of [["foire", 180], ["ocean", 180], ["espace", 8], ["volcan", 132]] as const) expect(toutes.filter((c) => c.theme === theme)).toHaveLength(n);
+  it("94 tables, chacune une seule fois (quatre plans × quatre thèmes ; l'espace n'en a que deux par plan : presque tous ses emplacements sont fixes ; lot PBL2 : 500 avant, les emplacements du haut des plans ne portent plus que ce qui ne coince pas la bille)", () => {
+    expect(toutes).toHaveLength(94);
+    expect(new Set(toutes.map(cleDeTable)).size).toBe(94);
+    for (const [theme, n] of [["foire", 37], ["ocean", 37], ["espace", 5], ["volcan", 15]] as const) expect(toutes.filter((c) => c.theme === theme)).toHaveLength(n);
     for (const plan of IDS_PLANS) expect(toutes.some((c) => c.plan === plan), plan).toBe(true);
   });
   it("chaque table du générateur sur 1 500 jours (le thème du jour comme imposé) est l'une d'elles", () => {
@@ -26,7 +26,7 @@ describe("toutes les tables que le générateur peut tirer", () => {
       const t = dailyPinballAvec(JOUR + j, new Set(), undefined, THEMES_PINBALL[j % 4]!);
       expect(cles.has(cleDeTable(t))).toBe(true);
     }
-    expect(vues.size).toBeGreaterThan(150);
+    expect(vues.size).toBeGreaterThan(60);
   });
 });
 

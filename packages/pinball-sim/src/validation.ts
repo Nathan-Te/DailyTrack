@@ -52,7 +52,7 @@ function enJeu(p: Partie, x: number, y: number, vx: number, vy: number): void {
 }
 
 /** Le carré de la distance (unités) d'un point à un mur. Les produits restent sous 2^53 (un mur fait au plus 1,6 million d'unités : on divise par 1 024 avant de multiplier). */
-const distance2 = (x: number, y: number, s: Segment): number => {
+export const distance2 = (x: number, y: number, s: Segment): number => {
   const ex = s.bx - s.ax;
   const ey = s.by - s.ay;
   const l2 = ex * ex + ey * ey;
