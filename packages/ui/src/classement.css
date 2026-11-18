@@ -1,0 +1,449 @@
+/* Lot U6 — la feuille du composant de classement (`classement.ts`) : le podium, les lignes, les seuils, « Ta course ». Mobile d'abord (390 px) ; à partir de 760 px les marches et les photos grandissent.
+   Valeurs : jetons de @cdj/ui seulement (les médailles : `--dj-or`, `--dj-argent`, `--dj-bronze`, `--dj-diamant`). Sur fond sombre (classe `dj-sombre`, un jeu) les couleurs viennent des jetons de l'asphalte.
+   Les repères `classement-*` sont ceux des tests (e2e du portail) ; la mise en page de la page (colonnes par jeu, panneau de droite, position de « Ta course ») est celle de l'application. */
+
+.classement-podium,
+.classement-liste,
+.classement-seuil {
+  --cl-carte: var(--dj-papier);
+  --cl-texte: var(--dj-encre);
+  --cl-doux: var(--dj-encre-douce);
+  --cl-trait: var(--dj-encre);
+  --cl-ecart: var(--dj-terre);
+}
+.dj-sombre :is(.classement-podium, .classement-liste, .classement-seuil) {
+  --cl-carte: var(--track-piste);
+  --cl-texte: var(--track-texte);
+  --cl-doux: var(--track-texte-doux);
+  --cl-trait: var(--track-texte);
+  --cl-ecart: var(--track-livree-texte);
+}
+
+/* --- Le podium : trois marches (or, argent, bronze), la couronne sur la première ----------------------------------------------------------- */
+.classement-podium {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); /* `minmax(0, …)` : un long pseudo ne doit jamais élargir sa colonne */
+  align-items: end;
+  gap: 0 14px;
+  margin: 0 0 22px;
+  padding-top: 26px; /* la place de la couronne */
+  color: var(--cl-texte);
+}
+/* Le socle : une barre sous les trois marches. */
+.classement-podium::after {
+  content: "";
+  grid-column: 1 / -1;
+  grid-row: 2;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--cl-trait);
+}
+.classement-podium__liste {
+  display: contents; /* les places deviennent les éléments de la grille, comme les places libres (des `div`) */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* L'ordre du DOM est celui du classement (1er, 2e, 3e) ; à l'écran le 1er est au milieu. */
+.classement-place {
+  grid-row: 1;
+  min-width: 0;
+}
+.classement-place--1 {
+  grid-column: 2;
+}
+.classement-place--2 {
+  grid-column: 1;
+}
+.classement-place--3 {
+  grid-column: 3;
+}
+.classement-podium > .classement-ligne,
+.classement-podium__liste > .classement-ligne {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.classement-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.classement-place .classement-place__corps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+.classement-place__photo {
+  position: relative;
+  display: inline-flex;
+  margin-bottom: var(--dj-espace-3);
+}
+.classement-couronne {
+  position: absolute;
+  top: -21px;
+  left: 50%;
+  width: 38px;
+  height: 24px;
+  transform: translateX(-50%);
+}
+.classement-couronne__corps {
+  fill: var(--dj-moutarde);
+  stroke: var(--dj-encre);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.classement-couronne__gemme {
+  fill: var(--dj-terre);
+}
+.classement-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: var(--dj-trait-fort) solid var(--cl-trait);
+  border-radius: var(--dj-rayon-avatar);
+  color: var(--dj-medaille-texte);
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-13);
+}
+.classement-place--1 .classement-badge,
+.classement-place--1 .classement-marche {
+  background: var(--dj-or);
+}
+.classement-place--2 .classement-badge,
+.classement-place--2 .classement-marche {
+  background: var(--dj-argent);
+}
+.classement-place--3 .classement-badge,
+.classement-place--3 .classement-marche {
+  background: var(--dj-bronze);
+}
+.classement-place .classement-pseudo {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--dj-espace-2);
+  overflow-wrap: anywhere;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-13);
+  line-height: 1.15;
+}
+.classement-place .classement-toi {
+  margin-left: 0;
+}
+.classement-place.classement-ligne--moi .classement-pseudo {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+}
+.classement-trio {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--dj-espace-2);
+}
+.classement-trio .dj-avatar {
+  margin-left: -6px;
+  border-width: var(--dj-trait);
+}
+.classement-trio .dj-avatar:first-child {
+  margin-left: 0;
+}
+.classement-place .classement-temps {
+  margin-top: 3px;
+  font-size: var(--dj-taille-13);
+}
+.classement-podium .classement-place .classement-ecart {
+  min-height: 17px;
+  color: var(--cl-doux); /* sur le fond de la page : l'encre douce passe en AA, la terre non */
+}
+.classement-marche {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  margin-top: 6px;
+  border: var(--dj-trait-fort) solid var(--cl-trait);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  color: var(--dj-medaille-texte);
+  font-family: var(--dj-police-marque);
+  font-size: 24px;
+  text-shadow: 2px 2px 0 var(--dj-papier);
+}
+.classement-place--1 .classement-marche {
+  height: 84px;
+  font-size: 40px;
+}
+.classement-place--2 .classement-marche {
+  height: 58px;
+}
+.classement-place--3 .classement-marche {
+  height: 40px;
+}
+/* Une marche sans personne : en pointillés, « Place à prendre ». */
+.classement-libre__visuel {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border: var(--dj-trait-fort) dashed var(--cl-doux);
+  border-radius: var(--dj-rayon-avatar);
+  color: var(--cl-doux);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-22);
+}
+.classement-libre__visuel--premier {
+  width: 84px;
+  height: 84px;
+}
+.classement-libre__visuel--carre {
+  border-radius: 10px;
+}
+.classement-place--libre .classement-libre__nom {
+  color: var(--cl-doux);
+  font-family: var(--dj-police-texte);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.classement-place--libre .classement-marche {
+  border-style: dashed;
+  background: none;
+  color: var(--cl-doux);
+  text-shadow: none;
+}
+@media (min-width: 760px) {
+  .classement-podium {
+    max-width: 720px;
+    margin-inline: auto;
+    gap: 0 16px;
+    padding-top: 32px;
+  }
+  .classement-couronne {
+    top: -28px;
+    width: 52px;
+    height: 32px;
+  }
+  .classement-badge {
+    width: 36px;
+    height: 36px;
+    font-size: var(--dj-taille-16);
+  }
+  .classement-place .classement-pseudo {
+    font-size: var(--dj-taille-16);
+  }
+  .classement-place .classement-temps {
+    font-size: var(--dj-taille-16);
+  }
+  .classement-place .classement-ecart {
+    font-size: var(--dj-taille-14);
+  }
+  .classement-place--1 .classement-marche {
+    height: 110px;
+    font-size: 52px;
+  }
+  .classement-place--2 .classement-marche {
+    height: 76px;
+    font-size: 38px;
+  }
+  .classement-place--3 .classement-marche {
+    height: 52px;
+    font-size: 30px;
+  }
+  .classement-libre__visuel {
+    width: 92px;
+    height: 92px;
+  }
+  .classement-libre__visuel--premier {
+    width: 112px;
+    height: 112px;
+  }
+}
+
+/* --- La liste : la place (et les places gagnées), la photo, le nom, le temps et l'écart au premier -------------------------------------------------- */
+.classement-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.classement-ligne {
+  padding: 0;
+  border: var(--dj-trait) solid var(--cl-trait);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--cl-carte);
+  color: var(--cl-texte);
+}
+.classement-ligne--moi:not(.classement-place) {
+  border-width: var(--dj-trait-fort);
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.classement-ligne__corps {
+  display: grid;
+  grid-template-columns: 30px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--dj-cible);
+  padding: 7px 10px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.classement-ligne__bouton {
+  cursor: pointer;
+}
+a.classement-ligne__corps {
+  color: inherit;
+  text-decoration: none; /* la page d'un groupe : un lien qui a l'allure d'une ligne */
+}
+.classement-ligne .dj-avatar--t48,
+.classement-ligne .salle-embleme--t48 {
+  width: 44px;
+  height: 44px;
+}
+.classement-rang-bloc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.classement-ligne .classement-rang {
+  color: var(--cl-doux);
+  text-align: center;
+  line-height: 1.05;
+}
+.classement-ligne--moi .classement-rang {
+  color: var(--dj-encre);
+}
+.classement-mouvement {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-legende-petite);
+  line-height: 1;
+}
+.classement-mouvement svg {
+  fill: currentColor;
+}
+.classement-mouvement--monte {
+  color: var(--cl-texte); /* le sens se lit à la forme du triangle ; pas de vert dans la charte */
+}
+.classement-mouvement--descend {
+  color: var(--cl-ecart);
+}
+.classement-ligne--moi .classement-mouvement {
+  color: var(--dj-encre);
+}
+.classement-qui {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.classement-ligne .classement-pseudo {
+  min-width: 0;
+  gap: var(--dj-espace-3);
+  font-size: var(--dj-taille-15);
+  overflow-wrap: break-word; /* un long pseudo passe à la ligne ou se coupe en dernier recours, il n'écrase jamais la colonne */
+}
+.classement-ligne .classement-pseudo .salle-embleme {
+  flex: none;
+}
+.classement-detail {
+  color: var(--cl-doux);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 500;
+  font-size: var(--dj-taille-12);
+}
+.classement-ligne--moi .classement-detail {
+  color: var(--dj-encre);
+}
+.classement-valeur {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-self: end;
+  text-align: right;
+}
+.classement-ecart {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+.classement-ligne .classement-ecart {
+  color: var(--cl-ecart);
+}
+.classement-ligne--moi .classement-ecart {
+  color: var(--dj-encre);
+}
+.classement-ligne__jeux {
+  display: none;
+}
+
+/* --- Un seuil de médaille : « Or · 32,000 s » entre deux traits en pointillés -------------------------------------------------------------------------- */
+.classement-seuil {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  margin: 3px 0;
+  color: var(--cl-doux);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-12);
+  letter-spacing: 0.5px;
+}
+.classement-seuil::before,
+.classement-seuil::after {
+  content: "";
+  flex: 1;
+  border-top: var(--dj-trait) dashed currentColor;
+}
+.classement-seuil__point {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: var(--dj-trait) solid var(--cl-trait);
+  border-radius: var(--dj-rayon-avatar);
+}
+.classement-seuil__point--diamant {
+  background: var(--dj-diamant);
+}
+.classement-seuil__point--or {
+  background: var(--dj-or);
+}
+.classement-seuil__point--argent {
+  background: var(--dj-argent);
+}
+.classement-seuil__point--bronze {
+  background: var(--dj-bronze);
+}

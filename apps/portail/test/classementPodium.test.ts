@@ -7,27 +7,28 @@ const ligne = (rang: number, o: Partial<LigneClassement> = {}): LigneClassement 
 const haut = (n: number) => Array.from({ length: n }, (_, i) => ligne(i + 1));
 
 describe("lot U2 : le podium", () => {
-  it("il y a un podium à partir de 3 classés, jamais avant", () => {
-    expect(lignesDuPodium({ vue: "cumul", top: haut(2) })).toBeNull();
-    expect(lignesDuPodium({ vue: "cumul", top: [] })).toBeNull();
-    expect(lignesDuPodium({ vue: "cumul", top: haut(3) })?.map((l) => l.rang)).toEqual([1, 2, 3]);
+  it("lot U6 : le podium est toujours là, de zéro à trois places ; les marches sans personne sont libres", () => {
+    expect(lignesDuPodium({ vue: "cumul", top: haut(2) }).map((l) => l.rang)).toEqual([1, 2]);
+    expect(lignesDuPodium({ vue: "cumul", top: [] })).toEqual([]);
+    expect(lignesDuPodium({ vue: "cumul", top: haut(3) }).map((l) => l.rang)).toEqual([1, 2, 3]);
     expect(lignesDuPodium({ vue: "track", top: haut(50) })).toHaveLength(MARCHES);
   });
-  it("au cumul, un joueur qui n'a pas tout fini (sous « Un jeu sur deux ») ne monte pas sur le podium : pas de podium", () => {
+  it("au cumul, un joueur qui n'a pas tout fini (sous « Un jeu sur deux ») ne monte pas sur le podium : sa marche reste libre", () => {
     const top = [ligne(1), ligne(2), ligne(3, { complet: false, tempsMs: null })];
-    expect(lignesDuPodium({ vue: "cumul", top })).toBeNull();
-    // Dans la vue d'un jeu, tout classé a un temps : le podium est là.
-    expect(lignesDuPodium({ vue: "jump", top: [ligne(1), ligne(2), ligne(3)] })).not.toBeNull();
+    expect(lignesDuPodium({ vue: "cumul", top }).map((l) => l.rang)).toEqual([1, 2]);
+    // Dans la vue d'un jeu, tout classé a un temps : les trois montent.
+    expect(lignesDuPodium({ vue: "jump", top: [ligne(1), ligne(2), ligne(3)] })).toHaveLength(3);
     // Un jeu à la hauteur : le score tient lieu de temps.
     const score = { unite: "mm" as const, valeur: 1200, vies: 2 };
     expect(lignesDuPodium({ vue: "tower", top: [1, 2, 3].map((r) => ligne(r, { tempsMs: null, score })) })).toHaveLength(3);
   });
-  it("la liste garde le reste du haut, rien n'est renuméroté ; sans podium, tout", () => {
+  it("la liste garde le reste du haut, rien n'est renuméroté ; avec un ou deux classés, tout est sur le podium", () => {
     const c = { vue: "cumul", top: haut(5), classes: 5 };
     const reste = resteDuHaut(c);
     expect(reste.top.map((l) => l.rang)).toEqual([4, 5]);
     expect(reste.classes).toBe(5);
-    expect(resteDuHaut({ vue: "cumul", top: haut(2) }).top).toHaveLength(2);
+    expect(resteDuHaut({ vue: "cumul", top: haut(2) }).top).toHaveLength(0);
+    expect(resteDuHaut({ vue: "cumul", top: [] }).top).toHaveLength(0);
     expect(c.top).toHaveLength(5); // l'entrée n'est pas modifiée
   });
   it("les photos : 112 px pour le premier, 92 px pour les deux suivants ; 48 px dans la liste, 88 px dans la feuille d'un joueur", () => {

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classements : podium partout</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<style>
+  body{margin:0;background:#D8CCB3;color:#2A1E16;font:15px/1.5 Inter,system-ui,sans-serif;padding:28px 16px 80px}
+  .intro,.bloc{max-width:1440px;margin:0 auto 44px}
+  h1{font-size:26px;margin:0 0 8px}
+  h2{font-size:21px;margin:0 0 4px}
+  p,ul{max-width:860px;margin:0 0 10px}
+  ul{padding-left:20px}
+  .rangee-ecrans{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+  .cadre{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 0 #B8AB90}
+  .cadre small{display:block;color:#555;margin:0 0 6px 2px;font-weight:600}
+  .cadre iframe{border:0;display:block;border-radius:6px}
+  .tel iframe{width:390px;height:1180px}
+  .bureau{flex:1 1 100%;min-width:0}
+  .bureau .boite{overflow:hidden;position:relative}
+  .bureau iframe{width:1280px;height:1060px;transform-origin:0 0}
+  @media (max-width:440px){.tel{width:100%}.tel iframe{width:100%}}
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Classements : un seul format, un podium partout</h1>
+  <p>Proposition pour le 18/11. Les pseudos, les temps et les portraits sont inventés.</p>
+  <ul>
+    <li><b>Un seul composant</b> pour toutes les vues : Cumulé, chaque jeu, Tous, Amis, Mon groupe, Groupes, et le classement à l'intérieur des jeux. Toujours un podium de trois marches, puis la liste.</li>
+    <li><b>Le podium</b> : marches or, argent et bronze, de trois hauteurs, couronne sur le premier, et l'écart au premier écrit sous le 2<sup>e</sup> et le 3<sup>e</sup>. Une marche sans personne dit « Place à prendre ».</li>
+    <li><b>L'écart sur chaque ligne</b>, à la place du temps seul : on voit ce qu'il faut gagner.</li>
+    <li><b>Les seuils des médailles dans la liste</b> des vues par jeu : une ligne « Or · 32,000 s » sépare ceux qui l'ont de ceux qui la visent.</li>
+    <li><b>« Ta course »</b>, une barre qui reste en bas : ta place, ce qu'il te manque pour passer devant, et un bouton « Rejouer » vers le jeu où tu perds le plus.</li>
+    <li><b>Les groupes</b> ont le même podium, avec leur emblème carré et les trois photos des membres qui comptent.</li>
+  </ul>
+</div>
+
+<div class="bloc">
+  <h2>Sur téléphone : quatre vues, le même format</h2>
+  <p>De gauche à droite : le cumul des joueurs, une vue par jeu avec les seuils des médailles, les groupes (avec une marche libre), et le même classement dans un jeu, sur fond sombre.</p>
+  <div class="rangee-ecrans" id="telephones"></div>
+</div>
+
+<div class="bloc">
+  <h2>Sur ordinateur</h2>
+  <p>Le podium et la liste à gauche, avec une colonne par jeu du jour. « Ta course » passe dans la colonne de droite, au-dessus du podium des groupes.</p>
+  <div class="rangee-ecrans"><div class="cadre bureau"><small>Ordinateur, 1280 px · Joueurs · Cumulé</small><div class="boite" id="bureau"></div></div></div>
+</div>
+
+<script type="text/plain" id="css">
+:root{--creme:#EDE3CF;--creme2:#E3D6BC;--papier:#FFF6E0;--encre:#2A1E16;--terre:#C2401F;--moutarde:#E8B23A;--gris:#6B5847;--diamant:#4FC3DC;--or:#D9A21B;--argent:#B4B6B9;--bronze:#C07A42;--trait:var(--encre);--fond:var(--creme);--carte:var(--papier);--texte:var(--encre);--doux:var(--gris)}
+.sombre{--fond:#1E1A17;--carte:#2B2521;--texte:#F4EFE6;--doux:#B9AC97;--trait:#F4EFE6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fond);color:var(--texte);font:15px/1.4 Archivo,sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+.haut{display:flex;align-items:center;gap:22px;padding:12px 16px;border-bottom:3px solid var(--encre)}
+.logo{background:var(--encre);color:var(--creme);font:18px/1 'Archivo Black';letter-spacing:1px;padding:7px 10px 6px;border-radius:3px;box-shadow:3px 3px 0 var(--terre)}
+.nav{display:none;gap:6px;flex:1}
+.nav span{padding:9px 14px;border-radius:3px;font:15px 'Archivo Black'}
+.nav span.ici{background:var(--encre);color:var(--creme)}
+.moi-rond{margin-left:auto;width:40px;height:40px;border-radius:50%;border:2px solid var(--encre);background:var(--moutarde);display:grid;place-items:center;font:13px 'Archivo Black'}
+.fronton{background:var(--encre);color:var(--creme);position:relative;padding:22px 16px 14px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.fronton::before{content:"";position:absolute;left:0;right:0;top:7px;height:10px;background:radial-gradient(circle,var(--moutarde) 3px,transparent 3.6px) 6px 0/22px 10px repeat-x}
+.fronton h1{margin:0;font:24px/1.05 'Archivo Black';color:var(--moutarde);text-shadow:3px 3px 0 var(--terre);letter-spacing:1px}
+.fronton .jour{font:500 12px 'JetBrains Mono';color:#D9CBB0;margin-top:4px}
+.fronton .reste{text-align:right;font:700 10px 'Archivo';letter-spacing:.6px;color:#D9CBB0}
+.fronton .reste b{display:block;color:var(--moutarde);font:700 21px 'JetBrains Mono';letter-spacing:0}
+.entete-jeu{padding:14px 16px 4px;display:flex;justify-content:space-between;align-items:baseline}
+.entete-jeu b{font:800 italic 26px 'Barlow Condensed';letter-spacing:.5px;color:#E8542A}
+.entete-jeu span{font:500 12px 'JetBrains Mono';color:var(--doux)}
+.page{padding:14px 16px 150px}
+.vues{display:flex;gap:6px;overflow:hidden;margin-bottom:10px}
+.vue{display:flex;align-items:center;gap:6px;padding:7px 10px;border:2.5px solid var(--trait);border-radius:8px 8px 3px 3px;font:700 13px Archivo;background:var(--carte);white-space:nowrap}
+.vue.ici{background:var(--trait);color:var(--fond)}
+.vue i{width:11px;height:11px;border:2px solid var(--trait);border-radius:3px}
+.vue.ici i{border-color:var(--fond)}
+.sep{align-self:center;font:10px 'Archivo Black';color:var(--doux);letter-spacing:.8px;padding:0 2px}
+.choix{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.seg{display:inline-grid;grid-auto-flow:column;border:2px solid var(--trait);border-radius:3px;overflow:hidden}
+.seg span{padding:7px 11px;font:700 13px Archivo;white-space:nowrap}
+.seg span+span{border-left:2px solid var(--trait)}
+.seg span.on{background:var(--trait);color:var(--fond)}
+.seg.gros span.on{background:var(--moutarde);color:var(--encre)}
+.regle{font-size:12.5px;color:var(--doux);margin:8px 0 2px}
+
+/* ---------- le podium : le même partout ---------- */
+.podium{display:grid;grid-template-columns:1fr 1.12fr 1fr;align-items:end;gap:8px;margin:16px 0 18px}
+.place{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.qui{position:relative;margin-bottom:6px}
+.photo{border-radius:50%;border:3px solid var(--trait);overflow:hidden;background:var(--papier);display:grid;place-items:center;font-family:'Archivo Black';color:var(--encre)}
+.photo svg{display:block;width:100%;height:100%}
+.embleme{border-radius:10px;border:3px solid var(--trait);overflow:hidden;display:grid;place-items:center;font-family:'Archivo Black';color:var(--encre)}
+.g1{width:84px;height:84px;font-size:26px}.g2{width:68px;height:68px;font-size:21px}.g3{width:44px;height:44px;font-size:14px;border-width:2.5px}
+.couronne{position:absolute;left:50%;top:-21px;transform:translateX(-50%);width:38px;height:24px}
+.pastille{position:absolute;right:-6px;bottom:-4px;width:28px;height:28px;border-radius:50%;border:3px solid var(--trait);display:grid;place-items:center;font:13px 'Archivo Black';color:var(--encre)}
+.r1 .pastille,.r1 .marche{background:var(--or)}.r2 .pastille,.r2 .marche{background:var(--argent)}.r3 .pastille,.r3 .marche{background:var(--bronze)}
+.nom{font:15px/1.15 'Archivo Black';max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.place.toi .nom{background:var(--moutarde);color:var(--encre);padding:2px 7px;border-radius:3px}
+.etiq{display:inline-block;font:9px 'Archivo Black';letter-spacing:.6px;background:var(--trait);color:var(--fond);padding:2px 5px;border-radius:2px;vertical-align:2px}
+.temps{font:700 15px 'JetBrains Mono';margin-top:3px}
+.ecart{font:700 12px 'JetBrains Mono';color:var(--terre);min-height:17px}
+.sombre .ecart{color:#FF8A66}
+.r1 .ecart{color:var(--doux);font-family:Archivo;font-weight:700}
+.trio{display:flex;justify-content:center;margin-top:4px}
+.trio .photo{width:26px;height:26px;border-width:2px;font-size:9px;margin-left:-6px}
+.trio .photo:first-child{margin-left:0}
+.marche{width:100%;margin-top:6px;border:3px solid var(--trait);border-bottom:0;border-radius:6px 6px 0 0;display:grid;place-items:center;font:30px 'Archivo Black';color:var(--encre);text-shadow:2px 2px 0 rgba(255,246,224,.55)}
+.r1 .marche{height:84px;font-size:40px}.r2 .marche{height:58px}.r3 .marche{height:40px;font-size:24px}
+.libre .photo,.libre .embleme{border-style:dashed;background:none;color:var(--doux)}
+.libre .nom{font:700 13px Archivo;color:var(--doux)}
+.libre .marche{background:none;border-style:dashed;color:var(--doux);text-shadow:none}
+.socle{height:5px;background:var(--trait);border-radius:2px;margin:-18px 0 16px}
+
+/* ---------- la liste ---------- */
+.liste{display:flex;flex-direction:column;gap:6px}
+.ligne{display:grid;grid-template-columns:30px 44px minmax(0,1fr) auto;align-items:center;gap:10px;padding:7px 10px;border:2px solid var(--trait);border-radius:4px;background:var(--carte)}
+.ligne.toi{background:var(--moutarde);color:var(--encre);box-shadow:3px 3px 0 var(--trait)}
+.rang{font:700 15px 'JetBrains Mono';text-align:center;line-height:1.05}
+.rang small{display:block;font:700 9px Archivo}
+.monte{color:#2E7D5B}.descend{color:var(--terre)}
+.ligne.toi .monte,.ligne.toi .descend{color:var(--encre)}
+.ligne .photo{width:44px;height:44px;border-width:2px;font-size:14px}
+.ligne .embleme{width:44px;height:44px;border-width:2px;border-radius:7px;font-size:14px}
+.pseudo{font:700 15px Archivo;display:flex;align-items:center;gap:6px;min-width:0}
+.pseudo>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini{width:20px;height:20px;border:2px solid var(--encre);border-radius:4px;background:var(--moutarde);font:8px 'Archivo Black';display:grid;place-items:center;flex:none;color:var(--encre)}
+.detail{display:flex;gap:10px;font:500 11.5px 'JetBrains Mono';color:var(--doux);margin-top:2px;white-space:nowrap}
+.ligne.toi .detail{color:var(--encre)}
+.med{display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid var(--encre);vertical-align:-1px;margin-left:3px}
+.sombre .med{border-color:#F4EFE6}
+.diamant{background:var(--diamant)}.or{background:var(--or)}.argent{background:var(--argent)}.bronze{background:var(--bronze)}
+.droite{text-align:right}
+.droite b{display:block;font:700 15px 'JetBrains Mono'}
+.droite span{font:700 11.5px 'JetBrains Mono';color:var(--terre)}
+.sombre .droite span{color:#FF8A66}
+.ligne.toi .droite span{color:var(--encre)}
+.seuil{display:flex;align-items:center;gap:8px;font:10.5px 'Archivo Black';letter-spacing:.7px;color:var(--doux);margin:3px 0}
+.seuil::before,.seuil::after{content:"";flex:1;border-top:2px dashed currentColor;opacity:.55}
+.seuil i{width:11px;height:11px;border-radius:50%;border:2px solid var(--trait)}
+.titre-moins{font:12px 'Archivo Black';letter-spacing:.6px;color:var(--doux);margin:14px 0 4px}
+.ligne.pale{border-style:dashed;background:none}
+
+/* ---------- « Ta course » ---------- */
+.course{position:fixed;left:8px;right:8px;bottom:66px;background:var(--encre);color:var(--creme);border:3px solid var(--encre);border-radius:8px;box-shadow:0 0 0 2px var(--moutarde);padding:9px 10px 9px 12px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.sombre .course{bottom:10px;background:#F4EFE6;color:var(--encre);border-color:#F4EFE6}
+.course .ou{font:22px/1 'Archivo Black';color:var(--moutarde);text-shadow:2px 2px 0 var(--terre)}
+.sombre .course .ou{color:var(--terre);text-shadow:none}
+.course .ou small{display:block;font:700 9px Archivo;letter-spacing:.6px;color:inherit;text-shadow:none;opacity:.85;margin-top:2px}
+.course p{margin:0;font:700 13px/1.25 Archivo}
+.course p b{font-family:'JetBrains Mono';color:var(--moutarde)}
+.sombre .course p b{color:var(--terre)}
+.course p span{display:block;font:500 11.5px Archivo;opacity:.8}
+.btn{border:2px solid var(--encre);border-radius:4px;background:var(--terre);color:#FFF4E0;font:13px 'Archivo Black';padding:10px 12px;white-space:nowrap;box-shadow:2px 2px 0 rgba(0,0,0,.35)}
+.onglets{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--creme);border-top:3px solid var(--encre);padding:8px 4px 12px}
+.onglets span{flex:1;text-align:center;font:11px 'Archivo Black';color:var(--gris)}
+.onglets span.ici{color:var(--encre)}
+.onglets svg{display:block;margin:0 auto 3px;width:22px;height:22px}
+.onglets .ici svg{color:var(--terre)}
+.sombre .onglets{display:none}
+.cols,.cote,.tete{display:none}
+
+/* ---------- ordinateur ---------- */
+@media (min-width:760px){
+  .haut{padding:14px 36px}.logo{font-size:22px}.nav{display:flex}
+  .fronton{padding:26px 36px 18px}.fronton h1{font-size:34px}.fronton .jour{font-size:14px}.fronton .reste{font-size:12px}.fronton .reste b{font-size:30px}
+  .page{padding:24px 36px 40px;display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:32px;max-width:1280px;margin:0 auto}
+  .vue{font-size:15px;padding:8px 14px}.seg span{font-size:14px;padding:8px 14px}
+  .podium{gap:16px;max-width:720px;margin:26px auto 22px}
+  .g1{width:120px;height:120px;font-size:36px}.g2{width:96px;height:96px;font-size:28px}
+  .pastille{width:36px;height:36px;font-size:16px}.couronne{width:52px;height:32px;top:-28px}
+  .nom{font-size:19px}.temps{font-size:19px}.ecart{font-size:14px}
+  .r1 .marche{height:110px;font-size:52px}.r2 .marche{height:76px;font-size:38px}.r3 .marche{height:52px;font-size:30px}
+  .socle{max-width:760px;margin:-22px auto 20px}
+  .ligne{grid-template-columns:44px 48px minmax(0,1fr) 110px 110px 120px;padding:8px 14px;gap:14px}
+  .ligne .photo{width:48px;height:48px}
+  .detail{display:none}
+  .cols{display:block;text-align:right;font:700 14px 'JetBrains Mono'}
+  .cols small{display:block;font:600 11.5px Archivo;color:var(--doux);text-transform:capitalize}
+  .ligne.toi .cols small{color:var(--encre)}
+  .tete{display:grid;grid-template-columns:44px 48px minmax(0,1fr) 110px 110px 120px;gap:14px;padding:0 14px;font:700 11.5px Archivo;letter-spacing:.8px;color:var(--doux);text-transform:none}
+  .tete span{text-align:right}.tete span:nth-child(3){text-align:left}
+  .onglets{display:none}
+  .cote{display:block}
+  .course{position:static;box-shadow:0 0 0 2px var(--moutarde),5px 5px 0 var(--encre);grid-template-columns:auto minmax(0,1fr);padding:16px;margin-bottom:26px}
+  .course .ou{font-size:34px}
+  .course p{font-size:15px}.course p span{font-size:13px}
+  .course .btn{grid-column:1 / -1;text-align:center;font-size:15px;padding:12px}
+  .cote h2{font:17px 'Archivo Black';margin:0 0 4px}
+  .cote .podium{margin:22px 0 18px;gap:8px}
+  .cote .g1{width:72px;height:72px;font-size:22px}.cote .g2{width:58px;height:58px;font-size:18px}
+  .cote .pastille{width:26px;height:26px;font-size:12px}.cote .couronne{width:34px;height:22px;top:-19px}
+  .cote .nom{font-size:14px}.cote .temps{font-size:14px}.cote .ecart{font-size:11.5px}
+  .cote .r1 .marche{height:64px;font-size:32px}.cote .r2 .marche{height:44px;font-size:24px}.cote .r3 .marche{height:30px;font-size:19px}
+  .cote .socle{margin:-18px 0 0}
+}
+</script>
+
+<script>
+const ENCRE = '#2A1E16';
+function portrait(fond, peau, cheveux, haut, coiffure) {
+  const derriere = coiffure === 'long' ? `<path d="M14 34 C12 16 22 8 32 8 C43 8 52 16 50 34 L52 52 L12 52Z" fill="${cheveux}"/>` : '';
+  const dessus = {
+    court: `<path d="M18 28 C17 15 25 10 33 10 C42 10 47 16 46 28 C43 21 36 18 30 19 C24 20 20 23 18 28Z" fill="${cheveux}"/>`,
+    long: `<path d="M18 27 C18 15 25 11 32 11 C40 11 46 15 46 27 C40 20 30 18 18 27Z" fill="${cheveux}"/>`,
+    chignon: `<circle cx="32" cy="9" r="7" fill="${cheveux}"/><path d="M18 27 C18 15 25 12 32 12 C40 12 46 15 46 27 C42 19 24 19 18 27Z" fill="${cheveux}"/>`,
+    casquette: `<path d="M17 25 C17 13 25 9 32 9 C40 9 47 13 47 25Z" fill="${cheveux}"/><rect x="30" y="22" width="24" height="5" rx="2.5" fill="${cheveux}"/>`,
+    boucles: `<g fill="${cheveux}"><circle cx="21" cy="20" r="7"/><circle cx="29" cy="14" r="7"/><circle cx="38" cy="14" r="7"/><circle cx="45" cy="21" r="7"/></g>`,
+  }[coiffure];
+  return `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" fill="${fond}"/>${derriere}<path d="M8 66 C10 50 20 44 32 44 C44 44 54 50 56 66Z" fill="${haut}"/><rect x="28" y="36" width="8" height="10" fill="${peau}"/><ellipse cx="32" cy="28" rx="14" ry="15" fill="${peau}"/>${dessus}<ellipse cx="26.5" cy="29" rx="1.8" ry="2.2" fill="${ENCRE}"/><ellipse cx="37.5" cy="29" rx="1.8" ry="2.2" fill="${ENCRE}"/><path d="M27.5 35.5 Q32 38.5 36.5 35.5" stroke="${ENCRE}" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>`;
+}
+const COURONNE = `<svg class="couronne" viewBox="0 0 40 26" aria-hidden="true"><path d="M3 23 L3 7 L12 15 L20 3 L28 15 L37 7 L37 23Z" fill="#E8B23A" stroke="${ENCRE}" stroke-width="3" stroke-linejoin="round"/><circle cx="20" cy="17" r="2.6" fill="#C2401F"/></svg>`;
+
+// ---- données inventées ----
+const G = { TT: { nom: 'Les Tontons', sigle: 'TT', fond: '#E8B23A' }, PC: { nom: 'Pause Café', sigle: 'PC', fond: '#9ED9C0' }, TU: { nom: 'Turbo', sigle: 'TU', fond: '#BCD8F2' }, NO: { nom: 'Les Nocturnes', sigle: 'NO', fond: '#D8C6EE' } };
+const J = [
+  { p: 'Biscotte', g: 'TT', t: 31646, j: 30225, img: portrait('#F6B3A4', '#F1C7A3', '#3B2416', '#4A3590', 'chignon'), mv: 1 },
+  { p: 'Delta', g: 'TT', t: 31897, j: 30159, moi: true, fond: '#E8B23A', mv: -1 },
+  { p: 'Gaspard', g: 'PC', t: 32096, j: 30508, fond: '#C98A5A' },
+  { p: 'Lenka', g: 'TT', t: 31717, j: 31717, img: portrait('#C9E3A7', '#E9B48C', '#B5562A', '#C2401F', 'long'), mv: 2 },
+  { p: 'Marlou', g: 'PC', t: 31867, j: 32100, fond: '#E8B23A' },
+  { p: 'Sacha', g: 'TT', t: 31787, j: 35408, img: portrait('#BCD8F2', '#8D5B3B', '#1F1410', '#E8B23A', 'boucles') },
+  { p: 'Krill', g: null, t: 38990, j: 33483, img: portrait('#A9D6E8', '#F0C9A8', '#D9A21B', '#2A1E16', 'court'), mv: -2 },
+  { p: 'Pépin', g: 'PC', t: 31685, j: 48717, img: portrait('#F2C230', '#B97A55', '#3B2416', '#2C5A8C', 'casquette') },
+  { p: 'Loupiote', g: 'PC', t: 31831, j: 49558, fond: '#D9A21B' },
+  { p: 'Ernest', g: 'NO', t: 38083, j: 45850, img: portrait('#F3C6D9', '#F4D6BE', '#7A3B1C', '#5B4BDB', 'long') },
+  { p: 'Zadig', g: null, t: 33146, j: 55917, fond: '#B4B6B9' },
+];
+const SEUILS = { t: [['diamant', 'Diamant', 31750], ['or', 'Or', 32000], ['argent', 'Argent', 34000], ['bronze', 'Bronze', 38500]], j: [['diamant', 'Diamant', 30300], ['or', 'Or', 34000], ['argent', 'Argent', 40000], ['bronze', 'Bronze', 50000]] };
+const medaille = (jeu, ms) => (SEUILS[jeu].find((s) => ms <= s[2]) || [null])[0];
+const sec = (ms) => (ms / 1000).toFixed(3).replace('.', ',');
+const temps = (ms) => ms >= 60000 ? `${Math.floor(ms / 60000)}:${sec(ms % 60000).padStart(6, '0')}` : `${sec(ms)} s`;
+const plus = (ms) => `+${sec(ms)}`;
+const initiales = (p) => p.slice(0, 2).toUpperCase();
+const photo = (x, cl = '') => `<div class="photo ${cl}" style="${x.img ? '' : `background:${x.fond}`}">${x.img || initiales(x.p)}</div>`;
+const embleme = (g, cl = '') => `<div class="embleme ${cl}" style="background:${g.fond}">${g.sigle}</div>`;
+const med = (m) => m ? `<i class="med ${m}"></i>` : '';
+
+// ---- le composant unique : un podium de trois marches, puis la liste ----
+function podium(lignes, { groupes = false } = {}) {
+  const premier = lignes[0];
+  const marche = (i) => {
+    const x = lignes[i], r = i + 1, taille = r === 1 ? 'g1' : 'g2';
+    if (!x) return `<div class="place r${r} libre"><div class="qui"><div class="${groupes ? 'embleme' : 'photo'} ${taille}">?</div></div><div class="nom">Place à prendre</div><div class="temps">&nbsp;</div><div class="ecart"></div><div class="marche">${r}</div></div>`;
+    const image = groupes ? embleme(x, taille) : photo(x, taille);
+    const trio = groupes ? `<div class="trio">${x.trio.map((m) => photo(m)).join('')}</div>` : '';
+    return `<div class="place r${r}${x.moi ? ' toi' : ''}"><div class="qui">${r === 1 ? COURONNE : ''}${image}<span class="pastille">${r}</span></div><div class="nom">${x.nom || x.p}${x.moi && !groupes ? ` <span class="etiq">TOI</span>` : ''}</div>${x.moi && groupes ? '<span class="etiq">TON GROUPE</span>' : ''}${trio}<div class="temps">${temps(x.v)}</div><div class="ecart">${r === 1 ? (lignes[1] ? `${sec(lignes[1].v - x.v)} s d'avance` : '') : plus(x.v - premier.v)}</div><div class="marche">${r}</div></div>`;
+  };
+  return `<div class="podium">${marche(1)}${marche(0)}${marche(2)}</div><div class="socle"></div>`;
+}
+function ligne(x, r, premier, { vue, groupes }) {
+  const mv = x.mv ? `<small class="${x.mv > 0 ? 'monte' : 'descend'}">${x.mv > 0 ? '▲' : '▼'}${Math.abs(x.mv)}</small>` : '';
+  const g = x.g ? `<span class="mini">${G[x.g].sigle}</span>` : '';
+  const detail = groupes ? `<div class="detail"><span>${x.classes} classés · les 3 meilleurs comptent</span></div>`
+    : vue === 'cumul' ? `<div class="detail"><span>T ${sec(x.t)}${med(medaille('t', x.t))}</span><span>J ${sec(x.j)}${med(medaille('j', x.j))}</span></div>`
+    : `<div class="detail"><span>${({ diamant: 'Diamant', or: 'Or', argent: 'Argent', bronze: 'Bronze' })[medaille(vue, x.v)] || 'Fini'}${med(medaille(vue, x.v))}</span></div>`;
+  const cols = !groupes && vue === 'cumul' ? `<div class="cols">${sec(x.t)} s<small>${med(medaille('t', x.t))} ${medaille('t', x.t) || 'fini'}</small></div><div class="cols">${sec(x.j)} s<small>${med(medaille('j', x.j))} ${medaille('j', x.j) || 'fini'}</small></div>` : '<div class="cols"></div><div class="cols"></div>';
+  return `<div class="ligne${x.moi ? ' toi' : ''}"><div class="rang">${r}${mv}</div>${groupes ? embleme(x) : photo(x)}<div><div class="pseudo"><span>${x.nom || x.p}</span>${g}${x.moi ? `<span class="etiq">${groupes ? 'TON GROUPE' : 'TOI'}</span>` : ''}</div>${detail}</div>${cols}<div class="droite"><b>${temps(x.v)}</b><span>${plus(x.v - premier.v)}</span></div></div>`;
+}
+function classement(lignes, o) {
+  const premier = lignes[0];
+  let html = podium(lignes, o);
+  if (o.entete) html += `<div class="tete"><span></span><span></span><span>Joueur</span><span>Track</span><span>Jump</span><span>Cumulé</span></div>`;
+  html += '<div class="liste">';
+  let palier = o.seuils ? o.seuils.findIndex((s) => lignes[2].v <= s[2]) : -1;
+  lignes.slice(3).forEach((x, i) => {
+    if (o.seuils) {
+      while (palier >= 0 && palier < o.seuils.length && x.v > o.seuils[palier][2]) {
+        html += `<div class="seuil"><i class="${o.seuils[palier][0]}"></i>${o.seuils[palier][1].toUpperCase()} · ${sec(o.seuils[palier][2])} s</div>`; palier++;
+      }
+    }
+    html += ligne(x, i + 4, premier, o);
+  });
+  return html + '</div>';
+}
+
+// ---- les vues ----
+const cumul = J.map((x) => ({ ...x, v: x.t + x.j })).sort((a, b) => a.v - b.v);
+const track = J.map((x) => ({ ...x, v: x.t, mv: 0 })).sort((a, b) => a.v - b.v);
+const moyenne = (ids) => { const m = J.filter((x) => x.g === ids).map((x) => ({ ...x, v: x.t + x.j })).sort((a, b) => a.v - b.v); return { trio: m.slice(0, 3), v: Math.round(m.slice(0, 3).reduce((s, x) => s + x.v, 0) / 3), classes: m.length }; };
+const groupes = ['TT', 'PC'].map((id) => ({ ...G[id], ...moyenne(id), moi: id === 'TT' })).sort((a, b) => a.v - b.v);
+const iMoi = (l) => l.findIndex((x) => x.moi);
+
+const vues = (ici) => `<div class="vues">${[['Cumulé', '#E8B23A'], ['Track', '#1E1A17'], ['Jump', '#F2C230']].map(([n, c], i) => `<span class="vue${i === ici ? ' ici' : ''}"><i style="background:${c}"></i>${n}</span>`).join('')}<span class="sep">ARCADE</span><span class="vue"><i style="background:#9ED9C0"></i>Tower</span><span class="vue"><i style="background:#BCD8F2"></i>Blocks</span></div>`;
+const choix = (g) => `<div class="choix"><div class="seg gros"><span class="${g ? '' : 'on'}">Joueurs</span><span class="${g ? 'on' : ''}">Groupes</span></div>${g ? '' : '<div class="seg"><span class="on">Tous · 11</span><span>Amis · 4</span><span>Mon groupe · 4</span></div>'}</div>`;
+const ic = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const onglets = `<div class="onglets"><span>${ic('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>')}Aujourd'hui</span><span class="ici">${ic('<path d="M6 21V11M12 21V5M18 21v-7"/>')}Classements</span><span>${ic('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/>')}Amis</span><span>${ic('<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.2-6.5 8-6.5s7 2.5 8 6.5"/>')}Profil</span></div>`;
+const barre = `<div class="haut"><span class="logo">DU JOUR</span><div class="nav"><span>Aujourd'hui</span><span class="ici">Classements</span><span>Amis et groupes</span><span>Profil</span></div><span class="moi-rond">DE</span></div>`;
+const fronton = `<div class="fronton"><div><h1>CLASSEMENTS</h1><div class="jour">Mercredi 18 novembre · Journée n° 23</div></div><div class="reste">IL RESTE POUR FAIRE MIEUX<b>05:51:42</b></div></div>`;
+const course = (rang, suffixe, phrase, sous, bouton) => `<div class="course"><div class="ou">${rang}<sup style="font-size:.5em">${suffixe}</sup><small>TA COURSE</small></div><p>${phrase}<span>${sous}</span></p><span class="btn">${bouton}</span></div>`;
+
+// « Ta course » du cumul : l'écart au joueur de devant, et le jeu où l'on perd le plus sur lui.
+const m = cumul[iMoi(cumul)], devant = cumul[iMoi(cumul) - 1];
+const perteT = m.t - devant.t, perteJ = m.j - devant.j;
+const courseCumul = course(iMoi(cumul) + 1, 'e', `<b>${sec(m.v - devant.v)} s</b> pour passer 1<sup>er</sup>`, `${devant.p} te prend ${sec(Math.max(perteT, perteJ))} s sur ${perteT > perteJ ? 'Track' : 'Jump'}`, `Rejouer ${perteT > perteJ ? 'Track' : 'Jump'}`);
+const mt = track[iMoi(track)], dt = track[iMoi(track) - 1];
+const courseTrack = (bouton) => course(iMoi(track) + 1, 'e', `<b>${sec(mt.v - dt.v)} s</b> pour doubler ${dt.p}`, `Le Diamant est à ${sec(mt.v - SEUILS.t[0][2])} s`, bouton);
+const courseGroupe = course(1, 'er', `<b>${sec(groupes[1].v - groupes[0].v)} s</b> d'avance sur ${groupes[1].nom}`, `Ton temps compte : tu es 2<sup>e</sup> de ton groupe`, 'Rejouer');
+const moins = `<div class="titre-moins">MOINS DE 3 CLASSÉS</div><div class="ligne pale"><div class="rang">–</div>${embleme(G.NO)}<div><div class="pseudo"><span>${G.NO.nom}</span></div><div class="detail"><span>1 classé · encore 2 pour entrer</span></div></div><div class="cols"></div><div class="cols"></div><div class="droite"><b>–</b></div></div>`;
+const podiumGroupes = `<div class="cote-groupes"><h2>Groupes</h2>${podium(groupes, { groupes: true })}</div>`;
+
+const ECRANS = {
+  cumul: `${barre}${fronton}<div class="page"><div>${vues(0)}${choix(false)}<p class="regle">Au chrono : Track + Jump. 11 joueurs classés.</p>${classement(cumul, { vue: 'cumul', entete: true })}</div><div class="cote">${courseCumul}${podiumGroupes}</div></div><div class="telcourse">${courseCumul}</div>${onglets}`,
+  track: `${barre}${fronton}<div class="page"><div>${vues(1)}${choix(false)}<p class="regle">Au chrono. À égalité : le premier arrivé à ce temps.</p>${classement(track, { vue: 't', seuils: SEUILS.t })}</div></div>${courseTrack('Rejouer Track')}${onglets}`,
+  groupes: `${barre}${fronton}<div class="page"><div>${vues(0)}${choix(true)}<p class="regle">La moyenne des 3 meilleurs de chaque groupe. 2 groupes classés.</p>${classement(groupes, { groupes: true })}${moins}</div></div>${courseGroupe}${onglets}`,
+  jeu: `<div class="entete-jeu"><b>TRACK</b><span>Circuit n° 37 · Classement</span></div><div class="page" style="padding-top:6px"><div><div class="choix"><div class="seg"><span class="on">Tous · 11</span><span>Amis · 4</span><span>Mon groupe · 4</span></div></div>${classement(track, { vue: 't', seuils: SEUILS.t })}</div></div>${courseTrack('Rejouer')}`,
+};
+const css = document.getElementById('css').textContent;
+const doc = (corps, sombre, bureau) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Barlow+Condensed:ital,wght@1,800&display=swap"><style>${css}${bureau ? '.telcourse{display:none}' : '.cote{display:none}'}</style></head><body class="${sombre ? 'sombre' : ''}">${corps}</body></html>`;
+
+const tel = document.getElementById('telephones');
+for (const [cle, titre, sombre] of [['cumul', 'Joueurs · Cumulé', false], ['track', 'Joueurs · Track, avec les seuils', false], ['groupes', 'Groupes · Cumulé, une marche libre', false], ['jeu', 'Dans Track : le même classement', true]]) {
+  const c = document.createElement('div'); c.className = 'cadre tel';
+  c.innerHTML = `<small>${titre}</small>`;
+  const f = document.createElement('iframe'); f.title = titre; f.srcdoc = doc(ECRANS[cle], sombre, false); c.appendChild(f); tel.appendChild(c);
+}
+const boite = document.getElementById('bureau');
+const fb = document.createElement('iframe'); fb.title = 'Classements, ordinateur'; fb.srcdoc = doc(ECRANS.cumul, false, true); boite.appendChild(fb);
+const ajuster = () => { const e = Math.min(1, boite.clientWidth / 1280); fb.style.transform = `scale(${e})`; boite.style.height = `${1060 * e}px`; };
+new ResizeObserver(ajuster).observe(boite); ajuster();
+</script>
+</body>
+</html>

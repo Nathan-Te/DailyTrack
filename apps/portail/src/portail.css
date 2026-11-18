@@ -523,36 +523,6 @@
   font-size: var(--dj-taille-13);
   color: var(--dj-encre-douce);
 }
-.classement-liste {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dj-espace-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-/* Une ligne : la place, le pseudo, les points ; dessous la médaille de chaque jeu (le nom est toujours dit). */
-.classement-ligne {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dj-espace-2);
-  padding: var(--dj-espace-3) var(--dj-espace-4);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-tuile);
-  background: var(--dj-creme-2);
-}
-/* Ta ligne : surlignée en moutarde (charte § 3.1), bordure épaisse et ombre nette ; « Toi » le dit aussi en texte. */
-.classement-ligne--moi {
-  background: var(--dj-moutarde);
-  border-width: var(--dj-trait-fort);
-  box-shadow: var(--dj-ombre-bouton);
-}
-.classement-ligne__tete {
-  display: grid;
-  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: var(--dj-espace-3);
-}
 .classement-rang,
 .classement-temps {
   font-family: var(--dj-police-chiffres);
@@ -580,10 +550,6 @@
   text-transform: uppercase;
 }
 .classement-ligne__jeux {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dj-espace-2) var(--dj-espace-7);
-  padding-left: calc(2.4rem + var(--dj-espace-3));
   font-size: var(--dj-taille-13);
 }
 .classement-jeu {

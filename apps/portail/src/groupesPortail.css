@@ -83,3 +83,78 @@
   display: grid;
   gap: var(--dj-espace-3);
 }
+
+/* --- Lot U6 : le podium des groupes (chargé à la demande avec la vue « Groupes » et le panneau : le premier chargement de `/classement/` ne le paie pas) --------------------------------------------------- */
+/* Ce qui n'est pas (encore) classé : une ligne pâle, en pointillés. */
+.classement-ligne--pale {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* Le podium d'un panneau étroit (la colonne de droite du portail) : des marches plus basses, une couronne plus petite. */
+.classement-podium--petit {
+  gap: 0 8px;
+  margin: 0 0 14px;
+  padding-top: 24px;
+}
+.classement-podium--petit .classement-couronne {
+  top: -19px;
+  width: 34px;
+  height: 22px;
+}
+.classement-podium--petit .classement-badge {
+  width: 26px;
+  height: 26px;
+  font-size: var(--dj-taille-12);
+}
+.classement-podium--petit .classement-place .classement-pseudo,
+.classement-podium--petit .classement-place .classement-temps {
+  font-size: var(--dj-taille-13);
+}
+.classement-podium--petit .classement-place .classement-ecart {
+  font-size: var(--dj-taille-12);
+}
+.classement-podium--petit .classement-place--1 .classement-marche {
+  height: 64px;
+  font-size: 32px;
+}
+.classement-podium--petit .classement-place--2 .classement-marche {
+  height: 44px;
+  font-size: 24px;
+}
+.classement-podium--petit .classement-place--3 .classement-marche {
+  height: 30px;
+  font-size: 19px;
+}
+.classement-podium--petit .classement-libre__visuel {
+  width: 52px;
+  height: 52px;
+}
+.classement-podium--petit .classement-libre__visuel--premier {
+  width: 72px;
+  height: 72px;
+}
+
+.salle-embleme--t92 {
+  width: 92px;
+  height: 92px;
+  font-size: var(--dj-taille-24);
+}
+.salle-embleme--t112 {
+  width: 112px;
+  height: 112px;
+  font-size: var(--dj-taille-32);
+}
+/* Le podium des groupes sur téléphone : 84 px (1er) et 68 px (2e et 3e), comme les photos des joueurs. */
+@media (max-width: 759px) {
+  .classement-podium:not(.classement-podium--petit) .salle-embleme--t112 {
+    width: 84px;
+    height: 84px;
+    font-size: var(--dj-taille-24);
+  }
+  .classement-podium:not(.classement-podium--petit) .salle-embleme--t92 {
+    width: 68px;
+    height: 68px;
+    font-size: var(--dj-taille-22);
+  }
+}

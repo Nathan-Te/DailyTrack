@@ -18,6 +18,8 @@ import { CATALOGUE_COMMANDES } from "../packages/ui/src/catalogue.commandes";
 import { CATALOGUE_INTERRUPTEUR } from "../packages/ui/src/catalogue.interrupteur";
 import { CATALOGUE_COMMUNAUTE } from "../packages/ui/src/catalogue.communaute";
 import { CATALOGUE_AMIS } from "../packages/ui/src/catalogue.amis";
+import { CATALOGUE_CLASSEMENT } from "../packages/ui/src/catalogue.classement";
+import { CATALOGUE_TACOURSE } from "../packages/ui/src/catalogue.tacourse";
 import { CATALOGUE_RETOURS } from "../packages/ui/src/catalogue.retours";
 import { CATALOGUE_VERSION } from "../packages/ui/src/catalogue.version";
 import { CATALOGUE_MUSIQUE } from "../packages/ui/src/catalogue.musique";
@@ -50,6 +52,8 @@ export const CATALOGUES_RELUS: [nom: string, fichier: string, catalogue: Bilingu
   ["packages/ui (musique)", "packages/ui/src/catalogue.musique.ts", CATALOGUE_MUSIQUE as unknown as Bilingue],
   ["packages/ui (communauté)", "packages/ui/src/catalogue.communaute.ts", CATALOGUE_COMMUNAUTE as unknown as Bilingue],
   ["packages/ui (amis)", "packages/ui/src/catalogue.amis.ts", CATALOGUE_AMIS as unknown as Bilingue],
+  ["packages/ui (classement)", "packages/ui/src/catalogue.classement.ts", CATALOGUE_CLASSEMENT as unknown as Bilingue],
+  ["packages/ui (ta course)", "packages/ui/src/catalogue.tacourse.ts", CATALOGUE_TACOURSE as unknown as Bilingue],
   ["packages/ui (retours)", "packages/ui/src/catalogue.retours.ts", CATALOGUE_RETOURS as unknown as Bilingue],
   ["packages/ui (version)", "packages/ui/src/catalogue.version.ts", CATALOGUE_VERSION as unknown as Bilingue],
   ["apps/portail", "apps/portail/src/catalogue.ts", CATALOGUE_PORTAIL as unknown as Bilingue],
@@ -99,6 +103,7 @@ const ECRANS: Record<string, string> = {
   commande: "Commandes tactiles",
   carnage: "Carnage",
   classement: "Classement",
+  tacourse: "Ta course (barre des classements)",
   commandes: "Commandes",
   commun: "Mots communs",
   course: "Course (surimpressions)",

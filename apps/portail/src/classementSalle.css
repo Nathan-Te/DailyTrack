@@ -23,6 +23,14 @@
   font-weight: 500;
   font-size: var(--dj-taille-13);
 }
+/* Lot U6 : « Il reste pour faire mieux » est plus long que l'ancienne légende : sur téléphone elle passe sur deux lignes au lieu de pousser le titre. */
+@media (max-width: 759px) {
+  .classement-fronton .salle-compte__legende {
+    max-width: 16ch;
+    margin-left: auto;
+    line-height: 1.3;
+  }
+}
 @media (min-width: 760px) {
   .classement-fronton__titre {
     font-size: var(--dj-taille-32);
@@ -143,151 +151,7 @@
   }
 }
 
-/* --- Le podium : trois grandes photos, la place en pastille moutarde, des marches d'encre ------------------------------------------------- */
-.classement-podium {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); /* `minmax(0, …)` : un long pseudo ne doit jamais élargir sa colonne */
-  align-items: end;
-  gap: 14px;
-  margin: 0 0 22px;
-  padding: 0;
-  list-style: none;
-}
-/* L'ordre du DOM est celui du classement (1er, 2e, 3e) ; à l'écran le 1er est au milieu. */
-.classement-place--1 {
-  order: 2;
-}
-.classement-place--2 {
-  order: 1;
-}
-.classement-place--3 {
-  order: 3;
-}
-.classement-podium > .classement-ligne {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-}
-.classement-place .classement-place__corps {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  width: 100%;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: center;
-}
-.classement-place__photo {
-  position: relative;
-  display: inline-flex;
-  margin-bottom: var(--dj-espace-3);
-}
-.classement-badge {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: var(--dj-trait-fort) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-avatar);
-  background: var(--dj-moutarde);
-  color: var(--dj-encre);
-  font-family: var(--dj-police-marque);
-  font-weight: 400;
-  font-size: var(--dj-taille-15);
-}
-.classement-place .classement-pseudo {
-  min-width: 0;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--dj-espace-2);
-  font-family: var(--dj-police-marque);
-  font-weight: 400;
-  font-size: var(--dj-taille-16);
-}
-.classement-place .classement-toi {
-  margin-left: 0;
-}
-.classement-place.classement-ligne--moi .classement-pseudo {
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--dj-moutarde);
-}
-.classement-place .classement-temps {
-  margin: 2px 0 10px;
-  font-size: var(--dj-taille-16);
-}
-.classement-marche {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  border-radius: 4px 4px 0 0;
-  background: var(--dj-encre);
-  color: var(--dj-moutarde);
-  font-family: var(--dj-police-marque);
-  font-size: 30px;
-  text-shadow: 2px 2px 0 var(--dj-terre);
-}
-.classement-place--1 .classement-marche {
-  height: 100px;
-}
-.classement-place--2 .classement-marche {
-  height: 70px;
-}
-.classement-place--3 .classement-marche {
-  height: 48px;
-}
-@media (max-width: 759px) {
-  .classement-podium {
-    gap: 8px;
-  }
-  /* Sur téléphone, le podium passe à 84 px (1er) et 68 px (2e et 3e). */
-  .classement-place .dj-avatar--t112 {
-    width: 84px;
-    height: 84px;
-  }
-  .classement-place .dj-avatar--t92 {
-    width: 68px;
-    height: 68px;
-  }
-  .classement-badge {
-    width: 28px;
-    height: 28px;
-    font-size: var(--dj-taille-13);
-  }
-  .classement-place .classement-pseudo {
-    font-size: var(--dj-taille-13);
-  }
-  .classement-place .classement-temps {
-    font-size: var(--dj-taille-13);
-  }
-  .classement-marche {
-    font-size: 24px;
-  }
-  .classement-place--1 .classement-marche {
-    height: 76px;
-  }
-  .classement-place--2 .classement-marche {
-    height: 54px;
-  }
-  .classement-place--3 .classement-marche {
-    height: 38px;
-  }
-}
-
-/* --- La liste : la place, la photo de 48 px (44 px quand la colonne est étroite), le pseudo et l'emblème de son groupe, une colonne par jeu, le temps ------------------------
+/* --- La liste (lot U6 : les lignes, le podium, les seuils et « Ta course » sont dans `@cdj/ui/src/classement.css`) : ici seulement ce qui tient à la page — la photo de 48 px (44 px quand la colonne est étroite), une colonne par jeu, ------------------------
    La mise en page suit la largeur de **la colonne de la liste** (et non celle de l'écran : à côté du panneau des groupes la colonne est plus étroite que l'écran ne le laisse croire) : étroite = place, photo, pseudo,
    temps ; assez large = les colonnes de jeu, d'autant plus tard qu'il y en a (le pseudo garde au moins ≈ 180 px). */
 .classement-gauche {
@@ -317,59 +181,6 @@
 #classement-moi[data-jeux="6"] {
   --colonnes-jeux: 104px 104px 104px 104px 104px 104px;
 }
-.classement-liste {
-  gap: 6px;
-}
-.classement-ligne {
-  padding: 0;
-  background: var(--dj-papier);
-}
-/* Ta ligne reste surlignée en moutarde (charte § 3.1, règle de `portail.css` que la ligne papier ci-dessus recouvrait) ; le podium marque le pseudo seul. */
-.classement-ligne--moi:not(.classement-place) {
-  background: var(--dj-moutarde);
-}
-.classement-ligne__corps {
-  display: grid;
-  grid-template-columns: 30px 44px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: var(--dj-cible);
-  padding: 7px 10px;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-}
-.classement-ligne__bouton {
-  cursor: pointer;
-}
-.classement-ligne .dj-avatar--t48 {
-  width: 44px;
-  height: 44px;
-}
-.classement-ligne .classement-pseudo {
-  min-width: 0;
-  gap: var(--dj-espace-3);
-  font-size: var(--dj-taille-15);
-  overflow-wrap: break-word; /* un long pseudo passe à la ligne ou se coupe en dernier recours, il n'écrase jamais la colonne */
-}
-.classement-ligne .classement-pseudo .salle-embleme {
-  flex: none;
-}
-.classement-ligne .classement-rang {
-  color: var(--dj-encre-douce);
-}
-.classement-ligne--moi .classement-rang {
-  color: var(--dj-encre);
-}
-.classement-ligne .classement-temps {
-  justify-self: end;
-  text-align: right;
-}
-.classement-ligne__jeux,
 .classement-entetes {
   display: none;
 }
@@ -489,58 +300,70 @@
 
 /* --- Le panneau des groupes : à droite de la liste sur ordinateur, sous elle sur téléphone --------------------------------------------------------- */
 .classement-droite {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+.classement-droite > .salle-panneau {
   gap: var(--dj-espace-3);
 }
-.groupes-panneau {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+
+/* --- « Ta course » (lot U6) : une barre fixe au-dessus des onglets sur téléphone, un panneau en tête de la colonne de droite sur ordinateur -----------------------------------------
+   Le composant (`@cdj/ui/src/classement.css`) ne se positionne pas : la page décide. Sous 1100 px la colonne de droite passe sous la liste, la barre reste donc fixe (au-dessus des onglets du téléphone,
+   en bas de page sur tablette) ; dès 1100 px elle est le premier panneau de la colonne. La page garde la place de la barre (le pied, `.classement-page--course ~ .salle-pied`). */
+@media (max-width: 1099px) {
+  .classement-page .classement-course {
+    position: fixed;
+    z-index: 15;
+    right: max(8px, env(safe-area-inset-right, 0px));
+    bottom: 14px;
+    left: max(8px, env(safe-area-inset-left, 0px));
+    max-width: 640px;
+    margin-inline: auto;
+  }
+  .classement-page--course ~ .salle-pied {
+    padding-bottom: calc(96px + 84px + env(safe-area-inset-bottom, 0px));
+  }
 }
-.groupes-panneau__ligne {
-  display: flex;
-  align-items: center;
-  gap: var(--dj-espace-4);
-  padding: 9px 0;
-  border-bottom: 1px solid var(--dj-creme-2);
+@media (max-width: 759px) {
+  .classement-page .classement-course {
+    bottom: calc(max(var(--dj-espace-4), env(safe-area-inset-bottom, 0px)) + 59px);
+  }
 }
-.groupes-panneau__ligne.groupes-ligne--moi {
-  margin-inline: -8px;
-  padding-inline: 8px;
-  border-radius: 4px;
-  background: var(--dj-moutarde);
+@media (min-width: 760px) and (max-width: 1099px) {
+  .classement-page--course ~ .salle-pied {
+    padding-bottom: calc(var(--dj-espace-8) + 84px + env(safe-area-inset-bottom, 0px));
+  }
 }
-.groupes-panneau__ligne .groupes-ligne__rang {
-  flex: none;
-  width: 28px;
-  color: var(--dj-encre-douce);
-  font-size: var(--dj-taille-14);
-}
-.groupes-panneau__texte {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-.groupes-panneau__texte .groupes-ligne__nom {
-  min-width: 0;
-  font-family: var(--dj-police-marque);
-  font-size: var(--dj-taille-15);
-  overflow-wrap: anywhere;
-}
-.groupes-panneau__texte small {
-  color: var(--dj-encre-douce);
-  font-size: var(--dj-taille-12);
-}
-/* Ton groupe en moutarde : le texte en encre (l'encre douce sur la moutarde ne passe pas axe). */
-.groupes-ligne--moi .groupes-panneau__texte small,
-.groupes-ligne--moi .groupes-ligne__rang {
-  color: var(--dj-encre);
-}
-.groupes-panneau__ligne .groupes-ligne__score {
-  flex: none;
-  font-family: var(--dj-police-chiffres);
-  font-weight: 700;
-  font-size: var(--dj-taille-14);
+@media (min-width: 1100px) {
+  .classement-page--groupes .classement-course {
+    margin-top: 26px;
+    max-width: 460px;
+  }
+  .classement-page .classement-course {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 16px;
+    box-shadow:
+      0 0 0 2px var(--dj-moutarde),
+      5px 5px 0 var(--dj-encre);
+  }
+  .classement-page .classement-course .classement-course__ou {
+    font-size: 34px;
+  }
+  .classement-page .classement-course .classement-course__texte {
+    font-size: var(--dj-taille-15);
+  }
+  .classement-page .classement-course .classement-course__sous {
+    font-size: var(--dj-taille-13);
+  }
+  .classement-page .classement-course .classement-course__bouton {
+    grid-column: 1 / -1;
+    max-width: none;
+    font-size: var(--dj-taille-15);
+    justify-content: center;
+    text-align: center;
+  }
 }
 .classement-groupes__tous {
   align-self: flex-start;

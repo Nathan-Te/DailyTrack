@@ -226,8 +226,8 @@ export function selecteurDeVue(o: { aria: string; choix: readonly ChoixVue[]; ac
   );
 }
 
-/** L'emblème d'un groupe : un carré à coins de 8 px, son image ou les deux premières lettres de son nom (décoratif : le nom est écrit à côté). Lot U2 : `taille` (22 · 48 · 52 · 72, charte § 9) ; 52 par défaut. */
-export function emblemeDeGroupe(o: { initiales: string; image?: string; taille?: 22 | 48 | 52 | 72 }): HTMLElement {
+/** L'emblème d'un groupe : un carré à coins de 8 px, son image ou les deux premières lettres de son nom (décoratif : le nom est écrit à côté). Lot U2 : `taille` (22 · 48 · 52 · 72, charte § 9 ; lot U6 : 92 · 112, le podium des groupes) ; 52 par défaut. */
+export function emblemeDeGroupe(o: { initiales: string; image?: string; taille?: 22 | 48 | 52 | 72 | 92 | 112 }): HTMLElement {
   const px = o.taille ?? 52;
   return el("span", { classe: ["salle-embleme", o.taille && `salle-embleme--t${o.taille}`], attrs: { "aria-hidden": "true" } }, o.image ? el("img", { attrs: { src: o.image, alt: "", width: px, height: px, loading: "lazy", decoding: "async" } }) : o.initiales);
 }

@@ -215,6 +215,14 @@ describe(`groupes : le classement (${TEST_DB})`, () => {
     expect(v.sens).toBe("temps");
     expect(v.groupes.map((g: { nom: string; rang: number; score: number; classes: number }) => [g.nom, g.rang, g.score, g.classes])).toEqual([["Les Rapides", 1, 32_600, 5], ["Les Lents", 2, 52_000, 3]]);
     expect(v.moins.map((g: { nom: string; classes: number }) => [g.nom, g.classes])).toEqual([["Les Deux", 2]]);
+    // Lot U6 : chaque groupe classé porte ses trois membres qui comptent, du meilleur au moins bon (référence publique, pseudo) ; jamais l'identifiant secret ; un groupe à moins de 3 classés n'a pas de trio.
+    expect(v.groupes[0].trio.map((m: { pseudo: string }) => m.pseudo)).toEqual(["Joueur1", "Joueur2", "Joueur3"]);
+    expect(v.groupes[1].trio.map((m: { pseudo: string }) => m.pseudo)).toEqual(["Joueur6", "Joueur7", "Joueur8"]);
+    for (const m of v.groupes[0].trio) {
+      expect(Object.keys(m).sort()).toEqual(["pseudo", "ref"]);
+      expect(m.ref).toMatch(/^[0-9a-f]{12}$/);
+    }
+    expect(v.moins[0].trio).toBeUndefined();
     expect(v.vues).toEqual(expect.arrayContaining(["cumul", "track"]));
     // Sa page dit son rang du jour dans chaque vue.
     const page = (await get(t, null, `/api/groupes/nom/les%20rapides?date=${DATE}`)).body;
