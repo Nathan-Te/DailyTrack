@@ -2,11 +2,11 @@
 // 1/60 s) sont portés tels quels ; ce fichier ne garde que ce qui ne se règle jamais à la main. Les constantes de SENSATION (pente, rebonds, force des batteurs et du lanceur) sont dans `reglages.ts`, en un seul objet.
 
 /** La version de la simulation (les règles de la partie). Elle monte à tout changement qui change une partie rejouée (une règle, un réglage par défaut, la géométrie). */
-export const PINBALL_SIM_VERSION = 8;
+export const PINBALL_SIM_VERSION = 9;
 /** La version du générateur de la table du jour. Elle monte à tout changement de ce que `dailyPinball` produit. Jamais une date. */
-export const PINBALL_GENERATOR_VERSION = 7;
+export const PINBALL_GENERATOR_VERSION = 8;
 /** La version du calcul des seuils des médailles : le robot du lot PB4 (version 1 : les seuils provisoires du PB1, les mêmes tous les jours). Elle monte à tout changement du robot, de ses constantes ou des pourcentages (`seuils.ts`). */
-export const PINBALL_BOT_VERSION = 7;
+export const PINBALL_BOT_VERSION = 8;
 
 /** Le pas : 600 par seconde (celui de la maquette). La bille va à 1 500 px/s au plus, soit 2,5 px par pas, pour un rayon de 9 px : elle ne saute jamais un mur (`test/traversee.test.ts`). */
 export const TICKS_PAR_SECONDE = 600;

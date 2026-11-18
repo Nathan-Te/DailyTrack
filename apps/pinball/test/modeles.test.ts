@@ -96,9 +96,9 @@ describe("les modèles des modules (lot PBV4)", () => {
     expect([ENCRE, PAPIER, MOUTARDE]).toEqual([ENCRE_DESSIN, PAPIER_DESSIN, MOUTARDE_DESSIN]);
   });
 
-  it("sur les 500 tables (lot PBG1 : quatre plans, 444 avant eux), aucun modèle ne sort de l'emprise de collision de son module ni ne paraît plus petit qu'elle", () => {
+  it("sur les 94 tables (lot PBL2 ; 500 avant, 444 avant les plans), aucun modèle ne sort de l'emprise de collision de son module ni ne paraît plus petit qu'elle", () => {
     const tables = toutesLesTables();
-    expect(tables.length).toBe(500);
+    expect(tables.length).toBe(94);
     const E = Object.fromEntries(THEMES_PINBALL.map((th) => [th, empreintes(th)])) as Record<ThemePinball, ReturnType<typeof empreintes>>;
     for (const th of THEMES_PINBALL) {
       // le modèle de référence, à sa taille de collision
@@ -173,7 +173,7 @@ describe("les modèles des modules (lot PBV4)", () => {
         poses++;
       }
     }
-    expect(poses).toBeGreaterThan(2000);
+    expect(poses).toBeGreaterThan(800);
   });
 
   it("le rendu à plat dessine chaque modèle de chaque thème", () => {

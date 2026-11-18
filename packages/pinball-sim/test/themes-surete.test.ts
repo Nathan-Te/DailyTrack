@@ -79,7 +79,7 @@ describe("aucun élément ne fait traverser un mur", () => {
           const d = rng.int(Math.trunc(e.r) + 40);
           x = e.x + Math.cos(a) * d;
           y = e.y + Math.sin(a) * d;
-          if (dansLaTable(x * UNITE, y * UNITE, 14) && y < 560 && !p.table.murs.some((s) => distanceSegment(x * UNITE, y * UNITE, s.ax, s.ay, s.bx, s.by) < 14) && ![...p.table.poteaux, ...p.table.bumpers].some((q) => PX(Math.hypot(x * UNITE - q.x, y * UNITE - q.y)) < 14 + PX(q.r))) break;
+          if (dansLaTable(x * UNITE, y * UNITE, 14) && y < 560 && ![...p.table.murs, ...(p.table.passage ? [p.table.passage.battant] : [])].some((s) => distanceSegment(x * UNITE, y * UNITE, s.ax, s.ay, s.bx, s.by) < 14) && ![...p.table.poteaux, ...p.table.bumpers].some((q) => PX(Math.hypot(x * UNITE - q.x, y * UNITE - q.y)) < 14 + PX(q.r))) break;
           x = 0;
         }
         if (x === 0) continue;

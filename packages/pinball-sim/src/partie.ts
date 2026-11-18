@@ -46,6 +46,8 @@ export function secteur(dx: number, dy: number): number {
 const SORTIE_TOURBILLON = 1900;
 /** La période du va-et-vient de l'astéroïde : 2 048 pas (3,4 s : la maquette avait 3,2 s), pour que l'angle avance d'un nombre entier d'angles de table par pas (8). */
 export const PERIODE_ASTEROIDE = 2048;
+/** Lot PBL2 : le tourbillon garde la bille qui passe à moins de 20 px de son centre (10 px avant : la fenêtre de tir d'un humain, mesurée au geste de référence, n’atteignait que 20 ms ; l'entonnoir visible a 56 px de rayon). */
+export const TOURBILLON_CAPTURE = 20;
 /** Le jet du geyser reste visible 300 pas (0,5 s) ; il ne compte pas dans la partie (rendu). */
 export const JET_GEYSER = 300;
 
@@ -1353,7 +1355,7 @@ export class Partie {
       const z = t.tourbillons[i]!;
       const dx = this.x - z.x;
       const dy = this.y - z.y;
-      if (this.tourbillonPause[i]! > 0 || dx * dx + dy * dy >= 100 * UNITE * UNITE) continue;
+      if (this.tourbillonPause[i]! > 0 || dx * dx + dy * dy >= TOURBILLON_CAPTURE * TOURBILLON_CAPTURE * UNITE * UNITE) continue;
       this.captif = r.tourbillonGarde;
       this.captifTb = i;
       this.x = z.x;

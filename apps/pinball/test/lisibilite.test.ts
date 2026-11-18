@@ -66,8 +66,9 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
             const ap = e.ancres[0]!;
             expect(Math.abs(Math.atan2(ap.y - e.y, ap.x - e.x) - e.pointe), quoi).toBeLessThan(1e-9);
             // jamais sur un rail, une bouche ou le mini-batteur
-            // (un seul cas connu : le geyser de l'emplacement (250, 252) de la « doublette », au Volcan, enserré par une rampe, des bumpers et la coulée : la proposition de déplacement est dans le README du lot)
-            const connu = plan === "doublette" && theme === "volcan" && e.role === "mission" && Math.round(e.ancres[0]!.x) === 250 && Math.round(e.ancres[0]!.y) === 252;
+            // lot PBL2 : un seul cas connu — la plaque « PORTE » de la « doublette » (sa porte est au coin haut droit, entre l'orbite, la coulée et les rampes : la plaque ne s'affiche que porte ouverte, brièvement) ; elle ne recouvre
+            // jamais un module, une flèche ni une autre plaque. L'ancien cas (le geyser de l'emplacement (250, 252)) a disparu avec les emplacements.
+            const connu = plan === "doublette" && e.role === "porte";
             if (e.surUnRail) expect(connu, `${quoi} : la plaque ${e.role} n'a de place que sur un rail`).toBe(true);
             else for (const d of rails) expect(boiteTouche(b, d.x, d.y, d.r), `${quoi} : la plaque ${e.role} recouvre un rail`).toBe(false);
             // ni sur un module, un poteau, une lampe, une flèche au sol
@@ -87,7 +88,7 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
             expect(b.x1, quoi).toBeLessThanOrEqual(344);
           });
         }
-        expect(tables).toBeGreaterThan(50);
+        expect(tables).toBeGreaterThan(10);
       });
     }
   }

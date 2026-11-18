@@ -1,4 +1,6 @@
 import { mixSeed, Rng } from "@cdj/core";
+import { TOUR, NORME } from "./constantes";
+import { cosinus, div, sinus } from "./entiers";
 import type { Module } from "./generateur";
 import type { ThemePinball } from "./themes";
 
@@ -69,104 +71,123 @@ export interface Plan {
   aiguillage?: DefAiguillage;
 }
 
-/** L'emplacement de l'élément du thème : le manège, le tourbillon, le trou noir ou la coulée. */
-const theme = (x: number, y: number): Emplacement => ({ x, y, permis: ["manege"], fixe: { foire: "manege", ocean: "tourbillon", espace: "trouNoir", volcan: "coulee" } });
+/** L'emplacement de l'élément du thème : le manège, le tourbillon, le trou noir ou — au Volcan — la coulée (par défaut) ou le geyser (`volcan: "geyser"` : lot PBL2, le geyser au centre est un tir que les trois plans à emplacements bas n'offraient pas ; la coulée prend alors un emplacement du haut). */
+const theme = (x: number, y: number, volcan: Module = "coulee"): Emplacement => ({ x, y, permis: ["manege"], fixe: { foire: "manege", ocean: "tourbillon", espace: "trouNoir", volcan } });
 /** Le trou : toujours là, dans tous les thèmes (la Pieuvre de l'océan) ; il servira de verrou au lot suivant. */
 const trou = (x: number, y: number): Emplacement => ({ x, y, permis: ["trou"] });
 
 /**
  * L'orbite : un couloir le long de l'arc du haut (rayon `r` px autour de (196,25 ; 205)), de la bouche gauche (`xg`, `y`) à la bouche droite (`xd`, `y`). Les bouches regardent vers le haut : la bille qui y monte assez vite
- * fait le tour et sort de l'autre côté.
+ * fait le tour et sort de l'autre côté. **Lot PBL2 : une bouche s'ouvre dans la direction d'un tir** (`ag`, `ad` : degrés à partir de la verticale, positif vers la droite de l'écran — la bouche gauche regarde vers le haut et
+ * la gauche, la bouche droite vers le haut et la droite), pour que la bille frappée par un batteur la franchisse de face : la fenêtre de tir (`tir.ts`).
  */
-function orbite(xg: number, xd: number, y: number, r: number, hauteur: number): DefRail {
+export function orbite(xg: number, xd: number, y: number, r: number, hauteur: number, ag = 0, ad = 0, yd = y): DefRail {
   const arc = (a: number): [number, number] => {
     // `a` en degrés, de 180 (à gauche) à 0 (à droite) ; les sinus et cosinus sont ceux des multiples de 20° : écrits ici, tout en entiers
     const t: Record<number, [number, number]> = { 180: [-1000, 0], 160: [-940, 342], 140: [-766, 643], 120: [-500, 866], 100: [-174, 985], 80: [174, 985], 60: [500, 866], 40: [766, 643], 20: [940, 342], 0: [1000, 0] };
     const [c, s] = t[a]!;
     return [196 + Math.trunc((c * r) / 1000), 205 - Math.trunc((s * r) / 1000)];
   };
+  // le deuxième point de chaque bout : 44 px plus loin dans la direction de la bouche
+  const vers = (x: number, y: number, a: number): [number, number] => [x + Math.trunc((44 * sinus(div(a * TOUR, 360))) / NORME), y - Math.trunc((44 * cosinus(div(a * TOUR, 360))) / NORME)];
   return {
     genre: "orbite",
-    points: [[xg, y], [xg, y - 44], ...[160, 140, 120, 100, 80, 60, 40, 20].map(arc), [xd, y - 44], [xd, y]],
+    points: [[xg, y], vers(xg, y, ag), ...[160, 140, 120, 100, 80, 60, 40, 20].map(arc), vers(xd, yd, ad), [xd, yd]],
     hauteur,
-    demiPorte: 13,
+    demiPorte: 17,
   };
+}
+
+/**
+ * **La porte de l'orbite** (lot PBL2) : un battant qui ferme la bouche d'une orbite et la transforme en passage payant. Le passage (deux murs, un battant) est posé juste derrière la bouche (`x`, `y`, direction `angle`),
+ * le battant à `ecart` px d’elle (26 : la bouche prend la bille dès qu’elle est à moins de son rayon de la ligne de la bouche, 9 px ; un battant plus près ne serait jamais franchi avant la prise) : fermé, il est un mur et la bouche est hors de portée de ce côté ; ouvert, la bille qui le franchit rapporte 4 000, fait avancer la mission d'un cran, puis est prise par l'orbite.
+ * L'autre bouche reste libre : sur une table sans banque de cibles, c'est l'orbite prise par elle qui ouvre la porte.
+ */
+export function porteDeLOrbite(x: number, y: number, angle: number, largeur: number, profondeur = 36): DefPorte {
+  const a = div(angle * TOUR, 360);
+  const ecart = 26;
+  return { x: x - Math.trunc((ecart * sinus(a)) / NORME), y: y + Math.trunc((ecart * cosinus(a)) / NORME), angle, largeur, profondeur };
 }
 
 /** Les plans. Le premier emplacement est celui de l'élément du thème, le deuxième le trou ; les suivants portent, selon le thème, l'astéroïde et les portails de l'espace et le geyser du volcan. */
 export const PLANS: readonly Plan[] = [
   {
-    // « Doublette » : deux rampes qui se croisent au sommet, chacune ramène la bille dans le couloir de retour de l'autre côté
+    // « Doublette » : deux rampes qui se croisent au sommet, chacune ramène la bille dans le couloir de retour de l'autre côté. Lot PBL2 : les bouches des rampes sont sur l'éventail des tirs (l'une au centre, l'autre à droite,
+    // côte à côte avec la bouche libre de l'orbite), la porte ferme la bouche droite de l'orbite (le battant penché à 35° : une bille posée dessus glisse), le trou (verrou) est devant le batteur droit et l'élément du thème au centre.
     id: "doublette",
     emplacements: [
-      theme(184, 300),
-      trou(184, 394),
-      { x: 184, y: 222, permis: ["bumpers", "bumpers", "bumpers", "mini"], fixe: { espace: "asteroide" }, optionnel: { volcan: "geyser" } },
-      { x: 118, y: 252, permis: ["cibles", "spinner", "mini"], fixe: { espace: "portailB" } },
-      { x: 250, y: 252, permis: ["cibles", "spinner", "mini"], fixe: { espace: "portailA" }, optionnel: { volcan: "geyser" } },
-      { x: 190, y: 150, permis: ["mini", "spinner"] },
+      theme(206, 250, "geyser"),
+      trou(195, 383),
+      { x: 90, y: 400, permis: ["bumpers", "bumpers", "bumpers", "mini"], fixe: { espace: "asteroide" } },
+      { x: 262, y: 212, permis: ["mini"], fixe: { espace: "portailB" } },
+      { x: 270, y: 160, permis: ["cibles", "spinner", "mini"], fixe: { espace: "portailA", volcan: "coulee" } },
+      { x: 205, y: 150, permis: ["mini"] },
     ],
     rampes: [
-      { genre: "rampe", points: [[76, 385], [76, 310], [92, 220], [150, 140], [230, 126], [300, 175], [333, 270], [336, 448]], hauteur: 30, demiPorte: 14 },
-      { genre: "rampe", points: [[292, 385], [292, 310], [276, 220], [218, 140], [138, 126], [68, 175], [35, 270], [32, 448]], hauteur: 44, demiPorte: 14 },
+      { genre: "rampe", points: [[262, 345], [277, 304], [276, 220], [218, 140], [138, 126], [68, 175], [35, 270], [32, 448]], hauteur: 30, demiPorte: 17 },
+      { genre: "rampe", points: [[153, 343], [153, 299], [92, 220], [150, 140], [230, 126], [300, 175], [333, 270], [336, 448]], hauteur: 44, demiPorte: 17 },
     ],
-    orbite: orbite(38, 334, 300, 150, 20),
-    // la porte à gauche de l'axe, juste au-dessus des lance-pierres, hors de la route des deux rampes ; l'aiguillage est sur la rampe de gauche, qui passe près du trou
-    porte: { x: 150, y: 470, angle: -35, largeur: 34, profondeur: 36 },
+    orbite: orbite(88, 298, 295, 150, 20, 0, 35, 285),
+    // l'aiguillage est sur la rampe de gauche, qui passe près du trou
+    porte: porteDeLOrbite(298, 285, 35, 60, 24),
     aiguillage: { rampe: 0, partie: 130 },
   },
   {
-    // « Tremplin » : une rampe qui monte au milieu et traverse la table, et un mini-batteur à droite qui l'alimente
+    // « Tremplin » : une rampe qui monte du centre de la table et traverse le haut, et un mini-batteur à droite qui l'alimente. Lot PBL2 : les objectifs sont sur l'éventail des tirs — le verrou (le trou) à gauche du centre
+    // et le geyser en bas à droite (l'emplacement du haut à gauche, entre la rampe et l'orbite, ne laissait à la plaque de la mission de place que sur un rail), l'élément du thème à droite (tirs croisés du batteur gauche), la bouche de la rampe devant le batteur gauche, la porte sur la bouche gauche de l'orbite
+    // (le batteur droit y monte ; le battant, penché à 40°, la ferme) et la bouche droite de l'orbite libre ; aucun module à murs dans la zone de tir.
     id: "tremplin",
     emplacements: [
-      theme(120, 300),
-      trou(170, 185),
-      { x: 120, y: 215, permis: ["bumpers", "bumpers", "mini"], fixe: { espace: "asteroide" }, optionnel: { volcan: "geyser" } },
-      { x: 84, y: 380, permis: ["cibles", "spinner", "mini"], fixe: { espace: "portailB" } },
-      { x: 268, y: 215, permis: ["cibles", "spinner", "bumpers"], fixe: { espace: "portailA" }, optionnel: { volcan: "geyser" } },
-      { x: 270, y: 325, permis: ["mini", "bumpers"] },
+      theme(208, 238),
+      trou(164, 308),
+      { x: 101, y: 209, permis: ["bumpers", "bumpers", "mini"], fixe: { espace: "asteroide" } },
+      { x: 135, y: 162, permis: ["spinner", "mini"], fixe: { espace: "portailB" } },
+      { x: 252, y: 385, permis: ["cibles", "bumpers"], fixe: { espace: "portailA" }, optionnel: { volcan: "geyser" } },
+      { x: 254, y: 170, permis: ["mini", "bumpers"] },
     ],
-    rampes: [{ genre: "rampe", points: [[214, 390], [214, 330], [226, 250], [250, 175], [262, 120], [214, 82], [150, 90], [80, 150], [38, 250], [32, 448]], hauteur: 32, demiPorte: 14 }],
-    orbite: orbite(38, 334, 290, 146, 20),
+    rampes: [{ genre: "rampe", points: [[119, 388], [97, 350], [226, 250], [250, 175], [262, 120], [214, 82], [150, 90], [80, 150], [38, 250], [32, 448]], hauteur: 32, demiPorte: 17 }],
+    orbite: orbite(114, 298, 268, 150, 20, -40, 15, 300),
     mini: { cote: 1, x: 52, y: 405, longueur: 38 },
-    porte: { x: 124, y: 448, angle: -35, largeur: 34, profondeur: 36 },
+    porte: porteDeLOrbite(114, 268, -40, 52, 20),
     aiguillage: { rampe: 0, partie: 420 },
   },
   {
-    // « Bretelle » : une rampe à gauche qui contourne le haut, une rampe courte à droite, et un mini-batteur à gauche
+    // « Bretelle » : une rampe qui contourne le haut, et un mini-batteur à gauche. Lot PBL2 : la bouche de la rampe devant le batteur droit, la porte sur la bouche gauche de l'orbite (le battant penché à 25°), la bouche droite libre, le trou
+    // (verrou) devant le batteur droit et le geyser en haut à droite (l'emplacement du bas à gauche, au pied du mini-batteur, est un tir difficile : les tables du geyser qui s'y trouve sont refusées).
     id: "bretelle",
     emplacements: [
-      theme(200, 310),
-      trou(240, 170),
-      { x: 150, y: 195, permis: ["bumpers", "mini", "cibles"], fixe: { espace: "asteroide" }, optionnel: { volcan: "geyser" } },
-      { x: 280, y: 270, permis: ["cibles", "spinner", "mini"], fixe: { espace: "portailB" } },
-      { x: 99, y: 290, permis: ["cibles", "spinner", "bumpers"], fixe: { espace: "portailA" }, optionnel: { volcan: "geyser" } },
-      { x: 291, y: 190, permis: ["mini", "spinner"] },
+      theme(200, 268, "geyser"),
+      trou(194, 390),
+      { x: 90, y: 400, permis: ["bumpers", "mini", "cibles"], fixe: { espace: "asteroide" } },
+      { x: 270, y: 208, permis: ["mini"], fixe: { espace: "portailB" } },
+      { x: 278, y: 146, permis: ["cibles", "spinner", "bumpers"], fixe: { espace: "portailA", volcan: "coulee" } },
+      { x: 205, y: 150, permis: ["mini"] },
     ],
     rampes: [
-      { genre: "rampe", points: [[110, 400], [110, 350], [100, 280], [118, 190], [170, 120], [250, 105], [310, 150], [336, 240], [337, 448]], hauteur: 34, demiPorte: 14 },
+      { genre: "rampe", points: [[153, 347], [153, 303], [100, 280], [118, 190], [170, 120], [250, 105], [310, 150], [336, 240], [337, 448]], hauteur: 34, demiPorte: 17 },
     ],
-    orbite: orbite(38, 334, 310, 152, 22),
-    mini: { cote: 0, x: 46, y: 405, longueur: 38 },
-    porte: { x: 270, y: 434, angle: -35, largeur: 34, profondeur: 36 },
+    orbite: orbite(88, 290, 295, 150, 22, 0, 35, 310),
+    mini: { cote: 1, x: 46, y: 405, longueur: 38 },
+    porte: porteDeLOrbite(290, 310, 35, 60, 24),
     aiguillage: { rampe: 0, partie: 560 },
   },
   {
-    // « Boucle » : une grande boucle autour du haut qui part du bas de la table et revient du même côté, et les deux mini-bouches de l'orbite
+    // « Boucle » : une grande boucle autour du haut qui part du centre de la table et revient dans le couloir gauche, et les deux bouches de l'orbite. Lot PBL2 : le trou (verrou) devant le batteur droit, la bouche de la
+    // boucle au centre, la porte sur la bouche droite de l'orbite (le battant penché à 35°) et la bouche gauche libre.
     id: "boucle",
     emplacements: [
-      theme(184, 330),
-      trou(184, 235),
-      { x: 112, y: 190, permis: ["bumpers", "mini", "spinner"], fixe: { espace: "asteroide" }, optionnel: { volcan: "geyser" } },
-      { x: 262, y: 190, permis: ["cibles", "spinner", "mini"], fixe: { espace: "portailB" } },
-      { x: 190, y: 130, permis: ["bumpers", "mini", "spinner"], fixe: { espace: "portailA" }, optionnel: { volcan: "geyser" } },
-      { x: 111, y: 398, permis: ["mini", "spinner"] },
+      theme(206, 250, "geyser"),
+      trou(195, 383),
+      { x: 90, y: 400, permis: ["bumpers", "mini"], fixe: { espace: "asteroide" } },
+      { x: 262, y: 212, permis: ["mini"], fixe: { espace: "portailB" } },
+      { x: 270, y: 160, permis: ["bumpers", "mini", "spinner"], fixe: { espace: "portailA", volcan: "coulee" } },
+      { x: 205, y: 150, permis: ["mini"] },
     ],
     rampes: [
-      { genre: "rampe", points: [[292, 400], [292, 340], [302, 250], [272, 170], [210, 135], [150, 160], [100, 230], [60, 330], [32, 448]], hauteur: 34, demiPorte: 14 },
+      { genre: "rampe", points: [[153, 347], [153, 303], [302, 250], [272, 170], [210, 135], [150, 160], [100, 230], [60, 330], [32, 448]], hauteur: 34, demiPorte: 17 },
     ],
-    orbite: orbite(38, 334, 280, 152, 20),
-    porte: { x: 202, y: 448, angle: -35, largeur: 34, profondeur: 36 },
+    orbite: orbite(88, 298, 295, 150, 20, 0, 35, 285),
+    porte: porteDeLOrbite(298, 285, 35, 60, 24),
     aiguillage: { rampe: 0, partie: 470 },
   },
 ];
@@ -181,8 +202,8 @@ export const PLAN_CLASSIQUE: Plan = {
     { x: 100, y: 220, permis: ["cibles", "spinner", "mini", "bumpers"] },
     { x: 184, y: 180, permis: ["bumpers", "bumpers", "bumpers", "mini"], fixe: { espace: "asteroide" } },
     { x: 270, y: 220, permis: ["cibles", "spinner", "mini"], fixe: { espace: "portailB" } },
-    { x: 92, y: 385, permis: ["cibles", "trou", "spinner"], fixe: { espace: "portailA" }, optionnel: { volcan: "geyser" } },
-    { x: 276, y: 385, permis: ["cibles", "trou", "mini"], fixe: { ocean: "trou" }, optionnel: { volcan: "geyser" } },
+    { x: 92, y: 385, permis: ["cibles", "trou", "spinner"], fixe: { espace: "portailA" } },
+    { x: 276, y: 385, permis: ["cibles", "trou", "mini"], fixe: { ocean: "trou" } },
     theme(184, 320),
   ],
   rampes: [],

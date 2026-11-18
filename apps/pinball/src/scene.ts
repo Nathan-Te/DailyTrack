@@ -165,6 +165,14 @@ export function nouvellePartiePinball(contenu: Contenu, hote: HTMLElement, o: Op
     monterRendu("basse");
   };
   monterRendu(essai.qualite ?? "haute");
+  // lot PBL2 : `?debug&tirs` — l'éventail des tirs d'un humain, peint dans le sol (le calcul est à la demande : `tune-tirs.ts`, une demi-seconde) ; le rendu est remonté avec lui
+  if (essai.tirs && debug) {
+    void import("./tune-tirs").then(async (m) => {
+      const d = await import("./dessin");
+      d.poserLesTirs(m.calculerTirs(contenu));
+      monterRendu(qualite);
+    });
+  }
   if (essai.qualite === null && qualite === "basse" && corps) secours = true; // WebGL absent
   const observateur = new ResizeObserver(taille);
   observateur.observe(hote);

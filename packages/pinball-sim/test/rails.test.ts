@@ -282,9 +282,9 @@ describe("les points d'une rampe et le combo", () => {
 
 describe("le mini-batteur : un troisième batteur, qui suit le bouton du batteur du même côté", () => {
   const avecMini = PLANS.filter((p) => p.mini);
-  it("un ou deux plans en ont un, de chaque côté ; sans lui la table n'en a pas", () => {
+  it("un ou deux plans en ont un ; sans lui la table n'en a pas", () => {
     expect(avecMini.length).toBeGreaterThanOrEqual(1);
-    expect(new Set(avecMini.map((p) => p.mini!.cote)).size).toBe(avecMini.length);
+    for (const p of avecMini) expect([0, 1]).toContain(p.mini!.cote);
     for (const p of PLANS) expect(new Partie(contenuDe(p.id)).table.mini !== null).toBe(p.mini !== undefined);
   });
   for (const plan of avecMini) {

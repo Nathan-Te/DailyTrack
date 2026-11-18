@@ -39,7 +39,13 @@ else {
   }, valeur("fils") ? Number(valeur("fils")) : undefined);
   const refusees = resumes.filter((r) => !r.ok);
   const motifs = new Map<string, number>();
-  for (const r of refusees) for (const m of r.raisons) motifs.set(m.replace(/\(.*$/, "").replace(/ : S\d:.*$/, "") + (m.startsWith("module jamais touché") ? ` : ${m.split(" : ")[1]!.split(":")[1]}` : ""), (motifs.get(m) ?? 0) + 1);
+  for (const r of refusees) {
+    for (const m of r.raisons) {
+      // lot PBL2 : le motif d'une table refusée (sans les chiffres) ; une fenêtre trop courte garde l'objectif (« fenêtre de tir trop courte : mission »)
+      const cle = m.replace(/ \(.*$/, "").replace(/ : S\d:.*$/, "") + (m.startsWith("module jamais touché") ? ` : ${m.split(" : ")[1]!.split(":")[1]}` : "");
+      motifs.set(cle, (motifs.get(cle) ?? 0) + 1);
+    }
+  }
   const pire = Math.max(...resumes.map((r) => r.pire));
   const secondes = resumes.map((r) => r.secondes);
   console.log(`${resumes.length - refusees.length} valides, ${refusees.length} refusée(s) sur ${resumes.length} ; la bille lâchée la plus lente met ${pire} pas (${(pire / 600).toFixed(0)} s) ; ${(secondes.reduce((a, b) => a + b, 0) / secondes.length).toFixed(1)} s par table en moyenne, ${Math.max(...secondes).toFixed(1)} s au pire ; ${((performance.now() - t0) / 1000).toFixed(0)} s en tout.`);

@@ -153,6 +153,9 @@ export interface Poser {
   /** Lot PB4 : où sont les éléments de ce module dans les tableaux de la table, pour la validation et le rapport : le rang du premier (dans `bumpers`, `banques`, `spinners`, `trous`, `plateaux`, `tourbillons`, `trousNoirs`, `portails`, `geysers` ou `coulees`, selon le module) et leur nombre. */
   rang: number;
   n: number;
+  /** Lot PBL2 : les murs que ce module a posés dans `murs` (de `m0` inclus à `m1` exclu) : la zone de tir et les fenêtres de tir (`tir.ts`) savent ainsi à quel module appartient un mur. */
+  m0: number;
+  m1: number;
 }
 export interface Table {
   murs: Segment[];
@@ -392,7 +395,7 @@ function poserRail(t: Table, def: DefRail, r: Reglages): void {
 
 function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, emplacement: number, cx: number, cy: number): void {
   const rangs: Record<string, readonly unknown[]> = { bumpers: t.bumpers, mini: t.bumpers, asteroide: t.bumpers, cibles: t.banques, spinner: t.spinners, trou: t.trous, manege: t.plateaux, tourbillon: t.tourbillons, trouNoir: t.trousNoirs, portailA: t.portails, portailB: t.portails, geyser: t.geysers, coulee: t.coulees };
-  const pose: Poser = { type: module, emplacement, x: cx, y: cy, rang: rangs[module]?.length ?? 0, n: 0 };
+  const pose: Poser = { type: module, emplacement, x: cx, y: cy, rang: rangs[module]?.length ?? 0, n: 0, m0: t.murs.length, m1: t.murs.length };
   t.poses.push(pose);
   const mur = (ax: number, ay: number, bx: number, by: number, e: number): void => void t.murs.push(segment(ax, ay, bx, by, e));
   switch (module) {
@@ -471,5 +474,6 @@ function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, empla
       throw new Error(`module inconnu : ${module}`);
   }
   pose.n = (rangs[module]?.length ?? 0) - pose.rang;
+  pose.m1 = t.murs.length;
 }
 

@@ -170,6 +170,21 @@
 .pinball-mission__val {
   font: 700 14px var(--dj-police-chiffres);
 }
+.pinball-mission__titre {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.pinball-mission__suite {
+  font: 700 10px var(--dj-police-texte, sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--dj-encre);
+  opacity: 0.85;
+}
+.pinball-mission__suite:empty {
+  display: none;
+}
 .pinball-mission[data-etat="reussie"] {
   background: var(--dj-moutarde);
   border-width: var(--dj-trait-fort);

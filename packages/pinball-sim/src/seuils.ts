@@ -5,6 +5,7 @@ import { Partie } from "./partie";
 import { REGLAGES, type Reglages } from "./reglages";
 import { jouerRobotEnTranches } from "./robot";
 import type { Seuils } from "./types";
+import { fenetresDeTir, obstaclesDansLaZone, type FenetresDeTir, type ObstacleDansLaZone } from "./tir";
 import { billesCoincees, SuiviModules, tirsDisperses, type RapportBilles } from "./validation";
 
 // LES SEUILS DES MÉDAILLES (lot PB4, définitifs) — seed : « Le robot joue la table du jour plusieurs parties fixées d'avance. Ses scores donnent les seuils Bronze, Argent, Or et Diamant, en pourcentages réglés par
@@ -89,6 +90,9 @@ export interface AnalyseTable {
   porteFranchie?: boolean;
   sauveur?: boolean;
   aiguillage?: boolean;
+  /** Lot PBL2 : les fenêtres de tir humaines de chaque objectif (ms) et les obstacles posés librement dans la zone de tir : **exigés** (une table dont un objectif est sous `FENETRE_MIN_MS`, ou dont un mur de module, la porte, entre dans la zone, est refusée). */
+  fenetres?: FenetresDeTir;
+  obstacles?: ObstacleDansLaZone[];
   ok?: boolean;
   raisons?: string[];
 }
@@ -154,7 +158,13 @@ export function* analyserTableEnTranches(contenu: Contenu, reglages: Reglages = 
   const aPorte = new Partie(contenu, reglages).table.passage !== null;
   if (aPorte && !suivi.porteOuverte) raisons.push("porte jamais ouverte");
   if (aPorte && !suivi.porteFranchie) raisons.push("porte jamais franchie");
-  return { ...a, billes, manquants, missionRobot, mission: suivi.mission, verrou: suivi.verrou, multibille: suivi.multibille, porteOuverte: suivi.porteOuverte, porteFranchie: suivi.porteFranchie, sauveur: suivi.sauveur, aiguillage: suivi.aiguillage, ok: raisons.length === 0, raisons };
+  // lot PBL2 : « le robot touche » ne suffit pas, il faut « un humain peut viser » — aucun obstacle libre dans la zone de tir, et une fenêtre de tir humaine pour chaque objectif
+  const table = new Partie(contenu, reglages).table;
+  const obstacles = obstaclesDansLaZone(table);
+  for (const o of obstacles) raisons.push(`obstacle dans la zone de tir : ${o.nom}`);
+  const fenetres = fenetresDeTir(contenu, reglages);
+  for (const o of fenetres.manquants) raisons.push(`fenêtre de tir trop courte : ${o} (${fenetres.ms[o]} ms)`);
+  return { ...a, billes, manquants, missionRobot, fenetres, obstacles, mission: suivi.mission, verrou: suivi.verrou, multibille: suivi.multibille, porteOuverte: suivi.porteOuverte, porteFranchie: suivi.porteFranchie, sauveur: suivi.sauveur, aiguillage: suivi.aiguillage, ok: raisons.length === 0, raisons };
 }
 
 /** `analyserTableEnTranches` d'un trait. */

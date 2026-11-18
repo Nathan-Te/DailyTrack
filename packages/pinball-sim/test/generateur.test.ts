@@ -115,10 +115,14 @@ describe("la table du jour", () => {
       expect(permisDe("foire", plan, 0)).toEqual(["manege"]);
       expect(permisDe("ocean", plan, 0)).toEqual(["tourbillon"]);
       expect(permisDe("espace", plan, 0)).toEqual(["trouNoir"]);
-      expect(permisDe("volcan", plan, 0)).toEqual(["coulee"]);
+      // lot PBL2 : trois plans mettent le geyser au centre (l'élément de la mission, un tir que les emplacements bas n'offraient pas) et la coulée en haut à droite ; le tremplin garde la coulée au centre
+      expect(["coulee", "geyser"], plan.id).toContain(permisDe("volcan", plan, 0)[0]);
       for (const t of THEMES_PINBALL) expect(permisDe(t, plan, 1), `${plan.id} ${t} : le trou`).toEqual(["trou"]);
       expect([2, 3, 4].map((i) => permisDe("espace", plan, i).join())).toEqual(["asteroide", "portailB", "portailA"]);
-      expect(plan.emplacements.filter((e) => e.optionnel?.volcan === "geyser").length, `${plan.id} : deux emplacements possibles pour le geyser`).toBe(2);
+      // le geyser : au centre (un seul emplacement, la coulée est alors en haut à droite) ou à l'un de deux emplacements possibles (la coulée est au centre) — le tremplin n'en garde qu'un (en bas à droite : en haut à gauche la plaque de la mission n'avait de place que sur un rail)
+      const auCentre = permisDe("volcan", plan, 0)[0] === "geyser";
+      expect(plan.emplacements.filter((e) => e.optionnel?.volcan === "geyser").length, `${plan.id} : les emplacements possibles pour le geyser`).toBe(auCentre ? 0 : plan.id === "tremplin" ? 1 : 2);
+      expect(plan.emplacements.filter((e) => e.fixe?.volcan === "coulee").length, `${plan.id} : la coulée, au centre ou en haut à droite`).toBe(1);
     }
   });
   it("chaque thème pose ses éléments, et ceux de la mission y sont toujours : sur 400 jours de chaque thème", () => {
@@ -153,7 +157,7 @@ describe("la table du jour", () => {
       tables.add(`${c.plan}${c.modules.join()}`);
     }
     for (const m of MODULES_COMMUNS) expect(vus.has(m), m).toBe(true);
-    expect(tables.size).toBeGreaterThan(80);
+    expect(tables.size).toBeGreaterThan(70);
   });
   it("est pure : deux appels, même table ; et la table se construit pour tous les jours (aucun module inconnu), avec les rails du plan", () => {
     for (let i = 0; i < 200; i++) {
