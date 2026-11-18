@@ -22,7 +22,7 @@ Branche `claude/kit-day-level-worker-thread-cb437z`, PR en brouillon. **Pour les
 Jeu fictif aux seuils de 3 s dans un vrai `worker_threads` : accueil, `/api/jeux`, classement < 500 ms et boucle < 100 ms ; un témoin sur place fige la boucle ≥ 2,4 s ; garde en base, même niveau et même empreinte ; autre version du code ; valeur abîmée ; JSON sans perte de chaque jeu du registre.
 
 ## Pour Nathan / non vérifié
-- **Aperçu** : à mesurer une fois la PR poussée (temps de réponse de l'accueil de l'aperçu, instance froide, Pinball et Gravity visibles) : le résultat est ajouté ci-dessous, ou dit « non mesuré » avec la raison.
+- **CI verte** (run 44208414697 : unit, e2e, api-image, Kit de bout en bout, jeu fictif). **Aperçu non mesuré** : le proxy de sortie de la session refuse l'hôte de la révision de recette (403). À mesurer de ton côté : ouvrir l'accueil de l'aperçu après 15 min sans visite ; les jeux d'arcade, Pinball et Gravity compris, s'affichent (les seuils peuvent arriver quelques secondes plus tard).
 - **Cloud Run (`--cpu=1`, processeur limité hors requête)** : un calcul de fond n'avance vraiment que pendant une requête ; sur 1 vCPU le fil du kit partage aussi le processeur avec le fil principal. Si l'aperçu montre des seuils tardifs, la décision (`--no-cpu-throttling`, coût) est à toi ; je ne l'ai pas prise.
 - Ce lot doit être fusionné **avant** de passer Pinball ou Gravity `on` en production.
 - Décision de conception : le thème du calendrier est une ligne ajoutée aux six contrats (`themeDuJour`), hors zones de jeu mais sans effet sur leurs niveaux.
