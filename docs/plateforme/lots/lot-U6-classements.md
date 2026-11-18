@@ -23,7 +23,7 @@
 - Au cumul, « Ta course » n'existe que si le joueur a tout fini ; hors du haut (50) l'écart est celui au premier.
 
 ## Budget `portail.classement` — à valider
-Mesuré (`node scripts/budgets.mjs`) : **53 232 o avant, 56 938 o après, plafond 57 Ko : marge de 62 o.** Tenu en mettant à la demande « Ta course » (module, feuille, textes), les places gagnées et le podium des groupes. **Je propose de relever le plafond à 60 Ko** (mesure + 5 %) : la prochaine retouche de cette page le dépassera. Je n'ai pas modifié `budgets.md`. `portail.premier` : 43 519 → 43 628 o (feuille partagée allégée, plafond 47 Ko).
+Mesuré (`node scripts/budgets.mjs`) : **53 232 o avant, 56 974 o après, plafond 57 Ko : marge de 26 o.** Tenu en mettant à la demande « Ta course » (module, feuille, textes), les places gagnées et le podium des groupes. **Je propose de relever le plafond à 60 Ko** (mesure + 5 %) : la prochaine retouche de cette page le dépassera. Je n'ai pas modifié `budgets.md`. `portail.premier` : 43 519 → 43 575 o (feuille partagée allégée, plafond 47 Ko).
 
 ## Vérifié
 Typecheck, `vitest` ui, portail, profil (643 tests), `groupes.test.ts` du serveur (trio, plans) ; e2e Chromium `groupes`, `amis`, `portail-journee`, `accessibilite`, `portail`, `avatars`, `nouveau-depart`, `diffusion`. **Non vérifié** : Firefox et WebKit ; la manette (pas de nouvel écran : « Ta course » est un lien) ; un appareil réel.

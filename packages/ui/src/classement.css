@@ -281,6 +281,34 @@
   }
 }
 
+/* --- Les éléments communs : le rang et le temps (chiffres), le nom, l'étiquette de ta place ------------------------------------------------------------------ */
+.classement-rang,
+.classement-temps {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+  font-variant-numeric: tabular-nums;
+}
+.classement-pseudo {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+  overflow-wrap: anywhere;
+}
+.classement-toi {
+  margin-left: var(--dj-espace-3);
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
 /* --- La liste : la place (et les places gagnées), la photo, le nom, le temps et l'écart au premier -------------------------------------------------- */
 .classement-liste {
   display: flex;
