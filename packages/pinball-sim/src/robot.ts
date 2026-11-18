@@ -85,6 +85,8 @@ export interface OptionsRobot {
   surPas?: (p: Partie) => void;
   /** Appelée à chaque coup choisi (le rapport, les tests des contraintes d'humain). */
   surCoup?: (c: Coup, p: Partie) => void;
+  /** Lot PBR1 : le profil des pas simulés (`tools/profil-robot.ts`) ; sans lui, aucun coût. */
+  profil?: ProfilRobot;
 }
 export interface ResultatRobot {
   partie: Partie;
@@ -94,6 +96,24 @@ export interface ResultatRobot {
   pasSimules: number;
   coups: CoupJoue[];
 }
+
+/**
+ * **Le profil d'un robot** (lot PBR1, `tools/profil-robot.ts`) : où vont les pas qu'il simule pour décider. Rempli seulement si `OptionsRobot.profil` est donné ; sans lui, aucun coût.
+ * `etapes` : `arrivee` (la bille jouée d'avance), `chauffe` (les copies de départ), `rien` (ne rien frapper), `essai` (les frappes) ; chacune comptée par type de situation au pas simulé :
+ * `multibille` (plusieurs billes ou multibille en cours), `rail` (la bille suivie est sur un rail), `porte` (la porte est ouverte) ou `batteur` (le reste). `fins` : comment finissent les essais.
+ */
+export interface ProfilRobot {
+  pas: Record<"arrivee" | "chauffe" | "rien" | "essai", Record<"batteur" | "rail" | "multibille" | "porte", number>>;
+  fins: Record<string, { n: number; pas: number }>;
+  decisions: number;
+  copies: number;
+  essais: number;
+}
+export const nouveauProfil = (): ProfilRobot => {
+  const t = (): Record<"batteur" | "rail" | "multibille" | "porte", number> => ({ batteur: 0, rail: 0, multibille: 0, porte: 0 });
+  return { pas: { arrivee: t(), chauffe: t(), rien: t(), essai: t() }, fins: {}, decisions: 0, copies: 0, essais: 0 };
+};
+const typeDe = (c: Partie, f: BilleVue): "batteur" | "rail" | "multibille" | "porte" => (c.multibille || c.autres.length > 0 ? "multibille" : f.couche === 1 ? "rail" : c.passageOuvert > 0 ? "porte" : "batteur");
 
 /** L'état d'une copie : ce qu'on compare avant et après. */
 interface Depart {
@@ -165,7 +185,7 @@ function noter(p: Partie, d: Depart): number {
  * Joue une copie `c` (la bille vient d'être préparée à son état de départ) : les batteurs de `appuyes` sont pressés tout de suite et tenus selon la règle du robot, puis la copie joue jusqu'à `ROBOT_HORIZON` pas, ou
  * jusqu'à ce que la bille soit perdue, sauvée, revenue au lanceur, ou retombe vers les batteurs après être remontée. Rend la note et le nombre de pas joués.
  */
-function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[], id: number): { note: number; pas: number } {
+function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[], id: number, profil?: ProfilRobot, etape: "rien" | "essai" = "essai"): { note: number; pas: number } {
   for (const b of appuyes) c.regler(b, true);
   let tenu = appuyes.length > 0;
   let depuis = 0;
@@ -176,18 +196,40 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[], id: number):
   // lot PBG2 : on suit « sa » bille (par son identifiant) ; les autres billes de la multibille jouent leur partie sans qu'on les suive
   const f = nouvelleVue();
   if (!c.lire(id, f)) f.couche = 0;
+  let fin = "horizon";
+  if (profil) {
+    profil.essais++;
+    if (etape === "essai") profil.copies++;
+  }
   while ((pas < ROBOT_HORIZON || f.couche === 1) && pas < ROBOT_HORIZON_RAIL && !c.finie) {
     if (tenu && doitLacher(c, depuis)) {
       for (const b of appuyes) c.regler(b, false);
       tenu = false;
     }
+    if (profil) profil.pas[etape][typeDe(c, f)]++;
     c.avancer();
     pas++;
     depuis++;
-    if (c.billes < d.billes || c.ev & EV_SAUVEE) break;
-    if (!c.lire(id, f) || f.dansLanceur) break; // perdue, verrouillée ou revenue au lanceur
+    if (c.billes < d.billes || c.ev & EV_SAUVEE) {
+      fin = c.billes < d.billes ? "perdue" : "sauvee";
+      break;
+    }
+    if (!c.lire(id, f) || f.dansLanceur) {
+      fin = "lanceur-ou-captive";
+      break; // perdue, verrouillée ou revenue au lanceur
+    }
     if (f.y < haut) monte = true;
-    else if (monte && depuis > ROBOT_MAINTIEN_MIN && f.vy > 0 && f.y > decision && f.couche === 0) break;
+    else if (monte && depuis > ROBOT_MAINTIEN_MIN && f.vy > 0 && f.y > decision && f.couche === 0) {
+      fin = "retombe";
+      break;
+    }
+  }
+  if (profil) {
+    if (c.finie) fin = "partie-finie";
+    else if (fin === "horizon" && f.couche === 1) fin = "rail-plafond";
+    const e = (profil.fins[etape + ":" + fin] ??= { n: 0, pas: 0 });
+    e.n++;
+    e.pas += pas;
   }
   return { note: noter(c, d), pas };
 }
@@ -215,8 +257,9 @@ interface Choix {
  * **Choisit une frappe** pour la bille qui tombe. `libre` : le pas avant lequel chaque batteur ne peut pas être appuyé de nouveau (écart minimal), relatif à maintenant. Rend le coup dont le voisinage est le meilleur,
  * ou `null` (rien à frapper, ou rien qui vaille mieux que laisser tomber), et le pas où regarder de nouveau.
  */
-export function* choisirEnTranches(p: Partie, libre: readonly [number, number]): Generator<void, Choix, undefined> {
+export function* choisirEnTranches(p: Partie, libre: readonly [number, number], profil?: ProfilRobot): Generator<void, Choix, undefined> {
   let pas = 0;
+  if (profil) profil.decisions++;
   // la bille qu'il joue : la bille de la partie, ou la plus menacée en multibille
   const cible = nouvelleVue();
   if (!plusMenacee(p, cible)) return { raison: "jamais", coup: null, revoir: 60, pas };
@@ -235,6 +278,7 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number]):
       if (arrivee >= 0) derniere = pas;
       break; // la bille est perdue ou verrouillée
     }
+    if (profil) profil.pas.arrivee[typeDe(base, f)]++;
     if (arrivee < 0 && f.y >= ligne && f.vy > 0 && f.captif === 0 && !f.dansLanceur) {
       arrivee = pas;
       xArrivee = f.x;
@@ -268,6 +312,10 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number]):
   let k = 0;
   for (const t of delais) {
     while (k < t && !pre.finie) {
+      if (profil) {
+        pre.lire(id, f);
+        profil.pas.chauffe[typeDe(pre, f)]++;
+      }
       pre.avancer();
       k++;
       pas++;
@@ -275,36 +323,68 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number]):
     etats.push(pre.copier(true));
   }
   // 3. la note de rien faire, puis celle de chaque frappe à chaque moment
-  const rien = essayer(p.copier(true), depart, [], id);
+  const rien = essayer(p.copier(true), depart, [], id, profil, "rien");
   pas += rien.pas;
   yield;
-  let meilleur: Coup | null = null;
+  // 4. **grossier puis fin, sans rien changer au choix** (lot PBR1) : le coup choisi est celui dont la plus mauvaise note de voisinage est la meilleure ; on n'essaie donc que les frappes qui peuvent encore le devenir.
+  // Une note par cinq moments (la grille grossière) borne par le haut la note de voisinage de chacun des moments de la fenêtre ; on les prend du plus prometteur au moins prometteur, on complète leurs voisins un à un,
+  // et on s'arrête quand la borne ne peut plus battre la meilleure (ou l'égaler en étant plus près de l'arrivée de la bille). Même coup que d'essayer toutes les frappes, avec la moitié des essais (`test/robot.test.ts`).
   const voisins = ROBOT_MARGE / ROBOT_PAS_ESSAI;
-  for (const batteurs of cotes) {
-    const notes: number[] = [];
-    for (let j = 0; j < delais.length; j++) {
-      const r = essayer(etats[j]!.copier(true), depart, batteurs, id);
-      notes.push(r.note);
+  const m = delais.length;
+  const notes: (number | undefined)[][] = cotes.map(() => Array<number | undefined>(m).fill(undefined));
+  const essaiDe = function* (c: number, j: number): Generator<void, number, undefined> {
+    let v = notes[c]![j];
+    if (v === undefined) {
+      const r = essayer(etats[j]!.copier(true), depart, cotes[c]!, id, profil);
+      v = r.note;
+      notes[c]![j] = v;
       pas += r.pas;
       yield;
     }
-    for (let j = voisins; j < delais.length - voisins; j++) {
+    return v;
+  };
+  const candidats: { c: number; j: number; ub: number; ecart: number; ordre: number }[] = [];
+  for (let c = 0; c < cotes.length; c++) {
+    for (let j = voisins; j < m - voisins; j++) {
       const t = delais[j]!;
-      if (t < premier || batteurs.some((b) => t < libre[b]! + ROBOT_IMPRECISION)) continue;
-      let pire = notes[j]!;
-      for (let i = j - voisins; i <= j + voisins; i++) pire = Math.min(pire, notes[i]!);
-      // à note égale, le moment le plus proche de l'arrivée de la bille (le plus naturel) ; la première frappe vue gagne à égalité
-      const mieux = meilleur === null || pire > meilleur.robuste || (pire === meilleur.robuste && Math.abs(t - arrivee) < Math.abs(meilleur.delai - arrivee));
-      if (mieux) meilleur = { batteurs, delai: t, robuste: pire, rien: rien.note };
+      if (t < premier || cotes[c]!.some((b) => t < libre[b]! + ROBOT_IMPRECISION)) continue;
+      // la note du seul moment de la grille grossière (un sur cinq) que contient son voisinage
+      const g = j - voisins + ((5 - ((j - voisins) % 5)) % 5);
+      candidats.push({ c, j, ub: yield* essaiDe(c, g), ecart: Math.abs(t - arrivee), ordre: c * m + j });
     }
+  }
+  candidats.sort((x, y) => y.ub - x.ub || x.ecart - y.ecart || x.ordre - y.ordre);
+  let meilleur: Coup | null = null;
+  let ecartMeilleur = 0;
+  let ordreMeilleur = 0;
+  for (const k of candidats) {
+    // moins bon que le meilleur, ou à égalité mais plus loin de l'arrivée de la bille (ou, à égalité encore, vu plus tard) : il ne peut plus gagner
+    const perd = (v: number): boolean => meilleur !== null && (v < meilleur.robuste || (v === meilleur.robuste && (k.ecart > ecartMeilleur || (k.ecart === ecartMeilleur && k.ordre > ordreMeilleur))));
+    if (meilleur !== null && k.ub < meilleur.robuste) break; // trié : tous les suivants ont une borne plus basse
+    let pire = k.ub;
+    for (let i = k.j - voisins; i <= k.j + voisins && !perd(pire); i++) pire = Math.min(pire, yield* essaiDe(k.c, i));
+    if (perd(pire)) continue;
+    meilleur = { batteurs: cotes[k.c]!, delai: delais[k.j]!, robuste: pire, rien: rien.note };
+    ecartMeilleur = k.ecart;
+    ordreMeilleur = k.ordre;
+  }
+  if (profil) {
+    const k = meilleur === null ? "decision:aucun" : meilleur.robuste < rien.note ? "decision:moins" : "decision:coup";
+    const e = (profil.fins[k] ??= { n: 0, pas: 0 });
+    e.n++;
+    e.pas += pas;
+    const k2 = "cotes:" + cotes.length;
+    const e2 = (profil.fins[k2] ??= { n: 0, pas: 0 });
+    e2.n++;
+    e2.pas += pas;
   }
   if (meilleur === null || meilleur.robuste < rien.note) return { raison: meilleur === null ? "aucun" : `moins:${meilleur.robuste}<${rien.note}`, coup: null, revoir: 60, pas };
   return { coup: meilleur, revoir: 0, pas };
 }
 
 /** `choisirEnTranches` d'un trait. */
-export function choisir(p: Partie, libre: readonly [number, number]): Choix {
-  const g = choisirEnTranches(p, libre);
+export function choisir(p: Partie, libre: readonly [number, number], profil?: ProfilRobot): Choix {
+  const g = choisirEnTranches(p, libre, profil);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
@@ -383,7 +463,7 @@ export function* jouerRobotEnTranches(contenu: Contenu, graine: number, options:
         prevu = null;
       } else if (prevu === null && t >= revoir && !partie.tenue(GAUCHE) && !partie.tenue(DROITE) && plusMenacee(partie, cible) && cible.captif === 0 && cible.couche === 0 && cible.vy > 0 && cible.y > ROBOT_Y_DECISION * UNITE && cible.x < 340 * UNITE) {
         decisions++;
-        const c = yield* choisirEnTranches(partie, [dernier[0] + ROBOT_ECART_MIN - t, dernier[1] + ROBOT_ECART_MIN - t]);
+        const c = yield* choisirEnTranches(partie, [dernier[0] + ROBOT_ECART_MIN - t, dernier[1] + ROBOT_ECART_MIN - t], options.profil);
         pasSimules += c.pas;
         if (c.coup === null) revoir = t + c.revoir;
         else {

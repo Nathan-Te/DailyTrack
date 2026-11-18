@@ -3,7 +3,7 @@ import type { Controle } from "./constantes";
 import * as E from "./entiers";
 import { MISSION_DU_THEME, type Contenu, type Mission } from "./generateur";
 import { deriver, REGLAGES, type Derives, type Reglages } from "./reglages";
-import { construireTable, type Aiguillage, type Arrivee, type Porte, type Segment, type Table } from "./table";
+import { caseDe, construireTable, type Aiguillage, type Arrivee, type Porte, type Segment, type Table } from "./table";
 // Les constantes et les fonctions chaudes sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, deux à trois fois plus lent dans une boucle de millions de pas (le robot du
 // lot PB4 en joue des dizaines de millions). Rien ne change pour le jeu ni le serveur.
 const {
@@ -835,7 +835,8 @@ export class Partie {
     this.x += div(this.vx, TICKS_PAR_SECONDE);
     this.y += div(this.vy, TICKS_PAR_SECONDE);
     // --- les collisions, dans l'ordre de la maquette : murs, poteaux, bumpers, cibles, batteurs
-    for (const s of t.murs) if (s.type !== 2 && this.segment(s)) if (s.type === 1) this.choquerSling(s);
+    // lot PBR1 : les murs de la case de la bille seulement (`grille` : les mêmes, dans le même ordre)
+    for (const s of t.grille[caseDe(this.x, this.y)]!) if (this.segment(s) && s.type === 1) this.choquerSling(s);
     // lot PBG3 : fermée, la porte est un mur ; ouverte, la bille passe
     if (t.passage && this.passageOuvert <= 0) this.segment(t.passage.battant);
     // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
@@ -1456,9 +1457,12 @@ export class Partie {
   /** La bille contre un batteur : une capsule du pivot à la pointe (rayon 8 à 5 px), dont la surface en mouvement la pousse. Calculé pour le batteur gauche ; le droit est son image. */
   private batteur(i: number, ox: number, oy: number, longueur: number): void {
     const sens = i === GAUCHE ? 1 : -1;
-    const a = this.a[i]!;
     const bx = sens > 0 ? this.x : AXE2 - this.x;
     const by = this.y;
+    // lot PBR1 : une bille à plus de `longueur + RU + BATTEUR_GROS` du pivot ne peut pas toucher la capsule (aucun calcul de l'angle, aucun effet : le résultat est celui d'avant)
+    const portee = longueur + RU + BATTEUR_GROS;
+    if (bx - ox >= portee || ox - bx >= portee || by - oy >= portee || oy - by >= portee) return;
+    const a = this.a[i]!;
     const co = cosinus(a);
     const si = sinus(a);
     let p = div((bx - ox) * co + (by - oy) * si, NORME);
