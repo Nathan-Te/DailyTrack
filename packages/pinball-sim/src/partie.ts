@@ -33,6 +33,8 @@ const BOUCHE_MIN = 120 * UNITE;
 const ANGLE_TROU = div(2200 * TOUR, 6283);
 /** Le quotient de la vitesse d'un point d'un batteur : 2π × 600 / `TOUR`, en 23 010 cent-millièmes. */
 const K_VITESSE = 23010;
+/** Lot PBR1 : à plus de cette distance du pivot (la longueur du batteur, plus le rayon de la bille et celui du batteur à son pivot) une bille ne peut pas le toucher. */
+const PORTEE_BATTEUR = LONGUEUR + RU + BATTEUR_GROS;
 
 /** Le secteur (0 à 7, un huitième de tour chacun, dans le sens où tourne le manège : à l'écran, contre les aiguilles d'une montre) d'un point `(dx, dy)` autour du centre d'un plateau. Entier, sans angle. */
 export function secteur(dx: number, dy: number): number {
@@ -950,10 +952,14 @@ export class Partie {
     if (t.passage && this.passageOuvert <= 0) this.segment(t.passage.battant);
     // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
     for (const g of t.portes) {
+      // lot PBR1 : la bouche n'agit que sur une bille proche de son milieu (sa demi-largeur plus le rayon de la bille, un pixel de marge pour l'arrondi du segment)
+      const rayon = g.l + RU + UNITE;
+      if (this.x - g.x >= rayon || g.x - this.x >= rayon || this.y - g.y >= rayon || g.y - this.y >= rayon) continue;
       this.porte(g, d);
       if (this.surUnRail) return;
     }
-    for (const p of t.poteaux) if (this.y > p.y - p.r - RU && this.y < p.y + p.r + RU) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0); // lot PBR1 : hors de leur bande, aucun contact possible
+    // lot PBR1 : hors de leur bande de y, aucun contact possible (le même résultat, sans essayer chaque poteau)
+    if (this.y > t.bandePoteaux[0] && this.y < t.bandePoteaux[1]) for (const p of t.poteaux) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0);
     for (let i = 0; i < t.bumpers.length; i++) {
       const b = t.bumpers[i]!;
       if (this.cercle(b.x, b.y, b.r, r.rebondBumper, b.kick, b.vx ?? 0)) {
@@ -978,14 +984,17 @@ export class Partie {
         }
       }
     }
-    this.batteur(GAUCHE, ORIGINE, PIVOT_Y, LONGUEUR);
-    this.batteur(DROITE, ORIGINE, PIVOT_Y, LONGUEUR);
+    // lot PBR1 : les grands batteurs n'ont d'effet que dans leur bande de y (`batteur` rend la main au premier calcul sinon)
+    if (this.y > PIVOT_Y - PORTEE_BATTEUR && this.y < PIVOT_Y + PORTEE_BATTEUR) {
+      this.batteur(GAUCHE, ORIGINE, PIVOT_Y, LONGUEUR);
+      this.batteur(DROITE, ORIGINE, PIVOT_Y, LONGUEUR);
+    }
     // lot PBG1 : le mini-batteur suit l'angle du batteur du même côté (le même appui : la rediffusion ne change pas de forme)
     if (t.mini) this.batteur(t.mini.cote, t.mini.x, t.mini.y, t.mini.longueur);
     // lot PBG3 : le poteau sauveur, quand il est armé, renvoie la bille vers le haut une fois
     if (!this.servie && this.lampes[0] && this.lampes[1]) this.sauveur(r, t);
     // --- les capteurs
-    for (let i = 0; i < t.voies.length; i++) {
+    if (this.y > t.bandeVoies[0] && this.y < t.bandeVoies[1]) for (let i = 0; i < t.voies.length; i++) {
       const v = t.voies[i]!;
       if (this.voiesAllumees[i] || Math.abs(this.x - v.x) >= 14 * UNITE || Math.abs(this.y - v.y) >= 10 * UNITE) continue;
       this.voiesAllumees[i] = true;

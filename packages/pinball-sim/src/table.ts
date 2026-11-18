@@ -185,6 +185,9 @@ export interface Table {
   aiguillage: Aiguillage | null;
   /** Lot PBR1 : **la grille des murs** — pour chaque case de 32 px (`caseDe`), les murs (hors cibles) qui peuvent toucher une bille qui s'y trouve, dans l'ordre de `murs`. Les mêmes collisions dans le même ordre, sans essayer les 70 murs à chaque pas. */
   grille: Segment[][];
+  /** Lot PBR1 : la bande de y (unités) hors de laquelle une bille ne peut toucher ni un poteau ni un capteur de voie : `[bas, haut]`, bornes exclues. */
+  bandePoteaux: [number, number];
+  bandeVoies: [number, number];
 }
 
 /** La grille des murs (lot PBR1) : des cases de 2^17 unités (32 px), `COLONNES` × `LIGNES` ; une bille hors de la table est rangée dans la case du bord. */
@@ -239,7 +242,7 @@ function segment(ax: number, ay: number, bx: number, by: number, e: number, kick
 /** La table du jour : le châssis, puis les six emplacements. */
 export function construireTable(contenu: Contenu, r: Reglages): Table {
   const plan = planDe(contenu.plan);
-  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1, passage: null, sauveur: sauveurDe(), aiguillage: null, grille: [] };
+  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1, passage: null, sauveur: sauveurDe(), aiguillage: null, grille: [], bandePoteaux: [0, 0], bandeVoies: [0, 0] };
   const mur = (ax: number, ay: number, bx: number, by: number, e: number, kick = 0, type: 0 | 1 = 0): void => void t.murs.push(segment(ax, ay, bx, by, e, kick, type));
   // --- le châssis
   mur(px(20), px(560), px(20), px(205), r.rebondMur);
@@ -268,6 +271,8 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
   if (plan.porte) t.passage = poserPassage(t, plan.porte, r);
   if (plan.aiguillage) t.aiguillage = poserAiguillage(t, plan.aiguillage, contenu, r);
   t.grille = grilleDe(t.murs, RAYON * UNITE);
+  t.bandePoteaux = [Math.min(...t.poteaux.map((q) => q.y - q.r - RAYON * UNITE)), Math.max(...t.poteaux.map((q) => q.y + q.r + RAYON * UNITE))];
+  t.bandeVoies = [Math.min(...t.voies.map((q) => q.y - 10 * UNITE)), Math.max(...t.voies.map((q) => q.y + 10 * UNITE))];
   return t;
 }
 
