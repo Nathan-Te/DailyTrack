@@ -3,7 +3,7 @@ import { GENERATEURS, dailyGravity, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSI
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contenuDuJour } from "../src/niveau";
 
-// Lot GR5 — **le jeu relit un jour figé sous une ancienne version** (lot GR6 : les versions courantes sont 4 et 3 ; les anciennes 3 et 2 ont été retirées, le jeu est `off`) : le fichier `jours/AAAA-MM-JJ.json` d'un jour figé en v4 (générateur) et 3 (simulation) est lu par `niveau.ts` avec ces versions-là, même quand le code connaît
+// Lot GR5 — **le jeu relit un jour figé sous une ancienne version** (lot GR6 : les versions courantes sont 5 et 4 (lot GR7) ; les anciennes ont été retirées, le jeu est `off`) : le fichier `jours/AAAA-MM-JJ.json` d'un jour figé en v4 (générateur) et 3 (simulation) est lu par `niveau.ts` avec ces versions-là, même quand le code connaît
 // une version suivante (factice, posée dans les registres) ; la partie jouée dessus (`Partie` + `enregistrer`, exactement ce que `scene.ts` fait) donne la rediffusion que le serveur rejoue à l'identique
 // (`apps/api/test/gravityVersions.test.ts`). Un jour sans fichier, lui, est généré par la version courante.
 const JOUR = daysFromCivil(2026, 11, 9);
@@ -12,8 +12,8 @@ const SEUILS = { bronze: 3100, silver: 6200, gold: 9300, author: 15500 };
 const THEME = dailyGravity(JOUR).ordre[0]!; // le thème du jour : un autre (`?theme=`, un essai) tourne l'ordre et recalcule les seuils
 
 const poserVersionsFactices = (): void => {
-  GENERATEURS[5] = { morceauxParTheme: 7, ordre: (j) => [...GENERATEURS[4]!.ordre(j)].reverse(), morceau: (j, m, ordre, entree, precedent, regles) => genererMorceau(j + 1, m, ordre, entree, precedent, regles) };
-  SIMS[4] = { ...SIMS[3]!, gravite: 1800, ventGravite: 720, vitesseBase: 32768 };
+  GENERATEURS[6] = { morceauxParTheme: 7, ordre: (j) => [...GENERATEURS[5]!.ordre(j)].reverse(), morceau: (j, m, ordre, entree, precedent, regles) => genererMorceau(j + 1, m, ordre, entree, precedent, regles) };
+  SIMS[5] = { ...SIMS[4]!, gravite: 1800, ventGravite: 720, vitesseBase: 36864 };
 };
 const servir = (fichiers: Record<string, unknown>): void => {
   vi.stubGlobal(
@@ -25,20 +25,20 @@ const servir = (fichiers: Record<string, unknown>): void => {
   );
 };
 afterEach(() => {
-  delete GENERATEURS[5];
-  delete SIMS[4];
+  delete GENERATEURS[6];
+  delete SIMS[5];
   vi.unstubAllGlobals();
 });
 
-describe("le jeu relit un jour figé en v4 après le passage à la v5", () => {
+describe("le jeu relit un jour figé en v5 après le passage à la v6", () => {
   const fichier = JSON.parse(JSON.stringify(figerJour(JOUR, SEUILS))) as Record<string, unknown>;
 
-  it("le contenu lu est celui du fichier : mêmes versions, mêmes seuils, même contenu — avant et après la v5", async () => {
+  it("le contenu lu est celui du fichier : mêmes versions, mêmes seuils, même contenu — avant et après la v6", async () => {
     servir({ [DATE]: fichier });
     const avant = await contenuDuJour(JOUR, "http://localhost/", THEME);
     poserVersionsFactices();
     const apres = await contenuDuJour(JOUR, "http://localhost/", THEME);
-    expect(apres).toMatchObject({ g: 4, sim: 3, seuilsFiges: SEUILS });
+    expect(apres).toMatchObject({ g: 5, sim: 4, seuilsFiges: SEUILS });
     expect(apres.ordre).toEqual(avant.ordre);
     expect(empreinteContenu(apres)).toBe(empreinteContenu(avant));
   });
@@ -64,7 +64,7 @@ describe("le jeu relit un jour figé en v4 après le passage à la v5", () => {
     expect(p.resultat()).toEqual(attendu);
     expect(p.changements).toEqual(changements.filter((c) => c < p.tick));
     const texte = enregistrer(contenu, p.changements);
-    expect(decoderRediffusion(texte)).toMatchObject({ g: 4, sim: 3 });
+    expect(decoderRediffusion(texte)).toMatchObject({ g: 5, sim: 4 });
     expect(rejouer(contenu, texte)).toEqual(attendu);
   });
 

@@ -1,7 +1,7 @@
 import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
 import { MORCEAUX_PAR_BOUCLE, MORCEAUX_PAR_THEME, dailyGravity, mesurerLeJour, motifsParBoucle, partPassive, repetitionsProches, variantesRepetees } from "../src/index";
 
-// `npm run variete:gravity -w @cdj/gravity-sim -- [--du AAAA-MM-JJ] [--jours 30] [--distance 3040]` (lot GR7) : la variété des jours, mesurée sur le terrain et sur le robot.
+// `npm run variete:gravity -w @cdj/gravity-sim -- [--du AAAA-MM-JJ] [--jours 30] [--distance 3040] [--robot]` (lot GR7 ; `--robot` fait aussi jouer le robot) : la variété des jours, mesurée sur le terrain et sur le robot.
 const arg = (nom: string): string | undefined => {
   const i = process.argv.indexOf(`--${nom}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
@@ -9,6 +9,7 @@ const arg = (nom: string): string | undefined => {
 const du = parseDay(arg("du") ?? "") ?? daysFromCivil(2026, 11, 17);
 const jours = Number(arg("jours") ?? 30);
 const distance = Number(arg("distance") ?? MORCEAUX_PAR_BOUCLE * 16 * 2);
+const avecRobot = process.argv.includes("--robot");
 let nbMotifs: number[][] = [];
 let rep = 0;
 let repVar = 0;
@@ -19,7 +20,7 @@ const tousMotifs = new Set<string>();
 const dangers = new Map<string, number>();
 const parMotif = new Map<string, [number, number]>();
 for (let j = du; j < du + jours; j++) {
-  const mes = mesurerLeJour(dailyGravity(j), distance);
+  const mes = mesurerLeJour(dailyGravity(j), distance, avecRobot);
   nbMotifs.push(motifsParBoucle(mes.morceaux));
   rep += repetitionsProches(mes.morceaux);
   repVar += variantesRepetees(mes.morceaux);
@@ -37,7 +38,11 @@ for (let j = du; j < du + jours; j++) {
     if (/scie|fragile|laser/.test(x.motif)) dangers.set(x.motif, (dangers.get(x.motif) ?? 0) + 1);
   }
   const part = partPassive(mes.morceaux, MORCEAUX_PAR_THEME);
-  console.log(`${formatDay(j)} ${mes.vivant ? "vivant" : "MORT  "} motifs/boucle ${motifsParBoucle(mes.morceaux).join(" / ")}  répétitions<6 ${repetitionsProches(mes.morceaux)}  variantes répétées ${variantesRepetees(mes.morceaux)}  part passive ${(part * 100).toFixed(0)} %`);
+  const parTheme = Array.from({ length: Math.ceil(mes.morceaux.length / MORCEAUX_PAR_THEME) }, (_, t) => {
+    const l = mes.morceaux.filter((x) => Math.trunc(x.m / MORCEAUX_PAR_THEME) === t && !x.souffle);
+    return l.length ? (l.reduce((a, x) => a + x.difficulte, 0) / l.length).toFixed(1) : "–";
+  });
+  console.log(`${formatDay(j)} ${mes.vivant ? "vivant" : "MORT  "} motifs/boucle ${motifsParBoucle(mes.morceaux).join(" / ")}  répétitions<6 ${repetitionsProches(mes.morceaux)}  variantes répétées ${variantesRepetees(mes.morceaux)}  part passive ${(part * 100).toFixed(0)} %  difficulté par thème ${parTheme.join(" ")}`);
 }
 const moy = (a: number[]): number => (a.length === 0 ? 0 : a.reduce((x, y) => x + y, 0) / a.length);
 console.log(`\n${jours} jours à partir de ${formatDay(du)}, ${distance} m`);

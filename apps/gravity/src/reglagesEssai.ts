@@ -26,6 +26,8 @@ export const PARAMETRES_D_ESSAI: readonly Parametre[] = [
   { nom: "plafond", champ: "vitesseMax", cle: "plafond", min: 4, max: 30, versSim: (v) => Math.round(v * CASES_PAR_UNITE), versLisible: (u) => u / CASES_PAR_UNITE, entier: false },
   { nom: "pente", champ: "distanceParCran", cle: "pente", min: 20, max: 2000, versSim: (v) => Math.round(v), versLisible: (u) => u, entier: true },
   // la gravité se lit en cases/s² (46) ; la simulation en unités ajoutées à chaque pas (1 570)
+  // lot GR7 : la forme de la courbe de vitesse (1 : linéaire, comme avant le GR7 ; 2 : douce, la courbe d'aujourd'hui) ; l'ancienne courbe : `?vitesse=7&pente=220&courbe=1`
+  { nom: "courbe", champ: "courbe", cle: "courbe", min: 1, max: 2, versSim: (v) => Math.round(v), versLisible: (u) => u, entier: true },
   { nom: "gravite", champ: "gravite", cle: "gravite", min: 10, max: 120, versSim: (v) => Math.round((v * CASES_PAR_UNITE) / TICKS_PAR_SECONDE), versLisible: (u) => (u * TICKS_PAR_SECONDE) / CASES_PAR_UNITE, entier: false },
   { nom: "longueur", champ: "morceauxParTheme", cle: "longueur", min: 3, max: 40, versSim: (v) => v, versLisible: (u) => u, entier: true },
   { nom: "medailles", champ: "pourcent", cle: "medailles", min: 10, max: 100, versSim: (v) => Math.round(v), versLisible: (u) => u, entier: true },

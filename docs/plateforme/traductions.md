@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-3003 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3016 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -3549,10 +3549,25 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.mode.avion` | Portail avion : maintiens pour monter, relâche pour descendre. Le sol et le plafond ne tuent pas. | Plane gate: hold to climb, release to dive. The floor and ceiling don't kill you. |
 | `aide.mode.onde` | Portail onde : maintiens pour monter à 45°, relâche pour descendre à 45°. Les piques bordent le couloir. | Wave gate: hold to climb at 45°, release to drop at 45°. Spikes line the corridor. |
 | `aide.mode.ressort` | Portail ressort : chaque appui est un bond, même en l'air. | Spring gate: every press is a bounce, even in midair. |
+| `aide.danger.scies` | Les scies (rouge) vont et viennent sur leur rail : passe de l'autre côté. | Saws (red) slide back and forth on their rail: go around on the other side. |
+| `aide.danger.fragiles` | Les sols fragiles craquent quand tu t'y poses et tombent peu après : on peut s'y poser, pas y rester. | Fragile floors crack when you land on them and fall soon after: you can land, not stay. |
+| `aide.danger.lasers` | Les lasers s'annoncent par un trait pâle, puis brûlent : ne reste pas sur leur chemin. | Lasers show a pale line first, then burn: don't stay in their way. |
 | `aide.vitesse` | Portails ›, ›› et ››› : tu vas plus vite jusqu'au suivant ; deux tirets : plus lent. Des lignes filent quand ça va très vite. | Gates ›, ›› and ›››: you go faster until the next one; two dashes: slower. Lines streak by at top speed. |
 | `aide.bouclier` | Bouclier : il te sauve une fois (un pique, une chute, le bord de l'écran). Il est au même endroit pour tout le monde. | Shield: saves you once (a spike, a fall, the screen edge). It sits in the same spot for everyone. |
 | `aide.aimant` | Aimant : pendant 8 secondes, les pièces proches viennent à toi. | Magnet: for 8 seconds, nearby coins fly to you. |
 | `aide.mult` | Multiplicateur : +1 toutes les 10 pièces d'affilée, jusqu'à ×5. Une pièce ratée, et il retombe à ×1. | Multiplier: +1 every 10 coins in a row, up to ×5. Miss a coin and it drops back to ×1. |
+
+### danger (`danger.*`, `apps/gravity/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `danger.scies` | les scies | saws |
+| `danger.fragiles` | les sols fragiles | fragile floors |
+| `danger.lasers` | les lasers | lasers |
+| `danger.nouveau` | Nouveau : {danger} | New: {danger} |
+| `danger.scies.consigne` | Des disques rouges sur un rail : passe de l'autre côté | Red discs on a rail: go around on the other side |
+| `danger.fragiles.consigne` | Ils tombent peu après ton passage : ne t'y attarde pas | They fall soon after you pass: don't linger |
+| `danger.lasers.consigne` | Un trait pâle prévient, puis le rayon brûle | A pale line warns you, then the beam burns |
 
 ### essai (`essai.*`, `apps/gravity/src/catalogue.*.ts`)
 
@@ -3563,6 +3578,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `essai.reglage.vitesse` | départ {v} m/s | start {v} m/s |
 | `essai.reglage.plafond` | plafond {v} m/s | cap {v} m/s |
 | `essai.reglage.pente` | +1 m/s tous les {v} m | +1 m/s every {v} m |
+| `essai.reglage.courbe` | courbe {v} | curve {v} |
 | `essai.reglage.gravite` | gravité {v} | gravity {v} |
 | `essai.reglage.longueur` | {v} morceaux par thème | {v} chunks per theme |
 | `essai.reglage.medailles` | médailles à {v} % | medals at {v}% |
@@ -3684,6 +3700,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `mort.vide` | Tombé dans le vide | Fell into the void |
 | `mort.pique` | Touché par un pique | Hit a spike |
+| `mort.scie` | Découpé par une scie | Sliced by a saw |
+| `mort.laser` | Grillé par un laser | Fried by a laser |
 | `mort.bord` | Rattrapé par le bord de l'écran | Caught by the edge of the screen |
 | `mort.temps` | Temps écoulé : dix minutes ! | Time's up: ten minutes! |
 

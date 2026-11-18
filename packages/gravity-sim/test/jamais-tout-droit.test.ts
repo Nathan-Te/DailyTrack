@@ -118,7 +118,7 @@ describe("jamais tout droit : un joueur qui ne fait rien, depuis l'entrée du mo
     let passifs = 0;
     let total = 0;
     for (let i = 0; i < 10; i++) {
-      const mes = mesurerLeJour(dailyGravity(JOUR + i), 2 * MORCEAUX_PAR_BOUCLE * 16);
+      const mes = mesurerLeJour(dailyGravity(JOUR + i), 2 * MORCEAUX_PAR_BOUCLE * 16, false);
       const comptes = mes.morceaux.filter((x) => x.m >= MORCEAUX_PAR_THEME && !x.souffle && !x.suite);
       total += comptes.length;
       passifs += comptes.filter((x) => x.passif).length;

@@ -57,8 +57,8 @@ export interface MesureDuJour {
   vivant: boolean;
 }
 
-/** Note, pour chaque morceau jusqu'à `distance` mètres, s'il se traverse sans rien faire depuis son entrée, et fait jouer le robot jusque-là. */
-export function mesurerLeJour(contenu: Pick<Contenu, "jour" | "ordre" | "g" | "sim" | "reglages">, distance: number): MesureDuJour {
+/** Note, pour chaque morceau jusqu'à `distance` mètres, s'il se traverse sans rien faire depuis son entrée, et (sauf `avecRobot` faux) fait jouer le robot jusque-là. */
+export function mesurerLeJour(contenu: Pick<Contenu, "jour" | "ordre" | "g" | "sim" | "reglages">, distance: number, avecRobot = true): MesureDuJour {
   const terrain = terrainDuJour(contenu);
   const plan = planDuJour(contenu.jour, terrain.regles!, contenu.ordre);
   const nb = Math.trunc((distance + 3) / LARGEUR_MORCEAU);
@@ -70,8 +70,9 @@ export function mesurerLeJour(contenu: Pick<Contenu, "jour" | "ordre" | "g" | "s
     while (fin + 1 < nb + 8 && terrain.morceau(fin + 1).suiteDeSection === true && terrain.morceau(fin + 1).motif === mo.motif) fin++;
     morceaux.push({ m, motif: nomDuMotif(mo), variante: mo.variante ?? 0, difficulte: mo.difficulte ?? 0, souffle: estUnSouffle(mo), passif: m === 0 ? true : mo.suiteDeSection === true ? false : survitSansRien(partieALEntree(terrain, plan, m), fin), suite: mo.suiteDeSection === true });
   }
-  const r = jouerRobot(terrain, { maxDistance: distance });
-  return { morceaux, vivant: !r.partie.finie };
+  // Le robot ne sert qu'à dire que le jour se joue (les mesures de variété, elles, ne le lisent pas) : les tests rapides s'en passent (`avecRobot` faux).
+  const r = avecRobot ? jouerRobot(terrain, { maxDistance: distance }) : null;
+  return { morceaux, vivant: r ? !r.partie.finie : true };
 }
 
 /** Les motifs distincts de chaque boucle (de `MORCEAUX_PAR_BOUCLE` morceaux) : un nombre par boucle entière ou entamée. */

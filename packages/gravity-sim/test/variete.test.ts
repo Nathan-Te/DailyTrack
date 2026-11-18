@@ -24,7 +24,7 @@ import {
 // Lot GR7 — **la variété** : des motifs à variantes et à difficulté, jamais le même motif à moins de 6 morceaux ni la même variante deux fois dans une boucle, une courbe de difficulté en vagues (3 ou 4 morceaux tendus, un pour souffler),
 // et des dangers qui arrivent un par un selon le rang du thème, chacun d'abord seul et facile.
 const JOUR = daysFromCivil(2026, 11, 17);
-const jours = Array.from({ length: 10 }, (_, i) => JOUR + i);
+const jours = Array.from({ length: 24 }, (_, i) => JOUR + i);
 const morceauxDuJour = (j: number, n = 2 * MORCEAUX_PAR_BOUCLE) => {
   const c = dailyGravity(j);
   const t = terrainDuJour(c);
@@ -56,14 +56,14 @@ describe("le catalogue", () => {
 describe("l'anti-répétition", () => {
   it("jamais le même motif à moins de 6 morceaux, ni la même variante deux fois dans une boucle (10 jours, deux tours)", () => {
     for (const j of jours) {
-      const mes = mesurerLeJour(dailyGravity(j), 2 * MORCEAUX_PAR_BOUCLE * 16);
+      const mes = mesurerLeJour(dailyGravity(j), 2 * MORCEAUX_PAR_BOUCLE * 16, false);
       expect(repetitionsProches(mes.morceaux), `jour ${j} : motifs répétés à moins de 6 morceaux`).toBe(0);
       expect(variantesRepetees(mes.morceaux), `jour ${j} : variantes répétées dans une boucle`).toBe(0);
     }
   });
   it("une boucle montre au moins 30 motifs distincts (avant le GR7 : 19)", () => {
     for (const j of jours.slice(0, 5)) {
-      const mes = mesurerLeJour(dailyGravity(j), 2 * MORCEAUX_PAR_BOUCLE * 16);
+      const mes = mesurerLeJour(dailyGravity(j), 2 * MORCEAUX_PAR_BOUCLE * 16, false);
       for (const n of motifsParBoucle(mes.morceaux)) expect(n, `jour ${j}`).toBeGreaterThanOrEqual(30);
     }
   });

@@ -163,6 +163,7 @@ export function genererMorceau(jour: number, m: number, ordre: readonly ThemeGra
     theme,
     motif: nom,
     variante,
+    ...(pioche.intro ? { intro: pioche.intro } : {}),
     difficulte: id === "calme" || id === "souffle" || pioche.souffle ? 1 : pioche.diff,
     cases: ctx.cases,
     pieces: ctx.pieces,

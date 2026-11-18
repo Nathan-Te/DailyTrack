@@ -43,10 +43,10 @@ export const DEFINITION: DefinitionJeu<Contenu> = {
   classable: (adresse) => {
     const production = import.meta.env.VITE_PRODUCTION === "1";
     const e = lireEssais(adresse, production);
-    return !new URLSearchParams(adresse).has("theme") && !e.robot && e.morceau === null && e.mode === null && !aUnReglageDEssai(adresse, production); // lot GR5 : un réglage d'essai non plus ; lot GR6 : ni `?mode=`
+    return !new URLSearchParams(adresse).has("theme") && !e.robot && e.morceau === null && e.mode === null && e.danger === null && !aUnReglageDEssai(adresse, production); // lot GR5 : un réglage d'essai non plus ; lot GR6 : ni `?mode=` ; lot GR7 : ni `?danger=`
   },
   formatScore: (score, langue) => VARIANTE.formatScore(score, langue),
   scorePartage: (score, langue) => VARIANTE.scorePartage(score, langue),
-  // « Comment jouer » (lot GR4 ; lot GR6 : + les trois modes de vol et les portails de vitesse) : les trois pas, les six blocs spéciaux, le bouclier, l'aimant et le multiplicateur. Le kit n'écrit que du texte (pas de dessins : README du lot).
-  aide: ["aide.point1", "aide.point2", "aide.point3", "aide.bloc.usine", "aide.bloc.glace", "aide.bloc.nuit", "aide.bloc.neon", "aide.bloc.foret", "aide.bloc.inverseur", "aide.mode.avion", "aide.mode.onde", "aide.mode.ressort", "aide.vitesse", "aide.bouclier", "aide.aimant", "aide.mult"],
+  // « Comment jouer » (lot GR4 ; lot GR6 : + les trois modes de vol et les portails de vitesse ; lot GR7 : + les trois dangers) : les trois pas, les six blocs spéciaux, le bouclier, l'aimant et le multiplicateur. Le kit n'écrit que du texte (pas de dessins : README du lot).
+  aide: ["aide.point1", "aide.point2", "aide.point3", "aide.bloc.usine", "aide.bloc.glace", "aide.bloc.nuit", "aide.bloc.neon", "aide.bloc.foret", "aide.bloc.inverseur", "aide.mode.avion", "aide.mode.onde", "aide.mode.ressort", "aide.danger.scies", "aide.danger.fragiles", "aide.danger.lasers", "aide.vitesse", "aide.bouclier", "aide.aimant", "aide.mult"],
 };

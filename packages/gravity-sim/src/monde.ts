@@ -106,6 +106,8 @@ export interface Morceau {
   /** Lot GR7 : le danger d'une section (`scies`, `lasers`) ; les morceaux d'une section après le premier. */
   danger?: string;
   suiteDeSection?: true;
+  /** Lot GR7 : ce morceau **introduit** un danger (`scies`, `fragiles`, `lasers`) : seul, facile, annoncé à l'écran « Nouveau : … » (une fois par partie). */
+  intro?: string;
   /** Les cases, colonne par colonne : `cases[c * LIGNES + rangée]`, c de 0 à 15. */
   cases: Uint8Array;
   /** Les pièces, les gemmes et les bonus, au centre, en unités du monde (x absolu). Les pièces sont dans l'ordre où le chemin les croise. */

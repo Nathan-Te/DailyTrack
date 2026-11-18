@@ -72,8 +72,14 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   const essais = lireEssais(typeof location === "undefined" ? "" : location.search, production);
   // Lot GR6 — `?mode=<mode>` : le morceau où commence la première section de ce mode (le plan du jour, avec les règles du contenu), sauf si `?morceau=` le dit déjà ; aucune section (−1) : rien.
   let morceau = essais.morceau;
+  const planDuContenu = (): ReturnType<typeof planDuJour> => planDuJour(rendu.jour, terrainDuJour(rendu).regles!, rendu.ordre);
   if (morceau === null && essais.mode !== null) {
-    const n = planDuJour(rendu.jour, terrainDuJour(rendu).regles!).premierMorceauDuMode(RANG_DU_MODE[essais.mode]);
+    const n = planDuContenu().premierMorceauDuMode(RANG_DU_MODE[essais.mode]);
+    if (n >= 1) morceau = n;
+  }
+  // Lot GR7 — `?danger=<danger>` : le morceau qui introduit ce danger (sa première rencontre), si ni `?morceau=` ni `?mode=` n'ont parlé ; aucun (−1) : rien.
+  if (morceau === null && essais.danger !== null) {
+    const n = planDuContenu().premierMorceauDuDanger(essais.danger);
     if (n >= 1) morceau = n;
   }
   if (essais.robot || morceau !== null) {

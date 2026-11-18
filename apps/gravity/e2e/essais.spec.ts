@@ -114,4 +114,34 @@ test.describe("Gravity : les essais de recette", () => {
     expect(r.changements.length % 2).toBe(0); // autant d'appuis que de relâchés : le doigt est levé à la fin
     await context.close();
   });
+
+  // Lot GR7 : `?danger=scies|fragiles|lasers` — la partie commence juste avant la première rencontre du danger, qui s'annonce « Nouveau : … » (une seule fois par partie). La lecture et « jamais classée » sont en unitaire (`test/essai.test.ts`).
+  const NOUVEAU = { scies: "Nouveau : les scies", fragiles: "Nouveau : les sols fragiles", lasers: "Nouveau : les lasers" } as const;
+  for (const danger of ["scies", "fragiles", "lasers"] as const) {
+    test(`lot GR7 — ?danger=${danger} : la partie commence avant la première rencontre, l'annonce « ${NOUVEAU[danger]} » paraît ; jamais classée`, async ({ browser }) => {
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&danger=${danger}&jour=2026-11-17`);
+      await lancer(page);
+      const texte = (await page.locator("#jeu-hud-temps").textContent()) ?? "";
+      expect(Number(texte.split(" m")[0])).toBeGreaterThan(19 * 16 - 20); // le danger arrive à partir du 2e thème, loin du départ
+      await page.evaluate(() => window.__jeu.avancer(60));
+      await expect(page.locator(".g-danger")).toHaveClass(/g-danger--vu/);
+      await expect(page.locator(".g-danger__nom")).toHaveText(NOUVEAU[danger]);
+      await page.evaluate(() => window.__jeu.avancer(100000));
+      await expect(page.locator("#jeu-fin")).toBeVisible();
+      await expect(page.locator("#jeu-fin-rang")).toContainText("essai"); // « Partie d'essai : non classée »
+      await context.close();
+    });
+  }
+
+  test("lot GR7 — ?danger=scies&robot : on regarde le robot passer les scies sans mourir au premier passage", async ({ browser }) => {
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&danger=scies&robot&jour=2026-11-17");
+    await lancer(page);
+    await expect(page.locator(".g-robot")).toBeVisible();
+    const avant = Number(((await page.locator("#jeu-hud-temps").textContent()) ?? "").split(" m")[0]);
+    await page.evaluate(() => window.__jeu.avancer(1200)); // dix secondes : le robot a passé la scie
+    const apres = Number(((await page.locator("#jeu-hud-temps").textContent()) ?? "").split(" m")[0]);
+    expect(apres).toBeGreaterThan(avant + 60);
+    await expect(page.locator("#jeu-fin")).toBeHidden();
+    await context.close();
+  });
 });

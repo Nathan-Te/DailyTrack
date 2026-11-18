@@ -4,8 +4,8 @@
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, Mesh, MeshBasicMaterial } from "three";
 import { CASE, VITESSE_PLAFOND } from "@cdj/gravity-sim";
 
-/** Le seuil (cases par seconde) au-delà duquel les lignes de vitesse apparaissent : juste au-dessus du plafond de la montée normale (12,5), donc **seulement avec un portail de vitesse**. */
-export const SEUIL_LIGNES = 12.6;
+/** Le seuil (cases par seconde) au-delà duquel les lignes de vitesse apparaissent : juste au-dessus de la plus haute croisière (15 cases/s à partir de la 3e boucle, lot GR7), donc **seulement avec un portail de vitesse**. */
+export const SEUIL_LIGNES = 15.1;
 /** La vitesse (cases par seconde) où les lignes sont à leur pleine intensité : le plafond absolu de la simulation (17). */
 export const VITESSE_PLEINE = VITESSE_PLAFOND / CASE;
 /** Le recul de la caméra, au plus (cases) : le héros se voit un peu plus près du bord gauche, on voit plus loin devant. Proportionnel à (vitesse − seuil), borné. */
