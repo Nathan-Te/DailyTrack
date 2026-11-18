@@ -3,7 +3,7 @@ import type { Controle } from "./constantes";
 import * as E from "./entiers";
 import { MISSION_DU_THEME, type Contenu, type Mission } from "./generateur";
 import { deriver, REGLAGES, type Derives, type Reglages } from "./reglages";
-import { construireTable, type Aiguillage, type Arrivee, type Porte, type Segment, type Table } from "./table";
+import { caseDe, construireTable, type Aiguillage, type Arrivee, type Porte, type Segment, type Table } from "./table";
 // Les constantes et les fonctions chaudes sont posées dans des locales : sous Vitest (module runner) chaque import se lit par un accesseur, deux à trois fois plus lent dans une boucle de millions de pas (le robot du
 // lot PB4 en joue des dizaines de millions). Rien ne change pour le jeu ni le serveur.
 const {
@@ -33,6 +33,8 @@ const BOUCHE_MIN = 120 * UNITE;
 const ANGLE_TROU = div(2200 * TOUR, 6283);
 /** Le quotient de la vitesse d'un point d'un batteur : 2π × 600 / `TOUR`, en 23 010 cent-millièmes. */
 const K_VITESSE = 23010;
+/** Lot PBR1 : à plus de cette distance du pivot (la longueur du batteur, plus le rayon de la bille et celui du batteur à son pivot) une bille ne peut pas le toucher. */
+const PORTEE_BATTEUR = LONGUEUR + RU + BATTEUR_GROS;
 
 /** Le secteur (0 à 7, un huitième de tour chacun, dans le sens où tourne le manège : à l'écran, contre les aiguilles d'une montre) d'un point `(dx, dy)` autour du centre d'un plateau. Entier, sans angle. */
 export function secteur(dx: number, dy: number): number {
@@ -116,6 +118,11 @@ export interface BilleVue {
   dansLanceur: boolean;
   charge: number;
 }
+
+/** Recopie `src` dans `dst` (les mêmes longueurs). */
+const tableau = <T>(dst: T[], src: readonly T[]): void => {
+  for (let i = 0; i < src.length; i++) dst[i] = src[i]!;
+};
 
 const billeVide = (id: number, nbPlateaux: number, nbCoulees: number): Bille => ({
   id, x: 0, y: 0, vx: 0, vy: 0, px: 0, py: 0, captifDe: -1, captifTb: -1, captif: 0, dansLanceur: false, charge: 0, entree: 0, sauvee: false, servie: false, geyserJets: 0,
@@ -213,6 +220,9 @@ export class Partie {
   private sortie = false;
   /** Une bille de passage pour les collisions entre billes. */
   private lue: Bille | null = null;
+  private readonly tous: Bille[] = [];
+  /** Lot PBR1 : pour chaque batteur (grands, puis le mini : `i`), le dernier angle et son cosinus et son sinus. */
+  private readonly csAngle: number[] = [NaN, 0, 0, NaN, 0, 0];
   /** Le manège : le secteur de la bille (−1 : hors du plateau) et l'avance en huitièmes de tour depuis le dernier tour compté (huit font un tour de manège ; elle se garde d'une bille à l'autre), par plateau. */
   manegeSecteur: number[];
   readonly manegeAvance: number[];
@@ -355,6 +365,124 @@ export class Partie {
     this.suivantId = m.suivantId;
     this.sortie = m.sortie;
     if (m.autres.length > 0) this.autres = m.autres.map((b) => ({ ...b, manegeSecteur: b.manegeSecteur.slice(), couleeDedans: b.couleeDedans.slice() }));
+  }
+
+  /**
+   * **Lot PBR1 : recopie l'état de `m` dans cette partie** (la même table, les mêmes réglages : une partie faite par `copier` de `m` ou d'une de ses copies), **sans rien allouer**. Même résultat que `m.copier(sansGains)`,
+   * pas à pas (`test/robot.test.ts`) ; le robot en réutilise quelques-unes pour ses millions d'essais (une copie neuve coûtait ses tableaux, et le ramasse-miettes).
+   */
+  recopier(m: Partie, sansGains = false): void {
+    const bm = m.table.bumpers;
+    const bt = this.table.bumpers;
+    if (bm !== bt) for (let i = 0; i < bm.length; i++) if (bm[i]!.mobile) {
+      bt[i]!.x = bm[i]!.x;
+      bt[i]!.vx = bm[i]!.vx;
+    }
+    this.a[0] = m.a[0];
+    this.a[1] = m.a[1];
+    this.aAvant[0] = m.aAvant[0];
+    this.aAvant[1] = m.aAvant[1];
+    this.but = m.but;
+    tableau(this.bas, m.bas);
+    tableau(this.banqueDans, m.banqueDans);
+    tableau(this.voiesAllumees, m.voiesAllumees);
+    tableau(this.trouPause, m.trouPause);
+    tableau(this.spin, m.spin);
+    tableau(this.choc, m.choc);
+    tableau(this.manegeSecteur, m.manegeSecteur);
+    tableau(this.manegeAvance, m.manegeAvance);
+    tableau(this.tourbillonPause, m.tourbillonPause);
+    tableau(this.portailPause, m.portailPause);
+    tableau(this.geyserAttente, m.geyserAttente);
+    tableau(this.geyserJet, m.geyserJet);
+    tableau(this.couleeDedans, m.couleeDedans);
+    tableau(this.railsFaits, m.railsFaits);
+    this.lampes[0] = m.lampes[0];
+    this.lampes[1] = m.lampes[1];
+    this.appui[0] = m.appui[0];
+    this.appui[1] = m.appui[1];
+    this.chocSling[0] = m.chocSling[0];
+    this.chocSling[1] = m.chocSling[1];
+    this.gains.length = 0;
+    this.sansGains = sansGains;
+    this.ev2 = m.ev2;
+    this.passageOuvert = m.passageOuvert;
+    this.passageServi = m.passageServi;
+    this.ouvertures = m.ouvertures;
+    this.passages = m.passages;
+    this.sauveurTick = m.sauveurTick;
+    this.sauvetages = m.sauvetages;
+    this.aiguillages = m.aiguillages;
+    this.portePoints = m.portePoints;
+    this.tick = m.tick;
+    this.score = m.score;
+    this.mult = m.mult;
+    this.multMax = m.multMax;
+    this.billes = m.billes;
+    this.x = m.x;
+    this.y = m.y;
+    this.vx = m.vx;
+    this.vy = m.vy;
+    this.px = m.px;
+    this.py = m.py;
+    this.captifDe = m.captifDe;
+    this.captifTb = m.captifTb;
+    this.captif = m.captif;
+    this.dansLanceur = m.dansLanceur;
+    this.charge = m.charge;
+    this.entree = m.entree;
+    this.sauvee = m.sauvee;
+    this.servie = m.servie;
+    this.appuiLanceur = m.appuiLanceur;
+    this.voiesDans = m.voiesDans;
+    this.ev = m.ev;
+    this.compteur = m.compteur;
+    this.missionFaite = m.missionFaite;
+    this.geyserJets = m.geyserJets;
+    this.couche = m.couche;
+    this.rail = m.rail;
+    this.railS = m.railS;
+    this.railV = m.railV;
+    this.railDepuis = m.railDepuis;
+    this.railBout = m.railBout;
+    this.combo = m.combo;
+    this.comboFin = m.comboFin;
+    this.comboMaxPartie = m.comboMaxPartie;
+    this.fin = m.fin;
+    this.niveau = m.niveau;
+    this.verrouAllume = m.verrouAllume;
+    this.verrouillees = m.verrouillees;
+    this.verrouTotal = m.verrouTotal;
+    this.multibille = m.multibille;
+    this.multibilles = m.multibilles;
+    this.aLacher = m.aLacher;
+    this.lacherDans = m.lacherDans;
+    this.sauveeMulti = m.sauveeMulti;
+    this.jackpots = m.jackpots;
+    this.dernierJackpot = m.dernierJackpot;
+    this.perduesMulti = m.perduesMulti;
+    this.jackpotsPartie = m.jackpotsPartie;
+    this.jackpotPoints = m.jackpotPoints;
+    this.vide = m.vide;
+    this.id = m.id;
+    this.suivantId = m.suivantId;
+    this.sortie = m.sortie;
+    // les billes de la multibille : les objets déjà là sont réécrits (on n'en alloue que s'il en manque)
+    const n = m.autres.length;
+    while (this.autres.length > n) this.autres.pop();
+    for (let i = 0; i < n; i++) {
+      const src = m.autres[i]!;
+      const dst = this.autres[i];
+      if (dst === undefined) this.autres.push({ ...src, manegeSecteur: src.manegeSecteur.slice(), couleeDedans: src.couleeDedans.slice() });
+      else {
+        const { manegeSecteur, couleeDedans } = dst;
+        Object.assign(dst, src);
+        dst.manegeSecteur = manegeSecteur;
+        dst.couleeDedans = couleeDedans;
+        tableau(manegeSecteur, src.manegeSecteur);
+        tableau(couleeDedans, src.couleeDedans);
+      }
+    }
   }
 
   /** La bille est-elle sur un rail ? (Un accesseur : le compilateur ne suit pas le changement de couche d'une méthode.) */
@@ -691,7 +819,7 @@ export class Partie {
     if (this.fin) return;
     this.ev = 0;
     this.ev2 = 0;
-    this.gains.length = 0;
+    if (this.gains.length > 0) this.gains.length = 0; // lot PBR1 : écrire la longueur coûte, même à zéro
     const d = this.d;
     const r = this.reglages;
     const t = this.table;
@@ -704,7 +832,9 @@ export class Partie {
     if (this.voiesDans > 0 && --this.voiesDans === 0) this.voiesAllumees.fill(false);
     // lot PBG3 : la porte se referme quand son temps est écoulé
     if (this.passageOuvert > 0 && --this.passageOuvert === 0) this.ev2 |= EV2_PORTE_FERME;
-    for (let i = 0; i < this.choc.length; i++) if (this.choc[i]! > 0) this.choc[i] = this.choc[i]! - 1;
+    // lot PBR1 : `choc`, `chocSling`, `spin` et `geyserJet` ne servent qu'au rendu : une copie d'essai du robot (`sansGains`) ne les fait plus décroître (ni le score ni la physique n'y changent)
+    const visuel = !this.sansGains;
+    if (visuel) for (let i = 0; i < this.choc.length; i++) if (this.choc[i]! > 0) this.choc[i] = this.choc[i]! - 1;
     // lot PB3 : tout ce qui bouge est une fonction du numéro de pas — l'astéroïde, et les pauses des éléments
     for (const b of t.bumpers) {
       if (!b.mobile) continue;
@@ -716,18 +846,20 @@ export class Partie {
     for (let i = 0; i < this.portailPause.length; i++) this.portailPause[i] = this.portailPause[i]! - 1;
     for (let i = 0; i < this.geyserAttente.length; i++) {
       this.geyserAttente[i] = this.geyserAttente[i]! - 1;
-      if (this.geyserJet[i]! > 0) this.geyserJet[i] = this.geyserJet[i]! - 1;
+      if (visuel && this.geyserJet[i]! > 0) this.geyserJet[i] = this.geyserJet[i]! - 1;
     }
-    if (this.chocSling[0] > 0) this.chocSling[0] -= 1;
-    if (this.chocSling[1] > 0) this.chocSling[1] -= 1;
-    for (let i = 0; i < this.spin.length; i++) this.spin[i] = div(this.spin[i]! * 997, 1000);
+    if (visuel) {
+      if (this.chocSling[0] > 0) this.chocSling[0] -= 1;
+      if (this.chocSling[1] > 0) this.chocSling[1] -= 1;
+      for (let i = 0; i < this.spin.length; i++) if (this.spin[i] !== 0) this.spin[i] = div(this.spin[i]! * 997, 1000);
+    }
     for (let i = 0; i < 2; i++) {
       const haut = this.appui[i]!;
       const cible = haut ? d.haut : d.repos;
       const vit = haut ? d.montee : d.descente;
       const diff = cible - this.a[i]!;
       this.aAvant[i] = this.a[i]!;
-      this.a[i] = this.a[i]! + Math.sign(diff) * Math.min(Math.abs(diff), vit);
+      if (diff !== 0) this.a[i] = this.a[i]! + Math.sign(diff) * Math.min(Math.abs(diff), vit);
     }
     // lot PBG2 : la bille principale joue son pas, puis chacune des autres (la partie échange ses champs avec elle) ; les billes qui se touchent rebondissent ; la multibille lâche ses billes et s'arrête quand il n'en reste qu'une
     if (!this.vide) {
@@ -835,15 +967,20 @@ export class Partie {
     this.x += div(this.vx, TICKS_PAR_SECONDE);
     this.y += div(this.vy, TICKS_PAR_SECONDE);
     // --- les collisions, dans l'ordre de la maquette : murs, poteaux, bumpers, cibles, batteurs
-    for (const s of t.murs) if (s.type !== 2 && this.segment(s)) if (s.type === 1) this.choquerSling(s);
+    // lot PBR1 : les murs de la case de la bille seulement (`grille` : les mêmes, dans le même ordre)
+    for (const s of t.grille[caseDe(this.x, this.y)]!) if (this.segment(s) && s.type === 1) this.choquerSling(s);
     // lot PBG3 : fermée, la porte est un mur ; ouverte, la bille passe
     if (t.passage && this.passageOuvert <= 0) this.segment(t.passage.battant);
     // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
     for (const g of t.portes) {
+      // lot PBR1 : la bouche n'agit que sur une bille proche de son milieu (sa demi-largeur plus le rayon de la bille, un pixel de marge pour l'arrondi du segment)
+      const rayon = g.l + RU + UNITE;
+      if (this.x - g.x >= rayon || g.x - this.x >= rayon || this.y - g.y >= rayon || g.y - this.y >= rayon) continue;
       this.porte(g, d);
       if (this.surUnRail) return;
     }
-    for (const p of t.poteaux) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0);
+    // lot PBR1 : hors de leur bande de y, aucun contact possible (le même résultat, sans essayer chaque poteau)
+    if (this.y > t.bandePoteaux[0] && this.y < t.bandePoteaux[1]) for (const p of t.poteaux) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0);
     for (let i = 0; i < t.bumpers.length; i++) {
       const b = t.bumpers[i]!;
       if (this.cercle(b.x, b.y, b.r, r.rebondBumper, b.kick, b.vx ?? 0)) {
@@ -868,14 +1005,17 @@ export class Partie {
         }
       }
     }
-    this.batteur(GAUCHE, ORIGINE, PIVOT_Y, LONGUEUR);
-    this.batteur(DROITE, ORIGINE, PIVOT_Y, LONGUEUR);
+    // lot PBR1 : les grands batteurs n'ont d'effet que dans leur bande de y (`batteur` rend la main au premier calcul sinon)
+    if (this.y > PIVOT_Y - PORTEE_BATTEUR && this.y < PIVOT_Y + PORTEE_BATTEUR) {
+      this.batteur(GAUCHE, ORIGINE, PIVOT_Y, LONGUEUR);
+      this.batteur(DROITE, ORIGINE, PIVOT_Y, LONGUEUR);
+    }
     // lot PBG1 : le mini-batteur suit l'angle du batteur du même côté (le même appui : la rediffusion ne change pas de forme)
     if (t.mini) this.batteur(t.mini.cote, t.mini.x, t.mini.y, t.mini.longueur);
     // lot PBG3 : le poteau sauveur, quand il est armé, renvoie la bille vers le haut une fois
     if (!this.servie && this.lampes[0] && this.lampes[1]) this.sauveur(r, t);
     // --- les capteurs
-    for (let i = 0; i < t.voies.length; i++) {
+    if (this.y > t.bandeVoies[0] && this.y < t.bandeVoies[1]) for (let i = 0; i < t.voies.length; i++) {
       const v = t.voies[i]!;
       if (this.voiesAllumees[i] || Math.abs(this.x - v.x) >= 14 * UNITE || Math.abs(this.y - v.y) >= 10 * UNITE) continue;
       this.voiesAllumees[i] = true;
@@ -1078,7 +1218,8 @@ export class Partie {
    */
   private collisionsDesBilles(): void {
     const lue = (this.lue ??= billeVide(-1, 0, 0));
-    const tous: Bille[] = [];
+    const tous = this.tous; // lot PBR1 : le même tableau à chaque pas (aucune allocation)
+    let n = 0;
     if (!this.vide) {
       lue.x = this.x;
       lue.y = this.y;
@@ -1087,15 +1228,15 @@ export class Partie {
       lue.captif = this.captif;
       lue.couche = this.couche;
       lue.dansLanceur = this.dansLanceur;
-      tous.push(lue);
+      tous[n++] = lue;
     }
-    for (const b of this.autres) tous.push(b);
+    for (const b of this.autres) tous[n++] = b;
     const e = this.reglages.rebondBille;
     const mur = 2 * RU;
-    for (let i = 0; i < tous.length; i++) {
+    for (let i = 0; i < n; i++) {
       const a = tous[i]!;
       if (a.captif > 0 || a.couche === 1 || a.dansLanceur) continue;
-      for (let j = i + 1; j < tous.length; j++) {
+      for (let j = i + 1; j < n; j++) {
         const b = tous[j]!;
         if (b.captif > 0 || b.couche === 1 || b.dansLanceur) continue;
         const dx = b.x - a.x;
@@ -1456,11 +1597,21 @@ export class Partie {
   /** La bille contre un batteur : une capsule du pivot à la pointe (rayon 8 à 5 px), dont la surface en mouvement la pousse. Calculé pour le batteur gauche ; le droit est son image. */
   private batteur(i: number, ox: number, oy: number, longueur: number): void {
     const sens = i === GAUCHE ? 1 : -1;
-    const a = this.a[i]!;
     const bx = sens > 0 ? this.x : AXE2 - this.x;
     const by = this.y;
-    const co = cosinus(a);
-    const si = sinus(a);
+    // lot PBR1 : une bille à plus de `longueur + RU + BATTEUR_GROS` du pivot ne peut pas toucher la capsule (aucun calcul de l'angle, aucun effet : le résultat est celui d'avant)
+    const portee = longueur + RU + BATTEUR_GROS;
+    if (bx - ox >= portee || ox - bx >= portee || by - oy >= portee || oy - by >= portee) return;
+    const a = this.a[i]!;
+    // lot PBR1 : le sinus et le cosinus de l'angle ne se recalculent que quand le batteur a bougé (une fonction pure de `a`, gardée par angle)
+    const c = this.csAngle;
+    if (c[3 * i] !== a) {
+      c[3 * i] = a;
+      c[3 * i + 1] = cosinus(a);
+      c[3 * i + 2] = sinus(a);
+    }
+    const co = c[3 * i + 1]!;
+    const si = c[3 * i + 2]!;
     let p = div((bx - ox) * co + (by - oy) * si, NORME);
     p = p < 0 ? 0 : p > longueur ? longueur : p;
     const qx = ox + div(co * p, NORME);

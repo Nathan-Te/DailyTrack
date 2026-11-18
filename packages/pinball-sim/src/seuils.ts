@@ -14,14 +14,24 @@ import { billesCoincees, SuiviModules, tirsDisperses, type RapportBilles } from 
 // **Un jour figé fige aussi ses seuils** (`jours.ts`) : le fichier de jour porte `seuils` et `bot` ; `seuilsDuJour` lit ceux du fichier avant tout calcul. Changer le robot ou ces constantes
 // (`PINBALL_BOT_VERSION`) ne change donc jamais un jour figé, et change l'empreinte d'un jour protégé sans fichier (la mise en production s'arrête).
 //
-// **Qui calcule, et quand.** Le robot met de 3 à 5 secondes à jouer une table (mesures : README du lot PB4) : il ne tourne **jamais à chaque partie**. (1) `npm run figer:pinball` (job `figer` de « Mettre en production »)
+// **Qui calcule, et quand.** Le robot met de 3 à 5 secondes à jouer une table (3,3 s en moyenne, 4,8 s au pire sur 30 jours, depuis le lot PBR1 : budget ci-dessous, README du lot) : il ne tourne **jamais à chaque partie**. (1) `npm run figer:pinball` (job `figer` de « Mettre en production »)
 // et `npm run preparer:pinball` (les jours à venir : `preparer` de la fiche) écrivent les seuils dans le fichier de chaque jour : le serveur et le jeu les y lisent, le robot ne tourne pas. (2) Un jour sans fichier
 // (un jour d'archive, d'essai, de recette) est calculé **une fois** par table (`cleDeTable` : le résultat ne dépend que d'elle) : par le serveur (le module des jeux garde le niveau d'un jour) et, côté jeu, **en
 // arrière-plan** pendant la première partie (`seuilsEnTranches`, `apps/pinball/src/niveau.ts`).
 
-/** Le robot joue 4 parties par table, de 6 minutes chacune au plus (216 000 pas : lot PBG2, avec la boucle mission-verrou-multibille une bonne partie dure bien plus que les 2 minutes du lot PB4 ; le coût d'une table est celui de 24 minutes de jeu, ≈ 12 secondes). Mesures et justification : README du lot PBG2. */
+/** Le robot joue 4 parties par table, de 6 minutes chacune au plus (216 000 pas : lot PBG2, avec la boucle mission-verrou-multibille une bonne partie dure bien plus que les 2 minutes du lot PB4 ; le coût d'une table est celui de 24 minutes de jeu : ≈ 14 secondes au lot PBG2, ≈ 3,3 depuis le lot PBR1). Mesures et justification : README du lot PBG2. */
 export const PARTIES_DU_ROBOT = 4;
 export const DUREE_PARTIE_ROBOT = 360 * TICKS_PAR_SECONDE;
+/**
+ * **Le budget du robot** (lot PBR1) : combien de pas il simule pour décider, en **pas de simulation** (jamais en secondes : un chiffre qui ne dépend pas de la machine). Mesure sur les 30 jours du 02/11/2026 : au plus
+ * 8,64 millions de pas pour une table (4 parties de 6 minutes : 10,0 pas simulés pour chaque pas joué), 11,3 pas par pas joué au pire sur des parties de 2 minutes ; **les plafonds sont la mesure plus 20 %**.
+ * `test/budget-robot.test.ts` et les tests de 30 jours échouent au-delà : un robot qui coûte plus cher retarde les médailles du jour (le calcul des seuils d'une table sans fichier). Les relever demande une mesure
+ * (`npm run mesure-robot:pinball`, README du lot PBR1) et la décision de Nathan.
+ */
+export const BUDGET_PAS_TABLE = 10_400_000;
+/** Pas simulés pour 1 000 pas joués : 13,5 (la mesure la plus haute, 11,3, plus 20 %). */
+export const BUDGET_PAS_PAR_MILLE = 13_500;
+
 /**
  * **Les pourcentages du meilleur score du robot** (Diamant) que valent les trois autres médailles. **Nathan les règle** (ils montent `PINBALL_BOT_VERSION`). Valeurs de départ : Bronze 15 % (la partie d'un joueur
  * qui sait à peine viser, sans mission), Argent 35 % (une bonne partie sans mission), Or 60 % (la mission et une partie propre) — justifiées par la répartition des scores du robot dans le README du lot PB4.

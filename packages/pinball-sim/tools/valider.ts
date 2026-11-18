@@ -6,7 +6,7 @@ import { enFil, enParallele, repondre } from "./fils";
 // `npm run valider:pinball -w @cdj/pinball-sim -- [--ecrire] [--fils=N] [--seulement=<début de clé>] [--jours=400]` : **la validation des 500 tables que le générateur peut tirer** (lot PB4). Chaque table passe les trois
 // épreuves de `validation.ts` (aucune bille coincée, chaque module touché, la mission réussie) ; le verdict ne dépend que de la table, donc se calcule une fois pour toutes. `--ecrire` écrit les tables refusées dans
 // `src/refusees.ts` (que le générateur lit) ; **si la liste change, monter `PINBALL_GENERATOR_VERSION`** (un jour servi ne change pas). `--jours=400` dit combien de jours auraient tiré une table refusée.
-// Aucune base, aucun réseau. Une table met de 3 à 6 secondes : 500 tables ≈ 14 minutes sur 4 cœurs.
+// Aucune base, aucun réseau. Une table met de 4 à 7 secondes (lot PBR1) : 500 tables ≈ 10 minutes sur 4 cœurs.
 interface Resume {
   cle: string;
   ok: boolean;

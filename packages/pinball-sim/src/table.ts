@@ -1,4 +1,4 @@
-import { AXE, LAMPE_DEMI, LAMPE_X, LAMPE_Y, NORME, SAUVEUR_R, SAUVEUR_X, SAUVEUR_Y, TOUR, UNITE } from "./constantes";
+import { AXE, RAYON, LAMPE_DEMI, LAMPE_X, LAMPE_Y, NORME, SAUVEUR_R, SAUVEUR_X, SAUVEUR_Y, TOUR, UNITE } from "./constantes";
 import { cosinus, racine, sinus, unitaire, div } from "./entiers";
 import { MISSION_DU_THEME, MODULES_DE_MISSION, type Contenu } from "./generateur";
 import type { ThemePinball } from "./themes";
@@ -183,6 +183,45 @@ export interface Table {
   passage: Passage | null;
   sauveur: Sauveur;
   aiguillage: Aiguillage | null;
+  /** Lot PBR1 : **la grille des murs** — pour chaque case de 16 px (`caseDe`), les murs (hors cibles) qui peuvent toucher une bille qui s'y trouve, dans l'ordre de `murs`. Les mêmes collisions dans le même ordre, sans essayer les 70 murs à chaque pas. */
+  grille: Segment[][];
+  /** Lot PBR1 : la bande de y (unités) hors de laquelle une bille ne peut toucher ni un poteau ni un capteur de voie : `[bas, haut]`, bornes exclues. */
+  bandePoteaux: [number, number];
+  bandeVoies: [number, number];
+}
+
+/** La grille des murs (lot PBR1) : des cases de 2^16 unités (16 px), `COLONNES` × `LIGNES` ; une bille hors de la table est rangée dans la case du bord. */
+export const CASE_BITS = 16;
+export const COLONNES = 24;
+export const LIGNES = 48;
+/**
+ * **La marge de la grille** : un mur est rangé dans une case s'il est à moins de `RAYON + MARGE_GRILLE` de la case. Pendant le pas d'une bille, un mur qui la touche la pousse (de 9 px au plus) avant que le suivant soit
+ * essayé : la poussée d'un pas ne dépasse pas 2,5 px (la bille avance de 2,5 px au plus, elle ne pénètre donc un mur que de cela : 2,3 px mesurés sur des parties entières du robot) ; la marge de 32 px couvre plus de dix poussées
+ * à la suite, plus qu'aucun coin de la table n'en peut faire (`test/grille.test.ts`).
+ */
+export const MARGE_GRILLE = 32 * UNITE;
+const LOIN = 1_000_000_000_000;
+export const caseDe = (x: number, y: number): number => {
+  const cx = x >> CASE_BITS;
+  const cy = y >> CASE_BITS;
+  return (cy < 0 ? 0 : cy >= LIGNES ? LIGNES - 1 : cy) * COLONNES + (cx < 0 ? 0 : cx >= COLONNES ? COLONNES - 1 : cx);
+};
+/** Les murs de chaque case : ceux dont la boîte, élargie du rayon de la bille et de la marge, touche la case (ceux d'une case du bord, la zone au-delà aussi). Pas les cibles (jouées par leur banque). */
+export function grilleDe(murs: readonly Segment[], rayon: number): Segment[][] {
+  const taille = 1 << CASE_BITS;
+  const marge = rayon + MARGE_GRILLE;
+  const g: Segment[][] = [];
+  for (let k = 0; k < COLONNES * LIGNES; k++) {
+    const cx = k % COLONNES;
+    const cy = Math.trunc(k / COLONNES);
+    // une case du bord couvre aussi tout ce qui est au-delà
+    const x0 = cx === 0 ? -LOIN : cx * taille;
+    const x1 = cx === COLONNES - 1 ? LOIN : (cx + 1) * taille;
+    const y0 = cy === 0 ? -LOIN : cy * taille;
+    const y1 = cy === LIGNES - 1 ? LOIN : (cy + 1) * taille;
+    g.push(murs.filter((s) => s.type !== 2 && s.x1 + marge >= x0 && s.x0 - marge <= x1 && s.y1 + marge >= y0 && s.y0 - marge <= y1));
+  }
+  return g;
 }
 
 /** Les points de l'arc du haut (centre 196,25 × 205, rayon 176,25 : 31 points de la maquette), en unités. Calculés hors ligne, entiers. */
@@ -204,7 +243,7 @@ function segment(ax: number, ay: number, bx: number, by: number, e: number, kick
 /** La table du jour : le châssis, puis les six emplacements. */
 export function construireTable(contenu: Contenu, r: Reglages): Table {
   const plan = planDe(contenu.plan);
-  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1, passage: null, sauveur: sauveurDe(), aiguillage: null };
+  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1, passage: null, sauveur: sauveurDe(), aiguillage: null, grille: [], bandePoteaux: [0, 0], bandeVoies: [0, 0] };
   const mur = (ax: number, ay: number, bx: number, by: number, e: number, kick = 0, type: 0 | 1 = 0): void => void t.murs.push(segment(ax, ay, bx, by, e, kick, type));
   // --- le châssis
   mur(px(20), px(560), px(20), px(205), r.rebondMur);
@@ -232,6 +271,9 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
   // lot PBG3 : la porte (ses murs et son battant), puis l'aiguillage d'une rampe
   if (plan.porte) t.passage = poserPassage(t, plan.porte, r);
   if (plan.aiguillage) t.aiguillage = poserAiguillage(t, plan.aiguillage, contenu, r);
+  t.grille = grilleDe(t.murs, RAYON * UNITE);
+  t.bandePoteaux = [Math.min(...t.poteaux.map((q) => q.y - q.r - RAYON * UNITE)), Math.max(...t.poteaux.map((q) => q.y + q.r + RAYON * UNITE))];
+  t.bandeVoies = [Math.min(...t.voies.map((q) => q.y - 10 * UNITE)), Math.max(...t.voies.map((q) => q.y + 10 * UNITE))];
   return t;
 }
 

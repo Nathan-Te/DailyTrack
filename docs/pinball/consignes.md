@@ -2,6 +2,9 @@
 
 Chargé par lecture des fichiers du jeu (zone `docs/pinball/**`). Réponses et docs en français. **Créé par `npm run nouveau-jeu -- --id pinball --classement score`** (lot K4g) à partir du jeu témoin « Cibles » ; vision : `docs/pinball/seed.md` (**ne pas modifier**, c'est Nathan qui le fait) ; à coller dans une conversation d'orchestration : `docs/pinball/passation.md`.
 
+## Lot PBR1 (le robot des médailles, 4,5 fois plus rapide) — **le calcul des seuils d'une table coûte 3,3 s au lieu de 14,6, avec les mêmes médailles**
+- Le robot cherche « grossier puis fin », réutilise ses parties d'essai et la simulation n'essaie que les murs proches de la bille : **les 120 parties du robot de 30 jours ont exactement les mêmes scores** (donc `PINBALL_SIM_VERSION`, `PINBALL_BOT_VERSION`, le golden et la liste des tables refusées ne bougent pas). Le budget (en pas simulés, jamais en secondes) et la règle « on accélère d'abord sans toucher aux médailles » sont dans `packages/pinball-sim/CLAUDE.md`, section « Le budget du robot et sa recherche économe » ; les mesures dans `docs/pinball/lots/lot-PBR1-robot-rapide.md`.
+
 ## Lot PBS1 (les sons) — **le jeu a ses effets sonores ; la musique attend ses morceaux**
 - **Vingt et un sons procéduraux** (batteur, lanceur, lance-pierre, roulement de la bille ; bumper par thème, cible et banque, spinner, trou, couloirs ; manège, tourbillon, portail, trou noir, geyser, coulée ; multiplicateur, pas de la mission, mission, bille sauvée, perdue, fin de partie), décidés par `apps/pinball/src/sonsLogique.ts` à partir de l'état de la partie entre deux pas : **la simulation, la rediffusion, le golden et les versions n'ont pas changé**. Mélange (plafond de voix, délai minimal, priorité), table des sons `?debug&sons`, comment ajouter un son : `apps/pinball/CLAUDE.md` (« Les sons », « La musique ») ; ce qui est vérifié, ce qui ne l'est pas, ce que Nathan doit fournir pour la musique : `docs/pinball/lots/lot-PBS1-sons.md`.
 
