@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page, newClockedContext } from "./fixtures";
-import { encodeReplay, runPilot, salonCircuit, salonTrackId } from "@cdj/sim";
+import { encodeReplay, salonTrackId } from "@cdj/sim";
+import { choisirSessionJouable } from "../outils/salonSessionJouable";
 
 // Le Salon avec le VRAI serveur local (lot 27) : l'API Node (celle du conteneur Docker, base SQLite en mémoire) tourne avec
 // `SALON_MINUTES=3` (sessions de trois minutes, à heure fixe ; serveur réservé à ce test, port 8788). Deux « appareils » (deux contextes de navigateur isolés : chacun son identité)
@@ -7,11 +8,12 @@ import { encodeReplay, runPilot, salonCircuit, salonTrackId } from "@cdj/sim";
 // chacun voit alors la ligne et le fantôme de l'autre, et la session suivante s'installe pour les deux au même moment.
 // Rendu 3D : Chromium seulement.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
-test.setTimeout(600_000);
-
 const API = "http://127.0.0.1:8788";
 const PODIUM_MS = 8_000; // classement final avant le changement de circuit (lot 33 ; `PODIUM_MS` de src/salon.ts)
 const SESSION_MS = 180_000; // SALON_MINUTES=3 : de la marge pour deux courses complètes en rendu logiciel
+// Lot R17 : le délai du test suit la session choisie (`test.setTimeout` dans le test) : du travail après le début de la session (deux courses et la bascule : ≈ 190 s mesurés,
+// 420 s de marge), plus l'attente de ce début, mesurée sur l'horloge du serveur.
+const TRAVAIL_MS = 420_000;
 const url = `/?mode=salon&api=${encodeURIComponent(API)}&debug&timescale=6`;
 
 async function device(browser: Browser, name: string): Promise<Page> {
@@ -24,23 +26,17 @@ async function device(browser: Browser, name: string): Promise<Page> {
 const loaded = (page: Page, id: string) => page.waitForFunction((t) => window.__cdj?.salon?.trackId === t, id, { timeout: 90_000 });
 
 test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, la bascule est commune", async ({ browser }) => {
-  // On vise le début de la PROCHAINE session : toute la course tient dans une session de trois minutes. Les rediffusions se calculent en attendant.
+  // On vise le début d'une session SUIVANTE : toute la course tient dans une session de trois minutes. Les rediffusions se calculent en attendant.
   // L'heure est celle du SERVEUR (`TEST_CLOCK`), jamais celle de la machine : on lui demande la session en cours.
+  // Lot R17 : le circuit d'une session dépend de son numéro, donc de l'heure atteinte par l'horloge de test (des specs passés avant dans la part) ; tous n'ont pas deux pilotes
+  // qui finissent (6 sur 200 : aucun). On prend la première des trois suivantes où l'on trouve un pilote rapide et un plus lent, avec des temps différents.
   const current = await (await fetch(`${API}/api/salon/now`)).json();
-  const session = current.session + 1;
+  const { jouable, sautees } = choisirSessionJouable(current.session);
+  const { session, fast, slow } = jouable;
   const id = salonTrackId(session);
-  const circuit = salonCircuit(session);
-  // Deux pilotes de niveaux différents : le circuit change à chaque session, tous les niveaux n'y passent pas forcément.
-  const finishing = (grips: number[]) => {
-    for (const grip of grips) {
-      const run = runPilot(circuit.track, { grip });
-      if (run.valid) return run;
-    }
-    throw new Error("aucun pilote ne finit ce circuit");
-  };
-  const fast = finishing([0.95, 0.9, 0.85, 0.8]);
-  const slow = finishing([0.7, 0.65, 0.6, 0.55, 0.5]);
-  expect(slow.finishMs).toBeGreaterThan(fast.finishMs);
+  const attente = session * SESSION_MS - current.serverMs; // jusqu'au début de la session choisie (heure du serveur)
+  test.setTimeout(TRAVAIL_MS + Math.max(attente, 0));
+  console.log(`session choisie : ${session} (courante + ${session - current.session}, ${sautees} sautée(s)), début dans ${Math.round(attente / 1000)} s`);
   const fastCode = encodeReplay(fast.replay);
   const slowCode = encodeReplay(slow.replay);
 
