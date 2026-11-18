@@ -87,6 +87,7 @@ export const contratGravity = (o: GravityOptions = {}): ContratMinimal<Niveau, R
   seuils: (niveau) => niveau.seuils,
   entrees: (r) => texteDesEntrees(r.changements),
   theme: (niveau) => themeDuJour(niveau.jour),
+  themeDuJour, // lot D4 : le thème du calendrier du jeu, sans calculer le niveau (l'accueil le montre pendant que le niveau se calcule)
   mesures: (m) => ({ distance: m.distance, pieces: m.pieces, gemmes: m.gemmes, multMax: m.multMax }),
   ticksParSeconde: TICKS_PAR_SECONDE,
   joursFiges: Object.keys(o.frozen ?? {}).sort(),

@@ -5,7 +5,7 @@ import { CODES_ERREUR, type CodeErreur } from "../codesErreur";
 import type { SqlValue } from "../db";
 import { HttpError } from "../errors";
 import type { FICHES_SERVEUR } from "../fiches.generated";
-import type { AdminDuJeu, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "../games";
+import type { AdminDuJeu, GameInstance, JourPortail, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "../games";
 import { type AdaptateurTable, sqlDe, verifierAdaptateur, versFiche, versTable } from "./adaptateur";
 import { refOfPlayer } from "../players";
 import { type ContratJeu, type LigneBrute, RefusJeu } from "./contrat";
@@ -122,8 +122,43 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
   const niveaux = new Map<number, { rule: string; niveau: Niveau }>();
   const enCalcul = new Map<number, Promise<Niveau>>();
 
+  // Lot D4 — **un jeu sans table de niveaux garde le sien dans `meta`** (`contrat.garderEnBase`) : la clé dit le jeu et le jour, la valeur la **version du code** qui l'a calculé (`platform.revision`), la règle et la ligne du
+  // contrat. Une autre version du code (un robot de seuils ou un générateur modifié) ne relit jamais ce que l'ancienne a gardé : elle recalcule. Une base où `meta` est vidée (remise à zéro) recalcule aussi.
+  const dansMeta = !tableNiveaux && contrat.garderEnBase === true;
+  const versionDuCode = platform.revision ?? "local";
+  const cleMeta = (day: number): string => `niveau:${fiche.code}:${formatDay(day)}`;
+
+  async function lireMeta(day: number, rule: string): Promise<Record<string, SqlValue> | null> {
+    const row = await db.first<{ value: string }>("SELECT value FROM meta WHERE key = ?", [cleMeta(day)]);
+    if (!row) return null;
+    try {
+      const garde = JSON.parse(row.value) as { revision?: unknown; rule?: unknown; ligne?: unknown };
+      if (garde.revision !== versionDuCode || garde.rule !== rule || typeof garde.ligne !== "object" || garde.ligne === null) return null;
+      return { rule, ...(garde.ligne as Record<string, SqlValue>) };
+    } catch {
+      return null; // une valeur abîmée est recalculée, jamais crue
+    }
+  }
+
+  /** Le calcul d'un niveau part : l'accueil, qui ne l'attend pas (`jourSansNiveau`), est prévenu. Une promesse par jour, résolue au premier calcul réel (une relecture en base ne passe pas par là). */
+  const calculsLances = new Map<number, { signal: Promise<void>; lancer: () => void }>();
+  function signalDeCalcul(day: number): { signal: Promise<void>; lancer: () => void } {
+    let s = calculsLances.get(day);
+    if (!s) {
+      let lancer!: () => void;
+      const signal = new Promise<void>((resolve) => (lancer = resolve));
+      s = { signal, lancer };
+      calculsLances.set(day, s);
+    }
+    return s;
+  }
+
   async function chargerNiveau(day: number, rule: string): Promise<Niveau> {
-    const row = tableNiveaux ? await db.first<Record<string, SqlValue>>(`SELECT rule, ${colonnesNiveau.join(", ")} FROM ${tableNiveaux} WHERE day = ?`, [day]) : null;
+    const row = tableNiveaux
+      ? await db.first<Record<string, SqlValue>>(`SELECT rule, ${colonnesNiveau.join(", ")} FROM ${tableNiveaux} WHERE day = ?`, [day])
+      : dansMeta
+        ? await lireMeta(day, rule)
+        : null;
     let niveau: Niveau | null = null;
     if (row && row.rule === rule) {
       try {
@@ -133,6 +168,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       }
     }
     if (!niveau) {
+      signalDeCalcul(day).lancer();
       const debutCalcul = performance.now();
       const c = await contrat.calculer(day);
       niveau = c.niveau;
@@ -142,6 +178,14 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
         ...colonnesNiveau.map((k) => c.ligne[k] ?? null),
         now(),
       ]);
+      else if (dansMeta && Object.keys(c.ligne).length > 0) {
+        // Le niveau est calculé : ne pas le perdre si la base refuse l'écriture (il resterait à rejouer un robot de plusieurs secondes) ; une instance qui se réveille le recalculera.
+        try {
+          await db.run("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [cleMeta(day), JSON.stringify({ revision: versionDuCode, rule, ligne: c.ligne })]);
+        } catch {
+          log("WARNING", `${messageJour} : niveau non gardé en base`, { day: formatDay(day) });
+        }
+      }
       log("INFO", messageJour, { day: formatDay(day), ...contrat.champsJournalJour(niveau), ms: Math.round(performance.now() - debutCalcul) });
     }
     niveaux.set(day, { rule, niveau });
@@ -154,10 +198,49 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     if (memo && memo.rule === rule) return memo.niveau;
     let attente = enCalcul.get(day);
     if (!attente) {
-      attente = chargerNiveau(day, rule).finally(() => enCalcul.delete(day));
+      attente = chargerNiveau(day, rule).finally(() => {
+        enCalcul.delete(day);
+        calculsLances.delete(day);
+      });
       enCalcul.set(day, attente);
     }
     return attente;
+  }
+
+  /** Lot D4 : le dernier échec d'un calcul lancé par l'accueil (par jour) : il ne relance pas le calcul avant `REPRISE_ACCUEIL_MS` (une route du jeu, elle, réessaie toujours). */
+  const echecsAccueil = new Map<number, number>();
+  const REPRISE_ACCUEIL_MS = 60_000;
+
+  /**
+   * Lot D4 : le jour de l'accueil **sans attendre un niveau en cours de calcul**. Le niveau déjà en mémoire se rend tel quel ; sinon le calcul part (ou continue, s'il est déjà lancé) et, tant qu'il n'est pas fini,
+   * l'accueil rend le jour sans seuils (`jourSansNiveau`). Un niveau qu'il suffit de relire en base est attendu : seul le premier calcul réel (le signal de `chargerNiveau`) fait répondre sans lui.
+   */
+  async function jourSansAttendre(day: number): Promise<JourPortail> {
+    const sans = contrat.jourSansNiveau!;
+    const rule = await contrat.regle(day);
+    const memo = niveaux.get(day);
+    if (memo && memo.rule === rule) return contrat.portailJour(memo.niveau, day);
+    const dernierEchec = echecsAccueil.get(day);
+    if (dernierEchec !== undefined && now() - dernierEchec < REPRISE_ACCUEIL_MS) return sans(day);
+    const chargement = getNiveau(day);
+    const prete = chargement.then(
+      (niveau) => ({ niveau }),
+      () => null,
+    );
+    const lance = signalDeCalcul(day).signal.then(() => "calcul" as const);
+    const premier = await Promise.race([prete, lance]);
+    if (premier === "calcul") {
+      void prete.then((r) => {
+        if (r === null) echecsAccueil.set(day, now());
+      });
+      return sans(day);
+    }
+    if (premier === null) {
+      echecsAccueil.set(day, now());
+      return sans(day);
+    }
+    echecsAccueil.delete(day);
+    return contrat.portailJour(premier.niveau, day);
   }
 
   const getInfo = async (day: number): Promise<unknown> => contrat.infoJour(await getNiveau(day));
@@ -492,7 +575,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     ...(fiche.classement.format === "temps" && !fiche.classement.cumul ? { cumul: false as const } : {}), // un jeu au temps hors du cumul (arcade) : sa vue reste, le cumul ne le compte pas
     classement: fiche.classement.format === "temps" ? "temps" : "hauteur", // lot K4c : tout jeu classé à un score (hauteur, points) compte dans la journée mais jamais dans le cumul au temps
     async jour(day) {
-      return contrat.portailJour(await getNiveau(day), day);
+      return contrat.jourSansNiveau ? jourSansAttendre(day) : contrat.portailJour(await getNiveau(day), day);
     },
     async etat(id, day, connu) {
       const own = await db.first<LigneBrute>(sql.etat, [day, id]);
@@ -566,6 +649,8 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
     portail,
     admin,
     dailyLevel: getInfo,
+    // Lot D4 : un jeu dont le niveau se calcule hors du fil principal se prépare dès le démarrage de l'instance (aujourd'hui et demain : `api.ts`, `preparerAuDemarrage`).
+    ...(contrat.jourSansNiveau ? { prepareAuDemarrage: true as const } : {}),
     // Lot P (interrupteur des jeux) : en aperçu, seul l'envoi d'une partie range ses résultats à part ; ils sont effacés quand le jeu passe `on` (jamais publics).
     ecrituresApercu: [`${prefixe}/submit`, ...(config.ecrituresApercuPropres ?? [])],
     viderApercu: (): Statement[] => [{ sql: sql.viderApercu }],

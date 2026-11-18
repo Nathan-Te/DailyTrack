@@ -51,6 +51,8 @@ import { COLONNES_GROUPE, JOINTURE_GROUPE, emblemeDe, monEmbleme, type ColonnesG
 
 /** Au plus 60 s de cache pour la réponse publique (et jamais au-delà du prochain minuit de Paris). */
 export const PORTAIL_PUBLIC_MAX_S = 60;
+/** Lot D4 : la durée de garde d'une réponse publique où le niveau d'un jeu n'est pas encore prêt (`provisoire`) : assez courte pour que les seuils arrivent vite, assez longue pour ne pas relancer le calcul à chaque lecture. */
+export const PORTAIL_PROVISOIRE_MAX_S = 5;
 /** Lectures du portail par adresse et par fenêtre de débit (10 minutes) : un chargement, le minuit, le profil. */
 export const PORTAIL_READS_PER_CLIENT = 120;
 /** Lectures du portail par joueur et par fenêtre. */
@@ -473,7 +475,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     if (!id) {
       // Publique : au plus 60 s, jamais au-delà du prochain minuit de Paris (le jour suivant n'est pas servi d'avance, l'ancien pas après).
       const restant = Math.floor((parisDayStart(day + 1) - now()) / 1000);
-      const maxAge = Math.max(0, Math.min(PORTAIL_PUBLIC_MAX_S, restant));
+      const maxAge = Math.max(0, Math.min(publique.jeux.some((j) => j.provisoire) ? PORTAIL_PROVISOIRE_MAX_S : PORTAIL_PUBLIC_MAX_S, restant));
       return new WithHeaders(publique, { "Cache-Control": toutVoir ? "no-store" : `public, max-age=${maxAge}`, Vary: "X-Player-Id" });
     }
     const row = await joueurConnu(id, publique);

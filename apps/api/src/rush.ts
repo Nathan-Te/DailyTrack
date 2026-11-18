@@ -104,6 +104,7 @@ export const contratRush = (o: RushOptions = {}, platform?: { spendReplays(units
   seuils: (niveau) => seuilsDuJour(niveau.contenu), // lot BR4 : ceux du fichier figé, sinon le Diamant du pilote (meilleur des trois stratégies)
   entrees: (r) => texteDesEntrees(r),
   theme: (niveau) => themeDuJour(niveau.jour),
+  themeDuJour, // lot D4 : le thème du calendrier du jeu, sans calculer le niveau (l'accueil le montre pendant que le niveau se calcule)
   empreinteAuteur: (niveau) => niveau.authorHash,
   mesures: (m) => ({ subis: m.subis, tues: m.tues }),
   ticksParSeconde: TICKS_PAR_SECONDE,

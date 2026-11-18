@@ -6,7 +6,7 @@ import { ConfigError, adminTokenWarning, readConfig } from "./config";
 import { openLibsql } from "./libsql-open";
 import { consoleLog } from "./log";
 import { creerMesures } from "./mesures";
-import { DELAI_NIVEAU_MS, type DemandeNiveau, type ReponseNiveau } from "./niveauxFil";
+import { DELAI_NIVEAU_KIT_MS, DELAI_NIVEAU_MS, type DemandeKit, type DemandeNiveau, FILE_NIVEAU_KIT, type ReponseKit, type ReponseNiveau } from "./niveauxFil";
 import { createNodeServer } from "./node-server";
 import { openSqlite } from "./node-sqlite";
 import { REPLAYS_PER_MINUTE } from "./platform";
@@ -92,12 +92,15 @@ mesures.demarrer();
 const niveauxFilFichier = new URL("./niveaux-fil.mjs", import.meta.url);
 const niveauxFil = existsSync(niveauxFilFichier);
 const niveauxExecuteur = niveauxFil ? executeurFil<DemandeNiveau, ReponseNiveau>(niveauxFilFichier, { delaiMs: DELAI_NIVEAU_MS }) : undefined;
-consoleLog("INFO", niveauxFil ? "Niveaux du jour : le calcul passe par le fil de calcul" : "Niveaux du jour : le calcul se fait dans le fil principal (repli, pas de niveaux-fil.mjs)", { fil: niveauxFil });
+// Lot D4 : les jeux du kit ont **leur** fil de calcul (le même script, un second fil) : le robot de seuils d'un jeu dure des dizaines de secondes (Pinball) et ne doit jamais faire attendre Jump ni Track.
+const niveauxKitExecuteur = niveauxFil ? executeurFil<DemandeKit, ReponseKit>(niveauxFilFichier, { delaiMs: DELAI_NIVEAU_KIT_MS, fileMax: FILE_NIVEAU_KIT }) : undefined;
+consoleLog("INFO", niveauxFil ? "Niveaux du jour : le calcul passe par le fil de calcul (Jump et Track), et par un second fil pour les jeux du kit" : "Niveaux du jour : le calcul se fait dans le fil principal (repli, pas de niveaux-fil.mjs)", { fil: niveauxFil });
 
 const api = createApi({
   db,
   mesures,
   niveauxExecuteur,
+  niveauxKitExecuteur,
   environment: config.environment,
   jumpFrozen,
   towerFrozen,
