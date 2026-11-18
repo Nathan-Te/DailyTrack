@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CATALOGUE_CLASSEMENT } from "../src/catalogue.classement";
-import { ligne, listeAvecSeuils, mouvement, podium, seuil, type PlaceClassement } from "../src/classement";
+import { ligne, podium, type PlaceClassement } from "../src/classement";
+import { listeAvecSeuils, seuil } from "../src/seuils";
+import { mouvement } from "../src/mouvement";
 import { traducteur } from "../src/i18n";
 import { installerFauxDom, type FauxDocument, type FauxElement } from "./fauxDom";
 
@@ -108,7 +110,7 @@ describe("lot U6 : la liste", () => {
     expect(faux(mouvement(fr, -1)!).textContent).toContain("1 place perdue depuis ta dernière visite");
     expect(faux(mouvement(en, 3)!).textContent).toContain("3 places gained since your last visit");
     expect(mouvement(fr, 0)).toBeNull();
-    const l = faux(ligne(fr, place(5, { mouvement: -2 }), { absent: "" }));
+    const l = faux(ligne(fr, place(5, { mouvement: mouvement(fr, -2) }), { absent: "" }));
     expect(l.querySelectorAll(".classement-mouvement--descend")).toHaveLength(1);
     // Le rang reste seul dans `.classement-rang` : le mouvement est à côté.
     expect(l.querySelectorAll(".classement-rang")[0]!.textContent).toBe("5");

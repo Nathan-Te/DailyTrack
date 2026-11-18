@@ -20,8 +20,8 @@ import { adresseAvatar, clientAmis, clientAvatar, ecrireLangue, lireFiltre, lire
 import { CATALOGUE_COMMUN, avatar, cheminMentions, bouton, choixLangue, el, formatDate, formatNombre, formatNumeroJour, formatRang, formatScore, formatTemps, logo, medaille, traducteur, type Jeu, type TypeMedaille } from "@cdj/ui";
 import { initiales } from "@cdj/ui/src/avatar";
 import { CATALOGUE_CLASSEMENT } from "@cdj/ui/src/catalogue.classement";
-import { ligne as ligneDuComposant, listeAvecSeuils, podium, seuil, type PlaceClassement } from "@cdj/ui/src/classement";
-import { seuilsAvant, seuilsDuServeur, type Seuil } from "@cdj/ui/src/classementLogique";
+import { ligne as ligneDuComposant, podium, type PlaceClassement } from "@cdj/ui/src/classement";
+import type { Seuil } from "@cdj/ui/src/classementLogique";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { FICHES, ficheDuRegistre } from "./jeuxFiches";
 import { formatDeVue } from "./formatDeVue";
@@ -60,6 +60,12 @@ activerManette(() => import("./manette").then((m) => m.pour("classement")));
 const stockage = stockageDuPortail();
 /** Lot U6 : les places gagnées ou perdues viennent d'un module à la demande, demandé tout de suite (en même temps que la lecture du classement) : il ne pèse rien dans le premier chargement de la page. */
 const rangsPrets = import("./classementRangs").catch(() => null);
+/** Le module des places gagnées, une fois arrivé (avant le premier dessin d'un classement). */
+let rangsModule: Awaited<typeof rangsPrets> = null;
+/** Lot U6 : les seuils des médailles, à la demande aussi (seules les vues par jeu en ont) ; demandés tout de suite si l'adresse ouvre une vue par jeu. */
+const chargerSeuils = () => import("./classementSeuils").catch(() => null);
+let seuilsModule: Awaited<ReturnType<typeof chargerSeuils>> = null;
+if (vueDeLAdresse(location.search) !== "cumul") void chargerSeuils();
 let langue: Langue = lireLangue(stockage, navigator.languages).langue;
 const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_PAGES, CATALOGUE_COMMUN, CATALOGUE_CLASSEMENT);
 type T = ReturnType<typeof traduire>;
@@ -151,7 +157,7 @@ function placeDe(t: T, c: Classement, l: LigneClassement, moi: boolean, premier:
     ecart: ecartAuPremier(c, l, premier, formatDeLaVue(c), langue),
     moi,
     toi: moi ? t.t("classement.toi") : null,
-    mouvement: l.ref ? (mouvements.get(l.ref) ?? 0) : 0,
+    mouvement: l.ref && rangsModule ? rangsModule.mouvement(t, mouvements.get(l.ref) ?? 0) : null,
     ouvrir: ligneTouchable(l) ? () => void ouvrirFiche(l.ref!, l.pseudo) : null,
     repere: l.ref,
     embleme: emblemeDeLigne(l),
@@ -244,13 +250,13 @@ function listeDuHaut(t: T, c: Classement, seuils: readonly Seuil[] | null): HTML
   const coupe = aSeparation(reste);
   const lignes = reste.top.map((l) => ligneDuComposant(t, placeDe(t, c, l, l.moi === true, premier, true), { absent: t.t("classement.pasFini") }));
   // Les seuils : entre les lignes de la liste, d'après la valeur de chacune et celle de la 3e place du podium.
-  const avant = seuilsAvant(reste.top.map(valeurDeLigne), seuils, sensDeLaVue(c), places.length === 3 ? valeurDeLigne(places[2]!) : null);
-  const lignesDeSeuil = new Map([...avant].map(([i, liste]) => [i, liste.map((s) => seuil(s.type, `${t.t(`medaille.${s.type}`)} · ${formatScore(format, s.valeur, langue)}`))]));
+  const avant = seuilsModule?.seuilsAvant(reste.top.map(valeurDeLigne), seuils, sensDeLaVue(c), places.length === 3 ? valeurDeLigne(places[2]!) : null) ?? new Map<number, Seuil[]>();
+  const lignesDeSeuil = new Map([...avant].map(([i, liste]) => [i, liste.map((s) => seuilsModule!.seuil(s.type, `${t.t(`medaille.${s.type}`)} · ${formatScore(format, s.valeur, langue)}`))]));
   const colonnes = nombreDeColonnes(c.vue === VUE_CUMUL ? jeuxDuCumul(c.jeux).length : 1);
   const enfants: (HTMLElement | null)[] = [podium(t, places.map((l) => placeDe(t, c, l, l.moi === true, premier, false)), { avance: avanceDuPremier(places[0], places[1], format, langue) })];
   if (lignes.length > 0) {
     enfants.push(entetesDeColonnes(t, c));
-    if (coupe === null) enfants.push(...listeAvecSeuils(lignes, lignesDeSeuil));
+    if (coupe === null) enfants.push(...(seuilsModule ? seuilsModule.listeAvecSeuils(lignes, lignesDeSeuil) : [el("ol", { classe: "classement-liste", attrs: { start: String(reste.top[0]!.rang) } }, ...lignes)]));
     else
       enfants.push(
         coupe > 0 ? el("ol", { classe: "classement-liste" }, ...lignes.slice(0, coupe)) : null,
@@ -431,7 +437,7 @@ function rendre(): void {
   const copie = copieDeLAccueil();
   // Lot U6 : les seuils des médailles du jour, ceux que le serveur a déjà donnés à l'accueil (`GET /api/portail/jour`, copie gardée dans le navigateur : aucune requête de plus) ; pas de seuils pour un jour passé, une vue sans
   // médaille ou un jeu dont le niveau n'est pas prêt : aucune ligne de seuil.
-  const seuils = c && copie && c.vue !== VUE_CUMUL && c.date === copie.date ? seuilsDuServeur(copie.jeux.find((j) => j.site === c.vue)?.seuils) : null;
+  const seuils = c && copie && seuilsModule && c.vue !== VUE_CUMUL && c.date === copie.date ? seuilsModule.seuilsDuServeur(copie.jeux.find((j) => j.site === c.vue)?.seuils) : null;
   const reponses = copie?.joueur?.messagesNonLus ?? 0;
   const nouveaute = nonLue(copie?.nouveaute, stockage);
   const items = itemsDeNavigation((cle) => t.t(cle));
@@ -627,9 +633,10 @@ async function charger(date: string | null): Promise<void> {
   }
   if (mien !== sequence) return; // un autre jour, une autre vue ou un autre filtre a été demandé entre-temps
   lecture = l;
-  const rangs = await rangsPrets;
+  rangsModule = await rangsPrets;
+  if (l.classement && l.classement.vue !== VUE_CUMUL) seuilsModule ??= await chargerSeuils();
   if (mien !== sequence) return;
-  mouvements = l.classement && rangs ? rangs.suivreLesRangs(stockage, `${l.classement.date}|${l.classement.vue}|${l.classement.filtre ?? "tous"}`, rangsDe(l.classement), l.classement.ouvert) : new Map();
+  mouvements = l.classement && rangsModule ? rangsModule.suivreLesRangs(stockage, `${l.classement.date}|${l.classement.vue}|${l.classement.filtre ?? "tous"}`, rangsDe(l.classement), l.classement.ouvert) : new Map();
   // Aujourd'hui, tel que le serveur l'a dit (une lecture sans date).
   if (date === null && l.classement) aujourdhui = l.classement.date;
   if (l.classement && filtre === "tous") totalTous = l.classement.classes;

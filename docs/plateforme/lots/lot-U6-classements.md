@@ -26,7 +26,7 @@
 `banc-track.json`, `banc-jump.json` et `banc-tower.json` ont été régénérés (`UPDATE_BANC=1`, sur demande de Nathan) : **la seule différence est `trio` sur les groupes classés de `GET /api/groupes/classement`** (références publiques et pseudos de test) ; les bancs passent sur SQLite et libSQL.
 
 ## Budget `portail.classement` — à valider
-Mesuré (`node scripts/budgets.mjs`) : **53 232 o avant, 56 974 o après, plafond 57 Ko : marge de 26 o.** Tenu en mettant à la demande « Ta course » (module, feuille, textes), les places gagnées et le podium des groupes. **Je propose de relever le plafond à 60 Ko** (mesure + 5 %) : la prochaine retouche de cette page le dépassera. Je n'ai pas modifié `budgets.md`. `portail.premier` : 43 519 → 43 575 o (feuille partagée allégée, plafond 47 Ko).
+Mesuré (`node scripts/budgets.mjs`) : **53 232 o avant, 56 289 o après, plafond 57 Ko : marge de 711 o.** Tenu en mettant à la demande « Ta course », les places gagnées, les seuils des médailles (vues par jeu seulement) et le podium des groupes. La CI « Kit de bout en bout » (deux jeux de plus) ajoute ≈ 310 o à la page : elle passe. **Je propose quand même de relever le plafond à 60 Ko** : la marge réelle est mince. Je n'ai pas modifié `budgets.md`. `portail.premier` : 43 519 → 43 575 o (feuille partagée allégée, plafond 47 Ko).
 
 ## Vérifié
 Typecheck, `vitest` ui, portail, profil (643 tests), `groupes.test.ts` du serveur (trio, plans) ; e2e Chromium `groupes`, `amis`, `portail-journee`, `accessibilite`, `portail`, `avatars`, `nouveau-depart`, `diffusion`. **Non vérifié** : Firefox et WebKit ; la manette (pas de nouvel écran : « Ta course » est un lien) ; un appareil réel.

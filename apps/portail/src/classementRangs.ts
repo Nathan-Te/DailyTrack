@@ -1,4 +1,7 @@
+import "@cdj/ui/src/mouvement.css";
 import { CLE_RANGS, lireRangs, mouvementsDe, noterRangs } from "@cdj/ui/src/classementRangs";
+
+export { mouvement } from "@cdj/ui/src/mouvement"; // le dessin (▲2, ▼2) arrive avec le suivi des rangs : un seul morceau à la demande, sa feuille avec lui
 
 // Lot U6 — les places gagnées ou perdues depuis la dernière visite, pour les joueurs (`classement.ts`) et pour les groupes (`classementGroupes.ts`). Le navigateur garde, par jour, par vue et par filtre, les rangs vus
 // (`cdj:classement:rangs`, au plus 10 classements : la logique pure est dans `@cdj/ui/src/classementLogique`) ; une visite dure tant que la page est relue moins de 30 min après la précédente. **Une donnée de jeu** :

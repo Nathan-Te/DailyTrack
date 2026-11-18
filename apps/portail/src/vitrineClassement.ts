@@ -1,4 +1,7 @@
 import "@cdj/ui/src/tacourse.css";
+import "@cdj/ui/src/mouvement.css";
+import "@cdj/ui/src/seuils.css";
+import "./groupesPortail.css";
 import { CATALOGUE_COMMUN, avatar, el, traducteur, type Langue } from "@cdj/ui";
 
 // Lot U6 : la section « Classements » de la vitrine `/ui/` (recette et aperçus seulement) — le composant commun de `@cdj/ui/src/classement` dans tous ses états : podium plein, avec une marche libre, vide, sur crème et sur
@@ -29,7 +32,7 @@ const SEUILS = [
 export function remplirClassement(l: Langue, texte: (cle: string) => string): HTMLElement {
   const zone = el("div", { classe: "vitrine-classement", attrs: { "data-classement": l } });
   const titre = (contenu: string) => el("h3", { classe: "vitrine-sous-titre", texte: contenu });
-  void Promise.all([import("@cdj/ui/src/classement"), import("@cdj/ui/src/catalogue.classement"), import("@cdj/ui/src/classementLogique"), import("@cdj/ui/src/formats"), import("@cdj/ui/src/tacourse"), import("@cdj/ui/src/catalogue.tacourse")]).then(([ui, c, logique, formats, tc, cc]) => {
+  void Promise.all([import("@cdj/ui/src/classement"), import("@cdj/ui/src/catalogue.classement"), import("@cdj/ui/src/classementLogique"), import("@cdj/ui/src/formats"), import("@cdj/ui/src/tacourse"), import("@cdj/ui/src/catalogue.tacourse"), import("@cdj/ui/src/mouvement"), import("@cdj/ui/src/seuils")]).then(([ui, c, logique, formats, tc, cc, mv, sx]) => {
     const t = traducteur(l, CATALOGUE_COMMUN, c.CATALOGUE_CLASSEMENT);
     const tt = traducteur(l, cc.CATALOGUE_TACOURSE);
     const temps = (ms: number): string => formats.formatTemps(ms, l);
@@ -44,7 +47,7 @@ export function remplirClassement(l: Langue, texte: (cle: string) => string): HT
       ecart: i === 0 ? null : ecart(j.ms - JOUEURS[0].ms),
       moi: j.nom === MOI,
       toi: j.nom === MOI ? texte("vitrine.classement.toi") : null,
-      mouvement: o.liste ? j.mv : 0,
+      mouvement: o.liste ? mv.mouvement(t, j.mv) : null,
       ouvrir: null,
       repere: j.ref,
     });
@@ -69,8 +72,8 @@ export function remplirClassement(l: Langue, texte: (cle: string) => string): HT
       "petit",
       JOUEURS[2].ms,
     );
-    const seuils = new Map([...avantSeuils].map(([i, s]) => [i, s.map((x) => ui.seuil(x.type, `${texte(`vitrine.classement.${x.type}`)} · ${temps(x.valeur)}`))]));
-    const liste = (sombre: boolean) => el("div", { classe: sombre ? "vitrine-asphalte dj-sombre" : "vitrine-classement__liste" }, ...ui.listeAvecSeuils(lignes, seuils));
+    const seuils = new Map([...avantSeuils].map(([i, s]) => [i, s.map((x) => sx.seuil(x.type, `${texte(`vitrine.classement.${x.type}`)} · ${temps(x.valeur)}`))]));
+    const liste = (sombre: boolean) => el("div", { classe: sombre ? "vitrine-asphalte dj-sombre" : "vitrine-classement__liste" }, ...sx.listeAvecSeuils(lignes, seuils));
 
     // Les groupes : l'emblème carré, les trois photos des membres qui comptent.
     const emblemeDeGroupe = (g: (typeof GROUPES)[number], px: number): HTMLElement => el("span", { classe: "vitrine-classement__embleme", style: { width: `${px}px`, height: `${px}px` }, attrs: { "aria-hidden": "true" }, texte: g.sigle });

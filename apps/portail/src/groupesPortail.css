@@ -158,3 +158,20 @@
     font-size: var(--dj-taille-22);
   }
 }
+
+/* Le podium des groupes : les trois photos des membres qui comptent sous le nom, la marche libre carrée. */
+.classement-trio {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--dj-espace-2);
+}
+.classement-trio .dj-avatar {
+  margin-left: -6px;
+  border-width: var(--dj-trait);
+}
+.classement-trio .dj-avatar:first-child {
+  margin-left: 0;
+}
+.classement-libre__visuel--carre {
+  border-radius: 10px;
+}

@@ -1,5 +1,4 @@
 import type { CATALOGUE_CLASSEMENT } from "./catalogue.classement";
-import type { TypeMedaille } from "./composants";
 import { el, svg } from "./dom";
 import type { Traducteur } from "./i18n";
 
@@ -28,8 +27,8 @@ export interface PlaceClassement {
   moi: boolean;
   /** L'étiquette de ta place (« Toi », « Ton groupe »), déjà traduite ; `null` pour les autres. */
   toi: string | null;
-  /** Places gagnées (> 0) ou perdues (< 0) depuis la dernière visite ; `0` ou absent : rien. */
-  mouvement?: number;
+  /** Les places gagnées (▲) ou perdues (▼) depuis la dernière visite, déjà dessinées (`mouvement.ts`, à la demande avec le suivi des rangs) ; `null` ou absent : rien. */
+  mouvement?: HTMLElement | null;
   /** Toucher la place ouvre sa feuille (jamais la tienne). */
   ouvrir?: (() => void) | null;
   /** Ou : la place est un lien (la page d'un groupe). Prime sur `ouvrir`. */
@@ -60,20 +59,6 @@ function couronne(): SVGElement {
     { classe: "classement-couronne", attrs: { viewBox: "0 0 40 26", "aria-hidden": "true", focusable: "false" } },
     svg("path", { classe: "classement-couronne__corps", attrs: { d: COURONNE } }),
     svg("circle", { classe: "classement-couronne__gemme", attrs: { cx: 20, cy: 17, r: 2.6 } }),
-  );
-}
-
-/** Les places gagnées (▲) ou perdues (▼) : un triangle dessiné, le nombre, et le texte entier pour les lecteurs d'écran. */
-export function mouvement(t: TraducteurClassement, n: number): HTMLElement | null {
-  if (!Number.isInteger(n) || n === 0) return null;
-  const monte = n > 0;
-  const abs = Math.abs(n);
-  return el(
-    "small",
-    { classe: ["classement-mouvement", monte ? "classement-mouvement--monte" : "classement-mouvement--descend"] },
-    svg("svg", { attrs: { viewBox: "0 0 10 8", width: 9, height: 7, "aria-hidden": "true", focusable: "false" } }, svg("path", { attrs: { d: monte ? "M5 0 10 8H0Z" : "M0 0H10L5 8Z" } })),
-    el("span", { attrs: { "aria-hidden": "true" }, texte: String(abs) }),
-    el("span", { classe: "dj-cache", texte: t.t(monte ? "classement.monte" : "classement.descend", { n: abs }) }),
   );
 }
 
@@ -149,41 +134,11 @@ export interface OptionsLigne {
 export function ligne(t: TraducteurClassement, p: PlaceClassement, o: OptionsLigne): HTMLElement {
   const valeur = p.valeur === null ? el("span", { classe: "classement-temps" }, el("span", { attrs: { "aria-hidden": "true" }, texte: "—" }), el("span", { classe: "dj-cache", texte: o.absent })) : el("span", { classe: "classement-temps", texte: p.valeur });
   const corps = ouvrirOuNon(p, "", [
-    el("span", { classe: "classement-rang-bloc" }, el("span", { classe: "classement-rang", texte: p.rangTexte ?? String(p.rang) }), mouvement(t, p.mouvement ?? 0)),
+    el("span", { classe: "classement-rang-bloc" }, el("span", { classe: "classement-rang", texte: p.rangTexte ?? String(p.rang) }), p.mouvement ?? null),
     p.visuel("ligne"),
     el("span", { classe: "classement-qui" }, nomDe(p), p.detail ? el("span", { classe: "classement-detail", texte: p.detail }) : null),
     p.suite ?? null,
     el("span", { classe: "classement-valeur" }, valeur, p.ecart ? el("span", { classe: "classement-ecart", texte: p.ecart }) : null),
   ]);
   return el("li", { classe: ["classement-ligne", p.moi && "classement-ligne--moi", p.pale && "classement-ligne--pale", (p.ouvrir || p.lien) && "classement-ligne--touchable"], attrs: reperes(p) }, corps);
-}
-
-/** La ligne d'un seuil de médaille (« Or · 32,000 s ») : un point de la couleur de la médaille entre deux traits en pointillés. Entre deux listes, jamais dans une liste. */
-export function seuil(type: TypeMedaille, texte: string): HTMLElement {
-  return el("p", { classe: "classement-seuil", attrs: { "data-medaille": type } }, el("i", { classe: `classement-seuil__point classement-seuil__point--${type}`, attrs: { "aria-hidden": "true" } }), texte);
-}
-
-/**
- * Pose les lignes d'une liste en **plusieurs listes numérotées** (`ol start`), séparées par les lignes de seuil : `avant` donne, par position dans `lignes`, les éléments à poser juste avant cette ligne.
- * Sans rien à poser : une seule liste. Les lignes de seuil ne sont pas des éléments de liste : le nombre d'éléments reste celui des classés.
- */
-export function listeAvecSeuils(lignes: readonly HTMLElement[], avant: ReadonlyMap<number, readonly HTMLElement[]>): HTMLElement[] {
-  const sorties: HTMLElement[] = [];
-  let courante: HTMLElement[] = [];
-  const vider = (): void => {
-    if (courante.length === 0) return;
-    const debut = Number(courante[0]!.getAttribute("data-rang"));
-    sorties.push(el("ol", { classe: "classement-liste", attrs: Number.isInteger(debut) && debut > 1 ? { start: debut } : {} }, ...courante));
-    courante = [];
-  };
-  lignes.forEach((l, i) => {
-    const a = avant.get(i);
-    if (a && a.length > 0) {
-      vider();
-      sorties.push(...a);
-    }
-    courante.push(l);
-  });
-  vider();
-  return sorties;
 }

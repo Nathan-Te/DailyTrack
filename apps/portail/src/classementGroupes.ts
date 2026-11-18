@@ -11,7 +11,7 @@ import { ligne, podium, type PlaceClassement, type TraducteurClassement } from "
 import { emblemeDeGroupe } from "./salle";
 import { courseDesGroupes } from "./classementCourse";
 import { ecritDuree, ecritEcart } from "./classementEcarts";
-import { suivreLesRangs } from "./classementRangs";
+import { mouvement, suivreLesRangs } from "./classementRangs";
 import { formatDeVue } from "./formatDeVue";
 import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { CATALOGUE_AMIS } from "@cdj/ui/src/catalogue.amis";
@@ -71,7 +71,7 @@ function placeDeGroupe(o: OptionsGroupes, t: ReturnType<typeof dire>, g: LigneCl
     ecart: !premier || g.rang === 1 ? null : g.score === premier.score ? null : ecritEcart(o2.format, Math.abs(g.score - premier.score), o.langue),
     moi,
     toi: moi ? t("classement.groupes.toi") : null,
-    mouvement: o2.mouvements.get(g.id) ?? 0,
+    mouvement: mouvement(o.tr as unknown as TraducteurClassement, o2.mouvements.get(g.id) ?? 0),
     lien: adresseGroupe("/", g.nom),
     repere: g.id,
     trio: (g.trio ?? []).map((m) => avatar(o.tr as never, { pseudo: m.pseudo, ref: m.ref, image: adresseAvatar(o.base, m.avatar), taille: 24, decoratif: true })),

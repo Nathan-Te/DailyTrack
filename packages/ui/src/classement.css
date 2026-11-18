@@ -3,15 +3,14 @@
    Les repères `classement-*` sont ceux des tests (e2e du portail) ; la mise en page de la page (colonnes par jeu, panneau de droite, position de « Ta course ») est celle de l'application. */
 
 .classement-podium,
-.classement-liste,
-.classement-seuil {
+.classement-liste {
   --cl-carte: var(--dj-papier);
   --cl-texte: var(--dj-encre);
   --cl-doux: var(--dj-encre-douce);
   --cl-trait: var(--dj-encre);
   --cl-ecart: var(--dj-terre);
 }
-.dj-sombre :is(.classement-podium, .classement-liste, .classement-seuil) {
+.dj-sombre :is(.classement-podium, .classement-liste) {
   --cl-carte: var(--track-piste);
   --cl-texte: var(--track-texte);
   --cl-doux: var(--track-texte-doux);
@@ -159,18 +158,6 @@
   background: var(--dj-moutarde);
   color: var(--dj-encre);
 }
-.classement-trio {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--dj-espace-2);
-}
-.classement-trio .dj-avatar {
-  margin-left: -6px;
-  border-width: var(--dj-trait);
-}
-.classement-trio .dj-avatar:first-child {
-  margin-left: 0;
-}
 .classement-place .classement-temps {
   margin-top: 3px;
   font-size: var(--dj-taille-13);
@@ -217,9 +204,6 @@
 .classement-libre__visuel--premier {
   width: 84px;
   height: 84px;
-}
-.classement-libre__visuel--carre {
-  border-radius: 10px;
 }
 .classement-place--libre .classement-libre__nom {
   color: var(--cl-doux);
@@ -372,27 +356,6 @@ a.classement-ligne__corps {
 .classement-ligne--moi .classement-rang {
   color: var(--dj-encre);
 }
-.classement-mouvement {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-family: var(--dj-police-chiffres);
-  font-weight: 700;
-  font-size: var(--dj-taille-legende-petite);
-  line-height: 1;
-}
-.classement-mouvement svg {
-  fill: currentColor;
-}
-.classement-mouvement--monte {
-  color: var(--cl-texte); /* le sens se lit à la forme du triangle ; pas de vert dans la charte */
-}
-.classement-mouvement--descend {
-  color: var(--cl-ecart);
-}
-.classement-ligne--moi .classement-mouvement {
-  color: var(--dj-encre);
-}
 .classement-qui {
   display: flex;
   flex-direction: column;
@@ -437,41 +400,4 @@ a.classement-ligne__corps {
 }
 .classement-ligne__jeux {
   display: none;
-}
-
-/* --- Un seuil de médaille : « Or · 32,000 s » entre deux traits en pointillés -------------------------------------------------------------------------- */
-.classement-seuil {
-  display: flex;
-  align-items: center;
-  gap: var(--dj-espace-3);
-  margin: 3px 0;
-  color: var(--cl-doux);
-  font-family: var(--dj-police-marque);
-  font-size: var(--dj-taille-12);
-  letter-spacing: 0.5px;
-}
-.classement-seuil::before,
-.classement-seuil::after {
-  content: "";
-  flex: 1;
-  border-top: var(--dj-trait) dashed currentColor;
-}
-.classement-seuil__point {
-  flex: none;
-  width: 12px;
-  height: 12px;
-  border: var(--dj-trait) solid var(--cl-trait);
-  border-radius: var(--dj-rayon-avatar);
-}
-.classement-seuil__point--diamant {
-  background: var(--dj-diamant);
-}
-.classement-seuil__point--or {
-  background: var(--dj-or);
-}
-.classement-seuil__point--argent {
-  background: var(--dj-argent);
-}
-.classement-seuil__point--bronze {
-  background: var(--dj-bronze);
 }
