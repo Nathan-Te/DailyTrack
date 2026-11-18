@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import {
-  DROITE, GAUCHE, IDS_PLANS, LANCEUR, REGLAGES, ROBOT_ECART_MIN, ROBOT_IMPRECISION, ROBOT_MAINTIEN_MAX, ROBOT_MAINTIEN_MIN, ROBOT_MARGE, ROBOT_REACTION, THEMES_PINBALL, Partie, chargeDe, dailyPinball, enregistrer, graineDuRobot, jouer, jouerRobot, lireCharge, noterFrappe,
+  DROITE, GAUCHE, IDS_PLANS, LANCEUR, REGLAGES, ROBOT_ECART_MIN, ROBOT_IMPRECISION, ROBOT_MAINTIEN_MAX, ROBOT_MAINTIEN_MIN, ROBOT_MARGE, ROBOT_REACTION, THEMES_PINBALL, Partie, chargeDe, dailyPinball, enregistrer, choisir, graineDuRobot, jouer, jouerRobot, lireCharge, noterFrappe,
   rejouer, type Coup, type Evenement,
 } from "../src/index";
 
@@ -209,4 +209,75 @@ describe("lot PBG2 : le robot en multibille", () => {
     expect(encore.evenements).toEqual(r.evenements);
     expect(encore.partie.resultat()).toEqual(r.partie.resultat());
   }, 60000);
+});
+
+describe("le robot cherche vite sans choisir autrement (lot PBR1)", () => {
+  // Les états où le robot a décidé d'un coup, sur deux tables : l'une sans multibille, l'autre (plus tard dans la partie) avec plusieurs billes.
+  const vus: Partie[] = [];
+  for (const [jour, seed] of [[JOUR + 3, 11], [JOUR + 5, 4]] as const) {
+    let n = 0;
+    jouerRobot(dailyPinball(jour), seed, {
+      maxTicks: 100 * 600,
+      surCoup: (_c, p) => {
+        // un état sur trois jusqu'à douze par table, et tous ceux où plusieurs billes jouent (jusqu'à six)
+        if ((++n % 3 === 0 && vus.length < 24) || (p.autres.length > 0 && vus.filter((q) => q.autres.length > 0).length < 6)) vus.push(p.copier());
+      },
+    });
+  }
+  it("la recherche « grossier puis fin » rend le même coup que d'essayer toutes les frappes, avec bien moins d'essais", () => {
+    expect(vus.length).toBeGreaterThan(12);
+    let rapides = 0;
+    let complets = 0;
+    let multi = 0;
+    for (const p of vus) {
+      // deux situations d'écart minimal entre appuis : libre, et un batteur qui ne peut pas être appuyé avant 90 pas
+      for (const libre of [[0, 0], [90, 0], [0, 90]] as const) {
+        const a = choisir(p, libre);
+        const b = choisir(p, libre, undefined, true);
+        expect(a.coup, `état au pas ${p.tick}, libre ${libre.join("/")}`).toEqual(b.coup);
+        expect(a.revoir).toBe(b.revoir);
+        expect(a.pas).toBeLessThanOrEqual(b.pas);
+        rapides += a.pas;
+        complets += b.pas;
+      }
+      if (p.autres.length > 0) multi++;
+    }
+    expect(multi, "la comparaison couvre la multibille").toBeGreaterThan(0);
+    expect(rapides).toBeLessThan(complets * 0.75);
+  }, 60_000);
+});
+
+describe("Partie.recopier (lot PBR1)", () => {
+  it("une partie recopiée sur une partie déjà utilisée joue exactement comme une copie neuve, pas à pas, billes de la multibille comprises", () => {
+    const c = dailyPinball(JOUR + 5);
+    const p = new Partie(c);
+    p.lancerLaMultibille();
+    const sale = new Partie(c).copier(true); // une partie d'essai déjà jouée, dans un tout autre état
+    sale.regler(GAUCHE, true);
+    for (let i = 0; i < 700; i++) sale.avancer();
+    const jouer1 = (q: Partie, pas: number, depart: number): void => {
+      for (let i = 0; i < pas; i++) {
+        const t = depart + i;
+        if (t % 137 === 0) q.regler(GAUCHE, !q.tenue(GAUCHE));
+        if (t % 211 === 0) q.regler(DROITE, !q.tenue(DROITE));
+        q.avancer();
+      }
+    };
+    for (const etape of [0, 400, 900, 1400]) {
+      jouer1(p, etape === 0 ? 0 : 500, etape);
+      const neuve = p.copier(true);
+      sale.recopier(p, true);
+      for (const [nom, q] of [["neuve", neuve], ["recopiée", sale]] as const) expect(q.resultat(), nom).toEqual(p.resultat());
+      jouer1(neuve, 600, p.tick);
+      jouer1(sale, 600, p.tick);
+      expect(sale.resultat()).toEqual(neuve.resultat());
+      expect(sale.billesDeLaTable()).toEqual(neuve.billesDeLaTable());
+      expect(sale.tick).toBe(neuve.tick);
+      expect(sale.combo).toBe(neuve.combo);
+      expect(sale.mult).toBe(neuve.mult);
+      expect(sale.verrouTotal).toBe(neuve.verrouTotal);
+      expect(sale.jackpotsPartie).toBe(neuve.jackpotsPartie);
+      expect(sale.autres.length).toBe(neuve.autres.length);
+    }
+  });
 });

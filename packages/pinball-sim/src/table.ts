@@ -200,7 +200,7 @@ export const LIGNES = 48;
  * à la suite, plus qu'aucun coin de la table n'en peut faire (`test/grille.test.ts`).
  */
 export const MARGE_GRILLE = 32 * UNITE;
-const LOIN = 2 ** 40;
+const LOIN = 1_000_000_000_000;
 export const caseDe = (x: number, y: number): number => {
   const cx = x >> CASE_BITS;
   const cy = y >> CASE_BITS;

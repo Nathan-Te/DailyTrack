@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { TABLES_REFUSEES, TICKS_PAR_SECONDE, analyserTable, cleDeTable, dailyPinball, seuilsValides, type AnalyseTable } from "../src/index";
+import { BUDGET_PAS_PAR_MILLE, TABLES_REFUSEES, TICKS_PAR_SECONDE, analyserTable, cleDeTable, dailyPinball, seuilsValides, type AnalyseTable } from "../src/index";
 
 // Lot PB4 — **chaque table servie pendant 30 jours est validée et a ses seuils** : aucune bille coincée, chaque module touché, la mission réussie, et des seuils valides tirés des parties du robot. **Ce test est long**
 // (une table : de 4 à 6 secondes ; une trentaine de tables différentes : de 2 à 3 minutes de calcul en tout) : il est coupé en trois fichiers (dix jours chacun, un jour par test pour que chacun ait son délai) que Vitest
@@ -29,6 +29,8 @@ export function valider30Jours(du: number, n: number): void {
         expect(a.manquants).toEqual([]);
         expect(a.mission).toBe(true);
         expect(seuilsValides(a.seuils)).toBe(true);
+        // lot PBR1 : le budget de pas du robot (`BUDGET_PAS_PAR_MILLE`, en pas simulés pour 1 000 pas joués : aucune seconde, rien qui dépende de la machine)
+        expect(a.pasSimules * 1000, `${formatDay(jour)} : le robot simule trop de pas pour décider`).toBeLessThanOrEqual(BUDGET_PAS_PAR_MILLE * a.ticks.reduce((n, t) => n + t, 0));
       }, 120_000); // lot PBL1 : le jour qui refait son analyse à six minutes (voir plus haut) y met jusqu'à 30 s
     }
   });

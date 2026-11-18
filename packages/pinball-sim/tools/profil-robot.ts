@@ -12,7 +12,7 @@ interface Sortie {
 }
 const travail = (jour: number): Sortie => {
   const c = dailyPinball(jour);
-  const profil = nouveauProfil();
+  const profil = nouveauProfil(() => performance.now());
   let vrais = 0;
   const t0 = performance.now();
   for (let k = 0; k < PARTIES_DU_ROBOT; k++) vrais += jouerRobot(c, graineDuRobot(k), { maxTicks: DUREE_PARTIE_ROBOT, profil }).partie.tick;

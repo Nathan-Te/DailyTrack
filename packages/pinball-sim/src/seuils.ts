@@ -23,6 +23,16 @@ import { billesCoincees, SuiviModules, tirsDisperses, type RapportBilles } from 
 export const PARTIES_DU_ROBOT = 4;
 export const DUREE_PARTIE_ROBOT = 360 * TICKS_PAR_SECONDE;
 /**
+ * **Le budget du robot** (lot PBR1) : combien de pas il simule pour décider, en **pas de simulation** (jamais en secondes : un chiffre qui ne dépend pas de la machine). Mesure sur les 30 jours du 02/11/2026 : au plus
+ * 8,64 millions de pas pour une table (4 parties de 6 minutes : 10,0 pas simulés pour chaque pas joué), 11,3 pas par pas joué au pire sur des parties de 2 minutes ; **les plafonds sont la mesure plus 20 %**.
+ * `test/budget-robot.test.ts` et les tests de 30 jours échouent au-delà : un robot qui coûte plus cher retarde les médailles du jour (le calcul des seuils d'une table sans fichier). Les relever demande une mesure
+ * (`npm run mesure-robot:pinball`, README du lot PBR1) et la décision de Nathan.
+ */
+export const BUDGET_PAS_TABLE = 10_400_000;
+/** Pas simulés pour 1 000 pas joués : 13,5 (la mesure la plus haute, 11,3, plus 20 %). */
+export const BUDGET_PAS_PAR_MILLE = 13_500;
+
+/**
  * **Les pourcentages du meilleur score du robot** (Diamant) que valent les trois autres médailles. **Nathan les règle** (ils montent `PINBALL_BOT_VERSION`). Valeurs de départ : Bronze 15 % (la partie d'un joueur
  * qui sait à peine viser, sans mission), Argent 35 % (une bonne partie sans mission), Or 60 % (la mission et une partie propre) — justifiées par la répartition des scores du robot dans le README du lot PB4.
  */

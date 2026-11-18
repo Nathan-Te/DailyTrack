@@ -1,13 +1,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
-import { DUREE_PARTIE_ROBOT, PARTIES_DU_ROBOT, PINBALL_BOT_VERSION, dailyPinball, graineDuRobot, jouerRobot, seuilsDesScores } from "../src/index";
+import { DUREE_PARTIE_ROBOT, PARTIES_DU_ROBOT, PINBALL_BOT_VERSION, cleDeTable, dailyPinball, graineDuRobot, jouerRobot, seuilsDesScores, toutesLesTables, type Contenu } from "../src/index";
 import { enFil, enParallele, repondre } from "./fils";
 
-// `npm run mesure-robot:pinball -w @cdj/pinball-sim -- [--jours 30] [--du AAAA-MM-JJ] [--fils=N] --sortie <fichier.json>` (lot PBR1) : **ce que coûte le robot des seuils et ce qu'il rapporte**, table par table, sur
-// 30 jours : le temps des 4 parties (le calcul des seuils seul, sans la validation), les pas que le robot simule pour décider, les scores, les missions, le Diamant. Le fichier JSON sert à comparer deux versions du robot :
+// `npm run mesure-robot:pinball -w @cdj/pinball-sim -- [--jours 30] [--du AAAA-MM-JJ] [--tables] [--fils=N] --sortie <fichier.json>` (lot PBR1) : **ce que coûte le robot des seuils et ce qu'il rapporte**, table par table, sur
+// 30 jours (`--tables` : les 500 tables que le générateur peut tirer, pour comparer deux versions du robot partout) : le temps des 4 parties (le calcul des seuils seul, sans la validation), les pas que le robot simule pour décider, les scores, les missions, le Diamant. Le fichier JSON sert à comparer deux versions du robot :
 // `-- --comparer avant.json apres.json` (Diamant médian, répartition « partie du robot / Diamant », mission, temps). Aucune base, aucun réseau. Les temps dépendent de la machine ; les pas, non.
 interface Ligne {
   date: string;
+  cle: string;
   theme: string;
   plan: string;
   scores: number[];
@@ -18,8 +19,8 @@ interface Ligne {
   secondes: number;
   diamant: number;
 }
-const travail = (jour: number): Ligne => {
-  const c = dailyPinball(jour);
+const travail = (e: number | Contenu): Ligne => {
+  const c = typeof e === "number" ? dailyPinball(e) : e;
   const scores: number[] = [];
   const ticks: number[] = [];
   const missions: boolean[] = [];
@@ -33,7 +34,7 @@ const travail = (jour: number): Ligne => {
     pas += r.pasSimules;
   }
   const secondes = (performance.now() - t0) / 1000;
-  return { date: formatDay(jour), theme: c.theme, plan: c.plan, scores, ticks, missions, pas, secondes, diamant: seuilsDesScores(scores).author };
+  return { date: typeof e === "number" ? formatDay(e) : "", cle: cleDeTable(c), theme: c.theme, plan: c.plan, scores, ticks, missions, pas, secondes, diamant: seuilsDesScores(scores).author };
 };
 
 const med = (v: number[]): number => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
@@ -69,6 +70,8 @@ else {
     const b = JSON.parse(readFileSync(args[ic + 2]!, "utf8")) as { bot: number; lignes: Ligne[] };
     console.log(resume(`avant (bot ${a.bot})`, a.lignes));
     console.log(resume(`après (bot ${b.bot})`, b.lignes));
+    const memesCles = a.lignes.every((x, i) => x.cle === b.lignes[i]!.cle);
+    if (!memesCles) throw new Error("les deux fichiers ne portent pas les mêmes tables");
     const memes = a.lignes.filter((x, i) => JSON.stringify(x.scores) === JSON.stringify(b.lignes[i]!.scores)).length;
     console.log(`\nTables dont les ${PARTIES_DU_ROBOT} scores sont exactement les mêmes : ${memes}/${a.lignes.length} (parties : ${a.lignes.reduce((n, x, i) => n + x.scores.filter((y, k) => y === b.lignes[i]!.scores[k]).length, 0)}/${a.lignes.length * PARTIES_DU_ROBOT})`);
     const ecarts = a.lignes.map((x, i) => (b.lignes[i]!.diamant - x.diamant) / x.diamant).sort((p, q) => p - q);
@@ -84,9 +87,9 @@ else {
   }
   const du = parseDay(valeur("du") ?? "") ?? daysFromCivil(2026, 11, 2);
   const n = Number(valeur("jours") ?? 30);
-  const jours = Array.from({ length: n }, (_, i) => du + i);
+  const jours: (number | Contenu)[] = args.includes("--tables") ? toutesLesTables() : Array.from({ length: n }, (_, i) => du + i);
   const t0 = performance.now();
-  const lignes = await enParallele<number, Ligne>(new URL(import.meta.url), jours, () => undefined, valeur("fils") ? Number(valeur("fils")) : undefined);
+  const lignes = await enParallele<number | Contenu, Ligne>(new URL(import.meta.url), jours, () => undefined, valeur("fils") ? Number(valeur("fils")) : undefined);
   console.log(resume(`bot ${PINBALL_BOT_VERSION}`, lignes));
   console.log(`(${((performance.now() - t0) / 1000).toFixed(0)} s en tout, ${valeur("fils") ?? "un fil par cœur"})`);
   const sortie = valeur("sortie");

@@ -109,13 +109,15 @@ export interface ProfilRobot {
   pas: Record<"arrivee" | "chauffe" | "rien" | "essai", Record<Situation, number>>;
   ms: { arrivee: number; chauffe: number; rien: Record<Situation, number>; essai: Record<Situation, number> };
   reel: { pas: number; ms: number };
+  /** L'horloge du profil (ms) : donnée par l'outil (`performance.now`), jamais lue par la simulation elle-même. */
+  horloge: () => number;
   fins: Record<string, { n: number; pas: number }>;
   decisions: number;
   essais: number;
 }
-export const nouveauProfil = (): ProfilRobot => {
+export const nouveauProfil = (horloge: () => number = () => 0): ProfilRobot => {
   const t = (): Record<Situation, number> => ({ batteur: 0, rail: 0, multibille: 0, porte: 0 });
-  return { pas: { arrivee: t(), chauffe: t(), rien: t(), essai: t() }, ms: { arrivee: 0, chauffe: 0, rien: t(), essai: t() }, reel: { pas: 0, ms: 0 }, fins: {}, decisions: 0, essais: 0 };
+  return { pas: { arrivee: t(), chauffe: t(), rien: t(), essai: t() }, ms: { arrivee: 0, chauffe: 0, rien: t(), essai: t() }, reel: { pas: 0, ms: 0 }, horloge, fins: {}, decisions: 0, essais: 0 };
 };
 const situationDe = (c: Partie, f: BilleVue): Situation => (c.multibille || c.autres.length > 0 ? "multibille" : f.couche === 1 ? "rail" : c.passageOuvert > 0 ? "porte" : "batteur");
 
@@ -240,7 +242,7 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[], id: number, 
   if (!c.lire(id, f)) f.couche = 0;
   let fin = "horizon";
   const comptes = profil ? { batteur: 0, rail: 0, multibille: 0, porte: 0 } : null;
-  const t0 = profil ? performance.now() : 0;
+  const t0 = profil ? profil.horloge() : 0;
   if (profil) profil.essais++;
   while ((pas < ROBOT_HORIZON || f.couche === 1) && pas < ROBOT_HORIZON_RAIL && !c.finie) {
     if (tenu && doitLacher(c, depuis)) {
@@ -277,7 +279,7 @@ function essayer(c: Partie, d: Depart, appuyes: readonly Batteur[], id: number, 
     e.pas += pas;
     let dominante: Situation = "batteur";
     for (const q of SITUATIONS) if (comptes![q] > comptes![dominante]) dominante = q;
-    profil.ms[etape][dominante] += performance.now() - t0;
+    profil.ms[etape][dominante] += profil.horloge() - t0;
   }
   return { note: noter(c, d), pas };
 }
@@ -321,7 +323,7 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number], 
   let xArrivee = 0;
   let derniere = -1;
   const basse = ROBOT_Y_BASSE * UNITE;
-  const tArrivee = profil ? performance.now() : 0;
+  const tArrivee = profil ? profil.horloge() : 0;
   while (pas < plafond && !base.finie) {
     if (!base.lire(id, f)) {
       if (arrivee >= 0) derniere = pas;
@@ -343,7 +345,7 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number], 
     base.avancer();
     pas++;
   }
-  if (profil) profil.ms.arrivee += performance.now() - tArrivee;
+  if (profil) profil.ms.arrivee += profil.horloge() - tArrivee;
   atelier.rendre([base]);
   if (arrivee < 0) return { raison: "jamais", coup: null, revoir: 60, pas };
   if (derniere < 0) derniere = arrivee;
@@ -360,7 +362,7 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number], 
   for (let t = debut - ROBOT_MARGE; t <= fin + ROBOT_MARGE; t += ROBOT_PAS_ESSAI) delais.push(t);
   const etats: Partie[] = [];
   const pre = atelier.prendre(p);
-  const tChauffe = profil ? performance.now() : 0;
+  const tChauffe = profil ? profil.horloge() : 0;
   let k = 0;
   for (const t of delais) {
     while (k < t && !pre.finie) {
@@ -375,7 +377,7 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number], 
     etats.push(atelier.prendre(pre));
   }
   atelier.rendre([pre]);
-  if (profil) profil.ms.chauffe += performance.now() - tChauffe;
+  if (profil) profil.ms.chauffe += profil.horloge() - tChauffe;
   // 3. la note de rien faire, puis celle de chaque frappe à chaque moment
   const travail = atelier.prendre(p);
   const rien = essayer(travail, depart, [], id, profil, "rien");
@@ -469,9 +471,9 @@ export function* choisirEnTranches(p: Partie, libre: readonly [number, number], 
   return { coup: meilleur, revoir: 0, pas };
 }
 
-/** `choisirEnTranches` d'un trait. */
-export function choisir(p: Partie, libre: readonly [number, number], profil?: ProfilRobot): Choix {
-  const g = choisirEnTranches(p, libre, profil);
+/** `choisirEnTranches` d'un trait. `exhaustif` : la référence, toutes les frappes essayées (les tests la comparent à la recherche rapide ; trois à cinq fois plus lente). */
+export function choisir(p: Partie, libre: readonly [number, number], profil?: ProfilRobot, exhaustif = false): Choix {
+  const g = choisirEnTranches(p, libre, profil, undefined, exhaustif);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
@@ -565,9 +567,9 @@ export function* jouerRobotEnTranches(contenu: Contenu, graine: number, options:
       }
     }
     if (options.profil) {
-      const t0 = performance.now();
+      const t0 = options.profil.horloge();
       partie.avancer();
-      options.profil.reel.ms += performance.now() - t0;
+      options.profil.reel.ms += options.profil.horloge() - t0;
       options.profil.reel.pas++;
     } else partie.avancer();
     options.surPas?.(partie);
