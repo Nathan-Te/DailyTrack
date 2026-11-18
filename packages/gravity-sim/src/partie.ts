@@ -20,10 +20,13 @@ const {
   DUREE_MAX_TICKS,
   AVANCE_MAX,
   FACTEUR_NORMAL,
+  FRAGILE_DELAI,
   GEMME_PORTEE,
   GRACE,
   INVULNERABILITE,
   LARGEUR_MORCEAU,
+  LASER_X0,
+  LASER_X1,
   LIGNES,
   MODE_AVION,
   MODE_GRAVITE,
@@ -44,6 +47,7 @@ const {
   RESSORT_BOND,
   RESSORT_GRAVITE,
   SAUVETAGE_VY,
+  SCIE_RAYON,
   SAUVETAGE_Y_BAS,
   SAUVETAGE_Y_HAUT,
   TAILLE,
@@ -59,7 +63,7 @@ const {
 } = K;
 import * as M from "./monde";
 import type { Terrain } from "./monde";
-const { FACTEUR_DU_PORTAIL, GLACE, INVERSEUR, MODE_DU_PORTAIL, PIQUE, TAPIS, VENT, solide } = M;
+const { FACTEUR_DU_PORTAIL, FRAGILE, GLACE, INVERSEUR, MODE_DU_PORTAIL, PIQUE, TAPIS, VENT, etatLaser, positionScie, solide } = M;
 import type { ModeDeVol } from "./constantes";
 import type { TypePortail } from "./monde";
 
@@ -78,7 +82,10 @@ export const MORT_VIDE = 1;
 export const MORT_PIQUE = 2;
 export const MORT_BORD = 3;
 export const MORT_TEMPS = 4;
-export type CauseDeMort = 1 | 2 | 3 | 4;
+/** Lot GR7 : la scie et le laser tuent, comme le pique (rouge = danger) : le bouclier les sauve de la même façon. Un sol fragile qui tombe n'a pas de cause à lui : on meurt du vide. */
+export const MORT_SCIE = 5;
+export const MORT_LASER = 6;
+export type CauseDeMort = 1 | 2 | 3 | 4 | 5 | 6;
 
 /** Ce qui vient de se passer pendant le dernier pas (des drapeaux, pour le rendu et les sons : ils n'entrent jamais dans la suite de la partie). */
 export const EV_INVERSION = 1;
@@ -94,6 +101,17 @@ export const EV_MANQUEE = 256;
 export const EV_PORTAIL = 512;
 export const EV_BOND = 1024;
 export const EV_VIRAGE = 2048;
+/** Lot GR7 : un sol fragile vient de craquer (on s'y est posé) ; un tronçon fragile vient de tomber. */
+export const EV_CRAQUE = 4096;
+export const EV_EFFONDREMENT = 8192;
+
+/** Lot GR7 — un tronçon de sol fragile (une suite de cases fragiles de la même rangée `cy`, des colonnes `cx0` à `cx1` incluses) touché au pas `t0` : il tombe au pas `t0 + FRAGILE_DELAI` et ne revient jamais. **Jamais modifié** : une liste de ces tronçons est remplacée par une nouvelle quand on en ajoute un (les copies de la partie la partagent). */
+export interface Fragile {
+  cx0: number;
+  cx1: number;
+  cy: number;
+  t0: number;
+}
 
 /** Une pièce en cours de partie : sa position (l'aimant la déplace), son état (0 libre, 1 prise, 2 manquée). */
 export interface PieceEtat {
@@ -157,6 +175,8 @@ export class Partie {
   /** Le mode non gravité le plus loin atteint, et le dernier portail franchi (pour le rendu : valable le pas où `EV_PORTAIL` est levé). */
   modeLoin: ModeDeVol = MODE_GRAVITE;
   portail: TypePortail | null = null;
+  /** Lot GR7 : les tronçons de sol fragile touchés (ceux d'avant l'écran sont retirés). Immuable : voir `Fragile`. */
+  fragiles: readonly Fragile[] = [];
   /** **La rediffusion** : les pas où le bouton a changé (le premier est un appui, ils alternent). */
   changements: number[] = [];
   /** Les états voulus du bouton, à appliquer un par pas (un appui et un relâché dans le même pas se suivent : jamais deux changements au même pas). */
@@ -307,6 +327,7 @@ export class Partie {
     c.bondAttente = this.bondAttente;
     c.modeLoin = this.modeLoin;
     c.portail = this.portail;
+    c.fragiles = this.fragiles;
     c.file = [...this.file];
     if (planification) {
       // Une copie de planification n'a ni bouclier, ni invulnérabilité, ni aimant (même si la partie copiée en a) : un danger la tue.
@@ -361,7 +382,7 @@ export class Partie {
           const gx = cx * CASE;
           const gy = cy * CASE;
           if (px + TAILLE > gx + PIQUE_X0 && px < gx + PIQUE_X1 && py + TAILLE > gy + PIQUE_Y0 && py < gy + PIQUE_Y1) return 2;
-        } else if (res === 0 && solide(type, this.tick, morceau.decalage)) {
+        } else if (res === 0 && (type === FRAGILE ? this.fragileSolide(cx, cy) : solide(type, this.tick, morceau.decalage))) {
           res = 1;
           this.hCx = cx;
           this.hCy = cy;
@@ -370,6 +391,56 @@ export class Partie {
       }
     }
     return res;
+  }
+
+  /** Un sol fragile est solide tant que son tronçon n'est pas tombé (et sans contact il ne tombe pas). */
+  private fragileSolide(cx: number, cy: number): boolean {
+    const f = this.fragiles;
+    for (let i = 0; i < f.length; i++) {
+      const q = f[i]!;
+      if (q.cy === cy && cx >= q.cx0 && cx <= q.cx1) return this.tick < q.t0 + FRAGILE_DELAI;
+    }
+    return true;
+  }
+
+  /** On s'est posé sur le sol fragile `(cx, cy)` : son tronçon (toute la suite de cases fragiles de la rangée) craque, et tombera `FRAGILE_DELAI` pas plus tard. Un tronçon déjà touché ne change pas. */
+  private craquer(cx: number, cy: number): void {
+    const f = this.fragiles;
+    for (let i = 0; i < f.length; i++) {
+      const q = f[i]!;
+      if (q.cy === cy && cx >= q.cx0 && cx <= q.cx1) return;
+    }
+    let a = cx;
+    let b = cx;
+    while (cx - a < 32 && this.typeEn(a - 1, cy) === FRAGILE) a--;
+    while (b - cx < 32 && this.typeEn(b + 1, cy) === FRAGILE) b++;
+    const gardes = f.filter((q) => (q.cx1 + 3) * CASE > this.cam);
+    this.fragiles = [...gardes, { cx0: a, cx1: b, cy, t0: this.tick }];
+    this.ev |= EV_CRAQUE;
+  }
+
+  /** Les dangers qui bougent ou qui s'allument (lot GR7) : la scie ou le laser que la boîte du joueur touche à ce pas (`MORT_*`), sinon 0. Seuls les morceaux sous la boîte sont regardés. */
+  private dangerMobile(): number {
+    const k0 = idiv(this.x, CASES_PAR_MORCEAU);
+    const k1 = idiv(this.x + TAILLE - 1, CASES_PAR_MORCEAU);
+    const px = this.x;
+    const py = this.y;
+    for (let k = k0; k <= k1; k++) {
+      const m = this.terrain.morceau(k);
+      for (let i = 0; i < m.scies.length; i++) {
+        const [sx, sy] = positionScie(m.scies[i]!, this.tick);
+        const dx = sx < px ? px - sx : sx > px + TAILLE ? sx - px - TAILLE : 0;
+        const dy = sy < py ? py - sy : sy > py + TAILLE ? sy - py - TAILLE : 0;
+        if (dx * dx + dy * dy < SCIE_RAYON * SCIE_RAYON) return MORT_SCIE;
+      }
+      for (let i = 0; i < m.lasers.length; i++) {
+        const l = m.lasers[i]!;
+        if (etatLaser(this.tick, l.decalage) !== 2) continue;
+        const gx = k * CASES_PAR_MORCEAU + l.c * CASE;
+        if (px + TAILLE > gx + LASER_X0 && px < gx + LASER_X1 && py + TAILLE > l.r0 * CASE && py < (l.r1 + 1) * CASE) return MORT_LASER;
+      }
+    }
+    return 0;
   }
 
   private typeEn(cx: number, cy: number): number {
@@ -383,6 +454,7 @@ export class Partie {
     const vitesse = vitesseCamera(this.cam, this.regles, this.facteur);
     this.cam = avancerCamera(this.cam, this.regles, this.facteur);
     this.portail = null;
+    for (let i = 0; i < this.fragiles.length; i++) if (this.fragiles[i]!.t0 + FRAGILE_DELAI === this.tick) this.ev |= EV_EFFONDREMENT;
 
     // L'inversion : seulement au contact d'une surface (le tampon garde l'appui, la grâce le laisse passer après un bord), jamais sur la glace.
     // **Défaut de la maquette (a)** : elle donnait `vy = −g × 2` (un élan vers la surface qu'on quitte) que le sol annulait aussitôt. L'élan est donc nul ici : même jeu, sans un pas perdu.
@@ -461,6 +533,8 @@ export class Partie {
         if (!etaitAuSol && Math.abs(this.vy) > 6 * CASE) this.ev |= EV_ATTERRISSAGE;
         this.sol = true;
         this.surface = this.hType;
+        // Lot GR7 : on se pose sur un sol fragile (n'importe laquelle des cases sous la boîte) : le tronçon craque.
+        for (let cx = enCases(this.x), fin = enCases(this.x + TAILLE - 1); cx <= fin; cx++) if (this.typeEn(cx, this.hCy) === FRAGILE) this.craquer(cx, this.hCy);
         if (this.hType === INVERSEUR && this.mode === MODE_GRAVITE) {
           this.g = (this.g === 1 ? -1 : 1) as 1 | -1;
           this.sol = false;
@@ -525,6 +599,10 @@ export class Partie {
         }
       });
     }
+
+    // Lot GR7 : les scies et les lasers (rouge = danger : le bouclier les sauve comme un pique).
+    const cause = this.dangerMobile();
+    if (cause !== 0 && this.danger(cause as CauseDeMort)) return;
 
     // Les morts : le vide, en haut ou en bas ; le bord gauche de l'écran (le bouclier en sauve une).
     if (this.y < VIDE_HAUT || this.y > VIDE_BAS) {

@@ -317,7 +317,9 @@ describe("les portails de vitesse", () => {
   it("le plafond absolu : jamais plus de 17 cases/s, même à la vitesse maximale sous ›››", () => {
     expect(VITESSE_PLAFOND).toBe(17 * CASE);
     expect(vitesseCamera(10_000_000, REGLES_COURANTES, FACTEUR_V3)).toBe(VITESSE_PLAFOND);
-    expect(vitesseCamera(10_000_000, REGLES_COURANTES, FACTEUR_V2)).toBe(Math.trunc((REGLES_COURANTES.vitesseMax * 130) / 100)); // ›› à la vitesse maximale : 16,25 cases/s, sous le plafond
+    // ›› à la croisière de la première boucle (12,5 cases/s) : 16,25 cases/s, sous le plafond ; à celle des boucles suivantes (14 à 15 cases/s) le plafond l'emporte.
+    expect(vitesseCamera(1000 * CASE, REGLES_COURANTES, FACTEUR_V2)).toBe(Math.trunc((REGLES_COURANTES.vitesseMax * 130) / 100));
+    expect(vitesseCamera(10_000_000, REGLES_COURANTES, FACTEUR_V2)).toBe(VITESSE_PLAFOND);
     expect(VITESSE_PLAFOND).toBeLessThanOrEqual(VY_MAX);
   });
   it("dans la partie : le portail change le facteur, la caméra suit la vitesse réelle, et un autre portail le remplace", () => {
@@ -331,7 +333,7 @@ describe("les portails de vitesse", () => {
     let vu3 = false;
     for (let i = 0; i < 400 && p.facteur !== FACTEUR_LENT; i++) {
       p.avancer();
-      if (p.facteur === FACTEUR_V3) {
+      if (p.facteur === FACTEUR_V3 && (p.ev & EV_PORTAIL) === 0) {
         vu3 = true;
         expect(p.cam - p.precCam).toBeGreaterThan(vitesseNormale); // plus vite sous ›››
         expect(p.cam - p.precCam).toBeLessThanOrEqual(Math.trunc(VITESSE_PLAFOND / 120));

@@ -23,7 +23,7 @@ Validé par Nathan d'après la maquette jouable `gravity-maquette-jouable.html` 
 
 ## Le niveau du jour
 - **Infini, et le même pour tous dans la journée** : une suite de morceaux de 16 colonnes, tirée de la graine du jour.
-- **Cinq thèmes, ceux de Jump**, dans un **ordre tiré chaque jour** : un thème tous les 300 m environ, puis la boucle reprend, plus vite et plus dense. La vitesse monte doucement avec la distance.
+- **Cinq thèmes, ceux de Jump**, dans un **ordre tiré chaque jour** : un thème tous les 300 m environ, puis la boucle reprend, plus vite et plus dense. La vitesse monte vite au début, puis plus doucement (voir les dangers et la montée en difficulté).
 - **Morceaux communs** : trou au sol, trou au plafond, zigzag, pilier, piques, plateformes du milieu (les quatre motifs ci-dessus), inverseur.
 - **Les blocs spéciaux, un par thème** (la mécanique de Jump, adaptée) :
   - **Usine** : tapis roulant, qui pousse plus vite ;
@@ -58,6 +58,17 @@ Validé par Nathan d'après la maquette jouable `gravity-maquette-jouable.html` 
 - **Introduction** : le 1er thème fait découvrir l'avion, le 2e l'onde, le 3e le ressort, chaque fois avec une section facile annoncée à l'écran. Ensuite les modes se mélangent, et la seconde boucle est plus dense et plus rapide.
 - Les règles ne changent pas : le rouge tue, le vide aussi, ainsi que le bord gauche. Le bouclier sauve aussi dans un mode. Les pièces et le multiplicateur restent les mêmes.
 - Dans le niveau, un appui et un relâché comptent tous les deux. La rediffusion devient donc la liste des pas où l'appui commence ou finit.
+
+## Les dangers et la montée en difficulté (ajout du 18 novembre 2026)
+- **Le jeu accélère plus tôt** : la vitesse de croisière est atteinte vers la fin du 2e thème, et chaque nouvelle boucle relève la vitesse plafond.
+- **De nouveaux dangers, tous rouges**, arrivent un par un selon le rang du thème. Chacun apparaît d'abord seul, facile et annoncé à l'écran :
+  - 2e thème : les **scies**, des disques rouges qui vont et viennent sur un rail ;
+  - 3e thème : les **sols fragiles**, qui s'effondrent peu après qu'on les a touchés (on ne peut pas y revenir), et les **lasers**, des rayons rouges en travers du couloir qui s'allument en rythme et préviennent avant ;
+  - 4e thème : les **écraseurs** (blocs à piques qui tombent du plafond ou montent du sol) et les **plateformes mobiles** ;
+  - 5e thème : les **projectiles**, des boules rouges qui arrivent de la droite à hauteur fixe ;
+  - ensuite, tout se combine, et la seconde boucle est plus dense.
+- **La variété** : le même passage ne revient jamais de près, chaque motif a ses variantes, et la difficulté monte par vagues (quelques passages tendus, puis un passage pour souffler, avec des pièces).
+- **Jamais tout droit** : aucun passage en rythme (blocs de la Nuit, du Néon, scies, lasers…) ne se franchit sans rien faire. Il demande une action au bon moment, annoncée assez tôt pour être lue.
 
 ## Technique (règles de la plateforme)
 - **Simulation déterministe en entiers**, rejouée par le serveur. **La rediffusion n'est que la liste des pas où le joueur a touché l'écran**, donc minuscule même pour une longue partie. Le serveur rejoue jusqu'à la mort et retrouve le score. Une durée maximale de partie (10 minutes ?) borne le coût du rejeu.

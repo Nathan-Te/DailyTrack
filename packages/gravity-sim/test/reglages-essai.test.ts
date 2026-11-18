@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
-import { GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, MORCEAUX_PAR_THEME, Partie, REGLES_COURANTES, dailyGravity, distancesDArret, empreinteContenu, reglesDe, reglesDuContenu, seuilsDuRobot, terrainDuJour, vitesseCamera } from "../src/index";
+import { COURBE_DOUCE, GRAVITY_GENERATOR_VERSION, GRAVITY_SIM_VERSION, MORCEAUX_PAR_THEME, Partie, REGLES_COURANTES, dailyGravity, distancesDArret, empreinteContenu, reglesDe, reglesDuContenu, seuilsDuRobot, terrainDuJour, vitesseCamera } from "../src/index";
 
 // Lot GR5 — les réglages d'essai du côté de la simulation : un contenu qui porte des `reglages` joue sous d'autres règles (caméra, gravité, longueur d'un thème, pourcentage des médailles) ; **sans réglage, rien ne
 // change** (le golden le dit : `golden.test.ts`), et deux jeux de règles ne partagent ni leur terrain gardé ni leurs seuils gardés.
@@ -11,14 +11,14 @@ describe("les règles d'un contenu", () => {
     const c = dailyGravity(JOUR);
     expect(c.reglages).toBeUndefined();
     expect(reglesDuContenu(c)).toEqual(REGLES_COURANTES);
-    expect(REGLES_COURANTES).toMatchObject({ sim: GRAVITY_SIM_VERSION, vitesseBase: 28672, vitesseMax: 51200, distanceParCran: 220, gravite: 1570, ventGravite: 628, morceauxParTheme: MORCEAUX_PAR_THEME });
+    expect(REGLES_COURANTES).toMatchObject({ sim: GRAVITY_SIM_VERSION, vitesseBase: 32768, vitesseMax: 51200, distanceParCran: 122, courbe: COURBE_DOUCE, gravite: 1570, ventGravite: 628, morceauxParTheme: MORCEAUX_PAR_THEME });
     expect(c.g).toBe(GRAVITY_GENERATOR_VERSION);
   });
   it("des réglages remplacent ce qu'ils nomment, le reste est de la version ; la gravité du vent suit la gravité (2/5)", () => {
-    const r = reglesDe(GRAVITY_SIM_VERSION, 19, { vitesseBase: 32768, gravite: 1800, morceauxParTheme: 8 });
-    expect(r).toMatchObject({ vitesseBase: 32768, vitesseMax: 51200, distanceParCran: 220, gravite: 1800, ventGravite: 720, morceauxParTheme: 8 });
-    expect(vitesseCamera(0, r)).toBe(32768);
-    expect(vitesseCamera(0)).toBe(28672);
+    const r = reglesDe(GRAVITY_SIM_VERSION, 19, { vitesseBase: 36864, gravite: 1800, morceauxParTheme: 8 });
+    expect(r).toMatchObject({ vitesseBase: 36864, vitesseMax: 51200, distanceParCran: 122, courbe: COURBE_DOUCE, gravite: 1800, ventGravite: 720, morceauxParTheme: 8 });
+    expect(vitesseCamera(0, r)).toBe(36864);
+    expect(vitesseCamera(0)).toBe(32768);
   });
   it("un contenu à réglages a son propre terrain : la partie lit la gravité, la caméra et la longueur du thème de l'essai", () => {
     const normal = dailyGravity(JOUR);

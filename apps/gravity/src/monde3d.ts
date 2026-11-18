@@ -4,12 +4,12 @@
 // Le monde est infini : un morceau (16 colonnes) est construit quand il entre dans le champ et libéré quand il en sort ; un fond (une « bande » de 19 morceaux, un thème) est construit de même, **coupé net à la frontière du thème**
 // par deux plans de découpe. Repère : x vers la droite en cases, y = −rangée (la rangée 0 est en haut), comme `@cdj/visuels`.
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, Plane, Vector3, type Material } from "three";
-import { ALTERNE_A, ALTERNE_B, BLOC, CLIGNOTANT, GLACE, INVERSEUR, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, PIQUE, TAPIS, VENT, VIDE, caseDe, type Partie, type Terrain, type TypePortail } from "@cdj/gravity-sim";
+import { ALTERNE_A, ALTERNE_B, BLOC, CASE, CLIGNOTANT, FRAGILE, FRAGILE_DELAI, GLACE, INVERSEUR, LARGEUR_MORCEAU, LIGNES, MORCEAUX_PAR_THEME, PIQUE, TAPIS, VENT, VIDE, caseDe, etatLaser, positionScie, type Fragile, type Laser, type Partie, type Scie, type Terrain, type TypePortail } from "@cdj/gravity-sim";
 import { BELT_BAND, BELT_GAP, BELT_STYLE, THEMES, WIND_STYLE, type Theme } from "@cdj/visuels/plateformes";
 import { Art, artGeometry, buildParallax, buildTileArt, layerOffset, visibleLayers, type CodesTuiles } from "@cdj/visuels/plateformes/three";
 import type { CouleursGravity } from "./couleurs";
 import { dessinCadrePortail, dessinIconePortail, dessinVoilePortail } from "./dessinsModes";
-import { ajouterPique, dessinBloc, dessinBonus, dessinChevrons, dessinFleche, dessinGemme, dessinInverseur, dessinPiece, etatDuBloc, type TypeBloc, type VarianteBloc } from "./dessins";
+import { CHUTE_VISIBLE, ajouterPique, dessinAnnonceLaser, dessinBloc, dessinBonus, dessinChevrons, dessinFaisceau, dessinFleche, dessinFragile, dessinGemme, dessinInverseur, dessinLentille, dessinPiece, dessinRail, dessinScie, etatDuBloc, niveauDeFissure, type TypeBloc, type VarianteBloc } from "./dessins";
 
 /** Colonnes de contexte lues de chaque côté d'un morceau pour que ses bords se raccordent à ses voisins (tuiles, ombres de profondeur). */
 const MARGE = 4;
@@ -94,8 +94,29 @@ interface PortailVu {
   /** Un déphasage propre (le battement), en radians. */
   phase: number;
 }
+/** Lot GR7 : un sol fragile (sa case et son maillage), une scie (son disque ; le rail est fixe), un laser (l'annonce, le rayon, les deux lentilles). */
+interface FragileVu {
+  mesh: Mesh;
+  cx: number;
+  rangee: number;
+  niveau: number;
+}
+interface ScieVue {
+  scie: Scie;
+  disque: Mesh;
+  phase: number;
+}
+interface LaserVu {
+  laser: Laser;
+  annonce: Mesh;
+  faisceau: Mesh;
+  lentilles: Mesh[];
+}
 interface MorceauVu {
   groupe: Group;
+  fragiles: FragileVu[];
+  scies: ScieVue[];
+  lasers: LaserVu[];
   portails: PortailVu[];
   decalage: number;
   blocs: BlocVu[];
@@ -140,6 +161,15 @@ export class Monde {
   private readonly geoInverseur: BufferGeometry;
   private readonly geoFleche: BufferGeometry;
   private readonly geoBloc = new Map<string, BufferGeometry>();
+  /** Lot GR7 : les dessins des dangers, partagés (les fissures à quatre niveaux, le disque de scie, les rails par longueur, les lentilles, le rayon et son annonce). */
+  private readonly geoFragile: BufferGeometry[];
+  private readonly geoScie: BufferGeometry;
+  private readonly geoRails = new Map<number, BufferGeometry>();
+  private readonly geoLentille: BufferGeometry;
+  private readonly geoFaisceau: BufferGeometry;
+  private readonly geoAnnonceLaser: BufferGeometry;
+  private readonly matFaisceau = new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.92, side: DoubleSide, depthWrite: false });
+  private readonly matAnnonceLaser = new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8, side: DoubleSide, depthWrite: false });
   /** Lot GR6 : les tampons des portails, gardés par type et par hauteur libre (en rangées) — partagés par tous les portails qui se ressemblent. */
   private readonly geoPortails = new Map<string, BufferGeometry>();
   private readonly matVoile = new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.24, side: DoubleSide, depthWrite: false });
@@ -167,6 +197,11 @@ export class Monde {
     this.geoInverseur = garder(dessinInverseur(c.papier));
     this.geoFleche = garder(dessinFleche(0xffffff));
     for (const t of TYPES_BLOC) for (const v of VARIANTES) this.geoBloc.set(`${t}:${v}`, garder(dessinBloc(t, v)));
+    this.geoFragile = ([0, 1, 2, 3] as const).map((n) => garder(dessinFragile(n, c.encre)));
+    this.geoScie = garder(dessinScie(c.encre, c.papier));
+    this.geoLentille = garder(dessinLentille(c.encre));
+    this.geoFaisceau = garder(dessinFaisceau());
+    this.geoAnnonceLaser = garder(dessinAnnonceLaser());
   }
 
   /** Le thème d'un morceau : celui de la bande où il se trouve. */
@@ -179,7 +214,7 @@ export class Monde {
     const m = this.terrain.morceau(k);
     const theme = THEMES[m.theme];
     const groupe = new Group();
-    const vu: MorceauVu = { groupe, portails: [], decalage: m.decalage, blocs: [], chevrons: [], vent: [], pieces: [], gemmes: [], bonus: [], geometries: [], materiaux: [] };
+    const vu: MorceauVu = { groupe, fragiles: [], scies: [], lasers: [], portails: [], decalage: m.decalage, blocs: [], chevrons: [], vent: [], pieces: [], gemmes: [], bonus: [], geometries: [], materiaux: [] };
     const x0 = k * LARGEUR_MORCEAU;
 
     // Les tuiles : la grille du morceau avec `MARGE` colonnes de ses voisins de chaque côté ; seules les colonnes du morceau sont gardées.
@@ -216,6 +251,11 @@ export class Monde {
           mesh.position.set(cx, -r - 1, 0);
           groupe.add(mesh);
           vu.blocs.push({ type, mesh, etat: "plein" });
+        } else if (type === FRAGILE) {
+          const mesh = new Mesh(this.geoFragile[0]!, this.mat);
+          mesh.position.set(cx, -r - 1, 0);
+          groupe.add(mesh);
+          vu.fragiles.push({ mesh, cx, rangee: r, niveau: 0 });
         } else if (type === INVERSEUR) {
           const mesh = new Mesh(this.geoInverseur, this.mat);
           mesh.position.set(cx, -r - 1, 0);
@@ -272,6 +312,46 @@ export class Monde {
         vu.chevrons.push({ mesh, x0: debut });
         c = fin;
       }
+    }
+
+    // Les scies (lot GR7) : un rail d'encre, fixe, et le disque rouge qui y va et vient (sa place et sa rotation sont posées à chaque image).
+    m.scies.forEach((sc, i) => {
+      const dx = (sc.x1 - sc.x0) / CASE;
+      const dy = -(sc.y1 - sc.y0) / CASE;
+      const longueur = Math.hypot(dx, dy);
+      const cle = Math.round(longueur * 4);
+      let rail = this.geoRails.get(cle);
+      if (!rail) this.geoRails.set(cle, (rail = artGeometry(dessinRail(longueur, this.c.encre))));
+      const r = new Mesh(rail, this.mat);
+      r.position.set(sc.x0 / CASE, -sc.y0 / CASE, 0);
+      r.rotation.z = Math.atan2(dy, dx);
+      groupe.add(r);
+      const disque = new Mesh(this.geoScie, this.mat);
+      groupe.add(disque);
+      vu.scies.push({ scie: sc, disque, phase: i * 1.7 });
+    });
+    // Les lasers (lot GR7) : deux lentilles aux bouts, le mince trait pâle de l'annonce et le rayon (qui ne se montrent qu'à leur tour).
+    for (const l of m.lasers) {
+      const x = x0 + l.c + 0.5;
+      const haut = -l.r0;
+      const bas = -(l.r1 + 1);
+      const hauteur = haut - bas;
+      const poserLaser = (mesh: Mesh): Mesh => {
+        mesh.position.set(x, bas, 0);
+        mesh.scale.y = hauteur;
+        mesh.visible = false;
+        groupe.add(mesh);
+        return mesh;
+      };
+      const annonce = poserLaser(new Mesh(this.geoAnnonceLaser, this.matAnnonceLaser));
+      const faisceau = poserLaser(new Mesh(this.geoFaisceau, this.matFaisceau));
+      const lentilles = [haut, bas].map((y) => {
+        const lentille = new Mesh(this.geoLentille, this.mat);
+        lentille.position.set(x, y, 0);
+        groupe.add(lentille);
+        return lentille;
+      });
+      vu.lasers.push({ laser: l, annonce, faisceau, lentilles });
     }
 
     // Les portails (lot GR6) : une arche de papier et d'encre sur la plus grande ouverture de leur colonne, avec l'icône de leur mode.
@@ -435,6 +515,22 @@ export class Monde {
         pt.cadre.scale.x = battement;
         pt.voile.scale.x = battement;
       }
+      // Lot GR7 : les sols fragiles (les fissures grandissent, puis le tronçon tombe), les scies (elles tournent et vont et viennent), les lasers (le trait pâle, puis le rayon).
+      for (const f of vu.fragiles) this.majFragile(f, partie.fragiles, e.tick);
+      for (const sv of vu.scies) {
+        const [sx, sy] = positionScie(sv.scie, e.tick);
+        sv.disque.position.set(sx / CASE, -sy / CASE, 0);
+        sv.disque.rotation.z = this.reduit ? sv.phase : -(e.temps * 9 + sv.phase);
+      }
+      for (const lv of vu.lasers) {
+        const etat = etatLaser(e.tick, lv.laser.decalage);
+        // l'annonce clignote de plus en plus vite avant que le rayon brûle ; mouvement réduit : le trait reste allumé
+        const clignote = this.reduit ? true : Math.trunc(e.tick / (etat === 1 ? 8 : 4)) % 2 === 0;
+        lv.annonce.visible = etat === 1 && clignote;
+        lv.faisceau.visible = etat === 2;
+        if (etat === 2) lv.faisceau.scale.x = this.reduit ? 1 : 1 + 0.12 * Math.sin(e.temps * 70);
+        for (const l of lv.lentilles) l.scale.setScalar(etat === 2 ? 1.2 : etat === 1 ? 1.08 : 1);
+      }
       for (const v of vu.vent) {
         for (let i = 0; i < v.fleches.length; i++) {
           const f = v.fleches[i]!;
@@ -469,6 +565,33 @@ export class Monde {
     }
   }
 
+  /** Un sol fragile : intact, puis les fissures qui grandissent depuis qu'on s'y est posé, puis il tombe (il glisse vers le bas et disparaît) — le tronçon entier, au pas de sa chute. */
+  private majFragile(f: FragileVu, runs: readonly Fragile[], tick: number): void {
+    let run: Fragile | null = null;
+    for (const r of runs) if (r.cy === f.rangee && f.cx >= r.cx0 && f.cx <= r.cx1) run = r;
+    const age = run ? tick - run.t0 : -1;
+    if (age >= FRAGILE_DELAI) {
+      const depuis = age - FRAGILE_DELAI;
+      f.mesh.visible = depuis < CHUTE_VISIBLE;
+      if (f.mesh.visible) {
+        f.mesh.position.y = -f.rangee - 1 - 0.0016 * depuis * depuis;
+        f.mesh.rotation.z = this.reduit ? 0 : -0.012 * depuis * (f.cx % 2 === 0 ? 1 : -1);
+      }
+      return;
+    }
+    f.mesh.visible = true;
+    f.mesh.position.y = -f.rangee - 1;
+    f.mesh.rotation.z = 0;
+    // un léger tremblement quand il est sur le point de tomber (jamais avec « réduire les animations »)
+    if (age >= FRAGILE_DELAI - 14 && !this.reduit) f.mesh.position.x = f.cx + (Math.trunc(tick / 2) % 2 === 0 ? 0.02 : -0.02);
+    else f.mesh.position.x = f.cx;
+    const niveau = niveauDeFissure(age, FRAGILE_DELAI);
+    if (niveau !== f.niveau) {
+      f.niveau = niveau;
+      f.mesh.geometry = this.geoFragile[niveau]!;
+    }
+  }
+
   detruire(): void {
     for (const vu of this.morceaux.values()) this.libererMorceau(vu);
     this.morceaux.clear();
@@ -480,7 +603,9 @@ export class Monde {
     for (const g of this.partagees) g.dispose();
     for (const g of this.geoPortails.values()) g.dispose();
     this.geoPortails.clear();
-    for (const mt of [this.mat, this.matVentFond, this.matVentBord, this.matFleche, this.matVoile]) mt.dispose();
+    for (const g of this.geoRails.values()) g.dispose();
+    this.geoRails.clear();
+    for (const mt of [this.mat, this.matVentFond, this.matVentBord, this.matFleche, this.matVoile, this.matFaisceau, this.matAnnonceLaser]) mt.dispose();
     this.groupe.clear();
   }
 }

@@ -106,7 +106,7 @@ test.describe("Gravity : une partie", () => {
     const valeurs = (await page.locator(".g-seuils__valeur").allTextContents()).map((v) => Number(v.replace(/\D/g, "")));
     expect(valeurs).toEqual([seuils.bronze, seuils.silver, seuils.gold, seuils.author]);
     await page.locator("#jeu-bouton-aide").click();
-    await expect(page.locator("#jeu-aide .jeu-aide li")).toHaveCount(16); // lot GR6 : + les trois modes de vol et les portails de vitesse
+    await expect(page.locator("#jeu-aide .jeu-aide li")).toHaveCount(19); // lot GR6 : + les trois modes de vol et les portails de vitesse ; lot GR7 : + les trois dangers
     await context.close();
   });
 });

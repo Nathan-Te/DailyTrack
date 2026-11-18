@@ -13,6 +13,8 @@
     "figer:gravity": "esbuild tools/figer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figer.mjs --log-level=warning && node dist/figer.mjs",
     "preparer:gravity": "esbuild tools/preparer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/preparer.mjs --log-level=warning && node dist/preparer.mjs",
     "robot:gravity": "esbuild tools/rapport.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/rapport.mjs --log-level=warning && node dist/rapport.mjs",
+    "labo:gravity": "esbuild tools/labo.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/labo.mjs --log-level=warning && node dist/labo.mjs",
+    "variete:gravity": "esbuild tools/variete.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/variete.mjs --log-level=warning && node dist/variete.mjs",
     "golden:gravity": "esbuild tools/references.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references.mjs --log-level=warning && node dist/references.mjs"
   },
   "exports": {

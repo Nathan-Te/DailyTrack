@@ -2,7 +2,7 @@
 import * as K from "./constantes";
 import * as M from "./monde";
 import type { Terrain } from "./monde";
-import { Partie, type Resultat } from "./partie";
+import { Partie, type Fragile, type Resultat } from "./partie";
 import { decider, juger, ATTENTE_MAX, MARGE_PILOTE } from "./pilote";
 const { BONUS_PORTEE, CASE, DUREE_MAX_TICKS, GEMME_PORTEE, LARGEUR_MORCEAU, PIECE_PORTEE, POINTS_GEMME, POINTS_PIECE, TAILLE, TAMPON } = K;
 const { BLOC, GLACE, MODE_DU_PORTAIL, TAPIS } = M;
@@ -96,6 +96,13 @@ const AUCUN = -1;
 const surfaceDe = (p: Partie): number => (p.sol || p.grace > 0 ? (p.surface === TAPIS ? 1 : p.surface === GLACE ? 2 : 0) : 0);
 /** Les drapeaux d'un état : gravité (bit 0 : 1 = vers le bas), sol (bit 1), surface (bits 2-3), grâce (bits 4-7), tampon (bits 8-11), rang du facteur de vitesse (bits 12-14). Le mode est toujours la gravité (la recherche s'arrête aux portails d'entrée). */
 const drapeaux = (p: Partie): number => (p.g === 1 ? 1 : 0) | (p.sol ? 2 : 0) | (surfaceDe(p) << 2) | (p.grace << 4) | (p.tampon << 8) | (FACTEURS.indexOf(p.facteur) << 12);
+/** Lot GR7 : le sol fragile fait partie de l'état (un tronçon touché tombe 54 pas plus tard, et ne revient pas) : un entier qui résume les tronçons touchés encore devant, 0 s'il n'y en a pas. */
+const hacheFragiles = (f: readonly Fragile[]): number => {
+  let h = 0;
+  for (let i = 0; i < f.length; i++) h = Math.imul(h ^ (f[i]!.cx0 * 977 + f[i]!.cy * 31 + f[i]!.t0 * 7919), 0x01000193);
+  return h | 0;
+};
+const AUCUN_FRAGILE: readonly Fragile[] = [];
 const empreinte = (tick: number, x: number, y: number, vy: number, f: number): number => {
   const h = Math.imul(tick, 0x7f4a7c15) ^ Math.imul(x, 0x85ebca6b) ^ Math.imul(y, 0xc2b2ae35) ^ Math.imul(vy, 0x27d4eb2f) ^ f;
   return Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0;
@@ -114,6 +121,9 @@ class Graphe {
   private vys = new Int32Array(this.cap);
   private cams = new Int32Array(this.cap);
   private flags = new Int32Array(this.cap);
+  /** Lot GR7 : l'état des sols fragiles de chaque noeud (le résumé et la liste elle-même, immuable). */
+  private fhs = new Int32Array(this.cap);
+  private frs: (readonly Fragile[])[] = [];
   private suiv = new Int32Array(this.cap).fill(NON_CALCULE);
   private jinvA = new Int32Array(this.cap).fill(NON_CALCULE);
   private invA = new Int32Array(this.cap).fill(NON_CALCULE);
@@ -152,6 +162,7 @@ class Graphe {
     this.vys = g(this.vys, null);
     this.cams = g(this.cams, null);
     this.flags = g(this.flags, null);
+    this.fhs = g(this.fhs, null);
     this.suiv = g(this.suiv, NON_CALCULE);
     this.jinvA = g(this.jinvA, NON_CALCULE);
     this.invA = g(this.invA, NON_CALCULE);
@@ -168,14 +179,15 @@ class Graphe {
   /** Le noeud de l'état de `p` (une partie quelconque : seul ce qui décide de la suite sans ramassage est gardé). */
   interner(p: Partie): Noeud {
     const f = drapeaux(p);
+    const fh = p.fragiles.length === 0 ? 0 : hacheFragiles(p.fragiles);
     // Un état en l'air ne se retrouve jamais par un autre chemin (chaque vol a son pas de départ) : on ne le range pas dans la table.
     const enLAir = !p.sol && p.grace === 0;
     let h = 0;
     if (!enLAir) {
-      h = empreinte(p.tick, p.x, p.y, p.vy, f);
+      h = empreinte(p.tick, p.x, p.y, p.vy, f ^ fh);
       const tete = this.table.get(h);
       for (let n = tete ?? AUCUN; n !== AUCUN; n = this.autre[n]!) {
-        if (this.tick[n] === p.tick && this.xs[n] === p.x && this.ys[n] === p.y && this.vys[n] === p.vy && this.flags[n] === f && this.cams[n] === p.cam) return n;
+        if (this.tick[n] === p.tick && this.xs[n] === p.x && this.ys[n] === p.y && this.vys[n] === p.vy && this.flags[n] === f && this.fhs[n] === fh && this.cams[n] === p.cam) return n;
       }
     }
     if (this.compte === this.cap) this.grandir();
@@ -186,6 +198,8 @@ class Graphe {
     this.vys[n] = p.vy;
     this.cams[n] = p.cam;
     this.flags[n] = f;
+    this.fhs[n] = fh;
+    this.frs[n] = fh === 0 ? AUCUN_FRAGILE : p.fragiles;
     if (!enLAir) {
       this.autre[n] = this.table.get(h) ?? AUCUN;
       this.table.set(h, n);
@@ -209,6 +223,7 @@ class Graphe {
     t.grace = (f >> 4) & 15;
     t.tampon = (f >> 8) & 15;
     t.mode = 0;
+    t.fragiles = this.frs[n] ?? AUCUN_FRAGILE;
     t.facteur = FACTEURS[(f >> 12) & 7]!;
     t.bouton = false;
     t.mort = 0;
