@@ -29,7 +29,7 @@ describe(`groupes de la recette (${TEST_DB})`, () => {
     const noct = await t.call("GET", "/api/groupes/moi", undefined, { headers: { "X-Player-Id": DEMO_JOUEUR_ID } });
     expect(noct.body.groupe).toMatchObject({ nom: "Les Noctambules", chef: true });
     expect(noct.body.groupe.membres).toHaveLength(4);
-    expect((await t.db.all<{ arrivee: number }>("SELECT DISTINCT arrivee FROM groupe_membres")).map((r) => r.arrivee)).toEqual([JOUR - 1]);
+    expect((await t.db.all<{ arrivee: number }>("SELECT DISTINCT arrivee FROM groupe_membres")).map((r) => r.arrivee)).toEqual([JOUR]); // dès le jour de leur arrivée (lot C1d)
     expect(await seedGroupesDemo({ db: t.db, today: JOUR })).toEqual({ deja: true, crees: 0 });
   });
 });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { formatDay } from "@cdj/core";
 import { PREMIER_JOUR_TOWER } from "@cdj/tower-sim";
+import { ensureSchemaOn } from "../src/db";
+import { migrerArriveesDesGroupes } from "../src/groupesArrivee";
 import { GROUPE_MEMBRES_MAX, descriptionDeGroupe, nomDeGroupe } from "../src/groupes";
 import { nameKey } from "../src/pseudos";
 import { refOfPlayer } from "../src/players";
@@ -8,7 +10,7 @@ import { ADMIN_EMAIL, CLIENT_ID, SESSION_KEY } from "./adminHelpers";
 import { makeApi, ouvrirJeu, parisDayStart, playerId, TEST_DB, type TestApi } from "./helpers";
 
 // Lot C1, partie C — les groupes : la création et ses règles, le lien d'invitation (renouvelé : l'ancien meurt), les 30 membres, le chef (retirer, passer, renommer une fois par semaine, dissoudre), le départ
-// (le plus ancien devient chef, ou le groupe est dissous), l'emblème, le classement des groupes (moyenne des 3 meilleurs, « moins de 3 classés », le lendemain de l'arrivée, un membre parti, un masqué),
+// (le plus ancien devient chef, ou le groupe est dissous), l'emblème, le classement des groupes (moyenne des 3 meilleurs, « moins de 3 classés », le jour de l'arrivée, un membre qui change de groupe, un membre parti, un masqué, la migration des arrivées),
 // le filtre « Mon groupe », l'effacement d'un profil, l'administration. Les résultats sont écrits en base ; la lecture est la vraie. SQLite et libSQL (`file:`).
 
 const JOUR = PREMIER_JOUR_TOWER + 8;
@@ -44,13 +46,12 @@ async function track(t: TestApi, n: number, ms: number): Promise<void> {
 async function jump(t: TestApi, n: number, ticks: number): Promise<void> {
   await t.db.run("INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at, hidden) VALUES (?, ?, 'x', ?, 0, 'x', 1, 1, 0, ?, 0)", [JOUR, playerId(n), ticks, 1000 + n]);
 }
-/** Les joueurs d'un groupe, créés par l'API (le premier en est le chef) puis comptés dès ce jour (l'arrivée est avancée à la veille). */
+/** Les joueurs d'un groupe, créés par l'API (le premier en est le chef) ; ils comptent dès ce jour (lot C1d : l'arrivée est le jour même). */
 async function groupe(t: TestApi, nom: string, premier: number, autres: number[], description = ""): Promise<{ id: string; jeton: string }> {
   const c = await post(t, premier, "/api/groupes", { nom, description });
   expect(c.status, JSON.stringify(c.body)).toBe(200);
   const moi = (await get(t, premier, "/api/groupes/moi")).body.groupe;
   for (const n of autres) expect((await post(t, n, "/api/groupes/rejoindre", { jeton: moi.invitation })).status).toBe(200);
-  await t.db.run("UPDATE groupe_membres SET arrivee = ? WHERE groupe = ?", [JOUR - 1, c.body.id]);
   return { id: c.body.id, jeton: moi.invitation };
 }
 const vue = async (t: TestApi, v: string) => (await get(t, null, `/api/groupes/classement?date=${DATE}&vue=${v}`)).body;
@@ -102,7 +103,7 @@ describe(`groupes : créer, inviter, rejoindre, quitter (${TEST_DB})`, () => {
     expect((await get(t, null, "/api/groupes/nom/inconnu")).body.error).toBe("unknown_group");
   });
 
-  it("le lien d'invitation : voir sans profil, rejoindre (compte dès le lendemain), le renouveler tue l'ancien (chef seulement), tout membre le montre", { timeout: 30_000 }, async () => {
+  it("le lien d'invitation : voir sans profil, rejoindre (compte dès le jour même), le renouveler tue l'ancien (chef seulement), tout membre le montre", { timeout: 30_000 }, async () => {
     const t = await api();
     for (const n of [1, 2, 3, 4]) await joueur(t, n, `Joueur${n}`);
     await post(t, 1, "/api/groupes", { nom: "Les Amis" });
@@ -113,7 +114,7 @@ describe(`groupes : créer, inviter, rejoindre, quitter (${TEST_DB})`, () => {
     expect((await get(t, null, "/api/groupes/invitation/nimporte")).body.error).toBe("unknown_group");
     const j = await post(t, 2, "/api/groupes/rejoindre", { jeton: invitation });
     expect(j.status, JSON.stringify(j.body)).toBe(200);
-    expect(j.body.arrivee).toBe(formatDay(JOUR + 1)); // il compte à partir du lendemain
+    expect(j.body.arrivee).toBe(formatDay(JOUR)); // il compte dès le jour de son arrivée
     expect((await post(t, 2, "/api/groupes/rejoindre", { jeton: invitation })).body.error).toBe("already_in_group");
     // Tout membre voit le lien (il peut le partager) ; le chef seul le renouvelle.
     expect((await get(t, 2, "/api/groupes/moi")).body.groupe).toMatchObject({ invitation, chef: false });
@@ -201,7 +202,7 @@ describe(`groupes : ce que fait le chef (${TEST_DB})`, () => {
 });
 
 describe(`groupes : le classement (${TEST_DB})`, () => {
-  it("la moyenne des 3 meilleurs temps ; un groupe de moins de 3 classés est listé sans rang ; le lendemain de l'arrivée ; un membre parti ou masqué ne compte pas", { timeout: 60_000 }, async () => {
+  it("la moyenne des 3 meilleurs temps ; un groupe de moins de 3 classés est listé sans rang ; un membre qui vient d'arriver compte ; un membre parti ou masqué ne compte pas", { timeout: 60_000 }, async () => {
     const t = await api();
     for (let n = 1; n <= 12; n++) await joueur(t, n, `Joueur${n}`);
     // Les Rapides : 5 membres classés à Track (31,2 · 32,4 · 34,2 · 35,0 · 40,0 s) → moyenne des trois meilleurs = 32 600 ms. Les Lents : 3 membres (50 · 52 · 54 s) → 52 000 ms. Les Deux : 2 classés.
@@ -219,26 +220,77 @@ describe(`groupes : le classement (${TEST_DB})`, () => {
     const page = (await get(t, null, `/api/groupes/nom/les%20rapides?date=${DATE}`)).body;
     expect(page.classement.find((r: { vue: string }) => r.vue === "track")).toMatchObject({ rang: 1, score: 32_600, classes: 5, sur: 2 });
     expect(page.classement.find((r: { vue: string }) => r.vue === "cumul")).toMatchObject({ rang: null, classes: 0 }); // personne n'a fini les deux jeux
-    // Un membre qui vient d'arriver ne compte qu'à partir du lendemain : arrivé aujourd'hui, il n'apporte rien.
+    // Un membre qui vient d'arriver compte dès aujourd'hui (lot C1d) : son temps de 20 s entre dans les 3 meilleurs.
     await joueur(t, 11, "Rapide11");
     await track(t, 11, 20_000);
     expect((await post(t, 11, "/api/groupes/rejoindre", { jeton: rapides.jeton })).status).toBe(200);
     t.clock.now += 60_000;
-    expect((await vue(t, "track")).groupes[0].score).toBe(32_600);
-    // Un membre parti ne compte plus tout de suite.
+    expect((await vue(t, "track")).groupes[0]).toMatchObject({ nom: "Les Rapides", score: Math.round((20_000 + 31_200 + 32_400) / 3), classes: 6 });
+    // Un membre parti ne compte plus tout de suite (ni lui, ni le 11 qui vient d'arriver, qui reste : 5 classés).
     expect((await post(t, 1, "/api/groupes/quitter")).status).toBe(200);
     t.clock.now += 60_000;
     v = await vue(t, "track");
-    expect(v.groupes[0]).toMatchObject({ nom: "Les Rapides", score: Math.round((32_400 + 34_200 + 35_000) / 3), classes: 4 });
+    expect(v.groupes[0]).toMatchObject({ nom: "Les Rapides", score: Math.round((20_000 + 32_400 + 34_200) / 3), classes: 5 });
     // Un joueur masqué (N1) ne compte jamais : sans lui, il reste 2 classés.
     await t.db.run("UPDATE players SET hidden = 1 WHERE id = ?", [playerId(2)]);
     await t.db.run("UPDATE results SET hidden = 1 WHERE player_id = ?", [playerId(2)]);
     t.clock.now += 60_000;
     v = await vue(t, "track");
     expect(v.groupes.map((g: { nom: string }) => g.nom)).toEqual(["Les Rapides", "Les Lents"]);
-    expect(v.groupes[0]).toMatchObject({ classes: 3, score: Math.round((34_200 + 35_000 + 40_000) / 3) });
+    expect(v.groupes[0]).toMatchObject({ classes: 4, score: Math.round((20_000 + 34_200 + 35_000) / 3) });
     expect((await get(t, null, `/api/groupes/classement?date=${DATE}&vue=inconnue`)).body.error).toBe("invalid_view");
     expect((await get(t, null, "/api/groupes/classement?date=pas-une-date")).body.error).toBe("invalid_date");
+  });
+
+  it("lot C1d : un groupe créé aujourd'hui avec 3 membres classés est classé aujourd'hui, sans attendre demain", { timeout: 60_000 }, async () => {
+    const t = await api();
+    for (let n = 1; n <= 3; n++) await joueur(t, n, `Joueur${n}`);
+    await groupe(t, "Du Jour", 1, [2, 3]);
+    for (const [n, ms] of [[1, 30_000], [2, 31_000], [3, 32_000]] as const) await track(t, n, ms);
+    t.clock.now += 60_000;
+    const v = await vue(t, "track");
+    expect(v.groupes.map((g: { nom: string; rang: number; score: number; classes: number }) => [g.nom, g.rang, g.score, g.classes])).toEqual([["Du Jour", 1, 31_000, 3]]);
+    expect(v.moins).toEqual([]);
+    // La page du groupe le dit aussi.
+    const page = (await get(t, null, `/api/groupes/nom/du%20jour?date=${DATE}`)).body;
+    expect(page.classement.find((r: { vue: string }) => r.vue === "track")).toMatchObject({ rang: 1, classes: 3, sur: 1 });
+  });
+
+  it("lot C1d : un membre qui change de groupe dans la journée compte pour le nouveau, et plus pour l'ancien", { timeout: 60_000 }, async () => {
+    const t = await api();
+    for (let n = 1; n <= 6; n++) await joueur(t, n, `Joueur${n}`);
+    await groupe(t, "Ancien", 1, [2, 3, 4]);
+    const b = await groupe(t, "Nouveau", 5, [6]);
+    for (const [n, ms] of [[1, 30_000], [2, 31_000], [3, 32_000], [4, 33_000], [5, 40_000], [6, 41_000]] as const) await track(t, n, ms);
+    t.clock.now += 60_000;
+    let v = await vue(t, "track");
+    expect(v.groupes.map((g: { nom: string; classes: number }) => [g.nom, g.classes])).toEqual([["Ancien", 4]]);
+    expect(v.moins.map((g: { nom: string; classes: number }) => [g.nom, g.classes])).toEqual([["Nouveau", 2]]);
+    // Le 4 part de l'Ancien et rejoint le Nouveau, le même jour.
+    expect((await post(t, 4, "/api/groupes/quitter")).status).toBe(200);
+    expect((await post(t, 4, "/api/groupes/rejoindre", { jeton: b.jeton })).status).toBe(200);
+    t.clock.now += 60_000;
+    v = await vue(t, "track");
+    expect(v.groupes.map((g: { nom: string; classes: number; score: number }) => [g.nom, g.classes, g.score])).toEqual([["Ancien", 3, 31_000], ["Nouveau", 3, Math.round((33_000 + 40_000 + 41_000) / 3)]]);
+    expect(v.moins).toEqual([]);
+  });
+
+  it("lot C1d : la migration remet les arrivées déjà écrites au jour de l'arrivée (idempotente) et ne touche pas une arrivée déjà passée", { timeout: 30_000 }, async () => {
+    const t = await api();
+    for (let n = 1; n <= 3; n++) await joueur(t, n, `Joueur${n}`);
+    const ecrire = (n: number, rejoint: number, arrivee: number) => t.db.run("INSERT INTO groupe_membres (player_id, groupe, rejoint_le, arrivee) VALUES (?, 'g1', ?, ?)", [playerId(n), rejoint, arrivee]);
+    await ecrire(1, parisDayStart(JOUR) + 14 * 3_600_000, JOUR + 1); // rejoint aujourd'hui, règle d'avant : demain → aujourd'hui
+    await ecrire(2, parisDayStart(JOUR - 2) + 22 * 3_600_000, JOUR - 1); // rejoint il y a deux jours, arrivée d'alors (J-1) → J-2
+    await ecrire(3, parisDayStart(JOUR - 5) + 3_600_000, JOUR - 5); // déjà au jour de l'arrivée : inchangé
+    const lire = async () => (await t.db.all<{ arrivee: number }>("SELECT arrivee FROM groupe_membres ORDER BY player_id")).map((r) => r.arrivee);
+    expect(await migrerArriveesDesGroupes(t.db)).toBe(2);
+    expect(await lire()).toEqual([JOUR, JOUR - 2, JOUR - 5]);
+    expect(await migrerArriveesDesGroupes(t.db)).toBe(0); // idempotente
+    // Au démarrage du serveur déployé (l'empreinte du schéma a changé) : la même remise, sans outil à la main.
+    await t.db.run("UPDATE groupe_membres SET arrivee = ? WHERE player_id = ?", [JOUR + 1, playerId(1)]);
+    await t.db.run("DELETE FROM meta WHERE key = 'schema'");
+    expect(await ensureSchemaOn(t.db)).toBe(false);
+    expect(await lire()).toEqual([JOUR, JOUR - 2, JOUR - 5]);
   });
 
   it("le cumul : seuls comptent ceux qui ont fini tous les jeux ; Tower (hauteur) : le plus haut gagne ; l'administration peut masquer un groupe des classements", { timeout: 60_000 }, async () => {
