@@ -15,7 +15,8 @@ export interface ReglageCamera {
   champ: number;
 }
 // Lot BR1 : 41° (au lieu de 46°) pour que le chevalier montre son corps et sa direction ; l'arène reste cadrée (`test/camera.test.ts`).
-export const CAMERA_DEFAUT: ReglageCamera = { angle: 41, distance: 34, champ: 25 };
+// Lot BR-A3 : le cadrage de la CIBLE — plus bas (33°), plus proche (19 m), un champ plus ouvert (35°) : le chevalier et le golem y ont la taille qu'ils ont sur `cible-ia.png`, et l'on voit le décor hors de l'aire de jeu et l'horizon.
+export const CAMERA_DEFAUT: ReglageCamera = { angle: 33, distance: 19, champ: 35 };
 
 /** Un point du monde à garder dans l'image : (x, z) au sol, `haut` en hauteur, `r` le rayon de marge autour de lui au sol. */
 export interface PointCadre {

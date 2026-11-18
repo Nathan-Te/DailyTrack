@@ -56,10 +56,11 @@ export interface PaletteMonde {
 export const PALETTES: Readonly<Record<string, PaletteMonde>> = {
   // Lot BR1 : trois thèmes purement visuels (palette du sol, couleur des murs bas, décor). `mur` / `murHaut` : le mur bas (haie, rochers, muret) et son dessus.
   prairie: {
-    fond: 0xbfe1f4, sol: 0xf8e8c4, sol2: 0xecd5a4, mur: 0x5f9f4f, murHaut: 0x7cbc62, lumiere: 0xfff1d6, ambiance: 0xf4e6c8, intensiteLumiere: 2.1, intensiteAmbiance: 1.3, hemiCiel: 0xe9e4d8, hemiSol: 0xefd9ae, brume: 0xcfe8f7,
-    tranche: 0xcfae78, falaise: 0x8a6a4c, falaise2: 0xa88660, herbe: 0x86c06c, herbe2: 0x6aa857, bois: 0xb07a43, bois2: 0x7c5230, nuage: 0xffffff, cielHaut: 0x8fcdf0, cielBas: 0xd6edf8,
-    terre: 0xc9a77a, terre2: 0xb99868, herbeSol: 0x6fae52, herbeSol2: 0x5f9c47, brumeProche: 70, brumeLoin: 170, soleil: [9, 18, 4],
-    etalonnage: { bloom: 1.1, vignette: 0.22, teinte: [1.03, 1.0, 0.95], saturation: 1.1, contraste: 1.04 },
+    // Lot BR-A3 : la palette de la cible — un sable CHAUD et soutenu (plus de voile pâle : la lisibilité tient par ΔE ≥ 25, le contour et l'ombre portée), un ciel bleu saturé, un soleil plus fort et une ambiance plus faible (des ombres marquées), bleutée.
+    fond: 0x8fcaf0, sol: 0xf0d6a2, sol2: 0xe2c08a, mur: 0x5aa44a, murHaut: 0x7cc25c, lumiere: 0xfff0d0, ambiance: 0xf4e6c8, intensiteLumiere: 2.5, intensiteAmbiance: 1.15, hemiCiel: 0xc4dcf2, hemiSol: 0xe8c690, brume: 0xb4dcf6,
+    tranche: 0xcfa66a, falaise: 0x8a6a4c, falaise2: 0xa88660, herbe: 0x7cc45a, herbe2: 0x5aa846, bois: 0xb8773a, bois2: 0x7c4f2a, nuage: 0xffffff, cielHaut: 0x52aeea, cielBas: 0xb8e2f8,
+    terre: 0xbf9260, terre2: 0xa97f50, herbeSol: 0x68b048, herbeSol2: 0x58a03c, brumeProche: 60, brumeLoin: 160, soleil: [9, 16, 6],
+    etalonnage: { bloom: 1.1, vignette: 0.2, teinte: [1.02, 1.0, 0.97], saturation: 1.12, contraste: 1.06 },
     particules: { genre: "pollen", couleur: 0xfff2b0, couleur2: 0xffffff, nombre: 260, taille: 0.11 }, rais: 0.25, brumeBasse: 0.1,
   },
   carriere: {

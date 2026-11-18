@@ -1,4 +1,4 @@
-import { DepthTexture, HalfFloatType, LinearFilter, ShaderMaterial, UniformsUtils, Vector2, WebGLRenderTarget, UnsignedByteType, type PerspectiveCamera, type Scene, type WebGLRenderer } from "three";
+import { DepthTexture, FloatType, HalfFloatType, LinearFilter, ShaderMaterial, UniformsUtils, Vector2, WebGLRenderTarget, UnsignedByteType, type PerspectiveCamera, type Scene, type WebGLRenderer } from "three";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
 import { CALQUE_COQUE, CONTOUR_PX_1080, regler } from "./cel";
@@ -12,6 +12,18 @@ import { ENCRE } from "./palette";
 // Le contour par la profondeur se lit sur la dérivée seconde de 1/z (nulle sur tout plan, même en perspective : seules les silhouettes et les arêtes vives de la profondeur la font monter).
 
 export type Qualite = "haute" | "basse";
+
+/**
+ * Lot BR-A3 : la demi-largeur du contour du post-traitement, en pixels PHYSIQUES, pour une image de `h` pixels physiques de haut (la hauteur CSS × la densité de pixels) : le trait fait toujours
+ * `CONTOUR_PX_1080` / 1080 de la hauteur de l'image, quelles que soient la définition, la densité de pixels et le plein écran. Le décalage peut être NON ENTIER (la profondeur est interpolée entre texels : `invX`, `invY`),
+ * donc aucun plancher : le plancher d'un pixel du lot BR0c épaississait le trait sous 864 pixels de haut, et l'arrondi au texel le changeait d'une définition à l'autre (`test/clipsTiers.test.ts`).
+ * L'interpolation élargit la bande détectée d'un texel : le trait vaut 2 × la demi-largeur + 1 texel ; on retire ce texel pour que le TRAIT ENTIER reste `CONTOUR_PX_1080` / 1080 de la hauteur (mesuré : `mesure_contour.py`).
+ */
+export function demiLargeurContour(h: number): number {
+  return Math.max(0.2, ((CONTOUR_PX_1080 * h) / 1080 - 1) / 2);
+}
+/** Le trait entier (pixels physiques) pour une demi-largeur donnée : la bande détectée. */
+export const traitContour = (h: number): number => 2 * demiLargeurContour(h) + 1;
 
 const VERTEX = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }";
 
@@ -32,9 +44,16 @@ const COMPOSITION = `
   uniform vec2 px; uniform float proche; uniform float loin; uniform float largeur; uniform vec3 encre; uniform vec3 teinte;
   uniform float vignette; uniform float forceBloom; uniform float saturation; uniform float contraste;
   float inv(vec2 uv){ float z = texture2D(tProfondeur, uv).r * 2.0 - 1.0; return (loin + proche - z * (loin - proche)) / (2.0 * proche * loin); }
+  // Lot BR-A3 : 1/z à un décalage NON ENTIER de texels (la profondeur se lit au plus proche) : interpolé entre les deux texels voisins, en 1/z (linéaire à l'écran sur un plan : un plan reste à zéro).
+  // Sans cela, le décalage s'arrondissait (1,67 px à 1 440 de haut devenait 2) : le trait changeait d'épaisseur d'une définition à l'autre.
+  float invX(vec2 uv){ float t = uv.x / px.x - 0.5; float b = floor(t); return mix(inv(vec2((b + 0.5) * px.x, uv.y)), inv(vec2((b + 1.5) * px.x, uv.y)), t - b); }
+  float invY(vec2 uv){ float t = uv.y / px.y - 0.5; float b = floor(t); return mix(inv(vec2(uv.x, (b + 0.5) * px.y)), inv(vec2(uv.x, (b + 1.5) * px.y)), t - b); }
   vec3 srgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c)); }
   void main(){
-    vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * forceBloom;
+    vec4 brut = texture2D(tScene, vUv);
+    vec3 c = brut.rgb + texture2D(tBloom, vUv).rgb * forceBloom;
+    // Lot BR-A3 : un modèle TEXTURÉ porte sa marque dans l'alpha (MARQUE_TEXTURE de cel.ts) : on n'y trace que la silhouette, jamais de trait intérieur (la texture dessine déjà ses détails).
+    float texture_ = step(brut.a, 0.75);
     // Étalonnage chaud : une teinte, un peu de saturation, une courbe douce, l'épaule des hautes lumières.
     c *= teinte;
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
@@ -48,12 +67,12 @@ const COMPOSITION = `
     // Le contour : la dérivée seconde de 1/z, sur deux axes, à \`largeur\` pixels.
     vec2 d = px * largeur;
     float c0 = inv(vUv);
-    float e = (abs(inv(vUv - vec2(d.x, 0.0)) + inv(vUv + vec2(d.x, 0.0)) - 2.0 * c0) + abs(inv(vUv - vec2(0.0, d.y)) + inv(vUv + vec2(0.0, d.y)) - 2.0 * c0)) / c0;
+    float e = (abs(invX(vUv - vec2(d.x, 0.0)) + invX(vUv + vec2(d.x, 0.0)) - 2.0 * c0) + abs(invY(vUv - vec2(0.0, d.y)) + invY(vUv + vec2(0.0, d.y)) - 2.0 * c0)) / c0;
     // Deux traits (lot BR-A2) : la SILHOUETTE (un saut de profondeur : plein, il s'estompe dans la brume des îles lointaines) et les TRAITS INTÉRIEURS (un pli de la profondeur sans saut : les arêtes d'un bloc, le contour d'une plaque) — plus fins en intensité,
     // qui s'éteignent avec la distance : un décor dense ne se couvre pas de bruit.
     float dist = 1.0 / max(c0, 1e-5);
     float sil = smoothstep(0.0009, 0.0035, e) * (1.0 - 0.75 * smoothstep(80.0, 150.0, dist));
-    float pli = smoothstep(0.00035, 0.0012, e) * (1.0 - smoothstep(0.0009, 0.0035, e)) * (1.0 - smoothstep(28.0, 62.0, dist)) * 0.55;
+    float pli = smoothstep(0.00035, 0.0012, e) * (1.0 - smoothstep(0.0009, 0.0035, e)) * (1.0 - smoothstep(28.0, 62.0, dist)) * 0.55 * (1.0 - texture_);
     o = mix(o, srgb(encre), max(sil * 0.96, pli));
     gl_FragColor = vec4(o, 1.0);
   }`;
@@ -149,7 +168,8 @@ export class Rendu {
     if (this.scene) return;
     const w = this.largeur;
     const h = this.hauteur;
-    const profondeur = new DepthTexture(w, h);
+    // Lot BR-A3 : une profondeur en VIRGULE FLOTTANTE (32 bits) : le contour lit la dérivée seconde de 1/z, qu'une profondeur de 16 ou 24 bits rendrait bruitée sur un grand écran (des traits partout).
+    const profondeur = new DepthTexture(w, h, FloatType);
     this.scene = new WebGLRenderTarget(w, h, { type: HalfFloatType, depthBuffer: true, depthTexture: profondeur, minFilter: LinearFilter, magFilter: LinearFilter });
     const moitie = { type: HalfFloatType, depthBuffer: false, minFilter: LinearFilter, magFilter: LinearFilter } as const;
     this.b1 = new WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), moitie);
@@ -198,7 +218,7 @@ export class Rendu {
     u.proche!.value = this.camera.near;
     u.loin!.value = this.camera.far;
     // Le trait fait ~2,5 px à 1080 de haut : la dérivée seconde est prise à la moitié de cette largeur de chaque côté.
-    u.largeur!.value = Math.max(1, (CONTOUR_PX_1080 * h) / 1080 / 2);
+    u.largeur!.value = demiLargeurContour(h);
     u.teinte!.value = this.reglage.teinte;
     u.vignette!.value = this.reglage.vignette;
     u.forceBloom!.value = this.reglage.bloom;

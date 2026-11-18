@@ -1,4 +1,4 @@
-import { BackSide, BufferGeometry, Color, DataTexture, Group, LinearFilter, Mesh, MeshBasicMaterial, MeshToonMaterial, RedFormat, ShaderMaterial, Vector2, type Material } from "three";
+import { BackSide, BufferGeometry, Color, DataTexture, Group, LinearFilter, Mesh, MeshBasicMaterial, MeshToonMaterial, RedFormat, ShaderMaterial, Vector2, type Material, type Texture } from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { ENCRE } from "./palette";
 
@@ -105,6 +105,57 @@ export function coqueInstanciee(): ShaderMaterial {
     fragmentShader: "uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }",
     fog: false,
   });
+}
+
+/** Lot BR-A3 : la coque de contour d'un modèle ANIMÉ (squelette) : la même, après le skinning (`USE_SKINNING` : Three.js le pose pour un `SkinnedMesh`). */
+export function coqueSkinnee(): ShaderMaterial {
+  return new ShaderMaterial({
+    side: BackSide,
+    uniforms: { pas: pasContour, c: { value: new Color(ENCRE) } },
+    vertexShader: `uniform vec2 pas;
+      #include <common>
+      #include <skinning_pars_vertex>
+      void main(){
+        #include <skinbase_vertex>
+        #include <beginnormal_vertex>
+        #include <skinnormal_vertex>
+        #include <begin_vertex>
+        #include <skinning_vertex>
+        vec4 p = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
+        vec2 d = (projectionMatrix * vec4(normalize(normalMatrix * objectNormal), 0.0)).xy;
+        float n = length(d);
+        if (n > 1e-5) p.xy += d / n * pas * p.w * 0.75;
+        gl_Position = p;
+      }`,
+    fragmentShader: "uniform vec3 c; void main(){ gl_FragColor = vec4(c, 1.0); }",
+    fog: false,
+  });
+}
+
+/** Lot BR-A3 : la MARQUE d'un modèle texturé dans l'alpha de l'image de la scène (haute qualité) : le post-traitement n'y trace que la SILHOUETTE (pas de traits intérieurs : la texture dessine déjà les détails, comme la cible). */
+export const MARQUE_TEXTURE = 0.5;
+
+/** Lot BR-A3 : le matériau d'un modèle tiers : la rampe toon et le liseré sur sa TEXTURE de couleur de base (`map`), et la marque « texturé » dans l'alpha. */
+export function peau(map: Texture | null, lueur: Texture | null = null, lisere = 0.28): MeshToonMaterial {
+  const m = new MeshToonMaterial({ color: 0xffffff, map, gradientMap: degrade });
+  // La LUEUR (les yeux du golem) : une texture ajoutée à la lumière, ×2,4 (au-delà de 1 : le bloom la fait fleurir). Pas l'`emissive` de Three.js : il sert à l'éclair blanc d'un coup (`eclair`).
+  const avecLueur = !!(lueur && map);
+  m.onBeforeCompile = (sh) => {
+    if (avecLueur) {
+      sh.uniforms.tLueur = { value: lueur };
+      sh.fragmentShader = "uniform sampler2D tLueur;\n" + sh.fragmentShader;
+    }
+    sh.fragmentShader = sh.fragmentShader.replace(
+      "#include <opaque_fragment>",
+      `float lisere = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 3.0);
+       outgoingLight += ${LISERE} * lisere * ${lisere.toFixed(3)};
+       ${avecLueur ? "outgoingLight += texture2D(tLueur, vMapUv).rgb * 2.4;" : ""}
+       #include <opaque_fragment>
+       gl_FragColor.a = ${MARQUE_TEXTURE.toFixed(2)};`,
+    );
+  };
+  m.customProgramCacheKey = () => `peau${lisere.toFixed(3)}${avecLueur ? "l" : ""}`;
+  return m;
 }
 
 const lisses = new WeakMap<BufferGeometry, BufferGeometry>();

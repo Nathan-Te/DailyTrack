@@ -19,6 +19,7 @@ import {
   TOTEM_ANNONCE,
   TOTEM_PERIODE,
   ANNONCE_PLONGEON,
+  PLONGEON,
   competenceDuPilote,
   etatPilote,
   type Strategie,
@@ -84,7 +85,9 @@ import { BUILD_RESTRICTED } from "@cdj/kit/stockage";
 import { commandesDuJeu } from "@cdj/kit/jeu/commandes";
 import type { OptionsPartie, PartieDuJeu } from "@cdj/kit/jeu/types";
 import { bornes, animerChevalier, creerChevalier, creerRocher, type ChevalierVu } from "./acteurs";
-import { cameraDuBestiaireMonstres, MonstresVus, etiquettesDuBestiaire } from "./ennemisVue";
+import { attitudeGelee, cameraDuBestiaireMonstres, MonstresVus, etiquettesDuBestiaire } from "./ennemisVue";
+import { clipChevalier, clipGolem, clipMonstre, type NomTiers } from "./clipsTiers";
+import type { ActeurTiers, ModeleTiers } from "./tiers";
 import { animerBoss, cadreDuBoss, capDuBoss, cleBoss, creerBoss, type BossVu } from "./bosses";
 import { monterBestiaire, RAYON_BESTIAIRE } from "./bestiaire";
 import { CameraRush, type ModeNiveau, type PointCadre } from "./camera";
@@ -283,7 +286,7 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     qualite = q;
     rendu.definir(q);
     soleil.castShadow = q === "haute";
-    ombres.maillage.visible = q === "basse";
+    ombres.regler(q === "haute"); // lot BR-A3 : en haute, les disques restent comme occlusion de contact
     scene.traverse((n: Object3D) => {
       const m = (n as Mesh).material as Material | Material[] | undefined;
       if (Array.isArray(m)) for (const x of m) x.needsUpdate = true;
@@ -374,6 +377,60 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
   });
   scene.add(fantomeVu.racine);
   const sFantome = suivi(0, 0);
+
+  // Lot BR-A3 : les MODÈLES TIERS de l'essai de style (packs convertis par `apps/rush/modeles-tiers/`, servis par `public/modeles-tiers/`), chargés à la demande s'ils sont là (`&modeles=0` : non).
+  // Ils REMPLACENT la forme procédurale du chevalier, du golem, de la gelée et de la chauve-souris quand ils arrivent ; les autres acteurs gardent la leur.
+  const tiers = {
+    prets: false,
+    mod: null as typeof import("./tiers") | null,
+    modeles: new Map<NomTiers, ModeleTiers>(),
+    chevalier: null as ActeurTiers | null,
+    boss: null as ActeurTiers | null,
+    monstres: new Map<number, ActeurTiers>(),
+    libres: new Map<NomTiers, ActeurTiers[]>(),
+  };
+  const nomTiersDuMonstre = (m: Monstre): NomTiers | null => (m.type === GELEE ? "gelee" : m.type === CHAUVE ? "chauve-souris" : null);
+  const acteurMonstre = (m: Monstre): ActeurTiers | null => {
+    const nom = nomTiersDuMonstre(m);
+    if (!nom || !tiers.mod) return null;
+    const modele = tiers.modeles.get(nom);
+    if (!modele) return null;
+    let a = tiers.monstres.get(m.id);
+    if (!a) {
+      a = tiers.libres.get(nom)?.pop() ?? new tiers.mod.ActeurTiers(modele);
+      scene.add(a.racine);
+      a.racine.visible = true;
+      tiers.monstres.set(m.id, a);
+    }
+    return a;
+  };
+  if (essai.modeles && !BUILD_RESTRICTED) {
+    const noms: NomTiers[] = ["chevalier", "gelee", "chauve-souris"];
+    if (partie.golem?.kind === 0) noms.push("golem"); // seul le golem est converti (les quatre autres boss gardent leur forme)
+    void import("./tiers")
+      .then(async (mod) => {
+        const ms = await mod.chargerTiers(noms);
+        for (const m of ms.values()) mod.preparer(m);
+        tiers.mod = mod;
+        tiers.modeles = ms;
+        const ch = ms.get("chevalier");
+        if (ch) {
+          tiers.chevalier = new mod.ActeurTiers(ch);
+          scene.add(tiers.chevalier.racine);
+          chevalier.pivot.visible = false;
+          chevalier.matieres.push(...tiers.chevalier.matieres);
+        }
+        const go = ms.get("golem");
+        if (go && bossVu) {
+          tiers.boss = new mod.ActeurTiers(go);
+          scene.add(tiers.boss.racine);
+          for (const n of bossVu.racine.children) n.visible = false;
+          bossVu.matieres.push(...tiers.boss.matieres);
+        }
+        tiers.prets = true;
+      })
+      .catch((e: unknown) => console.warn("[rush] modèles tiers indisponibles", e));
+  }
 
   const bêtes = new Map<number, ActeurBete>();
   const rochers: { groupe: Group; matiere: MeshToonMaterial }[] = [];
@@ -1159,6 +1216,13 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       chevalier.pivot.rotation.z = u * 1.45;
       chevalier.pivot.position.y = 0.6 - u * 0.22;
     } else chevalier.pivot.rotation.z = 0;
+    if (tiers.chevalier) {
+      const a = tiers.chevalier;
+      a.racine.position.set(cx, 0, cz);
+      a.racine.rotation.y = yawChev;
+      a.jouer(clipChevalier(c, { duree: partie.dureeCoup(c.combo), dureeEsquive: 12, course: partie.course / 100, touche: flashChev > 0, perdue: partie.perdue, gagnee: partie.finie && !partie.perdue }));
+      a.maj(dtMonde);
+    }
     if (c.etat === 2 && !fige && Math.random() < 0.6) eclats.gerbe("poussiere", cx, 0.12, cz, 1, { vitesse: 1, taille: 0.1, haut: 0.6, duree: 0.3, gravite: 3 });
     else if (c.marche && c.etat !== 2 && !fige && !partie.finie && now - dernierPas > 150) {
       // la poussière des pas : un petit nuage derrière le pied qui se lève
@@ -1209,6 +1273,14 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         elan: partie.dur(24),
         dort,
       });
+      if (tiers.boss) {
+        const a = tiers.boss;
+        a.racine.position.set(gx, 0, gz);
+        a.racine.rotation.y = yawGolem;
+        a.racine.scale.setScalar(1 + golemSursaut * 0.035); // le sursaut sous chaque coup (sans l'interrompre)
+        a.jouer(clipGolem(g, { marche: deplace && !dort && !figee, dort: dort && !figee }));
+        a.maj(dtMonde);
+      }
       if (golemEclair > 0) golemEclair -= dt * 60;
       eclair(bossVu.matieres, Math.max(golemEclair > 0 ? 0.85 : 0, bossVu.reflet));
       ombres.poser(gx, gz, g.r > 0 ? metres(g.r) * 1.15 : 2, bossVu.haut * 0.6);
@@ -1258,7 +1330,27 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
         q = Math.exp(-5.5 * a.ecrase) * Math.cos(a.ecrase * 10) * 0.42 * a.force;
       }
       if (a.eclair > 0) a.eclair -= dt * 60;
-      monstresVus.poserMonstre(m, partie, mx, mz, a.yaw, a.eclair > 0 ? 0.9 : 0, q, temps);
+      const at = acteurMonstre(m);
+      if (at) {
+        // Lot BR-A3 : un modèle tiers animé à la place du tas instancié ; la hauteur (le bond de la gelée, le vol de la chauve-souris) reste celle de la vue procédurale.
+        const d = partie.dureesDe(m);
+        const taille = m.elite === 1 ? partie.reglages.eliteTaille / 100 : 1;
+        const ap = bornes((partie.tick - m.age) / 18, 0, 1);
+        let y = 0;
+        if (m.type === GELEE) y = attitudeGelee(m, temps, partie.tick, d).y;
+        else y = m.etat === PLONGEON ? 1.0 - 0.55 * Math.sin(Math.PI * Math.min(1, m.t / d.chauvePlongeon)) : 1.0 + Math.sin(temps * 3 + m.id) * 0.1;
+        at.racine.position.set(mx, y * taille, mz);
+        at.racine.rotation.y = a.yaw;
+        if (m.type === CHAUVE) {
+          // la chauve-souris se penche vers la caméra (une rotation autour de l'axe X du MONDE, après le cap : ordre XYZ) : on voit sa face et ses ailes ouvertes, comme sur la cible, pas le dessus de sa tête
+          at.racine.rotation.order = "XYZ";
+          at.racine.rotation.x = -0.65;
+        }
+        at.racine.scale.set(taille * (1 + q * 0.5), taille * Math.max(0.5, 1 - q) * (ap < 1 ? ap : 1), taille * (1 + q * 0.5));
+        at.jouer(clipMonstre(m, d, { marche: Math.hypot(a.suivi.x1 - a.suivi.x0, a.suivi.y1 - a.suivi.y0) > 8, touche: a.eclair > 0 })!);
+        at.maj(dtMonde * (0.9 + ((m.id * 0.137) % 0.2))); // un peu de désordre : la meute ne bat pas la mesure ensemble
+        eclair(at.matieres, a.eclair > 0 ? 0.9 : 0);
+      } else monstresVus.poserMonstre(m, partie, mx, mz, a.yaw, a.eclair > 0 ? 0.9 : 0, q, temps);
       const rm = metres(partie.rayonM(m));
       ombres.poser(mx, mz, m.type === CHAUVE ? 0.38 : Math.max(0.4, rm * 1.3), m.type === CHAUVE ? 0.9 : 0);
       // Les annonces des nouveaux ennemis (le rouge est réservé au danger : toutes sont des dangers) : la LIGNE du cracheur, le CÔNE du porte-bouclier, l'ANNEAU du totem.
@@ -1286,6 +1378,17 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
     vasesVue.maj(partie.vases, temps);
     if (qualite === "basse") for (const v of partie.vases) if (v.id >= 0) ombres.poser(metres(v.x), metres(v.y), metres(v.r) * 1.25);
     for (const id of bêtes.keys()) if (!vus.has(id)) bêtes.delete(id);
+    // les acteurs tiers des monstres partis retournent à leur réserve
+    for (const [id, at] of tiers.monstres) {
+      if (vus.has(id)) continue;
+      at.racine.visible = false;
+      scene.remove(at.racine);
+      tiers.monstres.delete(id);
+      const nom = at.modele.nom;
+      const l = tiers.libres.get(nom) ?? [];
+      l.push(at);
+      tiers.libres.set(nom, l);
+    }
 
     // Les zones annoncées (cercles, bandes, anneaux d'invocation), les nuages, les ondes, les pierres qui tombent.
     annonces.debut();
@@ -1432,6 +1535,8 @@ export function nouvellePartieRush(contenu: Contenu, hote: HTMLElement, o: Optio
       definirQualite: (q: Qualite) => appliquerQualite(q),
       /** Une image dessinée tout de suite (de quoi compter les appels de dessin d'une qualité). */
       dessinerMaintenant: () => dessiner(),
+      /** Lot BR-A3 : les modèles tiers — chargés ?, lesquels, et le clip que joue chaque acteur (chevalier, boss, monstres). */
+      tiers: () => ({ prets: tiers.prets, modeles: [...tiers.modeles.keys()], chevalier: tiers.chevalier?.clip ?? null, boss: tiers.boss?.clip ?? null, monstres: [...tiers.monstres.values()].map((a) => a.clip) }),
       redemarrer,
       /** Lot BR4 : le fantôme (`null` : aucun) — son tick, sa position (unités), son niveau, s'il se voit et l'opacité la plus forte de ses matières (il est translucide). */
       fantome: () => {
