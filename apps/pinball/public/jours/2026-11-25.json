@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "jeu": "pinball",
+  "date": "2026-11-25",
+  "g": 8,
+  "sim": 9,
+  "bot": 8,
+  "seuils": {
+    "bronze": 248600,
+    "silver": 580100,
+    "gold": 994400,
+    "author": 1657400
+  },
+  "contenu": {
+    "theme": "ocean",
+    "plan": "tremplin",
+    "modules": [
+      "tourbillon",
+      "trou",
+      "bumpers",
+      "mini",
+      "bumpers",
+      "bumpers"
+    ],
+    "empreinte": "332c527f"
+  }
+}

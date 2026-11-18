@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "jeu": "pinball",
+  "date": "2026-11-19",
+  "g": 8,
+  "sim": 9,
+  "bot": 8,
+  "seuils": {
+    "bronze": 1486600,
+    "silver": 3468800,
+    "gold": 5946500,
+    "author": 9910900
+  },
+  "contenu": {
+    "theme": "foire",
+    "plan": "bretelle",
+    "modules": [
+      "manege",
+      "trou",
+      "cibles",
+      "mini",
+      "bumpers",
+      "mini"
+    ],
+    "empreinte": "49378e8f"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "jeu": "pinball",
+  "date": "2026-11-26",
+  "g": 8,
+  "sim": 9,
+  "bot": 8,
+  "seuils": {
+    "bronze": 818400,
+    "silver": 1909600,
+    "gold": 3273600,
+    "author": 5456000
+  },
+  "contenu": {
+    "theme": "volcan",
+    "plan": "doublette",
+    "modules": [
+      "geyser",
+      "trou",
+      "bumpers",
+      "mini",
+      "coulee",
+      "mini"
+    ],
+    "empreinte": "f3a48f75"
+  }
+}

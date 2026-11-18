@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "jeu": "pinball",
+  "date": "2026-12-01",
+  "g": 8,
+  "sim": 9,
+  "bot": 8,
+  "seuils": {
+    "bronze": 635300,
+    "silver": 1482300,
+    "gold": 2541100,
+    "author": 4235200
+  },
+  "contenu": {
+    "theme": "foire",
+    "plan": "tremplin",
+    "modules": [
+      "manege",
+      "trou",
+      "bumpers",
+      "mini",
+      "cibles",
+      "mini"
+    ],
+    "empreinte": "3849d676"
+  }
+}

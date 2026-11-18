@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "jeu": "pinball",
+  "date": "2026-11-23",
+  "g": 8,
+  "sim": 9,
+  "bot": 8,
+  "seuils": {
+    "bronze": 364400,
+    "silver": 850400,
+    "gold": 1457800,
+    "author": 2429600
+  },
+  "contenu": {
+    "theme": "espace",
+    "plan": "bretelle",
+    "modules": [
+      "trouNoir",
+      "trou",
+      "asteroide",
+      "portailB",
+      "portailA",
+      "mini"
+    ],
+    "empreinte": "9f8ae40b"
+  }
+}
