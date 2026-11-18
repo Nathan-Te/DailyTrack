@@ -117,6 +117,11 @@ export interface BilleVue {
   charge: number;
 }
 
+/** Recopie `src` dans `dst` (les mêmes longueurs). */
+const tableau = <T>(dst: T[], src: readonly T[]): void => {
+  for (let i = 0; i < src.length; i++) dst[i] = src[i]!;
+};
+
 const billeVide = (id: number, nbPlateaux: number, nbCoulees: number): Bille => ({
   id, x: 0, y: 0, vx: 0, vy: 0, px: 0, py: 0, captifDe: -1, captifTb: -1, captif: 0, dansLanceur: false, charge: 0, entree: 0, sauvee: false, servie: false, geyserJets: 0,
   manegeSecteur: new Array<number>(nbPlateaux).fill(-1), couleeDedans: new Array<boolean>(nbCoulees).fill(false), couche: 0, rail: -1, railS: 0, railV: 0, railDepuis: 0, railBout: 0,
@@ -355,6 +360,110 @@ export class Partie {
     this.suivantId = m.suivantId;
     this.sortie = m.sortie;
     if (m.autres.length > 0) this.autres = m.autres.map((b) => ({ ...b, manegeSecteur: b.manegeSecteur.slice(), couleeDedans: b.couleeDedans.slice() }));
+  }
+
+  /**
+   * **Lot PBR1 : recopie l'état de `m` dans cette partie** (la même table, les mêmes réglages : une partie faite par `copier` de `m` ou d'une de ses copies), **sans rien allouer**. Même résultat que `m.copier(sansGains)`,
+   * pas à pas (`test/robot.test.ts`) ; le robot en réutilise quelques-unes pour ses millions d'essais (une copie neuve coûtait ses tableaux, et le ramasse-miettes).
+   */
+  recopier(m: Partie, sansGains = false): void {
+    const bm = m.table.bumpers;
+    const bt = this.table.bumpers;
+    if (bm !== bt) for (let i = 0; i < bm.length; i++) if (bm[i]!.mobile) {
+      bt[i]!.x = bm[i]!.x;
+      bt[i]!.vx = bm[i]!.vx;
+    }
+    this.a[0] = m.a[0];
+    this.a[1] = m.a[1];
+    this.aAvant[0] = m.aAvant[0];
+    this.aAvant[1] = m.aAvant[1];
+    this.but = m.but;
+    tableau(this.bas, m.bas);
+    tableau(this.banqueDans, m.banqueDans);
+    tableau(this.voiesAllumees, m.voiesAllumees);
+    tableau(this.trouPause, m.trouPause);
+    tableau(this.spin, m.spin);
+    tableau(this.choc, m.choc);
+    tableau(this.manegeSecteur, m.manegeSecteur);
+    tableau(this.manegeAvance, m.manegeAvance);
+    tableau(this.tourbillonPause, m.tourbillonPause);
+    tableau(this.portailPause, m.portailPause);
+    tableau(this.geyserAttente, m.geyserAttente);
+    tableau(this.geyserJet, m.geyserJet);
+    tableau(this.couleeDedans, m.couleeDedans);
+    tableau(this.railsFaits, m.railsFaits);
+    this.lampes[0] = m.lampes[0];
+    this.lampes[1] = m.lampes[1];
+    this.appui[0] = m.appui[0];
+    this.appui[1] = m.appui[1];
+    this.chocSling[0] = m.chocSling[0];
+    this.chocSling[1] = m.chocSling[1];
+    this.gains.length = 0;
+    this.sansGains = sansGains;
+    this.ev2 = m.ev2;
+    this.passageOuvert = m.passageOuvert;
+    this.passageServi = m.passageServi;
+    this.ouvertures = m.ouvertures;
+    this.passages = m.passages;
+    this.sauveurTick = m.sauveurTick;
+    this.sauvetages = m.sauvetages;
+    this.aiguillages = m.aiguillages;
+    this.portePoints = m.portePoints;
+    this.tick = m.tick;
+    this.score = m.score;
+    this.mult = m.mult;
+    this.multMax = m.multMax;
+    this.billes = m.billes;
+    this.x = m.x;
+    this.y = m.y;
+    this.vx = m.vx;
+    this.vy = m.vy;
+    this.px = m.px;
+    this.py = m.py;
+    this.captifDe = m.captifDe;
+    this.captifTb = m.captifTb;
+    this.captif = m.captif;
+    this.dansLanceur = m.dansLanceur;
+    this.charge = m.charge;
+    this.entree = m.entree;
+    this.sauvee = m.sauvee;
+    this.servie = m.servie;
+    this.appuiLanceur = m.appuiLanceur;
+    this.voiesDans = m.voiesDans;
+    this.ev = m.ev;
+    this.compteur = m.compteur;
+    this.missionFaite = m.missionFaite;
+    this.geyserJets = m.geyserJets;
+    this.couche = m.couche;
+    this.rail = m.rail;
+    this.railS = m.railS;
+    this.railV = m.railV;
+    this.railDepuis = m.railDepuis;
+    this.railBout = m.railBout;
+    this.combo = m.combo;
+    this.comboFin = m.comboFin;
+    this.comboMaxPartie = m.comboMaxPartie;
+    this.fin = m.fin;
+    this.niveau = m.niveau;
+    this.verrouAllume = m.verrouAllume;
+    this.verrouillees = m.verrouillees;
+    this.verrouTotal = m.verrouTotal;
+    this.multibille = m.multibille;
+    this.multibilles = m.multibilles;
+    this.aLacher = m.aLacher;
+    this.lacherDans = m.lacherDans;
+    this.sauveeMulti = m.sauveeMulti;
+    this.jackpots = m.jackpots;
+    this.dernierJackpot = m.dernierJackpot;
+    this.perduesMulti = m.perduesMulti;
+    this.jackpotsPartie = m.jackpotsPartie;
+    this.jackpotPoints = m.jackpotPoints;
+    this.vide = m.vide;
+    this.id = m.id;
+    this.suivantId = m.suivantId;
+    this.sortie = m.sortie;
+    this.autres.length = 0;
+    for (const b of m.autres) this.autres.push({ ...b, manegeSecteur: b.manegeSecteur.slice(), couleeDedans: b.couleeDedans.slice() });
   }
 
   /** La bille est-elle sur un rail ? (Un accesseur : le compilateur ne suit pas le changement de couche d'une méthode.) */
@@ -691,7 +800,7 @@ export class Partie {
     if (this.fin) return;
     this.ev = 0;
     this.ev2 = 0;
-    this.gains.length = 0;
+    if (this.gains.length > 0) this.gains.length = 0; // lot PBR1 : écrire la longueur coûte, même à zéro
     const d = this.d;
     const r = this.reglages;
     const t = this.table;
@@ -720,7 +829,7 @@ export class Partie {
     }
     if (this.chocSling[0] > 0) this.chocSling[0] -= 1;
     if (this.chocSling[1] > 0) this.chocSling[1] -= 1;
-    for (let i = 0; i < this.spin.length; i++) this.spin[i] = div(this.spin[i]! * 997, 1000);
+    for (let i = 0; i < this.spin.length; i++) if (this.spin[i] !== 0) this.spin[i] = div(this.spin[i]! * 997, 1000);
     for (let i = 0; i < 2; i++) {
       const haut = this.appui[i]!;
       const cible = haut ? d.haut : d.repos;
@@ -844,7 +953,7 @@ export class Partie {
       this.porte(g, d);
       if (this.surUnRail) return;
     }
-    for (const p of t.poteaux) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0);
+    for (const p of t.poteaux) if (this.y > p.y - p.r - RU && this.y < p.y + p.r + RU) this.cercle(p.x, p.y, p.r, r.rebondPoteau, 0); // lot PBR1 : hors de leur bande, aucun contact possible
     for (let i = 0; i < t.bumpers.length; i++) {
       const b = t.bumpers[i]!;
       if (this.cercle(b.x, b.y, b.r, r.rebondBumper, b.kick, b.vx ?? 0)) {
