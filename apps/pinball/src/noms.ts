@@ -6,7 +6,7 @@ const COMMUNS: readonly string[] = ["bumpers", "cibles", "spinner", "trou"];
 /** Lot PBG1 : les rails ont un nom par thème, comme les modules communs (`module.rampe.foire` : « Montagnes russes »). */
 const RAILS: readonly string[] = ["rampe", "orbite"];
 /** Lot PBL1 : les mots des plaques (le verrou, le jackpot, les portails de l'espace) : `plaque.<mot>`, en capitales dans le catalogue. */
-const PLAQUES: readonly string[] = ["verrou", "verrou.annonce", "jackpot", "portails"];
+const PLAQUES: readonly string[] = ["verrou", "jackpot", "portails"];
 const DE_THEME: readonly string[] = ["porte", "manege", "tourbillon", "trouNoir", "portailA", "portailB", "asteroide", "geyser", "coulee"];
 
 /** Le nom lu d'un module (`t` : le traducteur du jeu), ou `null` pour un module sans nom (rien n'est alors écrit sur la table). `mini` (la paire de bumpers) prend le nom des bumpers. */

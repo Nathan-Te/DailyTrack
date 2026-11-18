@@ -1697,14 +1697,14 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
         sc.globalAlpha = 1;
       }
       if (s.message) {
-        // lot PBG2 : un message court au milieu de la table, grand, qui apparaît d'un coup (un léger gonflement) puis s'efface ; jamais plus large que l'écran
+        // lot PBG2 : un message court en haut de la table, petit (lot PBL2 : 2,5 → 1,3, jamais plus de 60 % de la largeur, un peu transparent : il cachait la partie), qui apparaît d'un coup (un léger gonflement) puis s'efface ; jamais plus large que l'écran
         const texte = s.message.texte.toLocaleUpperCase();
-        const c = ecranDe(AXE, 330);
+        const c = ecranDe(AXE, 250);
         const vie = Math.max(0, Math.min(1, s.message.vie));
         const gonfle = 1 + 0.18 * Math.max(0, (vie - 0.85) / 0.15);
-        const voulu = (L / LARGEUR) * 2.5 * (vue.etiquettes / 170) * gonfle;
-        sc.globalAlpha = Math.min(1, vie * 3);
-        pastille(sc, o.police, c.x, c.y - (1 - vie) * 14, texte, Math.min(voulu, (L * 0.92) / largeurPlaque(texte, "encre")));
+        const voulu = (L / LARGEUR) * 1.3 * (vue.etiquettes / 170) * gonfle;
+        sc.globalAlpha = Math.min(0.9, vie * 3);
+        pastille(sc, o.police, c.x, c.y - (1 - vie) * 14, texte, Math.min(voulu, (L * 0.6) / largeurPlaque(texte, "encre")));
         sc.globalAlpha = 1;
       }
       if (gainsTexte) {
@@ -1714,9 +1714,9 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
           const c = ecranDe(px(g.x), px(g.y));
           const texte = g.texte.toLocaleUpperCase();
           const vie = Math.max(0, Math.min(1, g.vie));
-          const voulu = (L / LARGEUR) * 1.5 * (vue.etiquettes / 170);
-          sc.globalAlpha = Math.min(1, vie * 2.5);
-          const k = Math.min(voulu, (L * 0.9) / largeurPlaque(texte, "encre"));
+          const voulu = (L / LARGEUR) * 0.95 * (vue.etiquettes / 170);
+          sc.globalAlpha = Math.min(0.9, vie * 2.5);
+          const k = Math.min(voulu, (L * 0.5) / largeurPlaque(texte, "encre"));
           // le centre reste dans l'écran : la plaque ne sort jamais par les côtés
           const demi = (largeurPlaque(texte, "encre") * k) / 2;
           pastille(sc, o.police, Math.max(demi, Math.min(L - demi, c.x)), c.y - 16 - (1 - vie) * 46, texte, k);

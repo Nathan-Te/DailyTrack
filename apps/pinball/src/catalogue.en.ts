@@ -111,7 +111,6 @@ export const CATALOGUE_EN: { readonly [K in keyof typeof CATALOGUE_FR]: string }
   "scene.niveau": "MISSION LEVEL {n}",
   "scene.jackpot": "JACKPOT +{points}",
   "plaque.verrou": "LOCK",
-  "plaque.verrou.annonce": "after\nmission",
   "plaque.jackpot": "JACKPOT",
   "plaque.portails": "PORTALS",
   "aujourdhui.boucle": "Completing the mission lights the lock; two locked balls start multiball and its jackpots, then the mission comes back higher.",

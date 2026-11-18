@@ -109,7 +109,6 @@ export const CATALOGUE_FR = {
   "scene.niveau": "MISSION NIVEAU {n}",
   "scene.jackpot": "JACKPOT +{points}",
   "plaque.verrou": "VERROU",
-  "plaque.verrou.annonce": "après\nmission",
   "plaque.jackpot": "JACKPOT",
   "plaque.portails": "PORTAILS",
   "aujourdhui.boucle": "La mission réussie allume le verrou ; deux billes verrouillées lancent la multibille et ses jackpots, puis la mission revient plus haut.",

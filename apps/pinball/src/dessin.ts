@@ -1754,9 +1754,8 @@ export function placerEtiquettes(table: Table, theme: ThemePinball, nom: (module
   if (table.verrou >= 0 && nomVerrou) {
     const v = table.trous[table.verrou]!;
     const c = { x: px(v.x), y: px(v.y) };
-    // lot PBL2 : éteinte, la plaque dit ce qui l'allume (« VERROU » puis, sur une deuxième ligne, « APRÈS LA MISSION ») ; allumée, elle ne dit que « VERROU »
-    const annonce = nom("verrou.annonce");
-    poser("trou", "verrou", [nomVerrou.toLocaleUpperCase(), ...(annonce ? [`${nomVerrou}\n${annonce}`.toLocaleUpperCase()] : [])], [obstacles[table.poses.findIndex((m) => m.type === "trou" && m.x === v.x && m.y === v.y)]!], c, empreinteDuModule("trou"), [c], true);
+    // lot PBL2 : la plaque ne dit que « VERROU » (ce qui l'allume est sur le petit encart de mission du HUD) ; éteinte elle est ternie, allumée elle clignote
+    poser("trou", "verrou", [nomVerrou.toLocaleUpperCase()], [obstacles[table.poses.findIndex((m) => m.type === "trou" && m.x === v.x && m.y === v.y)]!], c, empreinteDuModule("trou"), [c], true);
   }
   // 3. la porte (sa plaque ne s'affiche que porte ouverte, mais sa place est prise une fois pour toutes)
   const nomPorte = nom("porte");
@@ -2275,24 +2274,24 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
   /** Lot PBG2 : un message court au milieu de la table, en fondu (« MULTIBILLE ! »…) : grand, mais jamais plus large que la table. */
   function message(m: { texte: string; vie: number }): void {
     const texte = enMajuscules(m.texte);
-    const k = Math.min(2.3, 292 / largeurPlaque(texte, "encre"));
-    g.globalAlpha = Math.min(1, m.vie * 2.5);
-    pastille(g, police, AXE, 296 - (1 - m.vie) * 22, texte, k);
+    const k = Math.min(1.2, 190 / largeurPlaque(texte, "encre")); // lot PBL2 : petit (2,3 avant), en haut de la table, un peu transparent : il cachait la partie
+    g.globalAlpha = Math.min(0.9, m.vie * 2.5);
+    pastille(g, police, AXE, 230 - (1 - m.vie) * 22, texte, k);
     g.globalAlpha = 1;
   }
   /** Lot PBG2 : un gain qui a un texte (« JACKPOT +7 500 ») : toujours dessiné, il flotte vers le haut en s'effaçant, au point de la prise ; le texte reste dans la table. */
   function gainAvecTexte(gain: { x: number; y: number; vie: number; texte?: string }): void {
     const texte = gain.texte!;
-    const demi = (largeurTexte(texte) * 1.5) / 2 + 4;
+    const demi = (largeurTexte(texte) * 0.95) / 2 + 4;
     const x = Math.min(344 - demi, Math.max(24 + demi, px(gain.x)));
-    g.globalAlpha = Math.min(1, gain.vie * 2.5);
-    g.font = `800 15px ${police}`;
+    g.globalAlpha = Math.min(0.9, gain.vie * 2.5);
+    g.font = `800 10px ${police}`;
     g.textAlign = "center";
     g.textBaseline = "middle";
     g.lineJoin = "round";
-    g.lineWidth = 4.5;
+    g.lineWidth = 3.5;
     g.strokeStyle = ENCRE;
-    const y = px(gain.y) - 18 - (1 - gain.vie) * 46;
+    const y = px(gain.y) - 14 - (1 - gain.vie) * 30;
     g.strokeText(texte, x, y);
     g.fillStyle = MOUTARDE;
     g.fillText(texte, x, y);
