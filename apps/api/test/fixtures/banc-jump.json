@@ -3747,7 +3747,21 @@
      "id": "<identifiant>",
      "nom": "Les Hauts",
      "score": 54019,
-     "classes": 4
+     "classes": 4,
+     "trio": [
+      {
+       "ref": "e0cca2965509",
+       "pseudo": "Joueur1"
+      },
+      {
+       "ref": "a20248c7f641",
+       "pseudo": "Joueur4"
+      },
+      {
+       "ref": "19d8d35c06ab",
+       "pseudo": "Joueur3"
+      }
+     ]
     }
    ],
    "moins": []
