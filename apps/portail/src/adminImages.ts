@@ -1,6 +1,7 @@
 import { bouton, el } from "@cdj/ui";
 import { type ActionImage, type ImageAdmin } from "./adminDonnees";
 import type { Contexte } from "./adminDiffusion";
+import { entetePage } from "./adminEntete";
 
 // Lot C1, partie B (plateforme) — la rubrique « Images » du panneau : d'abord les images signalées ou masquées, puis les nouvelles à regarder, en galerie. Pour chacune : garder, retirer, interdire l'envoi
 // (ou le lever) — chaque action est confirmée et inscrite au journal par le serveur. L'image vient du serveur en octets (adresse `data:` : la CSP de /admin/ n'autorise pas `blob:`) ; le nom est un texte.
@@ -51,8 +52,7 @@ export async function vueImages(ctx: Contexte): Promise<Node[]> {
   const liste = await ctx.client.images();
   const galerie = (id: string, images: ImageAdmin[], vide: string) => (images.length === 0 ? p(vide, "admin-aide") : el("ul", { classe: "admin-images", attrs: { id } }, ...images.map((i) => carte(ctx, i))));
   return [
-    el("h1", { classe: "admin-titre-section", texte: "Images" }),
-    p(`Les images de profil et de groupe. Une image signalée par 3 joueurs différents est masquée tout de suite ; tu décides ici (${liste.max} par liste au plus).`, "admin-aide"),
+    entetePage({ titre: "Images", sousTitre: `Les images de profil et de groupe. Une image signalée par 3 joueurs différents est masquée tout de suite ; tu décides ici (${liste.max} par liste au plus).` }),
     el("h2", { classe: "admin-titre-section", texte: `Signalées (${liste.signalees.length})` }),
     galerie("images-signalees", liste.signalees, "Aucune image signalée."),
     el("h2", { classe: "admin-titre-section", texte: `Nouvelles (${liste.nouvelles.length})` }),

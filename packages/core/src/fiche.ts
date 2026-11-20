@@ -595,6 +595,8 @@ export interface ProjectionServeur {
     /** Lot A3 : la catégorie (`jour` ou `arcade`) et le premier jour où elle s'applique (absent : depuis toujours). */
     categorie: CategorieJeu;
     categorieDepuis?: string;
+    /** Lot N3 : la couleur du jeu (`etiquette.fond`), pour la vignette de sa ligne dans l'administration. */
+    fond: string;
     classement: FicheJeu["classement"];
     medailles: FicheJeu["medailles"];
     versions: FicheJeu["versions"];
@@ -622,6 +624,7 @@ export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeu
       premierJour: f.premierJour,
       categorie: f.categorie,
       ...(f.categorieDepuis !== undefined ? { categorieDepuis: f.categorieDepuis } : {}),
+      fond: f.etiquette.fond,
       classement: f.classement,
       medailles: f.medailles,
       versions: f.versions,

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin : jeux et navigation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<style>
+  body{margin:0;background:#D8CCB3;color:#2A1E16;font:15px/1.5 Inter,system-ui,sans-serif;padding:28px 16px 80px}
+  .intro,.bloc{max-width:1440px;margin:0 auto 40px}
+  h1{font-size:26px;margin:0 0 8px}
+  h2{font-size:21px;margin:0 0 4px}
+  p,ul{max-width:860px;margin:0 0 10px}
+  ul{padding-left:20px}
+  .ecrans{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+  .cadre{background:#fff;border-radius:10px;padding:10px;box-shadow:0 1px 0 #B8AB90}
+  .cadre small{display:block;color:#555;margin:0 0 6px 2px;font-weight:600}
+  .cadre iframe{border:0;display:block;border-radius:6px}
+  .tel iframe{width:390px;height:1040px}
+  .bureau{flex:1 1 700px;min-width:0}
+  .bureau .boite{overflow:hidden}
+  .bureau iframe{width:1280px;height:900px;transform-origin:0 0}
+  @media (max-width:440px){.tel{width:100%}.tel iframe{width:100%}}
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Panneau d'administration : les jeux en un geste, un menu rangé</h1>
+  <p>Proposition du 20/11. Les chiffres sont inventés ; les jeux et leurs états sont des exemples.</p>
+  <ul>
+    <li><b>Jeux</b> : une ligne par jeu, rangées par état (En ligne, En aperçu, Fermés). L'interrupteur Off · Aperçu · On est sur la ligne et agit en un clic.</li>
+    <li><b>Moins de confirmations</b> : ouvrir un jeu ou le passer en aperçu se fait tout de suite, avec « Annuler » pendant 8 secondes. Seul le geste qui retire un jeu aux joueurs (On vers Aperçu ou Off) demande une confirmation.</li>
+    <li><b>Ce qui bloque est écrit sur la ligne</b> : « Il manque l'illustration », « Premier jour à fixer ». La position interdite est grisée, avec la raison.</li>
+    <li><b>Le lien d'aperçu</b> : « Nouveau lien d'aperçu » le crée et le copie en un geste (l'ancien cesse de marcher, car le serveur ne garde pas le lien). La catégorie (Classé, Arcade, Party) et les joueurs du jour se lisent d'un coup d'œil.</li>
+    <li><b>Le menu</b> passe de 11 liens à plat à quatre rubriques, avec les compteurs de ce qui t'attend. Sur téléphone : une barre d'onglets en bas, comme le portail.</li>
+  </ul>
+</div>
+
+<div class="bloc">
+  <h2>La page « Jeux »</h2>
+  <p>Sur ordinateur et sur téléphone. Sur la ligne de Pinball, on vient de passer en « Aperçu » : le bandeau du bas propose d'annuler.</p>
+  <div class="ecrans">
+    <div class="cadre bureau"><small>Ordinateur, 1280 px</small><div class="boite" id="bureau"></div></div>
+    <div class="cadre tel"><small>Téléphone, 390 px</small><div id="tel"></div></div>
+  </div>
+</div>
+
+<script type="text/plain" id="css">
+:root{--creme:#EDE3CF;--creme2:#E3D6BC;--papier:#FFF6E0;--encre:#2A1E16;--terre:#C2401F;--moutarde:#E8B23A;--gris:#6B5847;--vert:#2E7D5B}
+*{box-sizing:border-box}
+body{margin:0;background:var(--creme);color:var(--encre);font:15px/1.4 Archivo,sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+.haut{display:flex;align-items:center;gap:14px;padding:12px 24px;border-bottom:3px solid var(--encre);background:var(--creme)}
+.logo{background:var(--encre);color:var(--creme);font:18px/1 'Archivo Black';letter-spacing:1px;padding:7px 10px 6px;border-radius:3px;box-shadow:3px 3px 0 var(--terre)}
+.env{font:11px 'Archivo Black';letter-spacing:.8px;background:var(--terre);color:#FFF4E0;padding:4px 8px;border-radius:3px}
+.haut .qui{margin-left:auto;font-size:13px;color:var(--gris)}
+.cadre-admin{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:840px}
+.menu{border-right:3px solid var(--encre);padding:18px 14px;background:var(--creme2)}
+.menu h3{font:11px 'Archivo Black';letter-spacing:.9px;color:var(--gris);margin:16px 8px 6px}
+.menu h3:first-child{margin-top:0}
+.menu a{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:4px;font:700 15px Archivo;color:inherit;text-decoration:none}
+.menu a.ici{background:var(--encre);color:var(--creme)}
+.menu a b{font:700 12px 'JetBrains Mono';background:var(--terre);color:#FFF4E0;border-radius:10px;padding:1px 7px}
+.menu a small{font:600 12px Archivo;color:var(--gris)}
+.page{padding:22px 28px 110px}
+.titre{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.titre h1{margin:0;font:28px 'Archivo Black'}
+.titre p{margin:2px 0 0;color:var(--gris);font-size:14px}
+.outils{display:flex;gap:8px;flex-wrap:wrap}
+.champ{height:40px;border:2px solid var(--encre);border-radius:4px;background:var(--papier);padding:0 12px;font:15px Archivo;min-width:200px;color:var(--gris);display:flex;align-items:center}
+.puce{height:40px;display:inline-flex;align-items:center;gap:6px;border:2px solid var(--encre);border-radius:20px;padding:0 13px;font:700 13px Archivo;background:var(--papier)}
+.puce.on{background:var(--encre);color:var(--creme)}
+.groupe{font:12px 'Archivo Black';letter-spacing:.9px;color:var(--gris);margin:20px 0 8px;display:flex;align-items:center;gap:8px}
+.groupe i{width:10px;height:10px;border-radius:50%;border:2px solid var(--encre)}
+.jeu{display:grid;grid-template-columns:56px minmax(0,1fr) 150px auto 44px;gap:16px;align-items:center;border:3px solid var(--encre);border-radius:6px;background:var(--papier);box-shadow:4px 4px 0 var(--encre);padding:10px 12px;margin-bottom:10px}
+.jeu.ferme{box-shadow:none;border-width:2px;background:none}
+.vignette{width:56px;height:56px;border:2.5px solid var(--encre);border-radius:6px;display:grid;place-items:center;font:17px 'Archivo Black'}
+.nomjeu{font:19px 'Archivo Black';display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cat{font:10px 'Archivo Black';letter-spacing:.7px;border:2px solid var(--encre);border-radius:3px;padding:2px 6px;background:var(--creme)}
+.info{font-size:13px;color:var(--gris);margin-top:2px}
+.alerte{display:inline-flex;align-items:center;gap:6px;font:700 13px Archivo;color:var(--terre);margin-top:3px}
+.alerte::before{content:"!";width:17px;height:17px;border-radius:50%;background:var(--terre);color:#FFF4E0;display:grid;place-items:center;font:11px 'Archivo Black'}
+.chiffre{text-align:right;font:700 20px 'JetBrains Mono';line-height:1.1}
+.chiffre small{display:block;font:600 12px Archivo;color:var(--gris)}
+.etat{display:inline-grid;grid-auto-flow:column;border:2.5px solid var(--encre);border-radius:6px;overflow:hidden;background:var(--creme)}
+.etat span{min-width:76px;height:44px;display:grid;place-items:center;font:14px 'Archivo Black';padding:0 10px}
+.etat span+span{border-left:2.5px solid var(--encre)}
+.etat .on-off{background:var(--encre);color:var(--creme)}
+.etat .on-apercu{background:var(--moutarde)}
+.etat .on-on{background:var(--vert);color:#FFF4E0}
+.etat .interdit{color:#A89A82;background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(42,30,22,.08) 6px 8px)}
+.plus{width:44px;height:44px;border:2px solid var(--encre);border-radius:4px;background:var(--creme);display:grid;place-items:center;font:20px 'Archivo Black';line-height:1}
+.lien{display:inline-flex;align-items:center;gap:6px;font:700 13px Archivo;border:2px solid var(--encre);border-radius:4px;padding:5px 9px;margin-top:6px;background:var(--creme)}
+.annuler{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--encre);color:var(--creme);border-radius:8px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:14px;font:700 14px Archivo;box-shadow:0 0 0 2px var(--moutarde);white-space:nowrap}
+.annuler span{background:var(--moutarde);color:var(--encre);font:13px 'Archivo Black';padding:8px 12px;border-radius:4px}
+.onglets{display:none}
+@media (max-width:760px){
+  .haut{padding:10px 14px}.haut .qui{display:none}.haut .env{margin-left:auto}
+  .cadre-admin{display:block}.menu{display:none}
+  .page{padding:16px 14px 170px}
+  .titre h1{font-size:24px}
+  .champ{flex:1 1 100%;min-width:0}
+  .puce{padding:0 11px}
+  .outils{width:100%}
+  .jeu{grid-template-columns:48px minmax(0,1fr) 44px;gap:10px 12px;padding:10px}
+  .vignette{width:48px;height:48px;font-size:15px}
+  .nomjeu{font-size:17px}
+  .chiffre{display:none}
+  .etat{grid-column:1 / -1;grid-row:2;display:grid;grid-template-columns:1fr 1fr 1fr}
+  .etat span{min-width:0;height:46px}
+  .plus{grid-column:3;grid-row:1}
+  .annuler{bottom:78px;left:10px;right:10px;transform:none;justify-content:space-between}
+  .onglets{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--creme);border-top:3px solid var(--encre);padding:9px 2px 13px}
+  .onglets span{flex:1;text-align:center;font:11px 'Archivo Black';color:var(--gris);position:relative}
+  .onglets span.ici{color:var(--encre)}
+  .onglets span i{position:absolute;top:-6px;left:58%;font:700 10px 'JetBrains Mono';font-style:normal;background:var(--terre);color:#FFF4E0;border-radius:9px;padding:0 5px}
+  .onglets em{display:block;width:26px;height:4px;border-radius:2px;margin:0 auto 6px;background:transparent}
+  .onglets .ici em{background:var(--terre)}
+}
+</script>
+
+<script>
+const JEUX = [
+  { nom: 'Track', sigle: 'TR', fond: '#1E1A17', clair: true, cat: 'CLASSÉ', etat: 'on', info: 'En ligne depuis le 13 oct.', joueurs: 41 },
+  { nom: 'Jump', sigle: 'JU', fond: '#F2C230', cat: 'CLASSÉ', etat: 'on', info: 'En ligne depuis le 26 oct.', joueurs: 38 },
+  { nom: 'Tower', sigle: 'TO', fond: '#9ED9C0', cat: 'ARCADE', etat: 'on', info: 'En ligne depuis le 7 nov.', joueurs: 17 },
+  { nom: 'Blocks', sigle: 'BL', fond: '#BCD8F2', cat: 'ARCADE', etat: 'on', info: 'En ligne depuis le 12 nov.', joueurs: 22 },
+  { nom: 'Pinball', sigle: 'PI', fond: '#C9B6F2', cat: 'ARCADE', etat: 'apercu', info: 'Aperçu : visible avec le lien seulement', lien: true, joueurs: 2 },
+  { nom: 'Gravity', sigle: 'GR', fond: '#FFB892', cat: 'ARCADE', etat: 'apercu', info: 'Aperçu : visible avec le lien seulement', alerte: 'Premier jour à fixer avant « On »', lien: true, interdit: ['on'], joueurs: 1 },
+  { nom: 'Pile poil', sigle: 'PP', fond: '#F6B3A4', cat: 'PARTY', etat: 'off', info: 'Fermé : « Bientôt » pour les joueurs', joueurs: null },
+  { nom: 'Vertige', sigle: 'VE', fond: '#A9D6E8', cat: 'ARCADE', etat: 'off', info: 'Fermé : « Bientôt » pour les joueurs', alerte: 'Il manque l\'illustration et le motif', interdit: ['apercu', 'on'], joueurs: null },
+];
+const NOMS = { off: 'Off', apercu: 'Aperçu', on: 'On' };
+const ligne = (j) => `<div class="jeu${j.etat === 'off' ? ' ferme' : ''}">
+  <div class="vignette" style="background:${j.fond};color:${j.clair ? '#F4EFE6' : '#2A1E16'}">${j.sigle}</div>
+  <div><div class="nomjeu">${j.nom}<span class="cat">${j.cat}</span></div>
+    <div class="info">${j.info}</div>${j.alerte ? `<div class="alerte">${j.alerte}</div>` : ''}${j.lien ? `<div><span class="lien">Nouveau lien d'aperçu</span></div>` : ''}</div>
+  <div class="chiffre">${j.joueurs === null ? '–' : j.joueurs}<small>${j.joueurs === null ? '' : 'joueurs aujourd\'hui'}</small></div>
+  <div class="etat">${['off', 'apercu', 'on'].map((e) => `<span class="${e === j.etat ? `on-${e}` : (j.interdit || []).includes(e) ? 'interdit' : ''}">${NOMS[e]}</span>`).join('')}</div>
+  <div class="plus">⋯</div></div>`;
+const groupe = (titre, couleur, etat) => `<div class="groupe"><i style="background:${couleur}"></i>${titre} · ${JEUX.filter((j) => j.etat === etat).length}</div>${JEUX.filter((j) => j.etat === etat).map(ligne).join('')}`;
+const page = `
+<div class="haut"><span class="logo">DU JOUR</span><span class="env">PRODUCTION</span><span class="qui">Éditeur · Se déconnecter</span></div>
+<div class="cadre-admin">
+  <nav class="menu">
+    <h3>AUJOURD'HUI</h3><a href="#">Tableau de bord</a><a class="ici" href="#">Jeux <small style="color:inherit;opacity:.8">4 en ligne</small></a>
+    <h3>COMMUNAUTÉ</h3><a href="#">Joueurs</a><a href="#">Groupes</a><a href="#">Images <b>3</b></a><a href="#">Retours <b>2</b></a>
+    <h3>DIFFUSION</h3><a href="#">Nouveautés <b>5</b></a><a href="#">Message en direct</a>
+    <h3>SUIVI</h3><a href="#">Journal</a><a href="#">Outils de Track <small>↗</small></a><a href="#">Outils de Jump <small>↗</small></a>
+  </nav>
+  <main class="page">
+    <div class="titre"><div><h1>Jeux</h1><p>Off : fermé. Aperçu : avec le lien seulement. On : tout le monde.</p></div>
+      <div class="outils"><span class="champ">Chercher un jeu</span><span class="puce on">Tous · 8</span><span class="puce">Classés</span><span class="puce">Arcade</span><span class="puce">Party</span></div></div>
+    ${groupe('EN LIGNE', '#2E7D5B', 'on')}${groupe('EN APERÇU', '#E8B23A', 'apercu')}${groupe('FERMÉS', '#2A1E16', 'off')}
+  </main>
+</div>
+<div class="annuler">Pinball est passé en « Aperçu ».<span>Annuler · 8 s</span></div>
+<div class="onglets"><span><em></em>Tableau</span><span class="ici"><em></em>Jeux</span><span><em></em>Communauté<i>5</i></span><span><em></em>Diffusion<i>5</i></span><span><em></em>Suivi</span></div>`;
+const doc = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap"><style>${document.getElementById('css').textContent}</style></head><body>${page}</body></html>`;
+const boite = document.getElementById('bureau');
+const fb = document.createElement('iframe'); fb.title = 'Jeux, ordinateur'; fb.srcdoc = doc; boite.appendChild(fb);
+const ft = document.createElement('iframe'); ft.title = 'Jeux, téléphone'; ft.srcdoc = doc; document.getElementById('tel').appendChild(ft);
+const ajuster = () => { const e = Math.min(1, boite.clientWidth / 1280); fb.style.transform = `scale(${e})`; boite.style.height = `${900 * e}px`; };
+new ResizeObserver(ajuster).observe(boite); ajuster();
+</script>
+</body>
+</html>

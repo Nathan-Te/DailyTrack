@@ -73,8 +73,8 @@ describe("les cartouches, le catalogue et les noms viennent de la fiche", () => 
   // Lot K1b : le test de K1 s'étend à chaque jeu qui a une fiche (Track le rejoint au lot K1c). Les exceptions sont nommées une à une, avec leur raison ; chacune doit encore se voir dans le code
   // (une exception qui ne sert plus est retirée : le test échoue sinon).
   const EXCEPTIONS: { fichier: string; motif: RegExp; raison: string }[] = [
-    { fichier: "admin.ts", motif: /"data-menu": "track"/, raison: "le menu du panneau d'administration : l'entrée de la page d'outils `/track/admin/` (voir la suivante)" },
-    { fichier: "admin.ts", motif: /"data-menu": "jump"/, raison: "le menu du panneau d'administration : les entrées des pages d'outils `/<jeu>/admin/` (`admin.outils` de la fiche) ne sont pas encore lues de la fiche — lot K2 (le panneau est l'outil de l'éditeur, hors du portail des joueurs)" },
+    { fichier: "adminDonnees.ts", motif: /cle: "track", texte: "Outils de Track"/, raison: "(lot N3 : le menu est dans `RUBRIQUES_MENU` d'`adminDonnees.ts`) le menu du panneau d'administration : l'entrée de la page d'outils `/track/admin/` (voir la suivante)" },
+    { fichier: "adminDonnees.ts", motif: /cle: "jump", texte: "Outils de Jump"/, raison: "(lot N3 : `RUBRIQUES_MENU`) le menu du panneau d'administration : les entrées des pages d'outils `/<jeu>/admin/` (`admin.outils` de la fiche) ne sont pas encore lues de la fiche — lot K2 (le panneau est l'outil de l'éditeur, hors du portail des joueurs)" },
   ];
   it("le portail ne nomme plus un jeu qui a une fiche en dur dans le code qui présente un jeu (hors commentaires et exceptions nommées)", () => {
     const vues = new Set<number>();
