@@ -1,6 +1,6 @@
 # Passation — Blocks (`blocks`)
 
-> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/blocks/seed.md`). Générée par `npm run nouveau-jeu` à partir des `CLAUDE.md` du dépôt : **ne pas la retoucher à la main** ; pour la mettre à jour après un changement des règles de la plateforme : `npm run nouveau-jeu -- --id blocks --passation`.
+> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/blocks/seed.md`). Sections 1 à 7 générées, à ne pas retoucher (mise à jour : `npm run nouveau-jeu -- --id blocks --passation`) ; **les trois dernières, tenues par la conversation du jeu**, à chaque lot, puis `npm run tableau`.
 
 ## 1. Où en est ce jeu
 - **Blocks** (`blocks`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). L'état de départ est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.
@@ -55,3 +55,15 @@
 - Avant de pousser : `npm run verifier` ; attendre la CI : `npm run attendre-ci` (une seule commande, silencieuse). Fusionner `main` une seule fois, juste avant de s'arrêter.
 - **Ordre conseillé** : (1) Nathan écrit le seed ; (2) maquettes de l'étiquette et du HUD ; (3) la simulation et son golden (`npm run golden:blocks -w @cdj/blocks-sim`, jamais sans monter la version) ; (4) le rendu et les sensations ; (5) le serveur (le contrat minimal suffit longtemps) ; (6) les textes fr + en ; (7) la publication, par Nathan.
 - **Ne pas modifier** les visions (`docs/seed.md`, `docs/*/seed*.md`, `docs/plateforme/seed-phase-*.md`) ni la charte : c'est Nathan qui le fait.
+
+## Où on en est
+- Blocks (arcade, `off`, branché par le kit) ; dernier README de lot : B8c (08/11), tirage v6, règles v3, bot v5 : chaque série est tirée selon la grille, médailles recalibrées (`docs/blocks/lots/lot-B8c-tirage-adapte.md`).
+- Vérifié au dernier lot : tests unitaires, typecheck, e2e Chromium (87 tests). Non vérifié : un vrai téléphone, Firefox et WebKit.
+- La publication (`off` → `preview` → `on`) est faite par Nathan dans `/admin/` ; l'état réel n'est pas dans le dépôt.
+- Repris le 20/11 (lot O1) des README de lots et des CLAUDE.md ; à compléter par la conversation du jeu.
+
+## Prochain lot
+à compléter par la conversation du jeu (le README de B8c n'annonce pas de suite).
+
+## Décisions en attente
+- Nathan : juger le ressenti du jeu avec le tirage adapté (B8c : non vérifié, « Nathan »).

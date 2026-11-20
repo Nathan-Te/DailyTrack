@@ -2,7 +2,7 @@
 
 > **Passation initiale** : la passation de départ de Nathan (la conversation d'où vient le jeu) est `docs/gravity/passation-initiale.md` ; elle ne sert qu'à démarrer, le dépôt fait foi. *(Ce renvoi est ajouté à la main au lot GR0 : `npm run nouveau-jeu -- --id gravity --passation` réécrit le fichier et le retire, à remettre.)*
 
-> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/gravity/seed.md`). Générée par `npm run nouveau-jeu` à partir des `CLAUDE.md` du dépôt : **ne pas la retoucher à la main** ; pour la mettre à jour après un changement des règles de la plateforme : `npm run nouveau-jeu -- --id gravity --passation`.
+> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/gravity/seed.md`). Sections 1 à 7 générées, à ne pas retoucher (mise à jour : `npm run nouveau-jeu -- --id gravity --passation`) ; **les trois dernières, tenues par la conversation du jeu**, à chaque lot, puis `npm run tableau`.
 
 ## 1. Où en est ce jeu
 - **Gravity** (`gravity`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). Il vient d'être créé par le générateur : l'état est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.
@@ -63,3 +63,16 @@
 - Avant de pousser : `npm run verifier` ; attendre la CI : `npm run attendre-ci` (une seule commande, silencieuse). Fusionner `main` une seule fois, juste avant de s'arrêter.
 - **Ordre conseillé** : (1) Nathan écrit le seed ; (2) maquettes de l'étiquette et du HUD ; (3) la simulation et son golden (`npm run golden:gravity -w @cdj/gravity-sim`, jamais sans monter la version) ; (4) le rendu et les sensations ; (5) le serveur (le contrat minimal suffit longtemps) ; (6) les textes fr + en ; (7) la publication, par Nathan.
 - **Ne pas modifier** les visions (`docs/seed.md`, `docs/*/seed*.md`, `docs/plateforme/seed-phase-*.md`) ni la charte : c'est Nathan qui le fait.
+
+## Où on en est
+- Gravity (arcade, `off`, branché par le kit) ; dernier README de lot : GR7 (18/11), vitesse relevée, générateur 5, simulation 4, robot 4, trois dangers (scies, sols fragiles, lasers), 48 motifs.
+- Aucun jour n'est figé (le jeu est `off`).
+- Non vérifié à GR7 : le son à l'oreille, un vrai téléphone, Firefox et WebKit, la longueur du préavis de la Nuit à l'œil.
+- Repris le 20/11 (lot O1) des README de lots et des CLAUDE.md ; à compléter par la conversation du jeu.
+
+## Prochain lot
+à compléter par la conversation du jeu (le README de GR7 n'annonce pas de suite).
+
+## Décisions en attente
+- Nathan : relever le plafond `gravity.demande` de 203 à 230 Ko (proposé par GR7, noté « à confirmer » dans `docs/plateforme/budgets.md` ; sans cela le job « Budgets » reste rouge).
+- Plateforme : `scripts/unit-durees.json` n'a pas de ligne pour les trois nouveaux fichiers de tests de `gravity-sim` (GR7, 5 s par défaut).

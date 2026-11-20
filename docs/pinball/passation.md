@@ -2,7 +2,7 @@
 
 > **Passation initiale** : la passation de départ de Nathan (la conversation d'où vient le jeu) est `docs/pinball/passation-initiale.md` ; elle ne sert qu'à démarrer, le dépôt fait foi. *(Ce renvoi est ajouté à la main au lot PB0 : `npm run nouveau-jeu -- --id pinball --passation` réécrit le fichier et le retire, à remettre.)*
 
-> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/pinball/seed.md`). Générée par `npm run nouveau-jeu` à partir des `CLAUDE.md` du dépôt : **ne pas la retoucher à la main** ; pour la mettre à jour après un changement des règles de la plateforme : `npm run nouveau-jeu -- --id pinball --passation`.
+> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/pinball/seed.md`). Sections 1 à 7 générées, à ne pas retoucher (mise à jour : `npm run nouveau-jeu -- --id pinball --passation`) ; **les trois dernières, tenues par la conversation du jeu**, à chaque lot, puis `npm run tableau`.
 
 ## 1. Où en est ce jeu
 - **Pinball** (`pinball`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). Il vient d'être créé par le générateur : l'état est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.
@@ -64,3 +64,16 @@
 - Avant de pousser : `npm run verifier` ; attendre la CI : `npm run attendre-ci` (une seule commande, silencieuse). Fusionner `main` une seule fois, juste avant de s'arrêter.
 - **Ordre conseillé** : (1) Nathan écrit le seed ; (2) maquettes de l'étiquette et du HUD ; (3) la simulation et son golden (`npm run golden:pinball -w @cdj/pinball-sim`, jamais sans monter la version) ; (4) le rendu et les sensations ; (5) le serveur (le contrat minimal suffit longtemps) ; (6) les textes fr + en ; (7) la publication, par Nathan.
 - **Ne pas modifier** les visions (`docs/seed.md`, `docs/*/seed*.md`, `docs/plateforme/seed-phase-*.md`) ni la charte : c'est Nathan qui le fait.
+
+## Où on en est
+- Pinball (arcade, `off`, branché par le kit) ; dernier README de lot : PBR1 (18/11), un robot des médailles 4,5 fois plus rapide (2,4 à 2,8 s sur ordinateur, ≈ 10,6 s avec un processeur ralenti ×4), scores identiques.
+- `PINBALL_SIM_VERSION` inchangée ; `PINBALL_BOT_VERSION` n'a pas monté (résultats identiques).
+- Non vérifié : la vitesse sur un vrai téléphone ; l'aperçu `/pinball/?robot` n'a pas été regardé par un humain.
+- Repris le 20/11 (lot O1) des README de lots et des CLAUDE.md ; à compléter par la conversation du jeu.
+
+## Prochain lot
+à compléter par la conversation du jeu (le README de PBR1 n'annonce pas de suite).
+
+## Décisions en attente
+- Nathan : monter ou non `PINBALL_BOT_VERSION` (PBR1 : non, pour ne pas changer l'empreinte des jours protégés ; une ligne à changer pour garder la trace).
+- Nathan : si 3,3 s d'attente reste trop, passer les tranches du calcul du navigateur de 4 ms à 8 ms toutes les 16 ms (divise l'attente par deux ; hors périmètre de PBR1, non fait).
