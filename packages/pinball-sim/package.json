@@ -21,7 +21,13 @@
     "profil-robot:pinball": "esbuild tools/profil-robot.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/profil-robot.mjs --log-level=warning && node dist/profil-robot.mjs",
     "jalons-robot:pinball": "esbuild tools/jalons-robot.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/jalons-robot.mjs --log-level=warning && node dist/jalons-robot.mjs",
     "preparer:pinball": "esbuild tools/preparer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/preparer.mjs --log-level=warning && node dist/preparer.mjs",
-    "fenetres:pinball": "esbuild tools/fenetres.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/fenetres.mjs --log-level=warning && node dist/fenetres.mjs"
+    "fenetres:pinball": "esbuild tools/fenetres.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/fenetres.mjs --log-level=warning && node dist/fenetres.mjs",
+    "conception:pinball": "esbuild tools/conception.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/conception.mjs --log-level=warning && node dist/conception.mjs",
+    "regler-essai:pinball": "esbuild tools/regler-essai.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/regler-essai.mjs --log-level=warning && node dist/regler-essai.mjs",
+    "valider-essais:pinball": "esbuild tools/valider-essais.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/valider-essais.mjs --log-level=warning && node dist/valider-essais.mjs",
+    "densites:pinball": "esbuild tools/densites.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/densites.mjs --log-level=warning && node dist/densites.mjs",
+    "golden-essais:pinball": "esbuild tools/references-essais.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/references-essais.mjs --log-level=warning && node dist/references-essais.mjs",
+    "schemas-essais:pinball": "esbuild tools/schemas-essais.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/schemas-essais.mjs --log-level=warning && node dist/schemas-essais.mjs"
   },
   "exports": {
     ".": "./src/index.ts",

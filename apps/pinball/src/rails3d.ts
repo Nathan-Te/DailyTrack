@@ -1,5 +1,5 @@
 import { BufferGeometry, Color, DoubleSide, Float32BufferAttribute, FrontSide, Mesh, MeshBasicMaterial, MeshPhongMaterial, Uint32BufferAttribute, Vector3, Vector4, type Camera, type Material } from "three";
-import { HAUTEUR, LARGEUR, RAYON, UNITE, type Porte, type Rail, type Table, type ThemePinball } from "@cdj/pinball-sim";
+import { HAUTEUR, LARGEUR, LARGEUR_RAIL, RAYON, UNITE, type Porte, type Rail, type Table, type ThemePinball } from "@cdj/pinball-sim";
 import { largeurDuRail } from "./dessin";
 import { echantillons, hauteurRail, pointDuRail, type PointRail } from "./rails";
 
@@ -169,14 +169,6 @@ function echantillonsAdaptes(rail: Rail, pasMax: number, angle = 0.1): PointRail
   return gardes;
 }
 
-/** Les échantillons à pas fixe (`pas` px, et le bout) : les rayures d'un rail tombent alors exactement sur les pas. */
-function echantillonsFixes(rail: Rail, pas: number): PointRail[] {
-  const sortie: PointRail[] = [];
-  for (let d = 0; d < rail.len / UNITE - pas * 0.4; d += pas) sortie.push(pointDuRail(rail, Math.round(d * UNITE)));
-  sortie.push(pointDuRail(rail, rail.len));
-  return sortie;
-}
-
 /** Les abscisses (unités) où poser quelque chose tous les `pas` px, depuis `depart` px, sans les `marge` px des bouts. */
 function repartir(rail: Rail, pas: number, depart: number, marge: number): number[] {
   const total = rail.len / UNITE;
@@ -214,133 +206,28 @@ function supports(tas: Tas, rail: Rail, pas: number, fut: C3, traverse: C3, larg
   }
 }
 
-// **Lot PBL1 : les rails ne cachent plus la table.** Plus fins (la demi-largeur est celle de `largeurDuRail` : 9 px, 8 pour l'orbite, contre 12 avant), moins saturés, **en partie translucides** (un fond de plexi ou de verre à 16-30 % ; des filets, des
-// tubes et quelques traverses au lieu de rubans pleins), **sans lueur sur ceux du Volcan** (ni braise ni lampe) : **ce qui est sous un rail reste visible** (`test/rails3d.test.ts` mesure la part du plateau que les parties opaques recouvrent).
-// ---------------------------------------------------------------------------------------------------------------- foire : les montagnes russes
-function foire(t: Tas3, c: Contexte): void {
-  const { rail, demi: d } = c;
-  // des rayures de 11 px : un échantillon tous les 11 px, une rayure par pas
-  const pts = echantillonsFixes(rail, 11);
-  const rouge = hex("#C25A4F");
-  const blanc = hex("#F1EBDD");
-  const sable = hex("#EBDDBF");
-  const rayure = (k: number): number => k % 2;
-  const bande = (k: number): C3 => (rayure(k) ? rouge : blanc);
-  const autre = (k: number): C3 => (rayure(k) ? blanc : rouge);
-  // le fond : du plexi (translucide) ; les deux rebords : de fins tubes rayés rouge et blanc en quinconce (1,6 px de large, 3,4 de haut)
-  balayer(t.translucide, pts, [{ a: [-d, 0], b: [d, 0], na: [0, 1], c: sable }], c.evase);
-  for (const [u, couleur] of [[-d, bande], [d, autre]] as const) {
-    balayer(t.opaque, pts, [
-      { a: [u - 0.8, 3.4], b: [u + 0.8, 3.4], na: [0, 1], c: couleur },
-      { a: [u - 0.8, 0], b: [u - 0.8, 3.4], na: [-1, 0], c: couleur },
-      { a: [u + 0.8, 0], b: [u + 0.8, 3.4], na: [1, 0], c: couleur },
-    ], c.evase);
-  }
-  // quelques traverses fines, sous le rail (une tous les 30 px)
-  for (const [k, s] of repartir(rail, 30, 8, 6).entries()) {
-    const p = pointDuRail(rail, s);
-    const hv = hauteurVue(p.h);
-    boite(t.opaque, X(p.x), Z(p.y), Math.max(-1, hv - 2.4), hv - 0.3, p.dx, p.dy, 1, d + 1.8, k % 2 ? hex("#A8483E") : hex("#8F4038"), k % 2 ? hex("#C8665B") : hex("#B05549"));
-  }
-  supports(t.opaque, rail, 62, rouge, blanc, 2.2, blanc, 9);
-  // de petites ampoules sur les rebords (elles rayonnent à peine)
-  const ampoule = hex("#F2D18A");
-  for (const s of repartir(rail, 44, 16, 16)) {
-    const p = pointDuRail(rail, s);
-    for (const u of [-d - 0.4, d + 0.4]) {
-      const m = monde(p, u, 4.6);
-      boite(t.rayon, m[0], m[2], m[1] - 0.8, m[1] + 0.8, p.dx, p.dy, 0.8, 0.8, ampoule);
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------------------------------------------- océan : le toboggan aquatique
-function ocean(t: Tas3, c: Contexte): void {
-  const { rail, demi: d } = c;
-  const pts = echantillonsAdaptes(rail, 14);
-  const eau = hex("#5CC7CE");
-  const ecume = hex("#EDFAFB");
-  // la gouttière : une demi-ellipse (de la largeur du rail, 5,5 px de profond), translucide, plus claire vers les bords
-  const bandes: Bande[] = [];
-  const NB = 6;
-  const pointU = (th: number): [number, number] => [d * Math.sin(th), 5.5 - 5.5 * Math.cos(th)];
-  const normale = (th: number): [number, number] => {
-    // vers l'intérieur : du point vers le centre (0, 5,5), avec les rayons de l'ellipse
-    const [u, v] = pointU(th);
-    const nu = -u / (d * d);
-    const nv = (5.5 - v) / (5.5 * 5.5);
-    const l = Math.hypot(nu, nv) || 1;
-    return [nu / l, nv / l];
-  };
-  for (let k = 0; k < NB; k++) {
-    const a = -Math.PI / 2 + (k / NB) * Math.PI;
-    const b = -Math.PI / 2 + ((k + 1) / NB) * Math.PI;
-    const clair = Math.abs((a + b) / 2) / (Math.PI / 2);
-    const f = 0.85 + 0.45 * clair * clair;
-    bandes.push({ a: pointU(a), b: pointU(b), na: normale(a), nb: normale(b), c: [Math.min(1, eau[0] * f), Math.min(1, eau[1] * f), Math.min(1, eau[2] * f)] });
-  }
-  balayer(t.translucide, pts, bandes, c.evase);
-  // les bords : un fin tube d'écume le long de chaque rebord
-  for (const u of [-d - 0.4, d + 0.4]) {
-    balayer(t.opaque, pts, [
-      { a: [u - 1, 6.6], b: [u + 1, 6.6], na: [0, 1], c: ecume },
-      { a: [u - 1, 4.6], b: [u - 1, 6.6], na: [-1, 0], c: ecume },
-      { a: [u + 1, 4.6], b: [u + 1, 6.6], na: [1, 0], c: ecume },
-    ], c.evase);
-  }
-  // quelques crêtes d'écume sur les bords (une petite pointe blanche tous les 30 px)
-  for (const [k, s] of repartir(rail, 30, 12, 14).entries()) {
-    const p = pointDuRail(rail, s);
-    const u = k % 2 ? d + 0.6 : -d - 0.6;
-    const m = monde(p, u, 6.6);
-    const a = k * 0.9;
-    boite(t.opaque, m[0], m[2], m[1] - 0.4, m[1] + 0.9 + (k % 3) * 0.6, Math.cos(a), Math.sin(a), 1.2, 0.9, ecume);
-  }
-  // quelques piliers de corail, fins
-  supports(t.opaque, rail, 64, hex("#D9917D"), hex("#F3E6CF"), 2.4);
-}
-
-// ---------------------------------------------------------------------------------------------------------------- espace : le tube orbital
+// **Lot PBT0 : des rails discrets, dans tous les thèmes.** Retour de Nathan : trois rails dessinés en voies de wagonnet à traverses formaient une cage sur toute la moitié haute de la table, et on ne voyait plus ce qu'on visait. Un rail est
+// maintenant **un fil métallique fin** (deux tubes de 1,8 px de large sur les bords d'une gouttière de `LARGEUR_RAIL` px, un fond presque transparent, quelques fûts fins) : aucune traverse, aucun ruban, aucune lueur. **L'habillage du thème
+// se limite à l'arche d'entrée (`portique`, à chaque bouche) et à l'arche de sortie d'une rampe** ; le tracé n'a que la teinte de son thème (`FIL`). `test/rails3d.test.ts` et `test/visibilite.test.ts` gardent ce qui est sous un rail.
+const FIL: Record<ThemePinball, { fil: [string, string]; fond: string; fut: string }> = {
+  foire: { fil: ["#B9564B", "#F3EBDC"], fond: "#F0E4C8", fut: "#C9BFB0" },
+  ocean: { fil: ["#E6FBFD", "#BFEFF3"], fond: "#9FE6EC", fut: "#CFE8EA" },
+  espace: { fil: ["#8FDDEE", "#E8FDFF"], fond: "#B6E4F0", fut: "#AEB9C9" },
+  volcan: { fil: ["#B9B5C0", "#D8D3DC"], fond: "#9A949C", fut: "#6E6A72" },
+};
 const NEON_ESPACE = "#38E4FF";
-function espace(t: Tas3, c: Contexte): void {
+/** Le rayon des tubes du fil (px). */
+const RAYON_FIL = 0.9;
+function fil(theme: ThemePinball, t: Tas3, c: Contexte): void {
   const { rail, demi: d } = c;
   const pts = echantillonsAdaptes(rail, 14);
-  const verre = hex("#9ADBEA");
-  // le tube : un cylindre de verre, dont le fond touche le plateau (rayon de la demi-largeur du rail)
-  balayer(t.translucide, pts, cercle(0, d, d, 10, verre), c.evase);
-  // le fond : du verre lui aussi (translucide), deux fins filets de néon sur ses bords
-  const neon = fois(hex(NEON_ESPACE), 0.8);
-  for (const u of [-d + 0.6, d - 0.6]) balayer(t.rayon, pts, [{ a: [u - 0.6, 0.3], b: [u + 0.6, 0.3], na: [0, 1], c: neon }], c.evase);
-  // de fins anneaux de néon autour du tube, rares
-  for (const s of repartir(rail, 70, 28, 28)) anneau(t.rayon, pointDuRail(rail, s), d, d + 0.5, d + 1.6, 1.4, 10, neon);
-  // quelques entretoises : de fins fûts d'argent
-  supports(t.opaque, rail, 64, hex("#B4BFD1"), hex("#8794AE"), 2);
-}
-
-// ---------------------------------------------------------------------------------------------------------------- volcan : le rail de wagonnet
-function volcan(t: Tas3, c: Contexte): void {
-  const { rail, demi: d } = c;
-  const pts = echantillonsAdaptes(rail, 14);
-  const fer = hex("#3A3531");
-  const ferHaut = hex("#8E877F");
-  // le fond : du verre fumé (translucide) ; les deux rails de fer : de fins profils (2 × 2,2 px)
-  balayer(t.translucide, pts, [{ a: [-d, 0], b: [d, 0], na: [0, 1], c: hex("#8C8792") }], c.evase);
-  for (const u of [-d + 0.8, d - 0.8]) {
-    balayer(t.opaque, pts, [
-      { a: [u - 1, 0.6], b: [u - 1, 2.8], na: [-1, 0], c: fer },
-      { a: [u + 1, 0.6], b: [u + 1, 2.8], na: [1, 0], c: fer },
-      { a: [u - 1, 2.8], b: [u + 1, 2.8], na: [0, 1], c: ferHaut },
-    ], c.evase);
-  }
-  // quelques traverses de bois, sous les rails (une tous les 26 px) ; **pas de braise ni de lueur**
-  const bois = hex("#6E4A32");
-  const boisClair = hex("#8A6244");
-  for (const [k, s] of repartir(rail, 26, 8, 6).entries()) {
-    const p = pointDuRail(rail, s);
-    const hv = hauteurVue(p.h);
-    boite(t.opaque, X(p.x), Z(p.y), Math.max(-1, hv - 0.4), hv + 1.2, p.dx, p.dy, 1.3, d + 1.8, k % 2 ? hex("#58392A") : bois, k % 2 ? bois : boisClair);
-  }
-  supports(t.opaque, rail, 64, hex("#58402E"), hex("#3A2A20"), 2.4, hex("#6E4A32"));
+  const f = FIL[theme];
+  // le fond : une gouttière presque transparente
+  balayer(t.translucide, pts, [{ a: [-d, 0], b: [d, 0], na: [0, 1], c: hex(f.fond) }], c.evase);
+  // les deux fils
+  f.fil.forEach((couleur, k) => balayer(t.opaque, pts, cercle(k === 0 ? -d : d, 1.4, RAYON_FIL, 6, hex(couleur)), c.evase));
+  // quelques fûts très fins, là où le rail est haut
+  supports(t.opaque, rail, 110, hex(f.fut), hex(f.fut), 1.4);
 }
 
 /** La bouche d'un rail : un portique propre au thème, posé de part et d'autre de l'entrée — bas et fin. */
@@ -393,7 +280,6 @@ function portique(t: Tas3, theme: ThemePinball, porte: Porte): void {
   }
 }
 
-const STYLES: Record<ThemePinball, (t: Tas3, c: Contexte) => void> = { foire, ocean, espace, volcan };
 
 /** Ce que `corps.ts` pose dans la scène et libère. */
 export interface Rails3d {
@@ -440,7 +326,12 @@ export function creerRails3d(theme: ThemePinball, table: Table): Rails3d {
       const d = rail.genre === "orbite" ? Math.min(p.s / UNITE, total - p.s / UNITE) : p.s / UNITE;
       return 1 + 0.35 * Math.max(0, 1 - d / 22);
     };
-    STYLES[theme](t3, { rail, rang, evase, demi: largeurDuRail(rail) / 2 });
+    fil(theme, t3, { rail, rang, evase, demi: largeurDuRail(rail) / 2 });
+    // l'arche de sortie d'une rampe : le même portique que les bouches, posé à son bout (une orbite sort par sa deuxième bouche)
+    if (rail.genre === "rampe") {
+      const n = rail.ux.length - 1;
+      portique(t3, theme, { x: rail.x[n + 1]!, y: rail.y[n + 1]!, ux: rail.ux[n]!, uy: rail.uy[n]!, l: LARGEUR_RAIL * UNITE * 0.5 } as Porte);
+    }
   });
   for (const porte of table.portes) portique(t3, theme, porte);
 

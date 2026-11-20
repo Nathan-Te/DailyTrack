@@ -1,8 +1,11 @@
 import { mixSeed, Rng } from "@cdj/core";
-import { TOUR, NORME } from "./constantes";
-import { cosinus, div, sinus } from "./entiers";
 import type { Module } from "./generateur";
+import { miroirDePlan, orbite, porteDeLOrbite, theme, trou } from "./plans-outils";
+import { PLANS_ESSAI } from "./plans-essai";
 import type { ThemePinball } from "./themes";
+
+export { miroirDePlan, orbite, porteDeLOrbite } from "./plans-outils";
+export { PLANS_ESSAI } from "./plans-essai";
 
 // LES PLANS DE TABLE (lot PBG1) — seed « Le contenu des tables » : **le bas de la table ne change toujours pas** (batteurs, lance-pierres, couloirs de retour, lanceur) ; **le haut suit un plan tiré du jour**, parmi
 // plusieurs. Un plan fixe la place des rampes, de l'orbite, du mini-batteur, du trou (le verrou du lot suivant) et des emplacements de modules ; ensuite les modules sont tirés dans les emplacements du plan.
@@ -29,6 +32,8 @@ export interface DefRail {
   hauteur: number;
   /** La demi-largeur de la bouche (px) : la bille est prise quand son centre est à moins de cette distance du milieu de la bouche. */
   demiPorte: number;
+  /** Lot PBT0 : les paramètres d'une orbite faite par `orbite()` (`xg`, `xd`, `y`, `r`, `hauteur`, `ag`, `ad`, `yd`) — le miroir la refait avec les bouches échangées, pour qu'elle longe toujours l'arc du châssis (qui n'est pas symétrique dans l'axe 184). */
+  orb?: readonly [number, number, number, number, number, number, number, number];
 }
 
 /** Le mini-batteur : un troisième batteur en haut de la table, qui suit le bouton du batteur du même côté. Son pivot est donné **dans le repère du côté gauche** ; du côté droit il est l'image dans l'axe de la table. */
@@ -61,6 +66,8 @@ export interface DefAiguillage {
 
 export interface Plan {
   id: string;
+  /** Lot PBT0 : l'idée du plan, en une phrase (les plans d'essai t1 à t6 : la fiche de tir du README du lot). */
+  idee?: string;
   emplacements: readonly Emplacement[];
   rampes: readonly DefRail[];
   /** `null` seulement pour le plan d'essai (`PLAN_CLASSIQUE`) : tout plan du jour a son orbite. */
@@ -69,44 +76,6 @@ export interface Plan {
   /** Lot PBG3 : la porte et l'aiguillage ; seul le plan d'essai n'en a pas. */
   porte?: DefPorte;
   aiguillage?: DefAiguillage;
-}
-
-/** L'emplacement de l'élément du thème : le manège, le tourbillon, le trou noir ou — au Volcan — la coulée (par défaut) ou le geyser (`volcan: "geyser"` : lot PBL2, le geyser au centre est un tir que les trois plans à emplacements bas n'offraient pas ; la coulée prend alors un emplacement du haut). */
-const theme = (x: number, y: number, volcan: Module = "coulee"): Emplacement => ({ x, y, permis: ["manege"], fixe: { foire: "manege", ocean: "tourbillon", espace: "trouNoir", volcan } });
-/** Le trou : toujours là, dans tous les thèmes (la Pieuvre de l'océan) ; il servira de verrou au lot suivant. */
-const trou = (x: number, y: number): Emplacement => ({ x, y, permis: ["trou"] });
-
-/**
- * L'orbite : un couloir le long de l'arc du haut (rayon `r` px autour de (196,25 ; 205)), de la bouche gauche (`xg`, `y`) à la bouche droite (`xd`, `y`). Les bouches regardent vers le haut : la bille qui y monte assez vite
- * fait le tour et sort de l'autre côté. **Lot PBL2 : une bouche s'ouvre dans la direction d'un tir** (`ag`, `ad` : degrés à partir de la verticale, positif vers la droite de l'écran — la bouche gauche regarde vers le haut et
- * la gauche, la bouche droite vers le haut et la droite), pour que la bille frappée par un batteur la franchisse de face : la fenêtre de tir (`tir.ts`).
- */
-export function orbite(xg: number, xd: number, y: number, r: number, hauteur: number, ag = 0, ad = 0, yd = y): DefRail {
-  const arc = (a: number): [number, number] => {
-    // `a` en degrés, de 180 (à gauche) à 0 (à droite) ; les sinus et cosinus sont ceux des multiples de 20° : écrits ici, tout en entiers
-    const t: Record<number, [number, number]> = { 180: [-1000, 0], 160: [-940, 342], 140: [-766, 643], 120: [-500, 866], 100: [-174, 985], 80: [174, 985], 60: [500, 866], 40: [766, 643], 20: [940, 342], 0: [1000, 0] };
-    const [c, s] = t[a]!;
-    return [196 + Math.trunc((c * r) / 1000), 205 - Math.trunc((s * r) / 1000)];
-  };
-  // le deuxième point de chaque bout : 44 px plus loin dans la direction de la bouche
-  const vers = (x: number, y: number, a: number): [number, number] => [x + Math.trunc((44 * sinus(div(a * TOUR, 360))) / NORME), y - Math.trunc((44 * cosinus(div(a * TOUR, 360))) / NORME)];
-  return {
-    genre: "orbite",
-    points: [[xg, y], vers(xg, y, ag), ...[160, 140, 120, 100, 80, 60, 40, 20].map(arc), vers(xd, yd, ad), [xd, yd]],
-    hauteur,
-    demiPorte: 17,
-  };
-}
-
-/**
- * **La porte de l'orbite** (lot PBL2) : un battant qui ferme la bouche d'une orbite et la transforme en passage payant. Le passage (deux murs, un battant) est posé juste derrière la bouche (`x`, `y`, direction `angle`),
- * le battant à `ecart` px d’elle (26 : la bouche prend la bille dès qu’elle est à moins de son rayon de la ligne de la bouche, 9 px ; un battant plus près ne serait jamais franchi avant la prise) : fermé, il est un mur et la bouche est hors de portée de ce côté ; ouvert, la bille qui le franchit rapporte 4 000, fait avancer la mission d'un cran, puis est prise par l'orbite.
- * L'autre bouche reste libre : sur une table sans banque de cibles, c'est l'orbite prise par elle qui ouvre la porte.
- */
-export function porteDeLOrbite(x: number, y: number, angle: number, largeur: number, profondeur = 36): DefPorte {
-  const a = div(angle * TOUR, 360);
-  const ecart = 26;
-  return { x: x - Math.trunc((ecart * sinus(a)) / NORME), y: y + Math.trunc((ecart * cosinus(a)) / NORME), angle, largeur, profondeur };
 }
 
 /** Les plans. Le premier emplacement est celui de l'élément du thème, le deuxième le trou ; les suivants portent, selon le thème, l'astéroïde et les portails de l'espace et le geyser du volcan. */
@@ -212,10 +181,21 @@ export const PLAN_CLASSIQUE: Plan = {
 
 export const NB_PLANS = PLANS.length;
 export const IDS_PLANS: readonly string[] = PLANS.map((p) => p.id);
+/** Un plan d'essai peut être demandé retourné (`t1m`) : `<id>m` est le miroir de `<id>`. */
+const SUFFIXE_MIROIR = "m";
+/**
+ * Le plan d'un identifiant : un plan du jour, `classique` (l'essai des règles), **un plan d'essai du lot PBT0 (`t1` à `t6`, jamais tirés)** ou le miroir de l'un d'eux (`<id>m`, `miroirDePlan`).
+ * Un identifiant inconnu est une erreur.
+ */
 export const planDe = (id: string): Plan => {
-  const p = id === PLAN_CLASSIQUE.id ? PLAN_CLASSIQUE : PLANS.find((q) => q.id === id);
-  if (!p) throw new Error(`plan inconnu : ${id}`);
-  return p;
+  const direct = id === PLAN_CLASSIQUE.id ? PLAN_CLASSIQUE : (PLANS.find((q) => q.id === id) ?? PLANS_ESSAI.find((q) => q.id === id));
+  if (direct) return direct;
+  if (id.endsWith(SUFFIXE_MIROIR)) {
+    const base = id.slice(0, -1);
+    const p = base === PLAN_CLASSIQUE.id ? undefined : (PLANS.find((q) => q.id === base) ?? PLANS_ESSAI.find((q) => q.id === base));
+    if (p) return miroirDePlan(p, id);
+  }
+  throw new Error(`plan inconnu : ${id}`);
 };
 
 /** Les modules permis à l'emplacement `i` d'un plan, selon le thème (sans les répétitions des poids). */

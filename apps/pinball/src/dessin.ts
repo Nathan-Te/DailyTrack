@@ -1,4 +1,4 @@
-import { AXE, DROITE, GAUCHE, HAUTEUR, JET_GEYSER, LARGEUR, MISSION_DU_THEME, MODULES_DE_MISSION, MULT_MAX, NORME, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, pointeDuBatteur, type Mission, type Partie, type Porte, type Poser, type Rail, type Table, type ThemePinball } from "@cdj/pinball-sim";
+import { AXE, DROITE, GAUCHE, HAUTEUR, JET_GEYSER, LARGEUR, MISSION_DU_THEME, MODULES_DE_MISSION, LARGEUR_RAIL, MULT_MAX, NORME, RAYON, REGLAGES, TICKS_PAR_SECONDE, UNITE, pointeDuBatteur, type Mission, type Partie, type Porte, type Poser, type Rail, type Table, type ThemePinball } from "@cdj/pinball-sim";
 import { modulesAPlat } from "./modeles/plat";
 import { echantillons, hauteurRail, type PointRail } from "./rails";
 import { COULEURS_INTENTION, angleVise, boutLibre, couleurAiguillage, geoAiguillage, geoPorte, ouverturePorte, rapprocher, sortiePoteau } from "./deblocages";
@@ -1302,8 +1302,8 @@ export function pastille(c: CanvasRenderingContext2D, police: string, x: number,
 // --- Lot PBG1 : les rails (les rampes et l'orbite) du rendu à plat. **Au-dessus du sol** : un ruban à l'ombre portée sur le sol (d'autant plus décalée que le rail est haut), des rebords, une bouche en entonnoir et sa flèche de
 // tir ; habillé par thème avec les mêmes idées que le rendu three.js (foire : rails rouge et blanc à traverses ; océan : gouttière turquoise ; espace : tube néon cyan ; volcan : rail de fer sur traverses et lueur orange).
 // **Tout est cuit une fois** (`dessinerRails`, dans une image à la taille de l'écran) : le rendu à plat n'y dessine rien par image que la bille posée sur un rail.
-/** La largeur du ruban d'un rail (px de la table) : celle d'une rampe ; l'orbite, qui longe l'arc et ses lampes, est un peu plus étroite. **Lot PBL1 : des rails plus fins** (22 et 20 px avant ; la bille, de 18 px, roule dessus, la voie de la simulation n'a pas bougé). */
-export const largeurDuRail = (rail: Pick<Rail, "genre">): number => (rail.genre === "orbite" ? 16 : 18);
+/** La largeur du ruban d'un rail (px de la table) : celle d'une rampe ; l'orbite, qui longe l'arc et ses lampes, est un peu plus étroite. **Lot PBL1 : des rails plus fins** (22 et 20 px avant). **Lot PBT0 : un fil de 12 px** (`LARGEUR_RAIL` de la simulation, la même pour l'orbite : le budget de densité et le dégagement des rails la comptent) ; la bille, de 18 px, roule au-dessus, la voie de la simulation n'a pas bougé. */
+export const largeurDuRail = (_rail: Pick<Rail, "genre">): number => LARGEUR_RAIL;
 /** À quelle distance avant sa bouche la flèche de tir d'un rail se pose (px) : devant l'entonnoir. */
 const RECUL_FLECHE_RAIL = 26;
 export interface FlecheDeRail {
@@ -1427,6 +1427,12 @@ const COULEURS_RAILS: Readonly<Record<ThemePinball, { entonnoir: string; chevron
 /** La couleur du bord de l'entonnoir d'un rail et de sa flèche qui clignote : celle du rail du thème (le rendu three.js peut la reprendre). */
 export const couleurDeBouche = (theme: ThemePinball): string => COULEURS_RAILS[theme].bord;
 
+const FIL_PLAT: Record<ThemePinball, { fond: string; fil: [string, string] }> = {
+  foire: { fond: "#E8D3AC", fil: ["#B9564B", "#E9DFCB"] },
+  ocean: { fond: "#8FE3EA", fil: ["#E6FBFD", "#BFEFF3"] },
+  espace: { fond: "#9FD8E8", fil: ["#6FD3E6", "#E8FDFF"] },
+  volcan: { fond: "#8A8590", fil: ["#B9B5C0", "#D8D3DC"] },
+};
 /** Le ruban d'un rail, habillé par thème (le tracé `pts` : échantillons de 5 px, de l'entrée à la sortie). **Lot PBL1 : des rails qui ne cachent rien** — fins (18 px au plus), moins saturés, **en partie translucides** (un fond de verre ou de plexi à 12-30 %, des filets
  *  fins au lieu de rubans pleins), sans cerne d'encre épais et **sans lueur** ; un module sous un rail se lit à travers. */
 function ruban(c: CanvasRenderingContext2D, rail: Rail, pts: readonly PointRail[], theme: ThemePinball): void {
@@ -1451,37 +1457,10 @@ function ruban(c: CanvasRenderingContext2D, rail: Rail, pts: readonly PointRail[
     c.stroke();
     c.globalAlpha = 1;
   };
-  if (theme === "foire") {
-    // des montagnes russes en plexi : un fond sable très clair, deux filets rouge et blanc, des traverses fines et rares
-    tracer("#E8D3AC", W, 0.26);
-    traverses(c, pts, demi, 5, "#8A5632", 1.6, 0.55);
-    for (const s of [-1, 1]) {
-      filet(s, demi - 1.2, "#B9564B", 2.4, 0.9);
-      c.setLineDash([6, 6]);
-      filet(s, demi - 1.2, "#F3EBDC", 2.4, 0.9);
-      c.setLineDash([]);
-    }
-  } else if (theme === "ocean") {
-    // une gouttière de verre bleuté : l'eau à peine teintée, deux filets d'écume
-    tracer("#8FE3EA", W, 0.24);
-    for (const s of [-1, 1]) filet(s, demi - 0.8, "#E6FBFD", 1.8, 0.9);
-    c.setLineDash([3, 11]);
-    tracer("#FFFFFF", 1.4, 0.7);
-    c.setLineDash([]);
-  } else if (theme === "espace") {
-    // un tube de verre : un fond à peine sombre, deux filets néon fins, des anneaux rares
-    tracer("#9FD8E8", W, 0.16);
-    traverses(c, pts, demi, 9, "#6FD3E6", 1.2, 0.4);
-    for (const s of [-1, 1]) {
-      filet(s, demi - 1, "#5FD3E8", 1.8, 0.8);
-      filet(s, demi - 1, "#E8FDFF", 0.7, 0.9);
-    }
-  } else {
-    // un rail de fer sur quelques traverses, un fond de verre fumé : **pas de lueur de lave**
-    tracer("#8A8590", W, 0.2);
-    traverses(c, pts, demi, 6, "#2A1E1A", 2.2, 0.7);
-    for (const s of [-1, 1]) filet(s, demi - 1.5, "#B9B5C0", 2, 0.95);
-  }
+  // **Lot PBT0 : un fil fin, dans tous les thèmes** (comme en three.js : `FIL` de `rails3d.ts`) — une gouttière presque transparente et deux filets, ni traverses ni ruban ; l'habillage du thème est dans l'entonnoir de la bouche
+  const f = FIL_PLAT[theme];
+  tracer(f.fond, W, 0.14);
+  for (const s of [-1, 1]) filet(s, demi - 0.9, f.fil[s < 0 ? 0 : 1], 1.6, 0.9);
   if (rail.genre === "rampe") chevrons(c, pts, COULEURS_RAILS[theme].chevron, Math.min(0.5, COULEURS_RAILS[theme].alpha * 0.6));
   c.restore();
 }

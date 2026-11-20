@@ -10,6 +10,12 @@ import { nomDuModule } from "./noms";
 import "./panneau.css";
 
 /** Les quatre médailles, de la plus basse à la plus haute : le seuil, le nom (catalogue commun) et le jeton de couleur. */
+/** Le nom d'un plan ; un plan d'essai retourné (`t1m`) dit qu'il l'est (lot PBT0). */
+function nomDuPlan(t: (cle: string, v?: Record<string, string>) => string, id: string): string {
+  const direct = t(`plan.${id}`);
+  if (direct !== `plan.${id}` || !id.endsWith("m")) return direct;
+  return t("plan.miroir", { plan: t(`plan.${id.slice(0, -1)}`) });
+}
 export const MEDAILLES_DU_PANNEAU = [
   { seuil: "bronze", nom: "medaille.bronze", classe: "bronze" },
   { seuil: "silver", nom: "medaille.argent", classe: "argent" },
@@ -91,7 +97,7 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
 
   const modules = modulesDeLaTable(contenu, (cle) => t(cle));
   // lot PBG1 : le plan du jour, nommé (l'aperçu à côté le montre avec ses rails)
-  const sur = el("div", "p-table", el("p", "p-legende", t("aujourdhui.table")), el("p", "p-plan", t("aujourdhui.plan", { plan: t(`plan.${contenu.plan}`) })), el("ul", "p-modules", ...modules.map((m) => { const li = el("li", "p-module", m.nom); li.dataset.mission = m.mission ? "1" : "0"; return li; })));
+  const sur = el("div", "p-table", el("p", "p-legende", t("aujourdhui.table")), el("p", "p-plan", t("aujourdhui.plan", { plan: nomDuPlan(t, contenu.plan) })), el("ul", "p-modules", ...modules.map((m) => { const li = el("li", "p-module", m.nom); li.dataset.mission = m.mission ? "1" : "0"; return li; })));
 
   const seuils = el("div", "p-seuils");
   seuils.setAttribute("role", "status");

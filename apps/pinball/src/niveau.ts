@@ -1,4 +1,4 @@
-import { DUREE_PARTIE_ROBOT, IDS_PLANS, PARTIES_DU_ROBOT, PINBALL_GENERATOR_VERSION, THEMES_PINBALL, dailyPinball, graineDuRobot, jouerRobot, lireJourFige, seuilsEnTranches, type Contenu, type Evenement, type Seuils, type ThemePinball } from "@cdj/pinball-sim";
+import { DUREE_PARTIE_ROBOT, PARTIES_DU_ROBOT, PINBALL_GENERATOR_VERSION, THEMES_PINBALL, dailyPinball, graineDuRobot, jouerRobot, planDe, lireJourFige, seuilsEnTranches, type Contenu, type Evenement, type Seuils, type ThemePinball } from "@cdj/pinball-sim";
 import { formatDay } from "@cdj/core";
 import { dateDemandable, lireFichierDeJour } from "@cdj/kit/jour";
 import { lireEssai } from "./essai";
@@ -55,6 +55,26 @@ function seuilsEnArrierePlan(contenu: Contenu): { seuils: Seuils; pret: () => Se
   return { seuils, pret: () => fini };
 }
 
+/** Un identifiant de plan que la simulation connaît (un plan du jour, `classique`, un plan d'essai du lot PBT0 `t1`…`t6`, ou son miroir `<id>m`) ? */
+function planConnu(id: string): boolean {
+  try {
+    planDe(id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lot PBT0 : le plan qu'une adresse demande — `?plan=<id>` (un plan inconnu est ignoré : le plan du jour), et `?miroir` le retourne (`<id>m` ; un plan déjà retourné se remet à l'endroit). Les plans d'essai `t1` à `t6` ne sont jamais
+ * tirés : seule cette adresse les joue, hors production et jamais classés.
+ */
+export function planDemande(plan: string | null, miroir: boolean, duJour: string): string {
+  const base = plan !== null && planConnu(plan) ? plan : duJour;
+  if (!miroir) return base;
+  return base.endsWith("m") && planConnu(base.slice(0, -1)) ? base.slice(0, -1) : `${base}m`;
+}
+
 /** Le contenu d'un jour : le fichier figé s'il existe (`jours/AAAA-MM-JJ.json`) et se relit (avec ses seuils figés), sinon le générateur courant. `theme` : le thème effectif ; s'il n'est pas celui du jour (`?theme=`, essai hors production, jamais classé), la table prend ses couleurs. */
 export async function contenuDuJour(jour: number, base: string, theme: string): Promise<Contenu & PretSeuils & { robot?: RobotDuJour }> {
   const date = formatDay(jour);
@@ -72,7 +92,7 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   // Un autre thème (`?theme=`, essai) : la table de ce thème ce jour-là, avec ses éléments et sa mission (lot PB3), jamais celle du jour avec d'autres couleurs.
   // Lot PBG1 : un autre plan (`?plan=<id>`, essai), seul ou avec le thème : la table de ce plan ce jour-là ; un plan inconnu est ignoré.
   const themeVoulu = (THEMES_PINBALL as readonly string[]).includes(theme) ? (theme as ThemePinball) : contenu.theme;
-  const planVoulu = essai.plan !== null && (IDS_PLANS as readonly string[]).includes(essai.plan) ? essai.plan : contenu.plan;
+  const planVoulu = planDemande(essai.plan, essai.miroir, contenu.plan);
   if (themeVoulu !== contenu.theme || planVoulu !== contenu.plan) contenu = dailyPinball(jour, PINBALL_GENERATOR_VERSION, themeVoulu, planVoulu);
   const calcul = contenu.seuilsFiges ? null : seuilsEnArrierePlan(contenu);
   const rendu: Contenu & PretSeuils & { robot?: RobotDuJour } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? calcul!.seuils, pretSeuils: calcul ? calcul.pret : () => contenu.seuilsFiges ?? null };

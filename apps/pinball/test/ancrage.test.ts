@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDS_PLANS, Partie, UNITE, toutesLesTables } from "@cdj/pinball-sim";
+import { IDS_PLANS, PLANS_ESSAI, Partie, UNITE, tablesDuPlan } from "@cdj/pinball-sim";
 import { empreinteDuModule, placerEtiquettes, pointeDeLEtiquette } from "../src/dessin";
 import { geoPorte } from "../src/deblocages";
 import { nomDuModule } from "../src/noms";
@@ -9,11 +9,11 @@ const px = (u: number): number => u / UNITE;
 const noms = (theme: string) => (module: string): string | null => nomDuModule((cle) => (CATALOGUE_FR as Record<string, string>)[cle]!, theme, module);
 
 describe("le bout de la pointe de chaque plaque tombe dans l'emprise de son élément (lot PBL2)", () => {
-  for (const plan of IDS_PLANS) {
+  for (const plan of [...IDS_PLANS, ...PLANS_ESSAI.flatMap((p) => [p.id, `${p.id}m`])]) {
     it(`plan « ${plan} » : sur toutes ses tables, la pointe de la plaque de la mission et celle du verrou sont dans l'emprise de leur élément — et dans celle d'aucun autre`, () => {
       const pires: string[] = [];
       let n = 0;
-      for (const c of toutesLesTables().filter((q) => q.plan === plan)) {
+      for (const c of tablesDuPlan(plan)) {
         const t = new Partie(c).table;
         for (const e of placerEtiquettes(t, c.theme, noms(c.theme))) {
           n++;
@@ -36,7 +36,7 @@ describe("le bout de la pointe de chaque plaque tombe dans l'emprise de son él�
         }
       }
       void geoPorte;
-      expect(n).toBeGreaterThan(20);
+      expect(n).toBeGreaterThan(5);
       const groupes = new Map<string, number>();
       for (const q of pires) {
         const k = q.replace(/^(\w+):(\w+):[^ ]+ (\w+)(?: \(\d lignes?\))? : (bout à [\d.]+|bout dans \w+).*$/, (_m, th, pl, r, x) => `${th}:${pl} ${r} ${x.startsWith("bout à") ? "bout trop loin" : x}`);

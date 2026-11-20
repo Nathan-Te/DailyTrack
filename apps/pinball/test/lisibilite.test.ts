@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { IDS_PLANS, Partie, UNITE, toutesLesTables } from "@cdj/pinball-sim";
+import { IDS_PLANS, PLANS_ESSAI, Partie, UNITE, tablesDuPlan as contenusDuPlan, toutesLesTables } from "@cdj/pinball-sim";
+
+/** Lot PBT0 : les plans d'essai t1 à t6 et leurs miroirs jouent les mêmes gardes que les plans du jour. */
+const PLANS_GARDES = [...IDS_PLANS, ...PLANS_ESSAI.flatMap((p) => [p.id, `${p.id}m`])];
 import { geoPorte } from "../src/deblocages";
 import { ECART_MAX_PLAQUE, boiteDeLEtiquette, boiteTouche, boitesSeRecouvrent, comptePourLaMission, disquesDesRails, disquesDuMini, empreinteDuModule, flechesAuSol, lampesMission, placerEtiquettes, styleEtiquette } from "../src/dessin";
 import { MAX_FLECHES_VIVES, indiquer } from "../src/indications";
@@ -25,13 +28,11 @@ function noms(langue: keyof typeof LANGUES, theme: string): (module: string) => 
 const distanceBoite = (b: { x0: number; y0: number; x1: number; y1: number }, x: number, y: number): number => Math.hypot(x - Math.min(b.x1, Math.max(b.x0, x)), y - Math.min(b.y1, Math.max(b.y0, y)));
 
 const tablesDuPlan = (plan: string): { table: Partie["table"]; theme: Parameters<typeof placerEtiquettes>[1]; cle: string }[] =>
-  toutesLesTables()
-    .filter((c) => c.plan === plan)
-    .map((c) => ({ table: new Partie(c).table, theme: c.theme, cle: `${c.theme}:${c.plan}:${c.modules.join(",")}` }));
+  contenusDuPlan(plan).map((c) => ({ table: new Partie(c).table, theme: c.theme, cle: `${c.theme}:${c.plan}:${c.modules.join(",")}` }));
 
 describe("les plaques sont rares, collées à leur élément, jamais sur un rail (lot PBL1)", () => {
   for (const langue of Object.keys(LANGUES) as (keyof typeof LANGUES)[]) {
-    for (const plan of IDS_PLANS) {
+    for (const plan of PLANS_GARDES) {
       it(`plan « ${plan} », en ${langue} : deux plaques permanentes au plus, collées à leur élément, sur rien d'autre`, () => {
         let tables = 0;
         for (const { table, theme, cle } of tablesDuPlan(plan)) {
@@ -41,8 +42,8 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
           const permanentes = etiquettes.filter((e) => e.permanente);
           expect(permanentes.length, quoi).toBeLessThanOrEqual(2);
           // l'élément de la mission, le verrou (tous les plans du jour en ont un), la porte
-          expect(etiquettes.map((e) => e.role), quoi).toEqual(["mission", "verrou", "porte"]);
-          const porte = geoPorte(table)!;
+          expect(etiquettes.map((e) => e.role), quoi).toEqual(table.passage ? ["mission", "verrou", "porte"] : ["mission", "verrou"]); // lot PBT0 : un plan d'essai sans orbite n'a pas de porte
+          const porte = geoPorte(table);
           const rails = [...disquesDesRails(table), ...disquesDuMini(table)];
           const element = table.poses.find((m) => comptePourLaMission(theme, m.type) && m.type !== "portailB")!;
           const style = styleEtiquette(theme);
@@ -52,7 +53,7 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
             // collée à son élément : la pointe a de quoi la relier à lui
             let ecart: number;
             if (e.role === "porte") {
-              ecart = Math.min(...[...porte.murs.flatMap((m) => [{ x: m.x0, y: m.y0 }, { x: (m.x0 + m.x1) / 2, y: (m.y0 + m.y1) / 2 }, { x: m.x1, y: m.y1 }]), porte.a, porte.b].map((p) => distanceBoite(b, p.x, p.y)));
+              ecart = Math.min(...[...porte!.murs.flatMap((m) => [{ x: m.x0, y: m.y0 }, { x: (m.x0 + m.x1) / 2, y: (m.y0 + m.y1) / 2 }, { x: m.x1, y: m.y1 }]), porte!.a, porte!.b].map((p) => distanceBoite(b, p.x, p.y)));
               expect(ecart, `${quoi} ${e.role}`).toBeLessThanOrEqual(ECART_MAX_PLAQUE + 9 + 8);
             } else {
               const c = e.role === "verrou" ? table.trous[table.verrou]! : element;
@@ -81,14 +82,14 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
             for (const v of table.voies) expect(boiteTouche(b, px(v.x), px(v.y) + 24, 7.5), quoi).toBe(false);
             for (const but of [4, 5]) for (const l of lampesMission(table, theme, but)) expect(boiteTouche(b, l.x, l.y, 5.5), quoi).toBe(false);
             for (const f of flechesAuSol(table, theme)) expect(boiteTouche(b, f.x, f.y, 11), `${quoi} : ${e.role} recouvre une flèche`).toBe(false);
-            for (const m of porte.murs) expect(boiteTouche(b, (m.x0 + m.x1) / 2, (m.y0 + m.y1) / 2, 8), quoi).toBe(false);
+            for (const m of porte?.murs ?? []) expect(boiteTouche(b, (m.x0 + m.x1) / 2, (m.y0 + m.y1) / 2, 8), quoi).toBe(false);
             for (let k = i + 1; k < etiquettes.length; k++) expect(boitesSeRecouvrent(b, boiteDeLEtiquette(etiquettes[k]!)), `${quoi} : deux plaques se recouvrent`).toBe(false);
             // dans la table
             expect(b.x0, quoi).toBeGreaterThanOrEqual(24);
             expect(b.x1, quoi).toBeLessThanOrEqual(344);
           });
         }
-        expect(tables).toBeGreaterThan(10);
+        expect(tables).toBeGreaterThanOrEqual(4);
       });
     }
   }
@@ -110,9 +111,9 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
 });
 
 describe("les flèches vives : trois au plus, la même couleur par intention (lot PBL1)", () => {
-  for (const plan of IDS_PLANS) {
+  for (const plan of PLANS_GARDES) {
     it(`plan « ${plan} » : dans tous les états, jamais plus de ${MAX_FLECHES_VIVES} flèches vives`, () => {
-      for (const c of toutesLesTables().filter((q) => q.plan === plan)) {
+      for (const c of contenusDuPlan(plan)) {
         const etats: Record<string, (p: Partie) => void> = {
           repos: () => {},
           verrou: (p) => p.allumerLeVerrou(),

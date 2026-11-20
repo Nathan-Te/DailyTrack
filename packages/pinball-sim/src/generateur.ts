@@ -1,7 +1,7 @@
 import { mixSeed, Rng } from "@cdj/core";
 import { PINBALL_GENERATOR_VERSION } from "./constantes";
 import { TABLES_REFUSEES } from "./refusees";
-import { IDS_PLANS, permisDe, planDe, planDuJour, PLANS, type Plan } from "./plans";
+import { IDS_PLANS, permisDe, planDe, planDuJour, PLANS, PLANS_ESSAI, type Plan } from "./plans";
 import { themeDuJour, THEMES_PINBALL, type ThemePinball } from "./themes";
 
 // La table du jour (lot PB1). **Le bas de la table ne change jamais** (deux batteurs, deux lance-pierres, deux couloirs de retour, le couloir du lanceur, les trois couloirs du haut : `table.ts`) ; le haut est tiré
@@ -113,17 +113,31 @@ export function toutesLesTables(): Contenu[] {
   return sorties.filter((c) => !vues.has(cleDeTable(c)) && vues.add(cleDeTable(c)));
 }
 
+/** **Les tables d'un plan** : celles que le générateur peut tirer pour un plan du jour (`toutesLesTables`), ou — un plan d'essai du lot PBT0 (`t1`…`t6`, ou son miroir `t1m`…) — sa table dans chacun des quatre thèmes (les modules d'un plan d'essai sont fixes). */
+export function tablesDuPlan(plan: string): Contenu[] {
+  if (IDS_PLANS.includes(plan)) return toutesLesTables().filter((c) => c.plan === plan);
+  return THEMES_PINBALL.map((theme) => dailyPinball(0, undefined, theme, plan));
+}
+
 /** L'empreinte du contenu (FNV-1a 32 bits sur ses entiers) : un texte de huit hexadécimaux. */
 export function empreinteContenu(contenu: Contenu): string {
   let h = 0x811c9dc5;
   const octet = (n: number): void => {
     h = Math.imul(h ^ (n & 0xff), 0x01000193) >>> 0;
   };
-  for (const n of [contenu.jour, contenu.g, THEMES_INDEX(contenu.theme), IDS_PLANS.indexOf(contenu.plan), ...contenu.modules.map((m) => MODULES.indexOf(m))]) {
+  for (const n of [contenu.jour, contenu.g, THEMES_INDEX(contenu.theme), rangDuPlan(contenu.plan), ...contenu.modules.map((m) => MODULES.indexOf(m))]) {
     octet(n);
     octet(n >>> 8);
     octet(n >>> 16);
   }
   return h.toString(16).padStart(8, "0");
 }
+/** Le rang d'un plan dans l'empreinte : celui du jour dans `IDS_PLANS` (inchangé), 100 + son rang pour un plan d'essai du lot PBT0 (`t1` à `t6`), 150 + son rang pour son miroir ; −1 sinon. */
+const rangDuPlan = (id: string): number => {
+  const i = IDS_PLANS.indexOf(id);
+  if (i >= 0) return i;
+  const miroir = id.endsWith("m");
+  const j = PLANS_ESSAI.findIndex((p) => p.id === (miroir ? id.slice(0, -1) : id));
+  return j < 0 ? -1 : 100 + j + (miroir ? 50 : 0);
+};
 const THEMES_INDEX = (t: ThemePinball): number => THEMES_PINBALL.indexOf(t);

@@ -1,0 +1,188 @@
+{
+  "_": "Golden des plans d'essai de Pinball (lot PBT0) : npm run golden-essais:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
+  "sim": 9,
+  "generateur": 8,
+  "bot": 8,
+  "rediffusions": [
+    {
+      "nom": "robot-t1-foire",
+      "plan": "t1",
+      "theme": "foire",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "da2dc2df",
+      "code": "AQkIAKmiAZIFjRSmNZsC-iahC9gHjwK4GvcBpi-hC8IJ5QGCJqEC3A6hC9YIAuUBA9Qe3wHkFP8BthuPAp4o_wGIRfMBjhr9Abo_ixXOM6EC8CifA8Qs6wHmFtsB9lOjArRP2QGmJI8DmhjhAeIovRSmMq0C1h7NAogh-QGGOdkBhCSTFKY1jwL8O6MLigrvAshk-QHCOucBznCdAoQSzxEKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC44qiwK6EesFvBGzEAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL2AmJDQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC64vowvgBKML7gmXArwQnwTeA68PCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC9AS2wHyEuMClgXtAfYR2wH8INsBnhOjC8AFwQLgF5IMgwEKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgcFCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCw",
+      "resultat": {
+        "score": 225680,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 3
+      }
+    },
+    {
+      "nom": "robot-t1m-ocean",
+      "plan": "t1m",
+      "theme": "ocean",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "990aadf3",
+      "code": "AQkIAKmiAYQGlxXgQOEB4hTZAb4q4QHmVdsBrh2jC4oFzQKgK60W9i7PBp4WkQKYM8sCthfHEgoLmgbbAcAUowuYB-cB8g2DA8wc3wHiEOQC2wHrCQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC9oQowu4BqMLogT9AaYP2wGeHOEBoBehC9QEowuwCu0BsBCjC74GowLeDqML5gSjC-wlowvcDPkBrEjbAaIdowuWBdkCzC_bAfgcowuaBrUC7EzbAZAdowu4BqkCrEvbAcYdowuoBdMCwC_bAeAcowuaBrUCyEzbAYodowv6BpECikrbAfIcowvWBp0CiGLlAfA9uQKcLekTxjTxAegV4QHaLLsVmjLfAQ",
+      "resultat": {
+        "score": 240120,
+        "ticks": 540000,
+        "billes": 3,
+        "multMax": 3
+      }
+    },
+    {
+      "nom": "robot-t2-espace",
+      "plan": "t2",
+      "theme": "espace",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "4e36a6e4",
+      "code": "AQkIAKmiAZgI2RW8MLMChiL5BJ5CoQv0CakCngz1BdYkhQKkLeUB_jqjC5gHhQLQEtMC8hmjC-4GowLEMKML_gTxApgO1xPqRNsByB7lAe4V3QOKI7UCwC7fAaoo2wGILuUMCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguIKosCpA2jC-wEowsKzgSjC70CCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu8AaEDwAflAYAi1wmCAfsKCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguQAqMLhAiRAuI5uQmYEqEL5gSbA5QypwLWFPEB9CDfAbAV5QHaD6ELyAnxAa5DoQvkCqEL_AWFApAv4QH8GaELhAqhC54TowuOBdkBthihC6gH5QH6RKELjgjlAb5o6QKoHKEL3gTjAoA9zwTGGqML3AapAqoxowvwBc0C3EujC-wH7QG0DqMLwgTbAYIh7QE",
+      "resultat": {
+        "score": 325150,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 3
+      }
+    },
+    {
+      "nom": "robot-t2m-volcan",
+      "plan": "t2m",
+      "theme": "volcan",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "07c3ad2b",
+      "code": "AQkIAKmiAbAIsRTkSQLlAQOuGuEBjhQC6wED8oEB8QHwDaELqAqJAuIg3wH0JvcBvA-hC9oSoQLKQqMC_hKDAqYpoQuKB9kBglDfAd4NAtkBA4wzlwSgJPMBijjbAcAZywjkHOkC3g-dFfAxrQKsFNMEmiaVArQf5QHGaqEL4gXZAYJL4QGiHYsC4jyjC8AFkQK0Gd8BiErfAfIV8waAFqMLxgXBAoZVowvMBbsCmE-jC7gJ4QGMZuUB-BLpAspHoQuoCv0BrjrZAdAa2QH6P6ML_AiRAvgZ5wGyEtsB",
+      "resultat": {
+        "score": 74800,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-t3-foire",
+      "plan": "t3",
+      "theme": "foire",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "1d9945af",
+      "code": "AQkIAKmiAZIFjRSmNZsC-iahC9gHjwK4GvcBpi-hC8IJ5QGWPd8BzhbbAdRRpwLWD-0B9g2hC6oEkQLQdPEBlmLbAYZI2QHQFecBtkibAugmoQv2B4MClB6jC5YR6wKWN48C6EXnAewc_wGwKuUBuintAf5D7QHuXKEC1CehC_4MgwLOMKELggXXAqYN7RTIM4MC3DuhAooU7QG4TesBoEHrAYYNrwLoJ6MC3j6jC-QE7wKiGesBsg6hC9wFgwLyTKMLlAmLAqw_8wE",
+      "resultat": {
+        "score": 88260,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-t3m-ocean",
+      "plan": "t3m",
+      "theme": "ocean",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "faf295a3",
+      "code": "AQkIAKmiAYQGlxXySIkCnkibApRH2QG4SNsBrh2jC4oFzQKAWusBhkjfAeJ7nQKKJqMLpgzzAYIPowv-CqMLngeRAsYk6RP4NtkB1DmJAo5x3wH0GaUOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL9gXbAY4VowuMB-cB5g2JA7gYowveDqMLmgWZA6gj5wGqDKELoCHbB7oO2wG4FeEB6B6BB_AD8RIKCwoLCgsKCwoLCgsKCwoLyAGjC4IGxwK4LaMLrA6hC_IHhQKSEqELzATFCKI0lQLGetsBxh2jC6gF0wLAL9sB4ByjC5oGtQLYONsB7C7_AZ4cowukCuEB2BbxAepJoQvOCesB",
+      "resultat": {
+        "score": 292020,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-t4-espace",
+      "plan": "t4",
+      "theme": "espace",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "6135c2b4",
+      "code": "AQkIAKmiAZgI2RWCNb8CpAy3A5Rx2QH2KK0CpAyRB9wkhQKGGwLrAQOYD_EBnCKJAvgZ5wGsFecBvgzzAbAh5QGeD48CoBehC4IIjwKaHr8DnnuhAoAqoQLkRaUX2kiVAq4d2wGUHqML9AaLAuxFoQvYB4MCnijzAfoMuwK8MeEB0AyZB-oi8QGYMZcCwhzzAYwN4QHYJ-kWsjXZAapBvQ4KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6YqiwLoDKMLlAajC64KoQuyJ6ML6gehC6AggwLsHqEL3AyjC7YE4QHINOcBhBTnAbouoQvWBQLlAQP0Kd8BvgnhAaIO7QGEPQLlAQPSHZcCiCDZAf4ZoQacCPsD",
+      "resultat": {
+        "score": 371840,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 3
+      }
+    },
+    {
+      "nom": "robot-t4m-volcan",
+      "plan": "t4m",
+      "theme": "volcan",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "e00ff49f",
+      "code": "AQkIAKmiAbAIsRTUSALrAQOYQqELtgnfAaoeoQKiPcsCulCXAqBL7QGsGu8CsGOzAtQk3wH8NeEB_BTnAfgnoQucBecB7BTBFfRF2wH8RqELwAShC9QH-QH4VPcBxDWfA4g-oQvICd8BthfNDwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-QF2wGgFaMLjAfnAb4PowKeEKMLwAShC6QEowvUB6MLkgeRAsYglwLgCd8BxhahC_wEoQvmCv8B9ivfAf4N2wG2G6ELkhbbAcoFiQLGGqML1CKjC-YEhQLqRNsB3CGdArYq8QHMH60C6CrnAdYg0QWkMe0B1FehC7wG3wG2HqEC",
+      "resultat": {
+        "score": 370810,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-t5-foire",
+      "plan": "t5",
+      "theme": "foire",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "886b9bdb",
+      "code": "AQkIAKmiAZIFjRTCOeUBpkjnAcYUowLcToUCzhjfAeZGowvEBtsB6CbZAYxqowuYB_kB3CrhAcA72wGqXv8BsjTPFP45rQL2KZECzCibAtAmoQuoB4MC4EbtAdww4QHwVoUFqCCRAqI0oQvoCdsBoD_hAcoeiwLgVaMLhgkC6wEDyECFAsRI8wHQYKMLqgkC5QEDujKzA9RJ5wH6FOsB_A7zAbAy7xaKMYMC6iD9AqIu_QHWHeUB_AvhAQ",
+      "resultat": {
+        "score": 35330,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-t5m-ocean",
+      "plan": "t5m",
+      "theme": "ocean",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "eaccd4f7",
+      "code": "AQkIAKmiAYQGlxXgQOEB4hTZAb4q4QHmVdsBrh2jC4oFzQKgK60WzjDlAexp5QH4GeEBlB3fAfIuiwKeHKMLwAXNArQM9Q0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLoAbbAeQUowvuCaMLmg4CoQsD-gihC-AEowvQCaMLrDyjC4YN_wHAC6ML0AbFBpgT-QHoHdkEmAmhC8IN8wHODN8B5g3hBPQ5owv4B_MBjhLtAZgN5wGyON8B3AyjC7IJiwKUI4MC7guhC7wNowv6CeEBlgrZAeQW8QHKGKMLwAePAqYk2wHUE6MLnAXZAtoE4QHSK98BoASfDgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6gc6wHcIfkBjgzbAa4dowueBPMEmhqVAvwf5QHiFYUCgh7zAegSowvCDf8B2hyjC5oGuwLkIvcByh3ZAcAfiQKgFdsBriCjC7oOowuICfMBtEDfAQ",
+      "resultat": {
+        "score": 995020,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-t6-espace",
+      "plan": "t6",
+      "theme": "espace",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "6525bc40",
+      "code": "AQkIAKmiAZgI2RW8MLMCqD3fAaxooQKeYeEB-B7fAa4NhwO6PaELxgShC9oE4QHaHuUBqBbZAYQ4lwKKHPEB7A-hC4oHhwPKGqELzgSvAuxpoQu2BtkBjl8C5QEDrjjhAZAf3wHGDdcCiinNAt5PAt8BA-IxiRPuNZUChEDxAegUmwWeFYkCthgC6wEDgh2hC6QH5wGGVALrAQPqYp0CxhTHAoQaowviBqkC1DGjC-YEiQPaDu8W2C6zAq4u3wG4MK0D2BeXApAtyRT8MZMDvjPhAQ",
+      "resultat": {
+        "score": 65140,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    },
+    {
+      "nom": "robot-t6m-volcan",
+      "plan": "t6m",
+      "theme": "volcan",
+      "date": "2026-11-20",
+      "g": 8,
+      "empreinte": "a3b1940f",
+      "code": "AQkIAKmiAbAIsRSETJUCiBijC5IH2wGYT-EBlhbZAbRhoQvoCALlAQPaH4UCmk0C6wEDihm_AtRSowugBtsB_hjrAegM4QHoLsEVukaVAuhg2wGcYaELgAanAtYnowvsBOcBtBfnAYATmQSgI-UB_DWbA_Y36wHkEMcE9hzlAdg7owvGC6MC3CaPAvgw6wHYO6ML5g-hArYc7QHqO6MLxg0C5QED_BaJArpE7QHWDOEBkiy7FYI1_QGeTgLlAQOOL98BzBr9AroaowuMB5cC0izhAQ",
+      "resultat": {
+        "score": 57460,
+        "ticks": 540000,
+        "billes": 2,
+        "multMax": 2
+      }
+    }
+  ]
+}

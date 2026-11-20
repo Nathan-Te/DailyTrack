@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { lireEssai } from "../src/essai";
-import { contenuDuJour } from "../src/niveau";
-import { IDS_PLANS, dailyPinball } from "@cdj/pinball-sim";
+import { contenuDuJour, planDemande } from "../src/niveau";
+import { IDS_PLANS, PLANS_ESSAI, dailyPinball } from "@cdj/pinball-sim";
 import { CATALOGUE_FR } from "../src/catalogue.fr";
 import { CATALOGUE_EN } from "../src/catalogue.en";
 import { nomDuModule } from "../src/noms";
@@ -34,7 +34,7 @@ describe("les options d'essai de l'adresse", () => {
     expect(lireEssai("?essai=autre", false)).toMatchObject({ verrou: false, multibille: false, essai: false });
   });
   it("sur la production (`restreint`), aucune option n'existe : `?essai=mission` ne fait rien", () => {
-    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, tirs: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, essai: false });
+    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, tirs: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, miroir: false, essai: false });
   });
 });
 
@@ -86,6 +86,26 @@ describe("`?plan=` : la table de ce plan, seule ou avec un thème", () => {
     expect(ignore.modules).toEqual(duJour.modules);
   });
 
+  it("lot PBT0 : `?plan=t1` à `t6` (des lettres et des chiffres) sont les plans d'essai, `?miroir` retourne le plan demandé ou celui du jour, jamais classés", async () => {
+    expect(lireEssai("?plan=t3", false)).toMatchObject({ plan: "t3", essai: true });
+    expect(lireEssai("?plan=t3m", false)).toMatchObject({ plan: "t3m", essai: true });
+    expect(lireEssai("?miroir", false)).toMatchObject({ plan: null, miroir: true, essai: true });
+    expect(lireEssai("?plan=3t", false)).toMatchObject({ plan: null });
+    expect(lireEssai("?miroir", true)).toMatchObject({ miroir: false, essai: false });
+    expect(planDemande("t1", false, "boucle")).toBe("t1");
+    expect(planDemande("t1", true, "boucle")).toBe("t1m");
+    expect(planDemande("t1m", true, "boucle")).toBe("t1");
+    expect(planDemande(null, true, "boucle")).toBe("bouclem");
+    expect(planDemande("inconnu", false, "boucle")).toBe("boucle");
+    const jour = 20850;
+    for (const [recherche, plan] of [["?plan=t2&theme=volcan", "t2"], ["?plan=t2&theme=volcan&miroir", "t2m"], ["?plan=t4m", "t4m"]] as const) {
+      avec(recherche);
+      const c = await contenuDuJour(jour, "", "volcan");
+      expect(c.plan).toBe(plan);
+      expect(c.modules).toEqual(dailyPinball(jour, undefined, c.theme, plan).modules);
+    }
+  });
+
   it("`?plan=` se combine avec `?theme=` : le thème et le plan demandés, tous les deux", async () => {
     const jour = 20850;
     for (const theme of ["foire", "ocean", "espace", "volcan"] as const) {
@@ -105,7 +125,8 @@ describe("les noms des rails et des plans (lot PBG1)", () => {
       for (const theme of ["foire", "ocean", "espace", "volcan"]) {
         for (const genre of ["rampe", "orbite"]) expect(nomDuModule((k) => cat[k]!, theme, genre), `${genre} ${theme}`).toBeTruthy();
       }
-      for (const plan of IDS_PLANS) expect(cat[`plan.${plan}`], plan).toBeTruthy();
+      for (const plan of [...IDS_PLANS, ...PLANS_ESSAI.map((p) => p.id)]) expect(cat[`plan.${plan}`], plan).toBeTruthy();
+      expect(cat["plan.miroir"]).toContain("{plan}");
     }
     expect(nomDuModule((k) => k, "foire", "rampe")).toBe("module.rampe.foire");
   });
