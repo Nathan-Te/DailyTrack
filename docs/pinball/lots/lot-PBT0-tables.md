@@ -40,14 +40,14 @@ Les 36 ms de la mission sont **l'Espace** (deux portails de 14 px) ; ailleurs el
 ## Les mesures (`npm run valider-essais:pinball -w @cdj/pinball-sim`, 48 tables, 5,6 s chacune)
 - **Validation du lot PB4 : 48/48 valides** (aucune bille coincée : la plus lente met 5 143 pas pour être perdue, le délai est 54 000 ; chaque module touché ; mission ; porte ouverte et franchie). **Le robot verrouille une bille et lance une multibille sur les 48 tables.**
 - **Diamant** (le meilleur de 4 parties de 6 minutes du robot, sur la table d'essai, ce n'est pas un jour servi) : médiane **2 899 960**, de 1 002 340 à 7 205 910 (le Diamant médian des tables du jour au PBL2 : 3 246 800 ; le robot est chaotique, ± 11 %).
-- **Fluidité** : voir la fin de ce fichier (processeur ralenti ×4, 390 × 844, bloom, multibille).
+- **Fluidité** (`captures-lot-pbl2 -g mesure`, `PLAN=t1`, processeur ralenti ×4, 390 × 844, bloom, multibille, médiane) : `t1` **14,2 ms (Volcan), 15,2 (Espace), 16,9 (Océan), 18,6 (Foire)** ; 129 à 156 appels de dessin. Mesurée sur `t1` seulement (les rails sont les mêmes partout : moins de triangles qu'avant) ; PBL2 : 14,9 à 19,2 ms sur ses plans.
 - Un premier jet de `t4` avait des **billes coincées** (8 tables sur 8) : le mini-batteur déplacé de 7 px créait un creux contre le mur gauche où la bille s'arrêtait. Remis en (46, 405) : c'est la place éprouvée au PBG1. **Leçon écrite** : un mini-batteur ne se déplace pas sans `valider-essais`.
 
 ## Les rails, plus discrets
 Un rail = **deux fils de 1,8 px** sur les bords d'une gouttière de 12 px (18 et 16 avant), un fond quasi transparent, des fûts très fins ; ni traverses, ni ruban, ni lueur, dans les deux rendus (three.js : `rails3d.ts`, `FIL` ; à plat : `dessin.ts`, `FIL_PLAT`). L'arche d'entrée de chaque bouche et la sortie d'une rampe gardent l'habillage du thème (foire : poteaux rouge et blanc, océan : corail et écume, espace : anneau néon, volcan : bois et fer). Voir la planche.
 
 ## Planche (`captures-pbt0/planche.png`) et captures
-À gauche la table de Nathan ; puis `t1` à `t6`, chacun en Fête foraine et en Volcan, en portrait. Les miroirs : `miroir-t<n>-foire.png`. *(Océan et Espace : `plan-t<n>-ocean|espace.png` si présents ; l'Espace est le thème où la mission a le moins de marge.)*
+À gauche la table de Nathan ; puis `t1` à `t6`, chacun en Fête foraine et en Volcan, en portrait. Les miroirs : `miroir-t<n>-foire.png`. Océan et Espace : seulement `t1` (`plan-t1-ocean.png`, `plan-t1-espace.png`) ; l'Espace est le thème où la mission a le moins de marge (36 ms).
 
 ## Ce qui est vérifié, ce qui ne l'est pas
 - **Vérifié** : tout ce qui est ci-dessus, par des tests (`conception.test.ts` 61 tests sans simulation, `conception-tirs-t1…t6` 48 tables, `visibilite.test.ts` 49, `golden-essais.test.ts` 13 : une partie du robot sur chaque plan rejouée au bit près par `rejouer`, ce que fait le serveur ; `ancrage` et `lisibilite` jouent aussi les douze plans ; `essai.test.ts` pour `?plan=t1` et `?miroir`).
