@@ -86,19 +86,19 @@ describe("`?plan=` : la table de ce plan, seule ou avec un thème", () => {
     expect(ignore.modules).toEqual(duJour.modules);
   });
 
-  it("lot PBT0 : `?plan=t1` à `t6` (des lettres et des chiffres) sont les plans d'essai, `?miroir` retourne le plan demandé ou celui du jour, jamais classés", async () => {
-    expect(lireEssai("?plan=t3", false)).toMatchObject({ plan: "t3", essai: true });
-    expect(lireEssai("?plan=t3m", false)).toMatchObject({ plan: "t3m", essai: true });
+  it("lot PBT0 : `?plan=e1` à `e3` (des lettres et des chiffres) sont les plans d'essai, `?miroir` retourne le plan demandé ou celui du jour, jamais classés", async () => {
+    expect(lireEssai("?plan=e3", false)).toMatchObject({ plan: "e3", essai: true });
+    expect(lireEssai("?plan=e3m", false)).toMatchObject({ plan: "e3m", essai: true });
     expect(lireEssai("?miroir", false)).toMatchObject({ plan: null, miroir: true, essai: true });
-    expect(lireEssai("?plan=3t", false)).toMatchObject({ plan: null });
+    expect(lireEssai("?plan=3e", false)).toMatchObject({ plan: null });
     expect(lireEssai("?miroir", true)).toMatchObject({ miroir: false, essai: false });
-    expect(planDemande("t1", false, "boucle")).toBe("t1");
-    expect(planDemande("t1", true, "boucle")).toBe("t1m");
-    expect(planDemande("t1m", true, "boucle")).toBe("t1");
+    expect(planDemande("e1", false, "boucle")).toBe("e1");
+    expect(planDemande("e1", true, "boucle")).toBe("e1m");
+    expect(planDemande("e1m", true, "boucle")).toBe("e1");
     expect(planDemande(null, true, "boucle")).toBe("bouclem");
     expect(planDemande("inconnu", false, "boucle")).toBe("boucle");
     const jour = 20850;
-    for (const [recherche, plan] of [["?plan=t2&theme=volcan", "t2"], ["?plan=t2&theme=volcan&miroir", "t2m"], ["?plan=t4m", "t4m"]] as const) {
+    for (const [recherche, plan] of [["?plan=e2&theme=volcan", "e2"], ["?plan=e2&theme=volcan&miroir", "e2m"], ["?plan=e3m", "e3m"]] as const) {
       avec(recherche);
       const c = await contenuDuJour(jour, "", "volcan");
       expect(c.plan).toBe(plan);

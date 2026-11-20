@@ -53,6 +53,8 @@ for (const plan of PLANS_ESSAI) {
   corps += `<path d="M20 560 L20 205 A176.25 176.25 0 0 1 372.5 205 L372.5 718 L348 718 L348 255 L348 560 L250 634 M20 560 L118 634" fill="none" stroke="#555" stroke-width="2.5"/>`;
   for (const m of t.murs) if (m.type !== 2 && m.ax !== m.bx || m.type !== 2 && m.ay !== m.by) corps += `<line x1="${px(m.ax)}" y1="${px(m.ay)}" x2="${px(m.bx)}" y2="${px(m.by)}" stroke="#999" stroke-width="1.2"/>`;
   t.rails.forEach((r) => (corps += `<polyline fill="none" stroke="#1a9e3f" stroke-width="10" stroke-opacity="0.35" stroke-linecap="round" points="${r.x.map((x, j) => `${px(x)},${px(r.y[j]!)}`).join(" ")}"/><polyline fill="none" stroke="#1a9e3f" stroke-width="2" points="${r.x.map((x, j) => `${px(x)},${px(r.y[j]!)}`).join(" ")}"/>`));
+  // lot PBT0b : la ligne de visée de chaque bouche, du point entre les batteurs : libre de tout obstacle
+  for (const o of t.portes) corps += `<line x1="184" y1="650" x2="${px(o.x)}" y2="${px(o.y)}" stroke="#1a9e3f" stroke-width="1" stroke-dasharray="4 4" stroke-opacity="0.7"/>`;
   for (const o of t.portes) corps += `<line x1="${px(o.seg.ax)}" y1="${px(o.seg.ay)}" x2="${px(o.seg.bx)}" y2="${px(o.seg.by)}" stroke="#0a7" stroke-width="3"/>`;
   for (const q of formesDeLaTable(t)) {
     if (q.nom.startsWith("bouche:") || q.nom === "porte") continue;
@@ -69,7 +71,7 @@ for (const plan of PLANS_ESSAI) {
   }
   corps += `<line x1="112" y1="640" x2="172" y2="660" stroke="#999" stroke-width="10" stroke-linecap="round"/><line x1="256" y1="640" x2="196" y2="660" stroke="#999" stroke-width="10" stroke-linecap="round"/>`;
   for (const n of nums) corps += `<circle cx="${n.x}" cy="${n.y}" r="11" fill="#111" stroke="#fff" stroke-width="2"/><text x="${n.x}" y="${n.y + 4.5}" font-size="13" font-weight="700" text-anchor="middle" fill="#fff" font-family="sans-serif">${n.n}</text>`;
-  corps += `<text x="10" y="690" font-size="11" fill="#666" font-family="sans-serif">poche des bumpers en haut · rails verts · porte en orange</text>`;
+  corps += `<text x="10" y="690" font-size="11" fill="#666" font-family="sans-serif">rails verts · porte en orange · pointillés : la ligne de visée libre de chaque bouche</text>`;
   corps += `</g>`;
   // la liste des tirs à droite
   let y = 70;

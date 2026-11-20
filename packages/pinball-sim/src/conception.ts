@@ -1,4 +1,4 @@
-import { UNITE } from "./constantes";
+import { RAYON, UNITE } from "./constantes";
 import { div, racine } from "./entiers";
 import { dailyPinball, type Contenu } from "./generateur";
 import { Partie } from "./partie";
@@ -6,6 +6,7 @@ import { REGLAGES, type Reglages } from "./reglages";
 import type { Table } from "./table";
 import { dansLaZoneDeTir, fenetresDeTir, FENETRE_MIN_MS, FENETRE_MIN_PAS, pasEnMs } from "./tir";
 import { nomDuModule } from "./validation";
+import { ECART_BOUCHE_MAX, POINT_DES_BATTEURS } from "./eventail";
 
 // CONCEVOIR UNE TABLE (lot PBT0) — « une table est dessinée d'un seul tenant ». Retour de Nathan après PBL2 : « La partie du haut est inatteignable : il y a trop de rails, de rochers et d'autres éléments qui bloquent l'accès au
 // haut de la table, et la vue. » La cause : chaque table était un empilement (un plan place deux rampes, une orbite, une porte et un aiguillage, puis on tire des modules dans six emplacements, et chaque lot a ajouté sa couche),
@@ -233,6 +234,60 @@ export function obstaclesQuiSeTouchent(table: Table): string[] {
   return [...new Set(sortie)];
 }
 
+/** Les bouts des deux grands batteurs (px), d'où se mesure ce qu'une bouche voit. */
+const BOUTS_DES_BATTEURS: readonly (readonly [number, number])[] = [[172, 655], [196, 655]];
+/** La tangente de `ECART_BOUCHE_MAX` (25°), en dix-millièmes : 0,4663. */
+const TANGENTE_ECART = 4663;
+/** Le haut réservé à la poche des bumpers et aux couloirs du haut : aucun autre obstacle n'y monte (px). */
+export const HAUT_RESERVE_Y = 205;
+
+/**
+ * **Une bouche est libre** (lot PBT0b) : la ligne entre chaque bout de batteur et chaque bouche de rail ne touche aucun obstacle (à une bille de distance, plus 2 px). « Plus jamais de mur devant une rampe » : retour de Nathan sur le lot PBT0.
+ * La porte d'une orbite ferme exprès sa bouche : elle n'est pas un obstacle pour les bouches de cette orbite (sa fenêtre de tir est mesurée à part). Vide si toutes les bouches sont libres.
+ */
+export function bouchesBloquees(table: Table): string[] {
+  const sortie: string[] = [];
+  const formes = formesDeLaTable(table).filter((f) => !f.nom.startsWith("bouche:"));
+  for (const g of table.portes) {
+    const mx = px(g.x);
+    const my = px(g.y);
+    const orbiteLe = table.rails[g.rail]!.genre === "orbite";
+    for (const [bx, by] of BOUTS_DES_BATTEURS) {
+      for (const f of formes) {
+        if (f.nom === "porte" && orbiteLe) continue;
+        const cur = f.genre === "disque" ? [f.x, f.y, f.x, f.y] : [f.ax, f.ay, f.bx, f.by];
+        const requis = f.r + RAYON + 2;
+        if (d2SegmentSegment(cur, [bx, by, mx, my]) < requis * requis) sortie.push(`la bouche du rail ${table.rails[g.rail]!.genre} (${mx}, ${my}) n'est pas libre : ${f.nom} est sur la ligne des batteurs`);
+      }
+    }
+  }
+  return [...new Set(sortie)];
+}
+
+/** **Une bouche regarde les batteurs** : son axe d'entrée est tourné vers le point entre les batteurs, à `ECART_BOUCHE_MAX` degrés près (tangente de 25° : 4663 dix-millièmes). */
+export function bouchesDeTravers(table: Table): string[] {
+  const sortie: string[] = [];
+  for (const g of table.portes) {
+    const vx = px(g.x) - POINT_DES_BATTEURS.x;
+    const vy = px(g.y) - POINT_DES_BATTEURS.y;
+    const dot = g.ux * vx + g.uy * vy;
+    const croix = Math.abs(g.ux * vy - g.uy * vx);
+    if (dot <= 0 || croix * 10000 > dot * TANGENTE_ECART) sortie.push(`la bouche du rail ${table.rails[g.rail]!.genre} (${px(g.x)}, ${px(g.y)}) ne regarde pas les batteurs (plus de ${ECART_BOUCHE_MAX}°)`);
+  }
+  return sortie;
+}
+
+/** **Le haut est réservé** à la poche des bumpers et aux couloirs du haut : tout autre obstacle commence sous `HAUT_RESERVE_Y`. */
+export function hautOccupe(table: Table): string[] {
+  const sortie: string[] = [];
+  for (const f of formesDeLaTable(table)) {
+    if (f.nom.startsWith("bouche:") || MODULES_DE_BUMPERS.some((m) => f.nom.endsWith(`:${m}`))) continue;
+    const haut = (f.genre === "disque" ? f.y : Math.min(f.ay, f.by)) - f.r;
+    if (haut < HAUT_RESERVE_Y) sortie.push(`${f.nom} monte dans le haut réservé aux bumpers (y = ${haut})`);
+  }
+  return sortie;
+}
+
 /** Les modules de bumpers d'une table (le trio, la paire, l'astéroïde) : la poche. */
 export const MODULES_DE_BUMPERS: readonly string[] = ["bumpers", "mini", "asteroide"];
 
@@ -372,6 +427,7 @@ export function defautsDeConception(table: Table, densiteMax: number = DENSITE_M
   if (orbites > 1) sortie.push(`${orbites} orbites (une au plus)`);
   for (const g of railsGenants(table)) sortie.push(`le rail ${g.rail} gêne ${g.avec} (${g.distance} px, il en faut ${g.requis})`);
   sortie.push(...obstaclesQuiSeTouchent(table));
+  sortie.push(...bouchesBloquees(table), ...bouchesDeTravers(table), ...hautOccupe(table));
   sortie.push(...pocheEnDefaut(table));
   const d = densite(table);
   if (d.total > densiteMax) sortie.push(`densité ${d.total} ‰ (obstacles ${d.obstacles}, rails ${d.rails}) : plafond ${densiteMax} ‰`);

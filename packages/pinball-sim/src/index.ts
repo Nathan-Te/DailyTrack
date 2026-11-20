@@ -18,3 +18,4 @@ export type { Medaille, Seuils } from "./types";
 export { sinus, cosinus, racine } from "./entiers";
 export * from "./tir";
 export * from "./conception";
+export * from "./eventail";

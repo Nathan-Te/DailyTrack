@@ -55,7 +55,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { AXE, HAUTEUR, JET_GEYSER, LARGEUR, MULT_MAX, RAYON, TICKS_PAR_SECONDE, TOUR, UNITE, type Partie, type ThemePinball } from "@cdj/pinball-sim";
-import { flechesAuSol, BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, dessinerSol, empreinteDuModule, hauteurPlaque, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Etiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
+import { flechesAuSol, BANDES, COULEURS_ELEMENTS, ENCRE, PALETTES, PAPIER, MOUTARDE, TAU, clignote, comptePourLaMission, dessinerSol, empreinteDuModule, hauteurPlaque, MEDAILLON, lampesDecor, lampesMission, largeurPlaque, lueurLampe, pastille, placerEtiquettes, planches, px, styleEtiquette, type Etiquette, type Libre, type Palette, type Rendu, type Surimpression } from "./dessin";
 import type { Vue } from "./bornes";
 import { creerModules } from "./modeles/trois";
 import { FENETRES, creerRails3d, hauteurBille, hauteurVue } from "./rails3d";
@@ -725,7 +725,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
       const a = (k * Math.PI) / 2;
       const poteau = cylindre(1.6, 20, ENCRE);
       poteau.position.set(Math.cos(a) * r * 0.58, 16, Math.sin(a) * r * 0.58);
-      const cheval = ombrageur(new Mesh(geo(new SphereGeometry(5.5, 16, 12)), mat(k % 2 ? MOUTARDE : PAPIER)));
+      const cheval = ombrageur(new Mesh(geo(new SphereGeometry(4.2, 16, 12)), mat(k % 2 ? MOUTARDE : PAPIER)));
       cheval.position.set(Math.cos(a) * r * 0.58, 28, Math.sin(a) * r * 0.58);
       tourne.add(poteau, cheval);
     }
@@ -927,11 +927,17 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   const lampesM = lampesMission(t, o.theme, partie.but).map((l) => {
     const m = new MeshStandardMaterial({ color: PAPIER, emissive: MOUTARDE, emissiveIntensity: 0, roughness: 0.4, envMap: env.texture, envMapIntensity: 0.35 });
     aLiberer.push(m);
-    const s = ombrageur(new Mesh(geo(new SphereGeometry(5.5, 16, 12)), m), false);
+    const s = ombrageur(new Mesh(geo(new SphereGeometry(4.2, 16, 12)), m), false);
     s.position.set(X(l.x), 6, Z(l.y));
     groupe.add(s);
     return m;
   });
+  // lot PBT0b : la lampe du verrou, au centre du médaillon du sol : bleue et clignotante tant que le verrou est allumé
+  const lampeVerrou = new MeshStandardMaterial({ color: PAPIER, emissive: COULEURS_INTENTION.verrou, emissiveIntensity: 0, roughness: 0.4 });
+  aLiberer.push(lampeVerrou);
+  const lv = ombrageur(new Mesh(geo(new SphereGeometry(5, 16, 12)), lampeVerrou), false);
+  lv.position.set(X(MEDAILLON.x), 6, Z(MEDAILLON.y));
+  groupe.add(lv);
   // --- Lot PBL1 : les flèches au sol. Éteintes, elles sont peintes dans le sol (`dessinerSol`) ; **les flèches vives** — celles que `indications.ts` allume, trois au plus, dans la couleur de leur intention — sont ici, une par flèche du sol,
   // invisibles tant qu'elles ne comptent pas : le dessus (la couleur), son cerne d'encre et un halo doux de la même couleur.
   const indications = creerIndications(partie, flechesAuSol(t, o.theme));
@@ -1276,7 +1282,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const lampesCouloirs = t.sauveur.lampes.map((l) => {
       const m = new MeshStandardMaterial({ color: PAPIER, emissive: MOUTARDE, emissiveIntensity: 0, roughness: 0.4, envMap: env.texture, envMapIntensity: 0.35 });
       aLiberer.push(m);
-      const sph = ombrageur(new Mesh(geo(new SphereGeometry(5.5, 16, 12)), m), false);
+      const sph = ombrageur(new Mesh(geo(new SphereGeometry(4.2, 16, 12)), m), false);
       sph.position.set(X(px(l.x)), 6, Z(px(l.y)));
       groupe.add(sph);
       return m;
@@ -1602,6 +1608,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
     const sec = (s.tick + a) / TICKS_PAR_SECONDE;
     for (const f of maj) f(s.tick, sec, dt);
     lampesM.forEach((m, i) => (m.emissiveIntensity = i < partie.compteur ? 1.4 : 0));
+    lampeVerrou.emissiveIntensity = partie.verrouAllume && clignote(s.tick) ? 1.6 : 0;
     // lot PBL1 : les flèches vives (trois au plus), dans la couleur de leur intention, qui clignotent
     for (const v of flechesVives.values()) v.g.visible = false;
     if (clignote(s.tick)) {

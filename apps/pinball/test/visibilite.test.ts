@@ -178,8 +178,8 @@ describe("la visibilité : aucun rail ne cache un objectif ni un bumper (portrai
   }
 
   it("le test voit un rail qui cache : un module posé sous le tracé d'un rail est détecté", () => {
-    // sentinelle : un bumper posé au milieu de la rampe de t1 est caché par elle
-    const table = new Partie(dailyPinball(0, undefined, "foire", "t1")).table;
+    // sentinelle : un bumper posé au milieu de la rampe de e1 est caché par elle
+    const table = new Partie(dailyPinball(0, undefined, "foire", "e1")).table;
     const rails = creerRails3d("foire", table);
     const masque = masqueDesRails(cam, [rails.opaque!, rails.translucide].filter((m): m is Mesh => m !== null));
     const rail = table.rails[0]!;

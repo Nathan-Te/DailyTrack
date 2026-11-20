@@ -61,16 +61,19 @@ export function couleurModule(P: Palette, theme: ThemePinball, type: string): st
   if (comptePourLaMission(theme, type) || type === "trouNoir" || type === "coulee") return MOUTARDE;
   return P.accent;
 }
-/** L'élément qui porte les lampes de la mission (le premier du thème : le portail A pour l'espace) et leur place : un arc au-dessus de lui, une lampe par pas du but. */
+/** Lot PBT0b — **le médaillon central** : sur le vrai flipper de référence (Spider-Man Vault Edition) le bas est couvert de lampes peintes autour d'un grand médaillon. Ici : un disque de 34 px au milieu du bas de la table, le symbole du thème, la jauge de la mission autour de lui, une lampe de verrou au centre, et un rayon de lampes vers chaque tir. Il est **peint dans le sol** (les deux rendus) ; seules les lampes de la jauge et du verrou bougent. */
+export const MEDAILLON = { x: AXE, y: 500, r: 34 } as const;
+/** La jauge de la mission : une lampe par pas du but, en arc autour du médaillon (lot PBT0b : elle était au-dessus de l'élément du thème). */
 export function lampesMission(table: Table, theme: ThemePinball, but: number): { x: number; y: number }[] {
   const mission: Mission = MISSION_DU_THEME[theme];
   const ancre = table.poses.find((m) => (MODULES_DE_MISSION[mission] as readonly string[]).includes(m.type) && m.type !== "portailB");
   if (!ancre) return [];
-  const rr = (RAYON_MODULE[ancre.type] ?? 30) + 9;
+  const rr = MEDAILLON.r + 11;
+  const pas = Math.min(0.32, 2.7 / Math.max(1, but));
   const l: { x: number; y: number }[] = [];
   for (let i = 0; i < but; i++) {
-    const a = -Math.PI / 2 + (i - (but - 1) / 2) * 0.32;
-    l.push({ x: px(ancre.x) + Math.cos(a) * rr, y: px(ancre.y) + Math.sin(a) * rr });
+    const a = -Math.PI / 2 + (i - (but - 1) / 2) * pas;
+    l.push({ x: MEDAILLON.x + Math.cos(a) * rr, y: MEDAILLON.y + Math.sin(a) * rr });
   }
   return l;
 }
@@ -1758,14 +1761,167 @@ function masque(c: CanvasRenderingContext2D, couleur: string): void {
   c.restore();
 }
 
+/** Le rayon (px) des éléments de la mission, leur socle peint étant un peu plus large. */
+const RAYON_ELEMENT_PX: Readonly<Record<string, number>> = { manege: 50, tourbillon: 56, trouNoir: 40, geyser: 22 };
+
+/** Le symbole du thème au centre du médaillon (peint, simple) : une étoile, une coquille, une planète à anneau, un volcan. */
+function symboleDuTheme(c: CanvasRenderingContext2D, theme: ThemePinball, couleur: string): void {
+  c.save();
+  c.translate(MEDAILLON.x, MEDAILLON.y);
+  c.fillStyle = couleur;
+  c.strokeStyle = couleur;
+  c.lineWidth = 2;
+  c.lineJoin = "round";
+  c.lineCap = "round";
+  if (theme === "foire") {
+    c.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const r = k % 2 === 0 ? 15 : 6.5;
+      const a = -Math.PI / 2 + (k * Math.PI) / 5;
+      c[k === 0 ? "moveTo" : "lineTo"](Math.cos(a) * r, Math.sin(a) * r);
+    }
+    c.closePath();
+    c.fill();
+  } else if (theme === "ocean") {
+    // une coquille : un éventail de côtes
+    c.beginPath();
+    c.moveTo(0, 12);
+    c.arc(0, 12, 20, -Math.PI * 0.85, -Math.PI * 0.15);
+    c.closePath();
+    c.globalAlpha = 0.75;
+    c.fill();
+    c.globalAlpha = 1;
+    c.strokeStyle = "rgba(0,0,0,.45)";
+    for (let k = -2; k <= 2; k++) {
+      c.beginPath();
+      c.moveTo(0, 12);
+      c.lineTo(Math.sin(k * 0.34) * 20, 12 - Math.cos(k * 0.34) * 20);
+      c.stroke();
+    }
+  } else if (theme === "espace") {
+    c.beginPath();
+    c.arc(0, 0, 8.5, 0, TAU);
+    c.fill();
+    c.beginPath();
+    c.ellipse(0, 0, 18, 5.5, -0.35, 0, TAU);
+    c.stroke();
+  } else {
+    // un volcan et sa braise
+    c.beginPath();
+    c.moveTo(-17, 13);
+    c.lineTo(-6, -7);
+    c.lineTo(6, -7);
+    c.lineTo(17, 13);
+    c.closePath();
+    c.fill();
+    c.fillStyle = "#F2894B";
+    c.beginPath();
+    c.arc(0, -11, 4.2, 0, TAU);
+    c.fill();
+  }
+  c.restore();
+}
+
+/** Lot PBT0b : le médaillon (un disque, deux filets, huit pétales, le symbole du thème) et **un rayon de lampes peintes vers chaque tir** — dans la couleur de son intention, éteint et discret (`flechesAuSol` dit où est chaque tir). */
+export function dessinerLampesDuSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
+  const { theme, table: t } = d;
+  const P = PALETTES[theme];
+  const M = MEDAILLON;
+  // les rayons : des lampes tous les 13 px, de la bordure du médaillon jusqu'à la flèche du tir
+  c.save();
+  for (const f of flechesAuSol(t, theme)) {
+    const intention = f.cible === "verrou" ? "verrou" : f.cible === "rail" ? "combo" : "mission";
+    const dx = f.x - M.x;
+    const dy = f.y - M.y;
+    const long = Math.hypot(dx, dy);
+    const ux = dx / long;
+    const uy = dy / long;
+    for (let s = M.r + 12; s < long - 16; s += 13) {
+      c.beginPath();
+      c.arc(M.x + ux * s, M.y + uy * s, 2.1, 0, TAU);
+      c.fillStyle = COULEURS_INTENTION[intention];
+      c.globalAlpha = P.sombre ? 0.4 : 0.5;
+      c.fill();
+      c.globalAlpha = 0.55;
+      c.lineWidth = 1;
+      c.strokeStyle = ENCRE;
+      c.stroke();
+    }
+  }
+  c.restore();
+  // le jouet central : un socle de lampes peintes autour de l'élément de la mission (le plus présent de la table sans sortir de son emprise de collision)
+  for (const m of t.poses) {
+    if (!comptePourLaMission(theme, m.type)) continue;
+    const r = (m.type === "portailA" || m.type === "portailB" ? 14 : RAYON_ELEMENT_PX[m.type] ?? 24) + 9;
+    c.save();
+    c.beginPath();
+    c.arc(px(m.x), px(m.y), r, 0, TAU);
+    c.fillStyle = COULEURS_INTENTION.mission;
+    c.globalAlpha = P.sombre ? 0.1 : 0.14;
+    c.fill();
+    c.globalAlpha = 0.75;
+    c.lineWidth = 1.4;
+    c.strokeStyle = ENCRE;
+    c.stroke();
+    const n = Math.max(8, Math.round((TAU * r) / 14));
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * TAU;
+      c.beginPath();
+      c.arc(px(m.x) + Math.cos(a) * r, px(m.y) + Math.sin(a) * r, 2.2, 0, TAU);
+      c.fillStyle = COULEURS_INTENTION.mission;
+      c.globalAlpha = 0.7;
+      c.fill();
+    }
+    c.restore();
+  }
+  // le médaillon
+  c.save();
+  c.beginPath();
+  c.arc(M.x, M.y, M.r, 0, TAU);
+  c.fillStyle = P.sombre ? "rgba(8,6,20,.62)" : "rgba(36,22,12,.5)";
+  c.fill();
+  c.lineWidth = 2.4;
+  c.strokeStyle = ENCRE;
+  c.stroke();
+  c.beginPath();
+  c.arc(M.x, M.y, M.r - 5, 0, TAU);
+  c.lineWidth = 1.6;
+  c.strokeStyle = P.accent;
+  c.globalAlpha = 0.85;
+  c.stroke();
+  c.globalAlpha = 0.5;
+  c.lineWidth = 1;
+  for (let k = 0; k < 8; k++) {
+    const a = (k * Math.PI) / 4 + Math.PI / 8;
+    c.beginPath();
+    c.moveTo(M.x + Math.cos(a) * 11, M.y + Math.sin(a) * 11);
+    c.lineTo(M.x + Math.cos(a) * (M.r - 5), M.y + Math.sin(a) * (M.r - 5));
+    c.stroke();
+  }
+  c.restore();
+  symboleDuTheme(c, theme, P.accent);
+  // les lampes de la jauge, éteintes (celles qu'allume la mission sont dessinées par-dessus à chaque image)
+  for (const l of lampesMission(t, theme, 6)) {
+    c.beginPath();
+    c.arc(l.x, l.y, 4, 0, TAU);
+    c.fillStyle = P.sombre ? "rgba(255,246,224,.16)" : "rgba(255,255,255,.5)";
+    c.fill();
+    c.lineWidth = 1.4;
+    c.strokeStyle = ENCRE;
+    c.stroke();
+  }
+}
+
 /** Le sol : tout ce qui ne bouge pas et se dessine à plat (bandes, zone des batteurs, nom du thème, flèches, lampes éteintes). Sur un canvas dont l'unité est le pixel de la table (375 × 760). */
 export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   const { theme, table: t, titre, police } = d;
   const P = PALETTES[theme];
-  if (theme === "foire") solFoire(c, titre, police);
-  else if (theme === "ocean") solOcean(c, titre, police);
-  else if (theme === "espace") solEspace(c, titre, police);
-  else solVolcan(c, titre, police);
+  // lot PBT0b : le médaillon prend la place du nom du thème (qui reste dans le panneau « Aujourd'hui » et sur l'accueil)
+  void titre;
+  if (theme === "foire") solFoire(c, "", police);
+  else if (theme === "ocean") solOcean(c, "", police);
+  else if (theme === "espace") solEspace(c, "", police);
+  else solVolcan(c, "", police);
   // lot PBV1 : la lueur des bandes lumineuses sur le sol, le long des rails latéraux (un dégradé de la couleur du thème, du rail vers l'intérieur)
   for (const [x, y0, y1] of d.sansLueurBandes ? [] : BANDES) {
     const s = x < AXE ? 1 : -1;
@@ -1799,6 +1955,7 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   if (!d.sansLueurBandes) lueursLampes(c, P.lampe);
   // le nom du thème est peint par le sol de chaque thème (la bannière, le nom blanc et sa vague, les lettres de néon, la gravure)
   // lot PBL1 : les flèches au sol, **éteintes et discrètes** : devant l'élément de la mission, le verrou, chaque bouche de rail et dans le passage de la porte (rien devant les autres modules) ; `indications.ts` allume celles qui comptent
+  dessinerLampesDuSol(c, d);
   for (const f of flechesAuSol(t, theme)) flecheEteinte(c, P, f.x, f.y, f.a);
   // lot PBG3 : les lampes éteintes des couloirs de retour, le socle du poteau sauveur entre les batteurs, le pivot de l'aiguillage
   for (const l of t.sauveur.lampes) {
@@ -2062,7 +2219,9 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
       }
     }
     // les lampes de la mission, autour de l'élément du thème : une allumée par pas de réussi
-    lampesMission(t, theme, partie.but).forEach((l, i) => rond(l.x, l.y, 5.5, i < partie.compteur ? MOUTARDE : P.sombre ? "#3a3d66" : PAPIER, 2));
+    lampesMission(t, theme, partie.but).forEach((l, i) => rond(l.x, l.y, 4.2, i < partie.compteur ? MOUTARDE : P.sombre ? "#3a3d66" : PAPIER, 1.6));
+    // lot PBT0b : la lampe du verrou, au centre du médaillon — elle clignote en bleu tant que le verrou est allumé
+    if (partie.verrouAllume && clignote(partie.tick)) rond(MEDAILLON.x, MEDAILLON.y, 5, COULEURS_INTENTION.verrou, 1.6);
   }
   /** Les portails et les flèches qui clignotent, par-dessus les trous. */
   function portailsEtFleches(tick: number): void {
