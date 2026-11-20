@@ -62,7 +62,7 @@ Synthèse de la plateforme : `docs/plateforme/synthese.md`. Guide des coûts : `
 **La date du lancement** : une seule source, `config/lancement.json` (voir le `CLAUDE.md` racine) ; le serveur la prend de `@cdj/core/lancement` (`createApi({ premierJourDuJour })` pour les […] **→ Détail : [docs/regles/api/lancement-public-et-remise-a-zero-lot-r8.md](../../docs/regles/api/lancement-public-et-remise-a-zero-lot-r8.md)**
 
 ## Publication des jeux (lot P)
-**Table `jeux`** (`PLATFORM_SCHEMA`, migration **réversible** : `DROP TABLE jeux`, `ALTER TABLE results|jump_results DROP COLUMN apercu`) : une ligne par jeu, nommé par son dossier sur le […] **Lot N3 : `GET /api/admin/jeux` porte en plus, pour chaque jeu, `categorie` et `couleur` (de la fiche), `etatDepuis` (le dernier changement d'état : colonne `jeux.etat_le`), `joueursAujourdhui` (un nombre, jamais un joueur ; `null` sans compteur) et `bloque` (le code qui interdit `preview` / `on`, `identite_incomplete` + `manque` aujourd'hui ; le même que le refus de `POST …/etat`) ; `POST …/etat` accepte `annulation: true` (journal : « annuler le changement d'état d'un jeu »).** **→ Détail : [docs/regles/api/publication-des-jeux-lot-p.md](../../docs/regles/api/publication-des-jeux-lot-p.md)**
+**Table `jeux`** (`PLATFORM_SCHEMA`, migration **réversible** : `DROP TABLE jeux`, `ALTER TABLE results|jump_results DROP COLUMN apercu`) : une ligne par jeu, nommé par son dossier sur le […] Lot N3 : champs de `GET /api/admin/jeux` ajoutés. **→ Détail : [docs/regles/api/publication-des-jeux-lot-p.md](../../docs/regles/api/publication-des-jeux-lot-p.md)**
 
 ## Emplacements
 - `docs/plateforme/seed-phase-2.md` — vision et plan en lots de la phase 2.
