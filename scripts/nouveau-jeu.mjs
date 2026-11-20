@@ -354,7 +354,7 @@ export function entreesMecaniques(racine, c) {
     editerLignes(racine, "CLAUDE.md", c, (t) => {
       const modele = t.split("\n").find((l) => l.startsWith(`| \`packages/${MODELE}-sim\` · \`apps/${MODELE}\``));
       if (!modele) throw new Error("CLAUDE.md : la ligne du jeu témoin n'est plus dans la carte du dépôt, le générateur doit suivre");
-      const ligne = `| \`packages/${c.id}-sim\` · \`apps/${c.id}\` | simulation ; le jeu — jeu neuf, branché sur la plateforme par le kit (\`brancherJeu\`), \`off\` jusqu'à ce que Nathan le publie | ${c.nom} | index \`docs/${c.id}/consignes.md\` |`;
+      const ligne = `| \`packages/${c.id}-sim\` · \`apps/${c.id}\` | kit | ${c.nom} | \`docs/${c.id}/consignes.md\` |`;
       return { texte: t.replace(modele, `${ligne}\n${modele}`), ajouts: 1 };
     }),
     editerLignes(racine, "docs/plateforme/budgets.md", c, (t) =>

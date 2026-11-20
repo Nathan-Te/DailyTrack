@@ -23,6 +23,6 @@ Tour de rôle du jeu Party du jour ; seul le jeu du jour accepte des envois clas
 - `npm run typecheck`, `npm run consignes`, tests core / api (SQLite et libSQL) des nouveaux fichiers, `nouveauJeu.test.ts`, `consignes.test.ts` verts.
 - `kit-bout-en-bout --jeux essaiparty` : typage, unitaires (sqlite, libsql), construction, budgets, e2e Chromium, aucun fichier hors zones : **vert**.
 - **Budgets** : `portail.premier` 43,61 Ko pour 47 Ko (pas de relèvement à proposer) ; toutes les lignes tiennent.
-- Plafond de jetons des consignes de Track (54 000) : atteint à 53 98x ; les détails du lot sont dans `docs/regles/`.
+- **CI rouge corrigée** (« Kit de bout en bout ») : avec un troisième jeu généré, la copie dépassait le plafond de jetons du `CLAUDE.md` racine (8 000) et celui de Track (54 000), car le générateur ajoute une ligne à la carte du dépôt par jeu. Corrigé en raccourcissant la ligne écrite par le générateur (`| kit | Nom | docs/<id>/consignes.md |`) et ma part dans les consignes (détail dans `docs/regles/`) ; aucun plafond relevé. Marge de Track : faible (quelques dizaines de jetons) — un lot qui ajoute des consignes devra déplacer du texte vers `docs/regles/`.
 - `jeu-fictif` (suite complète) : voir le résultat de la CI ; deux échecs trouvés en local (chevauchement de noms `essai*`, plafond de jetons) sont corrigés.
 - **Non vérifié** : la CI complète sur la PR ; l'e2e de `essaitemps` / `essai` (inchangés, non relancés).

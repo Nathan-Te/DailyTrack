@@ -145,8 +145,8 @@ conception : `docs/plateforme/kit-de-jeu.md`, § 4. Code : `src/jeux/` (**import
 ## Un jeu neuf sur le module (lot K4c)
 Code : `src/jeux/defauts.ts`, `adaptateur.ts` (`adaptateurResultatsJeu`) ; tests : `test/jeuNeuf.test.ts` (un jeu jouet, **deux fiches de test** : un score ↓ et un temps ↑, SQLite **et** libSQL) et `test/jeuNeufAide.ts`. **→ Détail : [docs/regles/api/un-jeu-neuf-sur-le-module-lot-k4c.md](../../docs/regles/api/un-jeu-neuf-sur-le-module-lot-k4c.md)**
 
-## Un jeu Party (lot PA1)
-Niveau = graine du jour (`definirJeuParty`). **→ Détail : [docs/regles/api/un-jeu-party-lot-pa1.md](../../docs/regles/api/un-jeu-party-lot-pa1.md)**
+## Un jeu Party (PA1)
+→ [docs/regles/api/un-jeu-party-lot-pa1.md](../../docs/regles/api/un-jeu-party-lot-pa1.md)
 
 ## Tower (lot T4)
 **Au registre depuis le lot TP** (voir « Tower sur la plateforme (lot TP) » ci-dessous) ; il reste `off` (jeu sans ligne dans `jeux`). **→ Détail : [docs/regles/api/tower-lot-t4.md](../../docs/regles/api/tower-lot-t4.md)**
