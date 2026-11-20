@@ -35,7 +35,7 @@ export const LAYOUT = [
  */
 // Lots K1, K1b et K1c : chaque jeu (`config/jeux/<id>.json`) est publié sous `/<id>/` (sa construction : `apps/<app>/dist`, `app` = `web` pour Track) ; ses jours figés (`jours.dossier`, publiés sous le même
 // nom de dossier : `jump/levels`, `tower/jours` ; Track a un registre, pas de dossier) et la règle de la preuve de l'auteur (`jours.preuveInterditeEnProd`) viennent d'elle. `LAYOUT` ne garde que le portail.
-export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.app}/dist`, to: f.id, jours: f.jours.dossier, preuveInterdite: f.jours.preuveInterditeEnProd, temoin: f.temoin === true }));
+export const SITES_FICHES = FICHES_CI.map((f) => ({ id: f.id, from: `apps/${f.app}/dist`, to: f.id, jours: f.jours?.dossier, preuveInterdite: f.jours?.preuveInterditeEnProd ?? false, temoin: f.temoin === true }));
 /**
  * Lot K4e : **un jeu témoin n'est jamais publié en production** (`temoin: true` de sa fiche) ; il est présent en local, sur la recette et sur les aperçus. Les sites d'une construction : tous ceux des fiches, moins
  * les témoins si `production`.

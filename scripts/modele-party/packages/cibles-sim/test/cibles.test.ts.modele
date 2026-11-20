@@ -1,0 +1,111 @@
+import { describe, expect, it } from "vitest";
+import { daysFromCivil, graineDuJour } from "@cdj/core";
+import {
+  CIBLES_GENERATOR_VERSION,
+  COLONNES,
+  DUREE_TICKS,
+  ErreurGenerateur,
+  LIGNES,
+  MAX_TOUCHES,
+  NB_CASES,
+  NB_CIBLES,
+  VARIANTE,
+  caseAuPoint,
+  dailyCibles,
+  decoderRediffusion,
+  empreinteContenu,
+  encoderRediffusion,
+  enregistrer,
+  jouer,
+  rejouer,
+  tirerCibles,
+} from "../src/index";
+
+// Un jeu Party (lot PA1) : le « niveau » d'un jour est sa graine ; le jeu en tire ses cibles. Ce que vaut le tirage, la partie et la rediffusion, quelle que soit la variante de classement.
+const J = daysFromCivil(2026, 11, 4);
+const vif = (c: ReturnType<typeof dailyCibles>) => VARIANTE.joueur(c, () => 12);
+
+describe("le tirage du jour : la graine, rien d'autre", () => {
+  it("est déterministe, change d'un jour à l'autre, et ne dépend que de la graine", () => {
+    for (let j = J; j < J + 20; j++) {
+      const a = dailyCibles(j);
+      expect(empreinteContenu(a)).toBe(empreinteContenu(dailyCibles(j)));
+      expect(a.graine).toBe(graineDuJour("cibles", j));
+      expect(a.cibles).toEqual(tirerCibles(a.graine));
+      expect(a.cibles).toHaveLength(NB_CIBLES);
+    }
+    expect(empreinteContenu(dailyCibles(J))).not.toBe(empreinteContenu(dailyCibles(J + 1)));
+  });
+  it("jamais deux fois la même case de suite, fenêtres disjointes et assez longues", () => {
+    for (let j = J; j < J + 60; j++) {
+      const { cibles } = dailyCibles(j);
+      cibles.forEach((x, i) => {
+        expect(x.c).toBeGreaterThanOrEqual(0);
+        expect(x.c).toBeLessThan(NB_CASES);
+        if (i > 0) {
+          expect(x.c).not.toBe(cibles[i - 1]!.c);
+          expect(x.d).toBeGreaterThanOrEqual(cibles[i - 1]!.f);
+        }
+        expect(x.f - x.d).toBeGreaterThan(20);
+      });
+    }
+  });
+  it("refuse une version inconnue du tirage", () => {
+    expect(() => dailyCibles(J, 99)).toThrow(ErreurGenerateur);
+    expect(CIBLES_GENERATOR_VERSION).toBe(1);
+  });
+});
+
+describe("la partie (ce qui vaut pour toutes les variantes)", () => {
+  const c = dailyCibles(J);
+  it("une partie vide finit avec zéro touche et le départage maximal", () => {
+    const r = jouer(c, []);
+    expect({ touches: r.touches, dernier: r.dernier, ratees: r.ratees }).toEqual({ touches: 0, dernier: DUREE_TICKS, ratees: 0 });
+    expect(r.ticks).toBe(DUREE_TICKS);
+  });
+  it("un joueur vif touche tout, sans rien rater", () => {
+    const r = jouer(c, vif(c));
+    expect(r.touches).toBe(NB_CIBLES);
+    expect(r.ratees).toBe(0);
+  });
+  it("la case sous un point du plateau", () => {
+    expect(caseAuPoint(0, 0, 80, 60, LIGNES)).toBe(0);
+    expect(caseAuPoint(79, 59, 80, 60, LIGNES)).toBe(COLONNES * LIGNES - 1);
+    expect(caseAuPoint(80, 10, 80, 60, LIGNES)).toBe(-1);
+  });
+});
+
+describe("la rediffusion", () => {
+  const c = dailyCibles(J);
+  it("fait l'aller-retour et rejoue au bit près", () => {
+    const touches = vif(c);
+    const code = enregistrer(c, touches);
+    expect(decoderRediffusion(code).touches).toEqual(touches);
+    expect(rejouer(c, code)).toEqual(jouer(c, touches));
+  });
+  it("refuse tout ce qui est illisible, avec un code", () => {
+    const code = (r: Partial<Parameters<typeof encoderRediffusion>[0]>) => encoderRediffusion({ sim: 1, g: 1, contenu: { jour: J }, touches: [], ...r });
+    const refus = (f: () => unknown) => {
+      try {
+        f();
+      } catch (e) {
+        return (e as { code?: string }).code;
+      }
+      return "aucun";
+    };
+    expect(refus(() => decoderRediffusion(""))).toBe("format_illisible");
+    expect(refus(() => decoderRediffusion("***"))).toBe("format_illisible");
+    expect(refus(() => decoderRediffusion("A".repeat(1500)))).toBe("trop_longue");
+    expect(refus(() => decoderRediffusion(code({ sim: 2 })))).toBe("version_inconnue");
+    expect(refus(() => decoderRediffusion(code({ g: 2 })))).toBe("version_inconnue");
+    expect(refus(() => decoderRediffusion(code({ touches: [{ tick: DUREE_TICKS, c: 0 }] })))).toBe("format_illisible");
+    expect(refus(() => decoderRediffusion(code({ touches: [{ tick: 3, c: NB_CASES }] })))).toBe("format_illisible");
+    expect(refus(() => decoderRediffusion(code({ touches: Array.from({ length: MAX_TOUCHES + 1 }, () => ({ tick: 5, c: 1 })) })))).toBe("trop_longue");
+    expect(refus(() => rejouer(c, code({ contenu: { jour: J + 1 } })))).toBe("contenu_different");
+    expect(refus(() => rejouer(c, code({ contenu: { scenario: "essai" } })))).toBe("contenu_different");
+  });
+  it("une rediffusion de 200 touches tient dans la borne de texte", () => {
+    const code = enregistrer(c, Array.from({ length: MAX_TOUCHES }, (_, i) => ({ tick: 300 + (i >> 3), c: (i * 7) % NB_CASES })));
+    expect(code.length).toBeLessThanOrEqual(1000);
+  });
+});

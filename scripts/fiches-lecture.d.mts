@@ -14,7 +14,8 @@ export interface FicheCI {
     regression?: string[];
     parts: { main: number; complet: number; nuit: number };
   };
-  jours: {
+  /** Lot PA1 : absent pour un jeu Party (rien à figer). */
+  jours?: {
     dossier: string | null;
     registre: string | null;
     preuveInterditeEnProd: boolean;
@@ -61,7 +62,7 @@ export interface FicheServeur {
   id: string;
   code: string;
   versions: { sim: string; generateur: string; medailles?: string };
-  jours: { mode: string; dossier?: string; registre?: string; preuveInterditeEnProd: boolean };
+  jours?: { mode: string; dossier?: string; registre?: string; preuveInterditeEnProd: boolean };
   [cle: string]: unknown;
 }
 export const FICHES_SERVEUR: FicheServeur[];
@@ -84,4 +85,6 @@ export interface JeuDeLaChaine {
   apresPose?: { paquet: string; script: string; sorties: string[] };
 }
 export const CHAINE: JeuDeLaChaine[];
+/** Lot PA1 : la chaîne d'après des projections données (pure) ; un jeu sans `jours` (Party) n'en fait pas partie. */
+export function chaineDesFiches(fichesCI: readonly FicheCI[], fichesServeur: readonly FicheServeur[]): JeuDeLaChaine[];
 export function jeuDeLaChaine(id: string): JeuDeLaChaine;

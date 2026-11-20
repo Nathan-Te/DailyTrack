@@ -51,6 +51,12 @@ export type { CategorieJeu };
 /** Lot K5 — les motifs d'étiquette de la charte (rév. 18, § 5) : dessinés en CSS net, en deux tons tirés de la teinte du jeu, jamais de dégradé. */
 export const MOTIFS = ["rayures", "lignes", "quadrillage", "losanges", "uni"] as const;
 export type Motif = (typeof MOTIFS)[number];
+/**
+ * Lot PA1 — **l'identité de la catégorie Party** : la police et le motif sont ceux de la catégorie, pas ceux du jeu (la police est l'une de celles que le portail charge déjà : aucune face de plus). Un jeu
+ * Party ne choisit donc que sa **couleur d'étiquette** et son **illustration** ; la fiche d'un jeu Party porte ces deux valeurs et `validerFiche` refuse toute autre.
+ */
+export const POLICE_PARTY = "Lilita One";
+export const MOTIF_PARTY: Motif = "losanges";
 /** Lot K5 — la valeur que `npm run nouveau-jeu` écrit dans le bloc `identite` d'un jeu neuf : elle bloque `preview` et `on`. */
 export const A_CHOISIR = "à choisir";
 /** Lot K5 — l'illustration d'un jeu dont la carte est dessinée à la main dans `@cdj/ui` (Track et Jump) : pas de fichier SVG. */
@@ -116,7 +122,7 @@ export interface FicheJeu {
   };
   medailles: { methode: MethodeMedailles; bareme: number[]; plafondDiamant?: number };
   partage: { extras: ("morts" | "vies" | "rang")[] };
-  /** Les codes des thèmes. */
+  /** Les codes des thèmes. Lot PA1 : **vide** pour un jeu Party (qui n'a pas de thème : sa fiche le dit et la validation l'exige). */
   themes: string[];
   /**
    * Lot K7 : le nom de chaque thème, en français et en anglais (une entrée par code de `themes`, ni plus ni moins). `npm run fiches` les projette dans `portail.json` ; le portail en fait les clés
@@ -125,7 +131,8 @@ export interface FicheJeu {
   nomsThemes: { fr: Record<string, string>; en: Record<string, string> };
   /** `fichier:constante` des versions que la plateforme lit (lot K2) : un test vérifie que chacune existe. */
   versions: { sim: string; generateur: string; medailles?: string };
-  jours: {
+  /** Les jours figés du jeu. **Lot PA1 : absent pour un jeu Party** (son niveau est la graine du jour, il n'y a rien à figer) et obligatoire pour tout autre. */
+  jours?: {
     /** `registre` (un fichier de plages de jours protégés, Track) ou `fichier-par-jour` (Jump, Tower). */
     mode: ModeJours;
     /** Mode `fichier-par-jour` : le dossier des jours figés. */
@@ -275,6 +282,7 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
 
   if (!estTexte(f.id) || !ID.test(f.id)) ko("id", "minuscules, chiffres et tirets (2 à 24 caractères)");
   const id = typeof f.id === "string" ? f.id : "";
+  const party = f.categorie === "party"; // lot PA1 : l'identité, les thèmes et les jours d'un jeu Party sont ceux de la catégorie
   if (idDuFichier !== undefined && id !== idDuFichier) ko("id", `doit être « ${idDuFichier} » (le nom du fichier)`);
   if (!estTexte(f.code) || !ID.test(f.code)) ko("code", "le code du registre du serveur");
   if (!estEntier(f.ordre) || f.ordre < 1) ko("ordre", "entier ≥ 1");
@@ -300,6 +308,10 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   else {
     if (!estTexte(idt.police) || /[;{}<>"']/.test(idt.police as string)) ko("identite.police", "le nom d'une police hébergée sur le site (sans ; { } < > \" '), ou « à choisir »");
     if (idt.motif !== A_CHOISIR && !(MOTIFS as readonly string[]).includes(idt.motif as string)) ko("identite.motif", `${MOTIFS.join(", ")} ou « à choisir »`);
+    // Lot PA1 : la police et le motif d'un jeu Party sont ceux de la catégorie.
+    if (party && idt.police !== POLICE_PARTY) ko("identite.police", `un jeu Party a la police de la catégorie : « ${POLICE_PARTY} »`);
+    if (party && idt.motif !== MOTIF_PARTY) ko("identite.motif", `un jeu Party a le motif de la catégorie : « ${MOTIF_PARTY} »`);
+    if (party && idt.aujourdhui !== false) ko("identite.aujourdhui", "un jeu Party n'a pas de panneau « Aujourd'hui » (rien ne change d'un jour à l'autre) : false");
     const dessinAttendu = `apps/${dossiers?.app ?? id}/public/illustration.svg`;
     if (idt.illustration !== A_CHOISIR && idt.illustration !== ILLUSTRATION_PROPRE && idt.illustration !== dessinAttendu) ko("identite.illustration", `« ${dessinAttendu} » (le fichier SVG du jeu), « propre » (carte dessinée à la main) ou « à choisir »`);
     if (typeof idt.aujourdhui !== "boolean") ko("identite.aujourdhui", "booléen");
@@ -309,8 +321,9 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
 
   if (f.etatDepart !== "off" && f.etatDepart !== "on") ko("etatDepart", "`off` ou `on`");
   if (typeof f.premierJour !== "string" || !JOUR.test(f.premierJour)) ko("premierJour", "AAAA-MM-JJ");
-  if (f.categorie !== "jour" && f.categorie !== "arcade") ko("categorie", "`jour` ou `arcade`");
+  if (f.categorie !== "jour" && f.categorie !== "arcade" && f.categorie !== "party") ko("categorie", "`jour`, `arcade` ou `party`");
   if (f.categorieDepuis !== undefined && (typeof f.categorieDepuis !== "string" || !JOUR.test(f.categorieDepuis))) ko("categorieDepuis", "AAAA-MM-JJ, ou absent");
+  if (f.categorie === "party" && f.categorieDepuis !== undefined) ko("categorieDepuis", "un jeu Party naît Party et le reste (seuls `jour` et `arcade` se changent), absent");
 
   const c = f.classement;
   if (!estObjet(c)) ko("classement", "objet attendu");
@@ -321,6 +334,7 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
     if (!["temps", "hauteur", "entier"].includes(c.format as string)) ko("classement.format", "temps, hauteur ou entier");
     if (c.cumul === true && c.unite !== "ms" && c.unite !== "ticks") ko("classement.cumul", "seul un jeu au temps entre dans le cumul");
     if (f.categorie === "arcade" && c.cumul !== false) ko("classement.cumul", "un jeu d'arcade n'entre jamais dans le cumul (false)");
+    if (party && c.cumul !== false) ko("classement.cumul", "un jeu Party n'entre jamais dans le cumul (false)");
   }
 
   const m = f.medailles;
@@ -333,7 +347,9 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
 
   if (!estObjet(f.partage) || !Array.isArray(f.partage.extras) || !f.partage.extras.every((x) => x === "morts" || x === "vies" || x === "rang")) ko("partage.extras", "une liste parmi morts, vies, rang");
 
-  if (!Array.isArray(f.themes) || f.themes.length === 0 || !f.themes.every((x) => typeof x === "string" && /^[a-z][a-z0-9-]*$/.test(x)) || new Set(f.themes).size !== f.themes.length) ko("themes", "des codes uniques (a-z, chiffres, tirets), au moins un");
+  if (party) {
+    if (!Array.isArray(f.themes) || f.themes.length !== 0) ko("themes", "un jeu Party n'a pas de thème : une liste vide");
+  } else if (!Array.isArray(f.themes) || f.themes.length === 0 || !f.themes.every((x) => typeof x === "string" && /^[a-z][a-z0-9-]*$/.test(x)) || new Set(f.themes).size !== f.themes.length) ko("themes", "des codes uniques (a-z, chiffres, tirets), au moins un");
   // Lot K7 : un nom par thème, dans les deux langues, et aucun nom pour un thème qui n'existe pas.
   if (!estObjet(f.nomsThemes)) ko("nomsThemes", "{ fr, en } : un nom par thème, dans chaque langue");
   else
@@ -351,7 +367,9 @@ export function validerFiche(brut: unknown, idDuFichier?: string): string[] {
   if (!estObjet(v) || typeof v.sim !== "string" || !FICHIER_VERSION.test(v.sim) || typeof v.generateur !== "string" || !FICHIER_VERSION.test(v.generateur) || (v.medailles !== undefined && (typeof v.medailles !== "string" || !FICHIER_VERSION.test(v.medailles)))) ko("versions", "{ sim, generateur, medailles? } au format fichier.ts:CONSTANTE");
 
   const j = f.jours;
-  if (!estObjet(j)) ko("jours", "objet attendu");
+  if (party) {
+    if (j !== undefined) ko("jours", "un jeu Party n'a pas de jours à figer (son niveau est la graine du jour) : le bloc est absent");
+  } else if (!estObjet(j)) ko("jours", "objet attendu");
   else {
     if (j.mode !== "registre" && j.mode !== "fichier-par-jour") ko("jours.mode", "`registre` ou `fichier-par-jour`");
     if (j.dossier !== undefined && (typeof j.dossier !== "string" || !CHEMIN.test(j.dossier) || !globDuJeu(j.dossier, id, dossiers))) ko("jours.dossier", `un dossier du jeu (${prefixesDeZones(id, dossiers).slice(0, 2).join(" ou ")}…)`);
@@ -523,14 +541,18 @@ export function validerEnsemble(fiches: readonly FicheJeu[]): string[] {
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Lot K5 — l'identité d'un jeu
 
-/** Les champs de l'identité qui valent encore « à choisir » (liste vide : l'identité est complète). */
-export function identiteAChoisir(f: Pick<FicheJeu, "identite">): string[] {
-  return (["police", "motif", "illustration"] as const).filter((k) => f.identite[k] === A_CHOISIR).map((k) => `identite.${k}`);
+/**
+ * Les champs de l'identité qui valent encore « à choisir » (liste vide : l'identité est complète). **Lot PA1 — l'identité allégée d'un jeu Party** : sa police et son motif sont ceux de la catégorie (`POLICE_PARTY`,
+ * `MOTIF_PARTY`), seule l'**illustration** reste à choisir (la couleur d'étiquette se lit sur la fiche, toujours posée) : c'est la seule chose qui puisse bloquer `preview` et `on`.
+ */
+export function identiteAChoisir(f: Pick<FicheJeu, "identite"> & { categorie?: CategorieJeu }): string[] {
+  const champs = f.categorie === "party" ? (["illustration"] as const) : (["police", "motif", "illustration"] as const);
+  return champs.filter((k) => f.identite[k] === A_CHOISIR).map((k) => `identite.${k}`);
 }
 /** L'identité est-elle complète ? (aucun champ « à choisir ».) */
-export const identiteComplete = (f: Pick<FicheJeu, "identite">): boolean => identiteAChoisir(f).length === 0;
+export const identiteComplete = (f: Pick<FicheJeu, "identite"> & { categorie?: CategorieJeu }): boolean => identiteAChoisir(f).length === 0;
 /** `preview` et `on` sont refusés à un jeu dont l'identité n'est pas complète ; `off` est toujours permis. Lu par le test des fiches et par le serveur (changement d'état par l'administration). */
-export const etatPermis = (f: Pick<FicheJeu, "identite">, etat: "off" | "preview" | "on"): boolean => etat === "off" || identiteComplete(f);
+export const etatPermis = (f: Pick<FicheJeu, "identite"> & { categorie?: CategorieJeu }, etat: "off" | "preview" | "on"): boolean => etat === "off" || identiteComplete(f);
 /** Le fichier SVG de l'illustration d'un jeu (chemin dans le dépôt), ou `null` (carte dessinée à la main, ou « à choisir »). */
 export const fichierIllustration = (f: Pick<FicheJeu, "identite">): string | null => (f.identite.illustration === A_CHOISIR || f.identite.illustration === ILLUSTRATION_PROPRE ? null : f.identite.illustration);
 
@@ -556,8 +578,8 @@ export interface ProjectionPortail {
     premierJour?: string;
     /** Absent : vrai (un jeu au temps entre dans le cumul) ; `false` pour un jeu hors du cumul. */
     cumul?: false;
-    /** Lot A3 : absent = `jour` ; `arcade` : hors journée et hors cumul. `categorieDepuis` : le premier jour de la catégorie (voir la fiche). */
-    categorie?: "arcade";
+    /** Lot A3 : absent = `jour` ; `arcade` : hors journée et hors cumul. Lot PA1 : `party`, de même. `categorieDepuis` : le premier jour de la catégorie (voir la fiche). */
+    categorie?: "arcade" | "party";
     categorieDepuis?: string;
     /** Absent : `temps`. */
     format?: FormatScore;
@@ -577,7 +599,7 @@ export function projectionPortail(fiches: readonly FicheJeu[]): ProjectionPortai
       nomsThemes: f.nomsThemes,
       ...(f.etatDepart === "on" ? { premierJour: f.premierJour } : {}),
       ...(f.classement.cumul ? {} : { cumul: false }),
-      ...(f.categorie === "arcade" ? { categorie: "arcade" as const } : {}),
+      ...(f.categorie === "arcade" || f.categorie === "party" ? { categorie: f.categorie } : {}),
       ...(f.categorieDepuis !== undefined ? { categorieDepuis: f.categorieDepuis } : {}),
       ...(f.classement.format !== "temps" ? { format: f.classement.format } : {}),
       ...(fichierIllustration(f) ? { illustration: true as const } : {}),
@@ -598,7 +620,8 @@ export interface ProjectionServeur {
     classement: FicheJeu["classement"];
     medailles: FicheJeu["medailles"];
     versions: FicheJeu["versions"];
-    jours: FicheJeu["jours"];
+    /** Lot PA1 : absent pour un jeu Party (rien à figer). */
+    jours?: FicheJeu["jours"];
     rejeu: FicheJeu["rejeu"];
     tables: FicheJeu["donnees"]["tables"];
     /** Lot K4d : le jeu se classe sur la table commune `resultats_jeu` (jeu neuf). */
@@ -625,7 +648,7 @@ export function projectionServeur(fiches: readonly FicheJeu[]): ProjectionServeu
       classement: f.classement,
       medailles: f.medailles,
       versions: f.versions,
-      jours: f.jours,
+      ...(f.jours ? { jours: f.jours } : {}),
       rejeu: f.rejeu,
       tables: f.donnees.tables,
       ...(f.donnees.tableCommune ? { tableCommune: f.donnees.tableCommune } : {}),
@@ -647,7 +670,8 @@ export interface ProjectionCI {
     e2e: FicheJeu["e2e"];
     /** Lot K1c : le dossier de l'application (`web` pour Track : `apps/web/dist`), celui des jours figés (`fichier-par-jour`) ou le fichier du registre (`registre`). */
     app: string;
-    jours: { dossier: string | null; registre: string | null; preuveInterditeEnProd: boolean; fabrication: FabricationJours };
+    /** Lot PA1 : absent pour un jeu Party (il n'a pas de jours à figer : la chaîne de production, le site et le garde-fou des jours l'ignorent). */
+    jours?: { dossier: string | null; registre: string | null; preuveInterditeEnProd: boolean; fabrication: FabricationJours };
     /** Lot K4b : le dossier de la simulation (`packages/<sim>`), où la chaîne de production voit si un code contient le jeu. */
     sim: string;
     budget: string[];
@@ -662,7 +686,7 @@ export interface ProjectionCI {
 }
 export function projectionCI(fiches: readonly FicheJeu[]): ProjectionCI {
   return {
-    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd, fabrication: f.jours.fabrication }, sim: f.dossiers?.sim ?? `${f.id}-sim`, budget: f.budget.lignes, ...(f.budget.aLaDemande ? { budgetALaDemande: f.budget.aLaDemande } : {}), ...(f.budget.demande ? { budgetDemande: f.budget.demande } : {}), outilsAdmin: f.admin.outils, ...(f.temoin ? { temoin: true as const } : {}) })),
+    jeux: parOrdre(fiches).map((f) => ({ id: f.id, zones: f.zones, e2e: f.e2e, app: f.dossiers?.app ?? f.id, ...(f.jours ? { jours: { dossier: f.jours.dossier ?? null, registre: f.jours.registre ?? null, preuveInterditeEnProd: f.jours.preuveInterditeEnProd, fabrication: f.jours.fabrication } } : {}), sim: f.dossiers?.sim ?? `${f.id}-sim`, budget: f.budget.lignes, ...(f.budget.aLaDemande ? { budgetALaDemande: f.budget.aLaDemande } : {}), ...(f.budget.demande ? { budgetDemande: f.budget.demande } : {}), outilsAdmin: f.admin.outils, ...(f.temoin ? { temoin: true as const } : {}) })),
   };
 }
 

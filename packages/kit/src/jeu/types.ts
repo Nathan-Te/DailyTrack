@@ -18,8 +18,8 @@ export interface FicheClient {
   prefixe: string;
   /** Le premier jour du jeu (`AAAA-MM-JJ`). */
   premierJour: string;
-  /** Lot K5 — la catégorie de la fiche : un jeu `arcade` ne compte pas dans la journée, son accueil et son arrivée n'annoncent donc jamais « Journée parfaite ». Absente : `jour`. */
-  categorie?: "jour" | "arcade";
+  /** Lot K5 — la catégorie de la fiche : un jeu `arcade` ou `party` (lot PA1) ne compte pas dans la journée, son accueil et son arrivée n'annoncent donc jamais « Journée parfaite ». Absente : `jour`. */
+  categorie?: "jour" | "arcade" | "party";
 }
 
 export type CodeMedaille = "author" | "gold" | "silver" | "bronze";
@@ -202,6 +202,18 @@ export interface PeauJeu {
   fond?(theme: string): { ciel: string; sol: string };
   /** La couleur des boutons principaux, des pastilles actives et des tuiles inversées. Rien : la couleur de l'étiquette de la fiche. */
   accent?: string;
+}
+
+/**
+ * Lot PA1 — **la définition d'un jeu Party** (`fiche.categorie === "party"`) : celle des autres jeux **moins** ce que la catégorie n'a pas — ni thème (le kit lui en donne un seul, `THEME_UNIQUE` : le catalogue du jeu a `theme.unique`
+ * et `accueil.phrase.unique`, la fiche n'a aucun thème), ni seuils, ni médailles, ni fantôme du Diamant (pas de robot). `brancherJeu` la complète (`definitionDeParty`) : le jeu n'écrit que sa simulation, son rendu et ses textes.
+ */
+export type DefinitionJeuParty<C> = Omit<DefinitionJeu<C>, "themeDuJour" | "seuils" | "medaille" | "rediffusionDiamant" | "sansMedaille" | "sansFantome">;
+/** Lot PA1 — le thème d'un jeu Party (le seul). */
+export const THEME_UNIQUE = "unique";
+/** Lot PA1 — la définition complète d'un jeu Party : un thème, aucune médaille, aucun fantôme (`seuils`, `medaille` et `rediffusionDiamant` ne sont jamais appelées : `sansMedaille`, `sansFantome`). */
+export function definitionDeParty<C>(d: DefinitionJeuParty<C>): DefinitionJeu<C> {
+  return { ...d, themeDuJour: () => THEME_UNIQUE, seuils: () => ({ author: 0, gold: 0, silver: 0, bronze: 0 }), medaille: () => null, rediffusionDiamant: () => "", sansMedaille: true, sansFantome: true };
 }
 
 export interface CataloguesJeu {

@@ -10,6 +10,9 @@
 //   tout fichier changé ou créé doit être dans les zones du jeu ou dans les exceptions du job des zones (`scripts/zones-jeu.mjs`) ; sinon le banc échoue.
 //   --part i/n                                  → la i-ᵉ part sur n de la suite (`vitest --shard`) ; le typage n'est refait que par la part 1 (la CI lance les n parts en parallèle)
 //
+//   (lot PA1) un SECOND jeu fictif, `partyessai`, de catégorie Party (sans thèmes ni jours figés, identité allégée, contrat `definirJeuParty`), est posé dans la même copie : la suite complète tourne donc avec un jeu Party
+//   à côté d'un jeu du jour, sans qu'aucun test ne les nomme. (Le jeu Party généré par `npm run nouveau-jeu --categorie party`, lui, est joué de bout en bout par `scripts/kit-bout-en-bout.mjs`.)
+//
 // La fiche et ses fichiers vivent ici, dans le script, pas dans le dépôt : `config/jeux/` ne reçoit aucune fiche de test. Les fichiers créés dans la copie sont TOUS dans les zones du jeu
 // (`apps/essai/`, `packages/essai-sim/`, `apps/api/src/essai*.ts`…) ; le script le vérifie et l'écrit dans son rapport. Aucune dépendance, aucun réseau, aucune base distante.
 import { spawnSync } from "node:child_process";
@@ -124,6 +127,24 @@ export const FICHE_ESSAI_THEMES_CHANGES = {
   musique: { scenes: ["menu", "theme:clair", "theme:aube", "theme:nuit"] },
 };
 
+/** Lot PA1 — **la fiche du second jeu fictif, `partyessai`, de catégorie Party** : ni thèmes, ni jours figés, identité allégée (police et motif de la catégorie), hors du cumul. */
+export const FICHE_ESSAI_PARTY = (() => {
+  const { jours: _jours, ...base } = JSON.parse(JSON.stringify(FICHE_ESSAI).replaceAll("essai", "partyessai"));
+  return {
+    ...base,
+    ordre: FICHE_ESSAI.ordre + 1,
+    nom: { fr: "Essai Party", en: "Party Trial" },
+    etiquette: { fond: "#F7C59F", coque: "#8A3B12", police: '"Lilita One", "Archivo", sans-serif', dessin: "generique" },
+    identite: { police: "Lilita One", motif: "losanges", illustration: "apps/partyessai/public/illustration.svg", aujourdhui: false },
+    categorie: "party",
+    versions: { sim: "packages/partyessai-sim/src/constantes.ts:PARTYESSAI_SIM_VERSION", generateur: "packages/partyessai-sim/src/constantes.ts:PARTYESSAI_GENERATOR_VERSION" },
+    themes: [],
+    nomsThemes: { fr: {}, en: {} },
+    musique: { scenes: ["menu"] },
+    temoin: true,
+  };
+})();
+
 /** Les CLAUDE.md que crée le lot de jeu (zones du jeu : `apps/essai/**`, `packages/essai-sim/**`) : le test des consignes les découvre tout seul, sans liste à tenir. */
 export const CONSIGNES_ESSAI = {
   "apps/essai/CLAUDE.md": "# `apps/essai` : le jeu fictif de la CI\n\nChargé quand on lit un fichier de `apps/essai`. Jeu témoin : il n'existe que dans la copie du dépôt que fabrique `scripts/jeu-fictif.mjs`.\n",
@@ -180,6 +201,50 @@ export const ESSAI_GAME: GameDefinition<never> = definirJeuNeuf<Niveau, Rejeu, M
   "apps/essai/src/jeu.ts": "export {};\n",
 };
 
+/** Lot PA1 — les fichiers que la fiche d'`partyessai` promet : le contrat serveur d'un jeu Party (`definirJeuParty` : le niveau est la graine du jour), rien d'autre (ni empreinte, ni figement, ni jours). */
+const FICHIERS_PARTY = {
+  "packages/partyessai-sim/package.json": JSON.stringify({ name: "@cdj/partyessai-sim", private: true, version: "0.0.0", type: "module" }, null, 2) + "\n",
+  "packages/partyessai-sim/src/constantes.ts": "export const PARTYESSAI_SIM_VERSION = 1;\nexport const PARTYESSAI_GENERATOR_VERSION = 1;\n",
+  "apps/api/src/partyessai.ts": `import { decoderEnveloppe, ErreurEnveloppe } from "@cdj/core/enveloppe";
+import { FICHES_SERVEUR } from "./fiches.generated";
+import type { GameDefinition } from "./games";
+import { type ContratParty, definirJeuParty, type FicheServeur, RefusJeu, refusDEnveloppe, type RejeuNeuf } from "./jeux/index";
+
+// Le module serveur du jeu fictif Party \`partyessai\` (le contrat d'un jeu Party : le niveau du jour est la graine) : la charge d'une rediffusion est une suite d'octets, le score est leur somme.
+const fiche = FICHES_SERVEUR.find((f) => f.id === "partyessai") as unknown as FicheServeur;
+interface Mesure { points: number; octets: number }
+interface Rejeu extends RejeuNeuf { charge: readonly number[] }
+const LIMITES = { maxCaracteres: 600, sims: [1], generateurs: [1] };
+
+const contrat = (): ContratParty<Rejeu, Mesure> => ({
+  versions: () => ({ simVersion: 1, generatorVersion: 1 }),
+  decoder(texte) {
+    try {
+      return decoderEnveloppe(texte, LIMITES);
+    } catch (e) {
+      if (e instanceof ErreurEnveloppe) throw refusDEnveloppe(e);
+      throw e;
+    }
+  },
+  rejouer(_niveau, texte) {
+    const r = decoderEnveloppe(texte, LIMITES);
+    if (r.charge.length === 0) throw new RefusJeu("not_finished", "Partie vide");
+    return { points: r.charge.reduce((a, b) => a + b, 0), octets: r.charge.length };
+  },
+  score: (m) => ({ score: m.points, ticks: m.octets }),
+  entrees: (r) => \`partyessai|\${r.charge.join(",")}\`,
+});
+
+export const PARTYESSAI_GAME: GameDefinition<never> = definirJeuParty<Rejeu, Mesure, never>({ fiche, nom: "Essai Party" }, contrat) as GameDefinition<never>;
+`,
+  "apps/partyessai/e2e/partie.spec.ts": "// Spec de l'essai Party (jamais lancé : la fiche le déclare, les contrôles de cohérence le lisent).\n",
+  "apps/partyessai/e2e/durees.json": JSON.stringify({ _: "Durées du jeu fictif Party.", secondes: { "partie.spec.ts": 5 }, essentiel: { "partie.spec.ts": 5 } }, null, 2) + "\n",
+  "apps/partyessai/package.json": JSON.stringify({ name: "@cdj/partyessai", private: true, version: "0.0.0", type: "module" }, null, 2) + "\n",
+  "apps/partyessai/public/illustration.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" fill="#FFF6E0" stroke="#2A1E16" stroke-width="3"/></svg>\n',
+  "apps/partyessai/index.html": "<!doctype html><title>Essai Party</title>\n",
+  "apps/partyessai/src/jeu.ts": "export {};\n",
+};
+
 /** Les clés de catalogue du jeu fictif, insérées après celles de Tower (ancres) dans la copie. Le générateur du lot suivant les écrira ; ici, le banc s'en charge. */
 const CLES_COMMUN = { fr: ['"jeu.essai.nom": "Essai",'], en: ['"jeu.essai.nom": "Trial",'] };
 // Lot K7 : les noms des thèmes ne sont plus des clés du portail (ils sont dans la fiche) ; reste l'accroche.
@@ -187,6 +252,9 @@ const CLES_PORTAIL = {
   fr: ['"portail.essai.accroche": "Un essai par jour.",'],
   en: ['"portail.essai.accroche": "One trial a day.",'],
 };
+
+const CLES_COMMUN_PARTY = { fr: ['"jeu.partyessai.nom": "Essai Party",'], en: ['"jeu.partyessai.nom": "Party Trial",'] };
+const CLES_PORTAIL_PARTY = { fr: ['"portail.partyessai.accroche": "Un essai Party par jour.",'], en: ['"portail.partyessai.accroche": "One party trial a day.",'] };
 
 function inserer(fichier, ancre, lignes, occurrence) {
   let t = readFileSync(fichier, "utf8");
@@ -226,6 +294,7 @@ export function preparerCopie(src, { dansConfig }) {
   mkdirSync(join(copie, "node_modules/@cdj"));
   for (const e of readdirSync(join(RACINE, "node_modules/@cdj"))) symlinkSync(readlinkSync(join(RACINE, "node_modules/@cdj", e)), join(copie, "node_modules/@cdj", e));
   symlinkSync("../../packages/essai-sim", join(copie, "node_modules/@cdj/essai-sim"));
+  symlinkSync("../../packages/partyessai-sim", join(copie, "node_modules/@cdj/partyessai-sim"));
 
   const creés = [];
   for (const [chemin, contenu] of Object.entries(FICHIERS)) {
@@ -233,7 +302,13 @@ export function preparerCopie(src, { dansConfig }) {
     writeFileSync(join(copie, chemin), contenu);
     creés.push(chemin);
   }
+  for (const [chemin, contenu] of Object.entries(FICHIERS_PARTY)) {
+    mkdirSync(dirname(join(copie, chemin)), { recursive: true });
+    writeFileSync(join(copie, chemin), contenu);
+    creés.push(chemin);
+  }
   const texte = JSON.stringify(FICHE_ESSAI, null, 2) + "\n";
+  const textePartie = JSON.stringify(FICHE_ESSAI_PARTY, null, 2) + "\n";
   let supplementaires;
   let ficheChemin;
   if (dansConfig) {
@@ -241,29 +316,32 @@ export function preparerCopie(src, { dansConfig }) {
     ficheChemin = join(copie, "config/jeux/essai.json");
     writeFileSync(ficheChemin, f);
     creés.push("config/jeux/essai.json");
+    writeFileSync(join(copie, "config/jeux/partyessai.json"), JSON.stringify({ ...FICHE_ESSAI_PARTY, temoin: undefined }, null, 2) + "\n");
+    creés.push("config/jeux/partyessai.json");
   } else {
     supplementaires = mkdtempSync(join(tmpdir(), "cdj-fiches-"));
     ficheChemin = join(supplementaires, "essai.json");
     writeFileSync(ficheChemin, texte);
+    writeFileSync(join(supplementaires, "partyessai.json"), textePartie);
   }
   // Le bloc du jeu dans le Dockerfile de l'image : un `COPY` ne se calcule pas, le générateur d'un jeu neuf l'écrit (lot K4f) ; le banc fait de même (apps/api/test/dockerfile.test.ts le exige).
   const docker = join(copie, "apps/api/Dockerfile");
   let d = readFileSync(docker, "utf8");
-  d = d.replace("COPY apps/tower/package.json apps/tower/\n", "COPY apps/tower/package.json apps/tower/\nCOPY apps/essai/package.json apps/essai/\nCOPY packages/essai-sim/package.json packages/essai-sim/\n");
-  d = d.replace("COPY apps/jump/public/levels apps/jump/public/levels\n", "COPY apps/jump/public/levels apps/jump/public/levels\nCOPY packages/essai-sim packages/essai-sim\nCOPY apps/essai/public/jours apps/essai/public/jours\n");
+  d = d.replace("COPY apps/tower/package.json apps/tower/\n", "COPY apps/tower/package.json apps/tower/\nCOPY apps/essai/package.json apps/essai/\nCOPY packages/essai-sim/package.json packages/essai-sim/\nCOPY apps/partyessai/package.json apps/partyessai/\nCOPY packages/partyessai-sim/package.json packages/partyessai-sim/\n");
+  d = d.replace("COPY apps/jump/public/levels apps/jump/public/levels\n", "COPY apps/jump/public/levels apps/jump/public/levels\nCOPY packages/essai-sim packages/essai-sim\nCOPY apps/essai/public/jours apps/essai/public/jours\nCOPY packages/partyessai-sim packages/partyessai-sim\n");
   writeFileSync(docker, d);
   // La ligne de budget du jeu dans le tableau de `docs/plateforme/budgets.md` (un jeu neuf obtient sa mesure d'office ; le générateur du lot K4f écrit la ligne).
   const budgets = join(copie, "docs/plateforme/budgets.md");
   const b = readFileSync(budgets, "utf8");
   const ancre = b.indexOf("\n| `tower.jsCss`");
   const finLigne = b.indexOf("\n", ancre + 1);
-  writeFileSync(budgets, b.slice(0, finLigne) + "\n| `essai.jsCss` | Essai | JS + CSS du premier chargement du jeu fictif | premier | 32 Ko | 30 000 | 2 000 |" + b.slice(finLigne));
+  writeFileSync(budgets, b.slice(0, finLigne) + "\n| `essai.jsCss` | Essai | JS + CSS du premier chargement du jeu fictif | premier | 32 Ko | 30 000 | 2 000 |\n| `partyessai.jsCss` | Essai Party | JS + CSS du premier chargement du jeu fictif Party | premier | 32 Ko | 30 000 | 2 000 |" + b.slice(finLigne));
   const ui = join(copie, "packages/ui/src");
-  inserer(join(ui, "catalogue.ts"), '"jeu.tower.nom"', CLES_COMMUN.fr, 0);
-  inserer(join(ui, "catalogue.en.ts"), '"jeu.tower.nom"', CLES_COMMUN.en, 0);
+  inserer(join(ui, "catalogue.ts"), '"jeu.tower.nom"', [...CLES_COMMUN.fr, ...CLES_COMMUN_PARTY.fr], 0);
+  inserer(join(ui, "catalogue.en.ts"), '"jeu.tower.nom"', [...CLES_COMMUN.en, ...CLES_COMMUN_PARTY.en], 0);
   const portail = join(copie, "apps/portail/src/catalogue.ts");
-  inserer(portail, '"portail.tower.accroche"', CLES_PORTAIL.fr, 0);
-  inserer(portail, '"portail.tower.accroche"', CLES_PORTAIL.en, 1);
+  inserer(portail, '"portail.tower.accroche"', [...CLES_PORTAIL.fr, ...CLES_PORTAIL_PARTY.fr], 0);
+  inserer(portail, '"portail.tower.accroche"', [...CLES_PORTAIL.en, ...CLES_PORTAIL_PARTY.en], 1);
   return { copie, supplementaires, creés, ficheChemin };
 }
 
@@ -356,7 +434,7 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   console.log(`fichiers créés dans la copie pour le jeu : ${creés.join(", ")}`);
   // « Aucun fichier à son nom hors de sa zone » : tout ce que le banc a créé est dans les zones de la fiche (les clés de catalogue, le bloc du Dockerfile et la ligne de budget sont des LIGNES de fichiers partagés,
   // que le générateur du lot K4f écrit ; ils ne créent aucun fichier).
-  const dehors = horsDesZones(creés.filter((c) => c !== "config/jeux/essai.json"));
+  const dehors = horsDesZones(creés.filter((c) => c !== "config/jeux/essai.json" && c !== "config/jeux/partyessai.json")).filter((c) => horsDesZones([c], FICHE_ESSAI_PARTY).length > 0);
   rapport.horsDesZones = dehors;
   console.log(dehors.length === 0 ? "fichiers créés hors des zones du jeu : aucun" : `FICHIERS HORS DES ZONES : ${dehors.join(", ")}`);
   writeFileSync(join(copie, "rapport-jeu-fictif.json"), JSON.stringify(rapport, null, 2));

@@ -53,7 +53,7 @@ export interface Classement {
   /** Lot TP : `"mm"` dans la vue d'un jeu classé à la hauteur. */
   unite?: "mm" | "points";
   /** `unite` : le jeu est classé à la hauteur (absent : au temps) ; il a son onglet mais n'est jamais dans le cumul. */
-  jeux: { jeu: string; site: string; nom: string; unite?: "mm" | "points"; categorie?: "arcade" }[];
+  jeux: { jeu: string; site: string; nom: string; unite?: "mm" | "points"; categorie?: "arcade" | "party" }[];
   classes: number;
   top: LigneClassement[];
   /** Ta ligne (avec ton identifiant), même hors du haut ; `null` : tu n'as fini aucun jeu ce jour-là. */
