@@ -26,7 +26,7 @@ async function panneau() {
   const headers = { Cookie: `__session=${cookie}`, Origin: ORIGIN, "X-Cdj-Admin": "1" };
   const etat = (jeu: string, e: string) => t.call("POST", `/api/admin/jeux/${jeu}/etat`, { etat: e, confirmer: true }, { headers });
   const etatDe = async (jeu: string) => ((await t.call("GET", "/api/admin/jeux", undefined, { headers })).body.jeux as { jeu: string; etat: string }[]).find((j) => j.jeu === jeu)?.etat;
-  return { t, etat, etatDe };
+  return { t, etat, etatDe, headers };
 }
 
 describe(`jeux : l'identité incomplète refuse l'aperçu et l'ouverture (${TEST_DB})`, () => {
@@ -37,6 +37,14 @@ describe(`jeux : l'identité incomplète refuse l'aperçu et l'ouverture (${TEST
       expect([r.status, r.body]).toEqual([400, { error: "identite_incomplete", manque: ["police", "illustration"] }]);
     }
     expect(await etatDe("cibles")).toBe("off");
+  });
+
+  it("lot N3 — la liste dit ce qui bloque chaque position (le même code que le refus) ; `off` n'est jamais bloqué, un jeu à l'identité complète ne l'est pas", async () => {
+    const { t, headers } = await panneau();
+    const liste = (await t.call("GET", "/api/admin/jeux", undefined, { headers })).body.jeux as { jeu: string; bloque: Record<string, unknown> }[];
+    const blocage = { code: "identite_incomplete", manque: ["police", "illustration"] };
+    expect(liste.find((j) => j.jeu === "cibles")!.bloque).toEqual({ off: null, preview: blocage, on: blocage });
+    expect(liste.find((j) => j.jeu === "track")!.bloque).toEqual({ off: null, preview: null, on: null });
   });
 
   it("`off` reste toujours permis, même pour un jeu à l'identité incomplète (déjà ouvert à la main, par exemple)", async () => {

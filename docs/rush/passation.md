@@ -1,6 +1,6 @@
 # Passation — Rush (`rush`)
 
-> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/rush/seed.md`). Générée par `npm run nouveau-jeu` à partir des `CLAUDE.md` du dépôt : **ne pas la retoucher à la main** ; pour la mettre à jour après un changement des règles de la plateforme : `npm run nouveau-jeu -- --id rush --passation`.
+> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/rush/seed.md`). Sections 1 à 7 générées (ne pas retoucher ; `npm run nouveau-jeu -- --id rush --passation` les remet à jour) ; **les trois dernières sont tenues par la conversation**, puis `npm run tableau`.
 
 ## 1. Où en est ce jeu
 - **Rush** (`rush`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). L'état de départ est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.
@@ -58,3 +58,17 @@
 - Avant de pousser : `npm run verifier` ; attendre la CI : `npm run attendre-ci` (une seule commande, silencieuse). Fusionner `main` une seule fois, juste avant de s'arrêter.
 - **Ordre conseillé** : (1) Nathan écrit le seed ; (2) maquettes de l'étiquette et du HUD ; (3) la simulation et son golden (`npm run golden:rush -w @cdj/rush-sim`, jamais sans monter la version) ; (4) le rendu et les sensations ; (5) le serveur (le contrat minimal suffit longtemps) ; (6) les textes fr + en ; (7) la publication, par Nathan.
 - **Ne pas modifier** les visions (`docs/seed.md`, `docs/*/seed*.md`, `docs/plateforme/seed-phase-*.md`) ni la charte : c'est Nathan qui le fait.
+
+## Où on en est
+- Rush (arcade, `off`, branché par le kit) ; dernier README de lot : BR-A2 (09/11), le niveau, la lumière et l'ambiance (archipel, sol calculé, fabrique de décor, ambiance par thème, HUD).
+- Le README de BR-A2 parle d'un lot BR-A1 qui recolorera le golem ; aucun README BR-A1 n'est au dépôt.
+- Repris le 20/11 (lot O1) des README de lots et des CLAUDE.md ; à compléter par la conversation du jeu.
+
+## Prochain lot
+à compléter par la conversation du jeu (le README de BR-A2 cite BR-A1, le golem recoloré, sans le dater).
+
+## Décisions en attente
+- Nathan (BR-A2 § 7) : le sable de la prairie, pâle ou réchauffé à la cible quand le golem sera recoloré ?
+- Nathan (BR-A2 § 7) : l'entrée de l'arène, un portique plus bas ou des piliers seuls (le linteau cache un peu l'arène de loin) ?
+- Nathan (BR-A2 § 7) : les rais de lumière (25 % en prairie, 15 % en carrière, 90 % dans le sous-bois), bon ?
+- Nathan (BR-A2 § 7) : la basse qualité sans vent (le contour par coque ne suit pas le balancement), voulu ?

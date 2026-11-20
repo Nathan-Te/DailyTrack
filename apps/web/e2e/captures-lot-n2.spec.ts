@@ -53,8 +53,12 @@ for (const format of [
     await admin.getByRole("button", { name: "Connexion factice" }).click();
     await expect(admin.getByRole("heading", { level: 1, name: "Tableau de bord" })).toBeVisible();
     const ouvrir = async (menu: string) => {
-      if (format.mobile) await admin.getByRole("button", { name: "Menu" }).click();
-      await admin.locator(`[data-menu="${menu}"]`).click();
+      // Lot N3 : sur téléphone, la barre d'onglets (la rubrique du lien, puis le lien).
+      if (format.mobile) {
+        const rubrique = menu === "nouveautes" || menu === "message" ? "diffusion" : "communaute";
+        await admin.locator(`[data-onglet="${rubrique}"]`).click();
+        await admin.locator(`[data-menu-tel="${menu}"]`).click();
+      } else await admin.locator(`[data-menu="${menu}"]`).click();
     };
     await ouvrir("nouveautes");
     await expect(admin.locator("#prs > li")).toHaveCount(2);
