@@ -2,7 +2,7 @@
 
 > **Passation initiale** : la passation de départ de Nathan (la conversation d'où vient le jeu) est `docs/gravity/passation-initiale.md` ; elle ne sert qu'à démarrer, le dépôt fait foi. *(Ce renvoi est ajouté à la main au lot GR0 : `npm run nouveau-jeu -- --id gravity --passation` réécrit le fichier et le retire, à remettre.)*
 
-> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/gravity/seed.md`). Sections 1 à 7 générées, à ne pas retoucher (mise à jour : `npm run nouveau-jeu -- --id gravity --passation`) ; **les trois dernières, tenues par la conversation du jeu**, à chaque lot, puis `npm run tableau`.
+> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/gravity/seed.md`). Sections 1 à 7 générées (ne pas retoucher ; `npm run nouveau-jeu -- --id gravity --passation` les remet à jour) ; **les trois dernières sont tenues par la conversation**, puis `npm run tableau`.
 
 ## 1. Où en est ce jeu
 - **Gravity** (`gravity`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). Il vient d'être créé par le générateur : l'état est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.

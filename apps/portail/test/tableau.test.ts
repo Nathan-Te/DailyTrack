@@ -124,7 +124,7 @@ describe("le générateur `nouveau-jeu` et les trois sections", () => {
     const squelette: string = sectionsParDefaut("banctest", { squelette: true, seedVide: true });
     const p = lirePassation(`# T\n\n${squelette}\n`);
     expect(p.problemes).toEqual([]);
-    expect(p.decisions).toContain("Nathan : écrire le seed (`docs/banctest/seed.md`).");
+    expect(p.decisions).toContain("Nathan : le seed et la teinte de l'étiquette.");
     const apres: string = sectionsParDefaut("banctest", { squelette: false, seedVide: false });
     expect(apres).toContain(A_COMPLETER);
     expect(lirePassation(`# T\n\n${apres}\n`).problemes).toEqual([]);
@@ -136,7 +136,7 @@ describe("le générateur `nouveau-jeu` et les trois sections", () => {
     const gardees = "## Où on en est\n- écrit par la conversation\n\n## Prochain lot\nLe lot Q.\n\n## Décisions en attente\naucune";
     const reecrite: string = construirePassation(RACINE, plan.fiche, { classement: "temps", teinte: plan.teinte, conserver: gardees });
     expect(reecrite.endsWith(`${gardees}\n`)).toBe(true);
-    expect(reecrite).not.toContain("Le seed écrit par Nathan");
+    expect(reecrite).not.toContain("Le seed, puis les maquettes");
   });
   it("`--passation` sur un jeu qui existe garde ses trois sections", async () => {
     const plan = await planifier({ id: "blocks", passation: true, aBlanc: false, sansCommandes: true, racine: RACINE });

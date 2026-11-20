@@ -419,14 +419,13 @@ export function sectionsParDefaut(id, { squelette, seedVide }) {
   if (!squelette) return [`## ${ou}`, `- ${A_COMPLETER}`, "", `## ${prochain}`, A_COMPLETER, "", `## ${decisions}`, `- ${A_COMPLETER}`].join("\n");
   return [
     `## ${ou}`,
-    `- Créé par \`npm run nouveau-jeu\` : squelette de « Cibles », \`off\`${seedVide ? ", seed vide" : ""}.`,
+    `- Squelette de « Cibles », \`off\`${seedVide ? ", seed vide" : ""}.`,
     "",
     `## ${prochain}`,
-    seedVide ? "Le seed, puis les maquettes de l'étiquette et du HUD (§ 7)." : "Maquettes de l'étiquette et du HUD (§ 7).",
+    seedVide ? "Le seed, puis les maquettes (§ 7)." : "Les maquettes de l'étiquette et du HUD (§ 7).",
     "",
     `## ${decisions}`,
-    ...(seedVide ? [`- Nathan : écrire le seed (\`docs/${id}/seed.md\`).`] : []),
-    "- Nathan : la teinte de l'étiquette.",
+    `- Nathan : ${seedVide ? "le seed et " : ""}la teinte de l'étiquette.`,
   ].join("\n");
 }
 
@@ -449,7 +448,7 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
   const lignes = [
     `# Passation — ${nom} (\`${id}\`)`,
     "",
-    `> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (\`docs/${id}/seed.md\`). Sections 1 à 7 générées, à ne pas retoucher (mise à jour : \`npm run nouveau-jeu -- --id ${id} --passation\`) ; **les trois dernières, tenues par la conversation du jeu**, à chaque lot, puis \`npm run tableau\`.`,
+    `> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (\`docs/${id}/seed.md\`). Sections 1 à 7 générées (ne pas retoucher ; \`npm run nouveau-jeu -- --id ${id} --passation\` les remet à jour) ; **les trois dernières sont tenues par la conversation**, puis \`npm run tableau\`.`,
     "",
     "## 1. Où en est ce jeu",
     `- **${nom}** (\`${id}\`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). ${squelette ? "Il vient d'être créé par le générateur : l'état" : "L'état de départ"} est \`off\` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis \`/admin/\` › Jeux : \`off\` → \`preview\` → \`on\`**.`,

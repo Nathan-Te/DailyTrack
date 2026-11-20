@@ -1,6 +1,6 @@
 # Passation — Rush (`rush`)
 
-> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/rush/seed.md`). Sections 1 à 7 générées, à ne pas retoucher (mise à jour : `npm run nouveau-jeu -- --id rush --passation`) ; **les trois dernières, tenues par la conversation du jeu**, à chaque lot, puis `npm run tableau`.
+> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (`docs/rush/seed.md`). Sections 1 à 7 générées (ne pas retoucher ; `npm run nouveau-jeu -- --id rush --passation` les remet à jour) ; **les trois dernières sont tenues par la conversation**, puis `npm run tableau`.
 
 ## 1. Où en est ce jeu
 - **Rush** (`rush`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). L'état de départ est `off` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis `/admin/` › Jeux : `off` → `preview` → `on`**.
