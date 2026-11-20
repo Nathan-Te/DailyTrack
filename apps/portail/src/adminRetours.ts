@@ -1,6 +1,7 @@
 import { bouton, el } from "@cdj/ui";
 import { ErreurAdmin, STATUTS_RETOUR_ADMIN, TYPES_RETOUR_ADMIN, texteErreur, type FiltresRetours, type RetourDetail, type RetourResume, type StatutRetourAdmin } from "./adminDonnees";
 import type { Contexte } from "./adminDiffusion";
+import { entetePage } from "./adminEntete";
 
 // Lot C1, partie A (plateforme) — la rubrique « Retours » du panneau : la liste (filtres type, jeu, statut ; le nombre de non lus), le détail d'un retour (le fil, le contexte joint, le joueur avec le lien vers sa
 // fiche), répondre et changer le statut. Chaque action est inscrite au journal par le serveur. **Un message est un texte** : tout est posé en `textContent`. Serveur : `apps/api/CLAUDE.md`, « Retours (lot C1) ».
@@ -59,9 +60,11 @@ export async function vueRetours(ctx: Contexte, f: FiltresRetours): Promise<Node
     liste.suivante ? el("a", { classe: "dj-bouton dj-bouton--secondaire", attrs: { href: adresseRetours({ ...f, page: liste.page + 1 }) }, texte: "Suivante ›" }) : null,
   );
   return [
-    el("h1", { classe: "admin-titre-section", texte: "Retours" }),
-    p(`${liste.nonLus} retour${liste.nonLus > 1 ? "s" : ""} à lire. Les messages des joueurs (« Un bug ? Une idée ? ») : tu réponds ici, ils lisent la réponse dans « Mes messages », sans e-mail.`, "admin-aide"),
-    forme,
+    entetePage({
+      titre: "Retours",
+      sousTitre: `${liste.nonLus} retour${liste.nonLus > 1 ? "s" : ""} à lire. Les messages des joueurs (« Un bug ? Une idée ? ») : tu réponds ici, ils lisent la réponse dans « Mes messages », sans e-mail.`,
+      outils: [forme],
+    }),
     liste.retours.length === 0
       ? p("Aucun retour.", "admin-aide")
       : el(
@@ -137,7 +140,7 @@ export async function vueRetour(ctx: Contexte, id: number): Promise<Node[]> {
   });
   return [
     el("a", { classe: "admin-retour-lien", attrs: { href: "#/retours" }, texte: "‹ Retours" }),
-    el("h1", { classe: "admin-titre-section", texte: `Retour n° ${d.id} · ${TYPES_RETOUR_ADMIN[d.type]}` }),
+    entetePage({ titre: `Retour n° ${d.id} · ${TYPES_RETOUR_ADMIN[d.type]}` }),
     el(
       "p",
       { classe: "admin-aide" },

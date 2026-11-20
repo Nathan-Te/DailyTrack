@@ -177,10 +177,22 @@ export interface CorpsMessage {
 
 /** Une erreur du serveur : son statut et son code (un code de `apps/api/src/codesErreur.ts`, jamais un message). */
 /** Lot P (interrupteur des jeux) : un jeu vu par le panneau. `cle` : si une clé d'aperçu existe (jamais sa valeur : le serveur n'en garde que l'empreinte). */
+export type EtatJeuAdmin = "off" | "preview" | "on";
+/** Lot N3 : ce qui interdit une position (un code et ses champs : le panneau écrit le texte, jamais un message du serveur). */
+export interface BlocageAdmin {
+  code: string;
+  manque?: string[];
+}
 export interface JeuAdmin {
   jeu: string;
   nom: string;
   etat: "off" | "preview" | "on";
+  /** Lot N3 : la catégorie de la fiche (`jour`, `arcade`, `party`…), la couleur du jeu (`#RRGGBB`), depuis quand il est dans cet état (instant ISO), les joueurs du jour (`null` : pas de compteur) et ce qui interdit chaque position. */
+  categorie: string;
+  couleur: string | null;
+  etatDepuis: string | null;
+  joueursAujourdhui: number | null;
+  bloque: Record<EtatJeuAdmin, BlocageAdmin | null>;
   /** Le premier jour entier où le jeu compte dans la journée (AAAA-MM-JJ), ou `null`. */
   liveFrom: string | null;
   periodes: { du: string; au: string | null }[];
@@ -277,7 +289,9 @@ export function clientAdmin(base: string, fetchImpl: typeof fetch = (...a) => fe
     statutRetour: (id: number, statut: StatutRetourAdmin) => appeler<{ statut: StatutRetourAdmin }>("POST", `/api/admin/retours/${id}/statut`, { statut, confirmer: true }),
     // Lot P
     jeux: () => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("GET", "/api/admin/jeux"),
-    changerEtatJeu: (jeu: string, etat: JeuAdmin["etat"]) => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/etat`, { etat, confirmer: true }),
+    /** `annulation` : le bouton « Annuler » remet l'état d'avant ; le serveur l'inscrit au journal sous son propre nom (lot N3). */
+    changerEtatJeu: (jeu: string, etat: JeuAdmin["etat"], annulation = false) =>
+      appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/etat`, { etat, ...(annulation ? { annulation: true } : {}), confirmer: true }),
     genererCleApercu: (jeu: string) => appeler<{ cle: string; jeu: string }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/cle`, { confirmer: true }),
     revoquerCleApercu: (jeu: string) => appeler<{ aujourdhui: string; jeux: JeuAdmin[] }>("POST", `/api/admin/jeux/${encodeURIComponent(jeu)}/cle/revoquer`, { confirmer: true }),
     retirerMessage: () => appeler<{ actif: null }>("POST", "/api/admin/message/retirer", { confirmer: true }),
@@ -535,13 +549,163 @@ export function retourAdmin(search: string): string | null {
 // --- Lot P : l'interrupteur des jeux ---------------------------------------------------------------------------------------------------
 export const NOMS_ETAT_JEU: Record<JeuAdmin["etat"], string> = { off: "Off", preview: "Aperçu", on: "On" };
 
-/** Ce que change un état, dit à Nathan avant qu'il confirme. */
-export function consequenceEtat(nom: string, de: JeuAdmin["etat"], vers: JeuAdmin["etat"], liveFrom: string | null): string {
+/** Ce que change un état, dit à Nathan avant qu'il confirme. `joueurs` : les joueurs du jour du jeu (lot N3 : le retrait d'un jeu `on` dit combien y ont joué aujourd'hui) ; `null` : inconnu. */
+export function consequenceEtat(nom: string, de: JeuAdmin["etat"], vers: JeuAdmin["etat"], liveFrom: string | null, joueurs: number | null = null): string {
+  const qui = de === "on" && vers !== "on" ? `${joueursDuJour(joueurs)} ` : "";
   if (vers === "on")
     return `${nom} devient visible par tous : à l'accueil, jouable, son API s'ouvre. Il ne compte dans la journée (série, journée parfaite, classement du jour, partage) qu'à partir du premier jour entier${liveFrom ? ` (${liveFrom})` : " qui suit"}. Les résultats d'aperçu sont effacés.`;
-  if (vers === "preview") return `${nom} disparaît de l'accueil et de la journée dès le lendemain ; sa page n'est jouable qu'avec la clé d'aperçu (bandeau « Aperçu »). Les résultats déjà là restent en base.`;
-  return `${nom} disparaît de l'accueil, sa page affiche « Bientôt » et son API refuse tout${de === "on" ? " ; il sort de la journée dès le lendemain, sans casser les séries acquises" : ""}. Les résultats restent en base et reviennent à la réactivation.`;
+  if (vers === "preview") return `${qui}${nom} disparaît de l'accueil et de la journée dès le lendemain ; sa page n'est jouable qu'avec le lien d'aperçu (bandeau « Aperçu »). Les résultats déjà là restent en base.`;
+  return `${qui}${nom} disparaît de l'accueil, sa page affiche « Bientôt » et son API refuse tout${de === "on" ? " ; il sort de la journée dès le lendemain, sans casser les séries acquises" : ""}. Les résultats restent en base et reviennent à la réactivation.`;
+}
+
+/** « 12 joueurs y ont joué aujourd'hui. » — le nombre que la fenêtre de confirmation d'un retrait montre ; sans compteur, elle le dit. */
+export function joueursDuJour(n: number | null): string {
+  if (n === null) return "Le nombre de joueurs du jour n'est pas connu.";
+  if (n === 0) return "Personne n'y a encore joué aujourd'hui.";
+  return `${n} joueur${n > 1 ? "s" : ""} y ${n > 1 ? "ont" : "a"} joué aujourd'hui.`;
+}
+
+const RANG_ETAT: Record<EtatJeuAdmin, number> = { off: 0, preview: 1, on: 2 };
+/** Lot N3 : le geste qui **retire** un jeu aux joueurs (de On vers Aperçu ou Off) demande une confirmation ; tout le reste agit tout de suite, avec « Annuler » pendant 8 secondes. */
+export const retireAuxJoueurs = (de: EtatJeuAdmin, vers: EtatJeuAdmin): boolean => de === "on" && RANG_ETAT[vers] < RANG_ETAT[de];
+
+/** Lot N3 : combien de temps le bandeau « Annuler » reste (8 secondes). */
+export const DELAI_ANNULER_S = 8;
+
+/** Lot N3 : les groupes de la page « Jeux », dans l'ordre où ils se lisent. */
+export const GROUPES_JEUX: readonly { etat: EtatJeuAdmin; titre: string; couleur: string }[] = [
+  { etat: "on", titre: "En ligne", couleur: "vert" },
+  { etat: "preview", titre: "En aperçu", couleur: "moutarde" },
+  { etat: "off", titre: "Fermés", couleur: "encre" },
+];
+
+const NOMS_CATEGORIE: Record<string, string> = { jour: "Classé", arcade: "Arcade", party: "Party" };
+/** Le nom d'une catégorie de la fiche (`jour` s'écrit « Classé ») ; une catégorie que le panneau ne connaît pas s'écrit avec sa première lettre en capitale. */
+export const nomCategorie = (c: string): string => NOMS_CATEGORIE[c] ?? (c ? c[0]!.toUpperCase() + c.slice(1) : "");
+/** Le pluriel d'un filtre (« Classés », « Arcade », « Party »). */
+export const filtreCategorie = (c: string): string => (c === "jour" ? "Classés" : nomCategorie(c));
+/** Les catégories présentes dans la liste, dans l'ordre de la première apparition (celles des fiches, quelles qu'elles soient). */
+export const categoriesDesJeux = (jeux: readonly Pick<JeuAdmin, "categorie">[]): string[] => [...new Set(jeux.map((j) => j.categorie))];
+
+/** La recherche et le filtre de la page : le nom ou la catégorie contient le texte (sans accent ni casse) ; `categorie` vide : toutes. */
+export function filtrerJeux<T extends Pick<JeuAdmin, "nom" | "jeu" | "categorie">>(jeux: readonly T[], q: string, categorie: string): T[] {
+  const nu = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const cherche = nu(q.trim());
+  return jeux.filter((j) => (!categorie || j.categorie === categorie) && (!cherche || nu(`${j.nom} ${j.jeu} ${nomCategorie(j.categorie)}`).includes(cherche)));
+}
+
+const ARTICLES_IDENTITE: Record<string, string> = { police: "la police", motif: "le motif", illustration: "l'illustration" };
+/** Ce qui bloque une position, écrit sur la ligne : « Il manque la police et l'illustration ». Un code inconnu : le code lui-même (jamais un message du serveur). */
+export function texteBlocage(b: BlocageAdmin): string {
+  if (b.code === "identite_incomplete") {
+    const noms = (b.manque ?? []).flatMap((m) => (ARTICLES_IDENTITE[m] ? [ARTICLES_IDENTITE[m]!] : []));
+    if (!noms.length) return "L'identité du jeu n'est pas complète";
+    return `Il manque ${noms.length > 1 ? `${noms.slice(0, -1).join(", ")} et ${noms.at(-1)}` : noms[0]}`;
+  }
+  return `Position interdite (${b.code})`;
+}
+/** Le premier blocage d'un jeu (une ligne dit une raison seulement : la même pour aperçu et On quand c'est l'identité) ; `null` sans blocage. */
+export const blocageDuJeu = (j: Pick<JeuAdmin, "bloque">): BlocageAdmin | null => j.bloque.preview ?? j.bloque.on ?? null;
+
+/** Les deux lettres de la vignette : « Pinball » → « PI ». */
+export const siglePourJeu = (nom: string): string => nom.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 2).toUpperCase();
+/** La couleur du jeu si c'est bien `#RRGGBB` (rien d'autre n'arrive dans une propriété CSS), sinon `null`. */
+export const couleurValide = (c: string | null): string | null => (c && /^#[0-9a-fA-F]{6}$/.test(c) ? c : null);
+/** Encre ou crème sur cette couleur de fond, selon sa luminance (contraste AA du sigle de la vignette). */
+export function texteSurCouleur(fond: string): string {
+  const v = (i: number) => {
+    const c = parseInt(fond.slice(1 + i * 2, 3 + i * 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const lum = 0.2126 * v(0) + 0.7152 * v(1) + 0.0722 * v(2);
+  return lum > 0.18 ? "#2A1E16" : "#F4EFE6";
+}
+
+const jourParis = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
+/** « 13 oct. » : le jour de Paris d'un instant ISO ; illisible : chaîne vide. */
+export function jourDepuis(iso: string | null): string {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isNaN(t) ? "" : jourParis.format(new Date(t));
+}
+/** La ligne qui dit l'état d'un jeu et depuis quand (lot N3), avec les mots de la maquette. */
+export function infoEtat(j: Pick<JeuAdmin, "etat" | "etatDepuis">): string {
+  const d = jourDepuis(j.etatDepuis);
+  if (j.etat === "on") return d ? `En ligne depuis le ${d}` : "En ligne";
+  if (j.etat === "preview") return `Aperçu${d ? ` depuis le ${d}` : ""} : visible avec le lien seulement`;
+  return `Fermé${d ? ` depuis le ${d}` : ""} : « Bientôt » pour les joueurs`;
 }
 
 /** Le lien d'aperçu d'un jeu : la clé est dans l'adresse **de ce lien seulement** (la page du jeu la range puis la retire de l'adresse ; elle ne va jamais à l'API par l'adresse). */
 export const lienApercu = (origine: string, jeu: string, cle: string): string => `${origine.replace(/\/+$/, "")}/${encodeURIComponent(jeu)}/?apercu=${encodeURIComponent(cle)}`;
+
+// --- Lot N3 : le menu en quatre rubriques --------------------------------------------------------------------------------------------------------
+/** Ce qui attend l'éditeur, affiché à côté des liens du menu : images à voir, retours non lus, lignes « Pour les joueurs » à rédiger. `null` : pas encore lu (ou illisible) — rien ne s'affiche. */
+export interface CompteursMenu {
+  images: number | null;
+  retours: number | null;
+  nouveautes: number | null;
+}
+export type CleCompteur = keyof CompteursMenu;
+export interface LienMenu {
+  /** La clé du lien (`data-menu`) : celle de la vue, ou `track` / `jump` pour les pages d'outils. */
+  cle: string;
+  texte: string;
+  href: string;
+  /** Le compteur affiché à côté du lien. */
+  compteur?: CleCompteur;
+  /** Un lien qui sort du panneau (les pages d'outils de Track et de Jump) : une flèche, hors de la page. */
+  sortant?: boolean;
+}
+export interface RubriqueMenu {
+  id: string;
+  titre: string;
+  liens: readonly LienMenu[];
+}
+/**
+ * Le menu : **quatre rubriques**, les adresses `#/…` ne changent pas (lot N3). Sur téléphone, la barre d'onglets du bas en a une entrée par rubrique ; « Aujourd'hui » y garde ses deux liens en tête
+ * (Tableau de bord et Jeux : les plus utilisés, un seul toucher), les trois autres ouvrent leurs liens.
+ */
+export const RUBRIQUES_MENU: readonly RubriqueMenu[] = [
+  {
+    id: "aujourdhui",
+    titre: "Aujourd'hui",
+    liens: [
+      { cle: "tableau", texte: "Tableau de bord", href: "#/tableau" },
+      { cle: "jeux", texte: "Jeux", href: "#/jeux" },
+    ],
+  },
+  {
+    id: "communaute",
+    titre: "Communauté",
+    liens: [
+      { cle: "joueurs", texte: "Joueurs", href: "#/joueurs" },
+      { cle: "groupes", texte: "Groupes", href: "#/groupes" },
+      { cle: "images", texte: "Images", href: "#/images", compteur: "images" },
+      { cle: "retours", texte: "Retours", href: "#/retours", compteur: "retours" },
+    ],
+  },
+  {
+    id: "diffusion",
+    titre: "Diffusion",
+    liens: [
+      { cle: "nouveautes", texte: "Nouveautés", href: "#/nouveautes", compteur: "nouveautes" },
+      { cle: "message", texte: "Message en direct", href: "#/message" },
+    ],
+  },
+  {
+    id: "suivi",
+    titre: "Suivi",
+    liens: [
+      { cle: "journal", texte: "Journal", href: "#/journal" },
+      { cle: "track", texte: "Outils de Track", href: "../track/admin/", sortant: true },
+      { cle: "jump", texte: "Outils de Jump", href: "../jump/admin/", sortant: true },
+    ],
+  },
+];
+
+/** La rubrique d'une entrée du menu (`null` : une vue qui n'est pas au menu). */
+export const rubriqueDuLien = (cle: string): RubriqueMenu | null => RUBRIQUES_MENU.find((r) => r.liens.some((l) => l.cle === cle)) ?? null;
+/** Le total des compteurs d'une rubrique (le badge de son onglet sur téléphone) ; 0 : rien à montrer. */
+export const totalRubrique = (r: RubriqueMenu, c: CompteursMenu): number => r.liens.reduce((n, l) => n + (l.compteur ? (c[l.compteur] ?? 0) : 0), 0);
+/** L'entrée du menu qu'une vue éclaire : la fiche d'un joueur éclaire « Joueurs », un retour « Retours », un groupe « Groupes ». */
+export const cleMenuDeVue = (vue: string): string => (vue === "fiche" ? "joueurs" : vue === "retour" ? "retours" : vue === "groupe" ? "groupes" : vue);

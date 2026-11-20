@@ -257,6 +257,45 @@ describe(`interrupteur des jeux : l'administration et le journal (${TEST_DB})`, 
     expect(liste.body.jeux.map((j: { jeu: string; etat: string }) => [j.jeu, j.etat])).toEqual([["track", "preview"], ["jump", "on"], ["tower", "off"], ...AUTRES_JEUX.map((g) => [g.code, "off"])]);
   });
 
+  it("lot N3 — la liste porte, pour chaque jeu, sa catégorie, sa couleur, depuis quand il est dans cet état, les joueurs du jour (un nombre) et ce qui bloque chaque position", async () => {
+    const { t, adm, etat } = await panneau();
+    const lire = async () => (await adm("GET", "/api/admin/jeux")).body.jeux as Record<string, any>[];
+    const avant = (await lire()).find((j) => j.jeu === "track")!;
+    expect(avant).toMatchObject({ categorie: "jour", couleur: "#1E1B19", joueursAujourdhui: 0, bloque: { off: null, preview: null, on: null } });
+    expect((await lire()).find((j) => j.jeu === "tower")).toMatchObject({ categorie: "arcade", etat: "off", etatDepuis: null });
+    // Des joueurs du jour : un nombre, jamais un joueur (aucune référence, aucun pseudo dans la liste).
+    expect((await soumettre(t, 1, slow.code)).status).toBe(200);
+    expect((await soumettre(t, 2, fast.code)).status).toBe(200);
+    expect(JSON.stringify(await lire())).not.toContain("Joueur1");
+    // Un compteur est gardé 30 s par instance ; après, il suit.
+    t.clock.now += 31_000;
+    const apres = (await lire()).find((j) => j.jeu === "track")!;
+    expect(apres.joueursAujourdhui).toBe(2);
+    // « Depuis quand » : le dernier changement d'état, pas la clé d'aperçu (qui touche aussi `modifie_le`).
+    await etat("track", "preview");
+    const t0 = (await lire()).find((j) => j.jeu === "track")!.etatDepuis as string;
+    expect(new Date(t0).getTime()).toBe(t.clock.now);
+    t.clock.now += 60_000;
+    await adm("POST", "/api/admin/jeux/track/cle", confirmer);
+    const j = (await lire()).find((x) => x.jeu === "track")!;
+    expect(j.etatDepuis).toBe(t0);
+    expect(new Date(j.modifieLe).getTime()).toBeGreaterThan(new Date(t0).getTime());
+  });
+
+  it("lot N3 — l'annulation remet l'état d'avant par la même route et s'écrit au journal sous son nom ; la remise d'un jeu sorti de la journée rouvre sa période sans trou", async () => {
+    const { t, adm, etat } = await panneau();
+    await etat("track", "preview"); // on → aperçu
+    expect((await adm("POST", "/api/admin/jeux/track/etat", { etat: "on", annulation: true, ...confirmer })).status).toBe(200);
+    const lignes = await t.db.all<{ action: string; avant: string; apres: string }>("SELECT action, avant, apres FROM journal_admin WHERE action LIKE '%jeu%' ORDER BY id");
+    expect(lignes.map((l) => [l.action, JSON.parse(l.avant).etat, JSON.parse(l.apres).etat])).toEqual([
+      ["changer l'état d'un jeu", "on", "preview"],
+      ["annuler le changement d'état d'un jeu", "preview", "on"],
+    ]);
+    // Désactivé puis réactivé le même jour : la période se rouvre, aucun trou.
+    const periodes = (await t.db.first<{ periodes: string }>("SELECT periodes FROM jeux WHERE jeu = 'track'"))!.periodes;
+    expect(JSON.parse(periodes)).toEqual([[0, null]]);
+  });
+
   it("la remise à zéro du lancement garde l'interrupteur (la table est gardée)", async () => {
     const { t, etat } = await panneau();
     await etat("jump", "off");

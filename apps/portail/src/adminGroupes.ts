@@ -1,6 +1,7 @@
 import { bouton, el } from "@cdj/ui";
 import { type ActionGroupe, type FicheGroupeAdmin, type GroupeResume } from "./adminDonnees";
 import type { Contexte } from "./adminDiffusion";
+import { entetePage } from "./adminEntete";
 
 // Lot C1, partie C (plateforme) — la rubrique « Groupes » du panneau : chercher un groupe par son nom, ouvrir sa fiche (description, membres, emblème), puis renommer, retirer l'emblème, retirer un membre, changer
 // le chef, masquer le groupe des classements, le dissoudre. Chaque action est confirmée (la dissolution demande de retaper le nom) et inscrite au journal par le serveur. Tout texte est posé en `textContent`.
@@ -20,9 +21,7 @@ export async function vueGroupes(ctx: Contexte, o: { q: string; page: number }):
   const ligne = (g: GroupeResume): HTMLElement =>
     el("tr", { attrs: { "data-groupe": g.id } }, el("td", {}, el("a", { attrs: { href: `#/groupes/${g.id}` }, texte: g.nom })), el("td", { texte: String(g.membres) }), el("td", { texte: g.masque ? "masqué des classements" : "—" }), el("td", { texte: quand(g.creeLe) }));
   return [
-    el("h1", { classe: "admin-titre-section", texte: "Groupes" }),
-    p("Les groupes des joueurs : tu peux renommer, retirer un emblème ou un membre, changer le chef, masquer un groupe des classements ou le dissoudre.", "admin-aide"),
-    forme,
+    entetePage({ titre: "Groupes", sousTitre: "Les groupes des joueurs : tu peux renommer, retirer un emblème ou un membre, changer le chef, masquer un groupe des classements ou le dissoudre.", outils: [forme] }),
     liste.groupes.length === 0
       ? p("Aucun groupe.", "admin-aide")
       : el("table", { classe: "admin-table", attrs: { id: "groupes-liste" } }, el("thead", {}, el("tr", {}, ...["Groupe", "Membres", "Classements", "Créé le"].map((t) => el("th", { attrs: { scope: "col" }, texte: t })))), el("tbody", {}, ...liste.groupes.map(ligne))),
@@ -67,7 +66,7 @@ async function fiche(ctx: Contexte, id: string): Promise<(Node | null)[]> {
   );
   return [
     el("a", { classe: "admin-retour-lien", attrs: { href: "#/groupes" }, texte: "‹ Groupes" }),
-    el("h1", { classe: "admin-titre-section", attrs: { id: "groupe-titre" }, texte: g.nom }),
+    entetePage({ titre: g.nom, id: "groupe-titre" }),
     p(`${g.masque ? "Masqué des classements · " : ""}Créé le ${quand(g.creeLe)}${g.renommeLe ? ` · renommé le ${quand(g.renommeLe)}` : ""} · emblème : ${g.emblem ? g.emblem.statut : "aucun"}`, "admin-aide"),
     g.description ? p(g.description, "groupe-description") : null,
     el(

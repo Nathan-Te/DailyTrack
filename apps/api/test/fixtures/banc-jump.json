@@ -6219,6 +6219,8 @@
      "jeu": "track",
      "nom": "Track",
      "etat": "on",
+     "categorie": "jour",
+     "couleur": "#1E1B19",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6230,12 +6232,21 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-12T22:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "jump",
      "nom": "Jump",
      "etat": "off",
+     "categorie": "jour",
+     "couleur": "#FFD23F",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6247,19 +6258,35 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-30T11:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "tower",
      "nom": "Tower",
      "etat": "off",
+     "categorie": "arcade",
+     "couleur": "#9ED9BE",
      "liveFrom": null,
      "periodes": [],
      "cle": {
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": null
+     "modifieLe": null,
+     "etatDepuis": null,
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     }
    ]
   }
@@ -6448,6 +6475,8 @@
      "jeu": "track",
      "nom": "Track",
      "etat": "on",
+     "categorie": "jour",
+     "couleur": "#1E1B19",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6459,12 +6488,21 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-12T22:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "jump",
      "nom": "Jump",
      "etat": "preview",
+     "categorie": "jour",
+     "couleur": "#FFD23F",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6476,19 +6514,35 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-30T11:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "tower",
      "nom": "Tower",
      "etat": "off",
+     "categorie": "arcade",
+     "couleur": "#9ED9BE",
      "liveFrom": null,
      "periodes": [],
      "cle": {
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": null
+     "modifieLe": null,
+     "etatDepuis": null,
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     }
    ]
   }
@@ -6734,6 +6788,8 @@
      "jeu": "track",
      "nom": "Track",
      "etat": "on",
+     "categorie": "jour",
+     "couleur": "#1E1B19",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6745,12 +6801,21 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-12T22:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "jump",
      "nom": "Jump",
      "etat": "preview",
+     "categorie": "jour",
+     "couleur": "#FFD23F",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6762,19 +6827,35 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-30T11:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "tower",
      "nom": "Tower",
      "etat": "off",
+     "categorie": "arcade",
+     "couleur": "#9ED9BE",
      "liveFrom": null,
      "periodes": [],
      "cle": {
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": null
+     "modifieLe": null,
+     "etatDepuis": null,
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     }
    ]
   }
@@ -6804,6 +6885,8 @@
      "jeu": "track",
      "nom": "Track",
      "etat": "on",
+     "categorie": "jour",
+     "couleur": "#1E1B19",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6815,12 +6898,21 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-12T22:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "jump",
      "nom": "Jump",
      "etat": "on",
+     "categorie": "jour",
+     "couleur": "#FFD23F",
      "liveFrom": "1970-01-01",
      "periodes": [
       {
@@ -6832,19 +6924,35 @@
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": "<horloge réelle>"
+     "modifieLe": "<horloge réelle>",
+     "etatDepuis": "2026-10-30T11:00:00.000Z",
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     },
     {
      "jeu": "tower",
      "nom": "Tower",
      "etat": "off",
+     "categorie": "arcade",
+     "couleur": "#9ED9BE",
      "liveFrom": null,
      "periodes": [],
      "cle": {
       "presente": false,
       "creeeLe": null
      },
-     "modifieLe": null
+     "modifieLe": null,
+     "etatDepuis": null,
+     "joueursAujourdhui": 0,
+     "bloque": {
+      "off": null,
+      "preview": null,
+      "on": null
+     }
     }
    ]
   }

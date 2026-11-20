@@ -76,6 +76,8 @@ export const MIGRATIONS: string[] = [
   // Lot C1, partie B (avatars) : `players.avatar` = l'empreinte de l'image visible du joueur (NULL : ses initiales). **Réversible** : une colonne ajoutée (l'ancien code l'ignore) ; retour arrière : `ALTER TABLE players DROP COLUMN avatar`.
   // Elle est copiée sur la ligne du joueur pour que les classements l'obtiennent sans lire la table des images.
   "ALTER TABLE players ADD COLUMN avatar TEXT",
+  // Lot N3 : `jeux.etat_le` — le moment du dernier changement d'**état** d'un jeu (`modifie_le` bouge aussi avec la clé d'aperçu), pour dire « depuis le … » sur sa ligne de l'administration. **Réversible** : une colonne ajoutée, l'ancien code l'ignore ; retour arrière : `ALTER TABLE jeux DROP COLUMN etat_le`. NULL : jamais changé depuis la colonne (la ligne retombe sur `modifie_le`).
+  "ALTER TABLE jeux ADD COLUMN etat_le INTEGER",
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */

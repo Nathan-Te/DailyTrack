@@ -7,6 +7,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "on",
     "premierJour": "2026-10-13",
     "categorie": "jour",
+    "fond": "#1E1B19",
     "classement": {
       "colonnes": [
         {
@@ -102,6 +103,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "on",
     "premierJour": "2026-10-16",
     "categorie": "jour",
+    "fond": "#FFD23F",
     "classement": {
       "colonnes": [
         {
@@ -184,6 +186,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "arcade",
+    "fond": "#9ED9BE",
     "classement": {
       "colonnes": [
         {
@@ -270,6 +273,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "jour",
+    "fond": "#F4A6B8",
     "classement": {
       "colonnes": [
         {
@@ -337,6 +341,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "arcade",
+    "fond": "#B8D8F4",
     "classement": {
       "colonnes": [
         {
@@ -409,6 +414,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "arcade",
+    "fond": "#D9C4F0",
     "classement": {
       "colonnes": [
         {
@@ -471,6 +477,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "arcade",
+    "fond": "#F7C59F",
     "classement": {
       "colonnes": [
         {
@@ -535,6 +542,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "arcade",
+    "fond": "#FFB892",
     "classement": {
       "colonnes": [
         {
@@ -604,6 +612,7 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "arcade",
+    "fond": "#F6A2D8",
     "classement": {
       "colonnes": [
         {

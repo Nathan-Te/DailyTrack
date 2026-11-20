@@ -12,7 +12,7 @@ import { CODES_ERREUR, ERREUR_INTERNE, corpsErreur } from "./codesErreur";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, RequestInfo } from "./games";
 import { createDiffusion } from "./diffusion";
-import { createJeux } from "./jeux";
+import { createJeux, joueursDuJourDe } from "./jeux";
 import { createIdentityRoutes } from "./identity";
 import { createRetours } from "./retours";
 import { createAvatars } from "./avatars";
@@ -209,7 +209,7 @@ export function createApi(options: ApiOptions) {
   // Lot P : l'interrupteur des jeux (état de chaque jeu, clé d'aperçu). Un jeu sans crochet `portail` est nommé par son code ; le portail et la garde lisent le même état.
   const interrupteur = createJeux(
     platform,
-    instances.map((g) => ({ code: g.code, site: g.instance.portail?.site ?? g.code, nom: g.instance.portail?.nom ?? g.code, viderApercu: g.instance.viderApercu?.bind(g.instance) })),
+    instances.map((g) => ({ code: g.code, site: g.instance.portail?.site ?? g.code, nom: g.instance.portail?.nom ?? g.code, viderApercu: g.instance.viderApercu?.bind(g.instance), joueursDuJour: joueursDuJourDe(platform, g.instance.admin) })),
   );
   // Lot C1 : les retours des joueurs (`/api/retours…`), « Un bug ? Une idée ? ». Leur nombre de réponses non lues entre dans `GET /api/portail/jour` (`messagesNonLus`).
   const retours = createRetours(platform, { version: options.admin?.releaseTag ?? options.revision?.slice(0, 12) ?? "local" });

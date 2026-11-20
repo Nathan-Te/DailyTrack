@@ -45,21 +45,34 @@
 .admin-env[data-env="recette"] {
   background: var(--dj-moutarde);
 }
-.admin-menu-bouton {
-  display: none;
-}
 .admin-corps {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: var(--dj-espace-8);
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: var(--dj-espace-8) var(--dj-marge);
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: calc(100vh - 66px);
+  min-height: calc(100dvh - 66px);
+}
+/* Lot N3 : le menu en quatre rubriques (maquette docs/plateforme/maquettes/admin-jeux-et-navigation.html) : fond crème 2, trait de 3 px, entrées de 44 px, compteurs en terre cuite. */
+.admin-menu {
+  padding: 18px 14px;
+  background: var(--dj-creme-2);
+  border-right: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.admin-menu__rubrique {
+  margin: 16px 8px 6px;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.admin-menu__rubrique:first-child {
+  margin-top: 0;
 }
 .admin-menu__liste {
   display: flex;
   flex-direction: column;
-  gap: var(--dj-espace-2);
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -70,35 +83,65 @@
   justify-content: space-between;
   gap: var(--dj-espace-3);
   min-height: var(--dj-cible);
-  padding: 0 var(--dj-espace-5);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  background: var(--dj-papier);
+  padding: 0 10px;
+  border-radius: 4px;
   color: var(--dj-encre);
   font-weight: 700;
   text-decoration: none;
-  box-shadow: var(--dj-ombre-bouton);
   box-sizing: border-box;
 }
 .admin-menu__entree[aria-current="page"] {
   background: var(--dj-encre);
-  color: var(--dj-papier);
-  box-shadow: none;
+  color: var(--dj-creme);
 }
-.admin-menu__sous {
-  display: block;
-  margin: var(--dj-espace-1) 0 0 var(--dj-espace-3);
+.admin-menu__sortant {
+  margin-left: auto;
   color: var(--dj-encre-douce);
-  font-size: var(--dj-taille-12);
+  font-size: var(--dj-taille-14);
+}
+.admin-menu__entree[aria-current="page"] .admin-menu__sortant {
+  color: var(--dj-creme);
+}
+.admin-menu__sortant + .admin-menu__nombre {
+  margin-left: var(--dj-espace-3);
 }
 .admin-contenu {
   display: flex;
   flex-direction: column;
   gap: var(--dj-espace-7);
   min-width: 0;
+  max-width: 1180px;
+  padding: 22px 28px 110px;
+  box-sizing: border-box;
 }
 .admin-contenu:focus {
   outline: none;
+}
+/* Lot N3 : l'en-tête commun des pages — titre, sous-titre et, à droite, les outils de la page. */
+.admin-entete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-7);
+}
+.admin-entete__titre {
+  font-size: 28px;
+}
+.admin-entete__sous-titre {
+  margin: 2px 0 0;
+}
+.admin-entete__outils {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-3);
+}
+.admin-entete__outils .admin-filtres {
+  flex-wrap: wrap;
+}
+.admin-entete__outils .admin-filtre {
+  border-radius: 22px;
 }
 .admin-titre-section {
   margin: 0;
@@ -741,19 +784,15 @@
   .admin-gestion__actions {
     grid-column: 2;
   }
-  .admin-menu-bouton {
-    display: inline-flex;
-  }
   .admin-corps {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--dj-espace-6);
-    padding: var(--dj-espace-6) var(--dj-marge);
+    display: block;
   }
   .admin-menu {
     display: none;
   }
-  .admin-menu.est-ouvert {
-    display: block;
+  .admin-contenu {
+    padding: 16px 14px calc(96px + env(safe-area-inset-bottom));
+    max-width: none;
   }
   .admin-barre__titre {
     display: none;
@@ -905,4 +944,468 @@
   margin: 0;
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+/* Lot N3 : la barre du haut dit l'environnement en clair (PRODUCTION en terre cuite, RECETTE en moutarde : règles `.admin-env[data-env]` plus haut) et reste sobre. */
+.admin-barre {
+  background: var(--dj-creme);
+}
+.admin-env {
+  letter-spacing: 0.8px;
+}
+
+/* Lot N3 : la page « Jeux » — une ligne par jeu, rangées par état. Le vert « En ligne » est celui de la maquette (le seul hors des jetons : l'interrupteur, la pastille de groupe). */
+.admin-jeux {
+  --admin-vert: #2e7d5b;
+  --admin-vert-texte: #fff4e0;
+}
+.admin-champ-recherche {
+  min-height: var(--dj-cible);
+  min-width: 200px;
+  padding: 0 var(--dj-espace-5);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 4px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  box-sizing: border-box;
+}
+.admin-jeux__titre-groupe {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  margin: 20px 0 8px;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 12px;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.admin-jeux__groupe:first-child .admin-jeux__titre-groupe {
+  margin-top: 0;
+}
+.admin-jeux__point {
+  width: 10px;
+  height: 10px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.admin-jeux__point--vert {
+  background: var(--admin-vert);
+}
+.admin-jeux__point--moutarde {
+  background: var(--dj-moutarde);
+}
+.admin-jeux__point--encre {
+  background: var(--dj-encre);
+}
+.admin-jeux__lignes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-jeu {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 150px auto 44px;
+  align-items: center;
+  gap: var(--dj-espace-7);
+  padding: var(--dj-espace-4) var(--dj-espace-5);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: 6px;
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.admin-jeu.est-ferme {
+  border-width: var(--dj-trait);
+  background: transparent;
+  box-shadow: none;
+}
+.admin-jeu__vignette {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 2.5px solid var(--dj-encre);
+  border-radius: 6px;
+  background: var(--vignette-fond, var(--dj-creme-2));
+  color: var(--vignette-texte, var(--dj-encre));
+  font-family: var(--dj-police-marque);
+  font-size: 17px;
+  box-sizing: border-box;
+}
+.admin-jeu__corps {
+  min-width: 0;
+}
+.admin-jeu__nom {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-3);
+  margin: 0;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: 19px;
+}
+.admin-jeu__cat {
+  padding: 2px 6px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 3px;
+  background: var(--dj-creme);
+  font-size: 10px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+.admin-jeu__info {
+  margin: 2px 0 0;
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-13);
+}
+.admin-jeu__alerte {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  margin: 3px 0 0;
+  color: var(--dj-terre);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.admin-jeu__alerte::before {
+  content: "!";
+  content: "!" / ""; /* décoratif : le lecteur d'écran ne lit pas le point d'exclamation */
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+  font-family: var(--dj-police-marque);
+  font-size: 11px;
+}
+.admin-jeu__lien {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-4);
+  margin-top: var(--dj-espace-3);
+}
+.admin-jeu__champ-lien {
+  width: 100%;
+  margin-top: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 4px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  box-sizing: border-box;
+}
+.admin-jeu .admin-message {
+  margin-top: var(--dj-espace-3);
+}
+.admin-jeu > .admin-refus-action {
+  grid-column: 1 / -1;
+}
+.admin-jeu__chiffre {
+  text-align: right;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.1;
+}
+.admin-jeu__chiffre small {
+  display: block;
+  color: var(--dj-encre-douce);
+  font-family: var(--dj-police-texte);
+  font-weight: 600;
+  font-size: var(--dj-taille-12);
+}
+/* L'interrupteur Off · Aperçu · On : trois positions de 44 px ; celle où le jeu est se colore, une position interdite est grisée (hachures) avec sa raison écrite sur la ligne. */
+.admin-jeu__etat {
+  display: inline-grid;
+  grid-auto-flow: column;
+  overflow: hidden;
+  border: 2.5px solid var(--dj-encre);
+  border-radius: 6px;
+  background: var(--dj-creme);
+}
+.admin-position {
+  min-width: 76px;
+  height: var(--dj-cible);
+  padding: 0 var(--dj-espace-4);
+  border: 0;
+  background: transparent;
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-14);
+  cursor: pointer;
+}
+.admin-position + .admin-position {
+  border-left: 2.5px solid var(--dj-encre);
+}
+.admin-position:focus-visible {
+  outline: var(--dj-focus) solid var(--dj-encre);
+  outline-offset: -5px;
+}
+.admin-position--off.est-actif {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.admin-position--preview.est-actif {
+  background: var(--dj-moutarde);
+}
+.admin-position--on.est-actif {
+  background: var(--admin-vert);
+  color: var(--admin-vert-texte);
+}
+.admin-position.est-interdit {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--dj-creme-2) 6px 8px);
+  color: var(--dj-encre-douce);
+  cursor: not-allowed;
+}
+.admin-plus__boite {
+  position: relative;
+}
+.admin-plus {
+  display: grid;
+  place-items: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 4px;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.admin-plus__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  min-width: 200px;
+  padding: var(--dj-espace-1);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: 4px;
+  background: var(--dj-papier);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.admin-plus__menu[hidden] {
+  display: none;
+}
+.admin-plus__item {
+  display: block;
+  width: 100%;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-5);
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--dj-encre);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-plus__item[aria-disabled="true"] {
+  color: var(--dj-encre-douce);
+  cursor: not-allowed;
+}
+/* Le bandeau « Annuler » (8 secondes) : au bas de l'écran, au-dessus de la barre d'onglets sur téléphone. */
+.admin-annuler {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-6);
+  max-width: calc(100vw - 20px);
+  padding: var(--dj-espace-4) var(--dj-espace-4) var(--dj-espace-4) var(--dj-espace-7);
+  border-radius: 8px;
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+  box-shadow: 0 0 0 2px var(--dj-moutarde);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  transform: translateX(-50%);
+}
+.admin-annuler__bouton {
+  flex: none;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-6);
+  border: 0;
+  border-radius: 4px;
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-13);
+  cursor: pointer;
+}
+.admin-annuler__bouton:focus-visible {
+  outline: var(--dj-focus) solid var(--dj-creme);
+  outline-offset: 2px;
+}
+
+/* Lot N3 : la barre d'onglets du téléphone (une rubrique par onglet ; « Tableau » et « Jeux » en un toucher) et la feuille qui ouvre les liens d'une rubrique. Masquée sur ordinateur. */
+.admin-onglets {
+  display: none;
+}
+.admin-feuille[hidden] {
+  display: none;
+}
+@media (max-width: 760px) {
+  .admin-entete {
+    align-items: stretch;
+  }
+  .admin-entete__outils {
+    width: 100%;
+  }
+  .admin-champ-recherche {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .admin-jeu {
+    grid-template-columns: 48px minmax(0, 1fr) 44px;
+    gap: var(--dj-espace-4) var(--dj-espace-5);
+    padding: var(--dj-espace-4);
+    align-items: start;
+  }
+  .admin-jeu__vignette {
+    width: 48px;
+    height: 48px;
+    font-size: 15px;
+  }
+  .admin-jeu__nom {
+    font-size: 17px;
+  }
+  .admin-jeu__chiffre {
+    display: none;
+  }
+  .admin-jeu__etat {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .admin-position {
+    min-width: 0;
+    height: 46px;
+  }
+  .admin-plus__boite {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .admin-annuler {
+    right: 10px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    left: 10px;
+    justify-content: space-between;
+    transform: none;
+  }
+  .admin-onglets {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 10;
+    display: block;
+    border-top: var(--dj-trait-fort) solid var(--dj-encre);
+    background: var(--dj-creme);
+  }
+  .admin-onglets__barre {
+    display: flex;
+    padding: 9px 2px calc(9px + env(safe-area-inset-bottom));
+  }
+  .admin-onglet {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    flex: 1;
+    min-width: 0;
+    min-height: var(--dj-cible);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--dj-encre-douce);
+    font-family: var(--dj-police-marque);
+    font-size: 11px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .admin-onglet em {
+    display: block;
+    width: 26px;
+    height: 4px;
+    margin: 0 auto 6px;
+    border-radius: 2px;
+    background: transparent;
+  }
+  .admin-onglet.est-ici,
+  .admin-onglet.est-ouvert {
+    color: var(--dj-encre);
+  }
+  .admin-onglet.est-ici em {
+    background: var(--dj-terre);
+  }
+  .admin-onglet:focus-visible {
+    outline: var(--dj-focus) solid var(--dj-encre);
+    outline-offset: -2px;
+  }
+  .admin-onglet__nombre {
+    position: absolute;
+    top: -6px;
+    left: 58%;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--dj-terre);
+    color: var(--dj-terre-texte);
+    font-family: var(--dj-police-chiffres);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 10px;
+  }
+  .admin-feuille {
+    border-bottom: var(--dj-trait) solid var(--dj-encre);
+    background: var(--dj-papier);
+    padding: var(--dj-espace-3) var(--dj-espace-4);
+  }
+  .admin-feuille__liste {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .admin-feuille__lien {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--dj-espace-3);
+    min-height: 48px;
+    padding: 0 var(--dj-espace-5);
+    border-radius: 4px;
+    color: var(--dj-encre);
+    font-weight: 700;
+    font-size: var(--dj-taille-16);
+    text-decoration: none;
+  }
+  .admin-feuille__lien[aria-current="page"] {
+    background: var(--dj-encre);
+    color: var(--dj-creme);
+  }
 }
