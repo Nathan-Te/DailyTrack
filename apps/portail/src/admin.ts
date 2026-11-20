@@ -18,11 +18,16 @@ import {
   jourLong,
   nomAction,
   nomDuJeuAdmin,
+  RUBRIQUES_MENU,
+  cleMenuDeVue,
   rang,
+  rubriqueDuLien,
+  totalRubrique,
   resumeJournal,
   temps,
   texteErreur,
   tuilesDesJeux,
+  type CompteursMenu,
   type Configuration,
   type EntreeJournal,
   type Fiche,
@@ -30,7 +35,8 @@ import {
   type Tableau,
 } from "./adminDonnees";
 import { baseApi } from "./jour";
-import { remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
+import { lignesARediger, remplirPrDuTableau, vueMessage, vueNouveautes, type Contexte } from "./adminDiffusion";
+import { entetePage } from "./adminEntete";
 import { effacerRefus, refuserAction, suivreDeclencheur } from "./adminErreur";
 import { vueJeux } from "./adminJeux";
 import { carteRefus } from "./adminRefus";
@@ -192,6 +198,13 @@ const adresseJoueurs = (q: string, filtre: string, page: number) => {
 
 let contenu: HTMLElement;
 let menu: HTMLElement;
+let onglets: HTMLElement;
+/** Lot N3 : la rubrique dont la feuille est ouverte au-dessus de la barre d'onglets (téléphone), `null` : aucune. */
+let rubriqueOuverte: string | null = null;
+/** Lot N3 : les compteurs du menu (ce qui attend l'éditeur), gardés en mémoire de la page ; `null` : pas encore lu. */
+const compteurs: CompteursMenu = { images: null, retours: null, nouveautes: null };
+let imagesLuesA = 0;
+const DELAI_IMAGES_MS = 60_000;
 /** L'étiquette `prod-…` de la mise en production en cours, lue du tableau de bord (Nouveautés en a besoin pour la fenêtre des PR). */
 let etiquetteEnCours: string | null | undefined;
 
@@ -217,7 +230,6 @@ let ecoute = false;
 async function afficherPanneau(): Promise<void> {
   racine.replaceChildren();
   const env = environnement();
-  const boutonMenu = el("button", { classe: "dj-bouton dj-bouton--secondaire admin-menu-bouton", attrs: { type: "button", "aria-expanded": "false", "aria-controls": "admin-menu" }, texte: "Menu" });
   const deconnexion = bouton({
     texte: "Se déconnecter",
     variante: "secondaire",
@@ -236,74 +248,149 @@ async function afficherPanneau(): Promise<void> {
     el(
       "header",
       { classe: "admin-barre" },
-      boutonMenu,
       logo(t, { taille: "petit" }),
       el("span", { classe: "admin-barre__titre", texte: "Administration" }),
-      el("span", { classe: "admin-env", attrs: { "data-env": env.nom.toLowerCase() }, texte: env.nom }),
+      // Lot N3 : l'environnement en clair, en capitales (PRODUCTION en terre cuite, RECETTE en moutarde ; Aperçu et Local sans couleur) : on sait toujours où l'on agit.
+      el("span", { classe: "admin-env", attrs: { "data-env": env.nom.toLowerCase(), role: "status" }, texte: env.nom.toUpperCase() }),
       deconnexion,
     ),
   );
   menu = el("nav", { classe: "admin-menu", attrs: { id: "admin-menu", "aria-label": "Sections de l'administration" } });
   contenu = el("main", { classe: "admin-contenu", attrs: { id: "admin-contenu", tabindex: "-1" } });
-  racine.append(el("div", { classe: "admin-corps" }, menu, contenu));
-  boutonMenu.addEventListener("click", () => {
-    const ouvert = menu.classList.toggle("est-ouvert");
-    boutonMenu.setAttribute("aria-expanded", String(ouvert));
-  });
+  // Lot N3 : sur téléphone la barre d'onglets du bas remplace le bouton « Menu » (comme celle du portail) ; elle est dans le DOM sur ordinateur aussi, mais masquée (`display: none`).
+  onglets = el("nav", { classe: "admin-onglets", attrs: { id: "admin-onglets", "aria-label": "Rubriques de l'administration" } });
+  racine.append(el("div", { classe: "admin-corps" }, menu, contenu), onglets);
   if (!ecoute) {
     ecoute = true;
     suivreDeclencheur(); // lot K5b : le bouton cliqué désigne la ligne où montrer le refus d'une action confirmée
     window.addEventListener("hashchange", () => {
       if (contenu.isConnected) void afficherVue(); // à l'écran de connexion, une adresse qui change ne montre rien
     });
+    // Lot N3 : la feuille d'une rubrique (téléphone) se ferme à Échap et quand on touche ailleurs.
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && rubriqueOuverte) fermerFeuille(true);
+    });
+    document.addEventListener("pointerdown", (ev) => {
+      if (rubriqueOuverte && ev.target instanceof Node && !onglets.contains(ev.target)) fermerFeuille(false);
+    });
   }
   await afficherVue();
 }
 
-/** Le menu : les entrées de N1 et de N2 (Nouveautés, Message en direct), Track et Jump (leurs pages d'outils). */
-function dessinerMenu(vue: Vue): void {
-  const actif = vue.vue === "fiche" ? "joueurs" : vue.vue === "retour" ? "retours" : vue.vue === "groupe" ? "groupes" : vue.vue;
-  const lien = (cle: string, texte: string, href: string) =>
-    el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href, "data-menu": cle, "aria-current": actif === cle ? "page" : null }, texte }));
-  menu.replaceChildren(
-    el(
-      "ul",
-      { classe: "admin-menu__liste" },
-      lien("tableau", "Tableau de bord", "#/tableau"),
-      lien("joueurs", "Joueurs", "#/joueurs"),
-      lien("nouveautes", "Nouveautés", "#/nouveautes"),
-      lien("message", "Message en direct", "#/message"),
-      lien("jeux", "Jeux", "#/jeux"),
-      lien("images", "Images", "#/images"), // lot C1, partie B
-      lien("groupes", "Groupes", "#/groupes"), // lot C1, partie C
-      lien("retours", "Retours", "#/retours"), // lot C1 : le nombre de non lus est ajouté plus bas, quand le serveur l'a donné
-      lien("journal", "Journal", "#/journal"),
-      el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../track/admin/", "data-menu": "track" }, texte: "Track" }), el("span", { classe: "admin-menu__sous", texte: "outils : planning, médailles" })),
-      el("li", {}, el("a", { classe: "admin-menu__entree", attrs: { href: "../jump/admin/", "data-menu": "jump" }, texte: "Jump" }), el("span", { classe: "admin-menu__sous", texte: "outils : calendrier, essais" })),
-    ),
-  );
+/** Un compteur du menu : une pastille à côté du lien (rien à zéro ni tant qu'il n'est pas lu). */
+function pastille(n: number | null, cle: string): HTMLElement | null {
+  return n && n > 0 ? el("span", { classe: "admin-pastille admin-pastille--probleme admin-menu__nombre", attrs: { "data-compteur": cle, ...(cle === "retours" ? { "data-non-lus": String(n) } : {}) }, texte: String(n) }) : null;
 }
 
-/** Lot C1 : le nombre de retours non lus à côté de « Retours » dans le menu (une lecture indexée ; un échec n'affiche rien). */
-async function montrerNonLus(): Promise<void> {
-  try {
-    const { nonLus } = await client.retoursCompte();
-    const entree = menu.querySelector('[data-menu="retours"]');
-    entree?.querySelector(".admin-menu__nombre")?.remove();
-    if (nonLus > 0) entree?.append(el("span", { classe: "admin-pastille admin-pastille--probleme admin-menu__nombre", attrs: { "data-non-lus": String(nonLus) }, texte: String(nonLus) }));
-  } catch {
-    /* sans importance pour le menu */
+/**
+ * Lot N3 — le menu en **quatre rubriques** (Aujourd'hui, Communauté, Diffusion, Suivi : `RUBRIQUES_MENU`), avec les compteurs de ce qui attend (images à voir, retours non lus, lignes « Pour les joueurs » à
+ * rédiger). Les adresses `#/…` ne changent pas. Sur téléphone, la barre d'onglets du bas : Tableau de bord et Jeux (un toucher), puis une rubrique par onglet — la toucher ouvre ses liens (`feuille`).
+ */
+function dessinerMenu(vue: Vue): void {
+  const actif = cleMenuDeVue(vue.vue);
+  const rubriqueActive = rubriqueDuLien(actif);
+  menu.replaceChildren(
+    ...RUBRIQUES_MENU.flatMap((r) => [
+      el("h3", { classe: "admin-menu__rubrique", attrs: { id: `rubrique-${r.id}` }, texte: r.titre }),
+      el(
+        "ul",
+        { classe: "admin-menu__liste", attrs: { "aria-labelledby": `rubrique-${r.id}` } },
+        ...r.liens.map((l) =>
+          el(
+            "li",
+            {},
+            el(
+              "a",
+              { classe: "admin-menu__entree", attrs: { href: l.href, "data-menu": l.cle, "aria-current": actif === l.cle ? "page" : null } },
+              el("span", { texte: l.texte }),
+              l.sortant ? el("span", { classe: "admin-menu__sortant", attrs: { "aria-hidden": "true" }, texte: "↗" }) : null,
+              l.compteur ? pastille(compteurs[l.compteur], l.compteur) : null,
+            ),
+          ),
+        ),
+      ),
+    ]),
+  );
+  // La barre d'onglets du téléphone. « Aujourd'hui » : ses deux liens sont des onglets directs ; les autres rubriques ouvrent leur feuille.
+  const feuilles: HTMLElement[] = [];
+  const tabs = RUBRIQUES_MENU.flatMap((r): HTMLElement[] => {
+    if (r.id === "aujourdhui")
+      return r.liens.map((l) => el("a", { classe: ["admin-onglet", rubriqueActive === r && actif === l.cle && "est-ici"], attrs: { href: l.href, "data-onglet": l.cle, "aria-current": actif === l.cle ? "page" : null } }, el("em", { attrs: { "aria-hidden": "true" } }), el("span", { texte: l.texte === "Tableau de bord" ? "Tableau" : l.texte })));
+    const total = totalRubrique(r, compteurs);
+    const idFeuille = `feuille-${r.id}`;
+    const onglet = el(
+      "button",
+      { classe: ["admin-onglet", rubriqueActive === r && "est-ici", rubriqueOuverte === r.id && "est-ouvert"], attrs: { type: "button", "data-onglet": r.id, "aria-expanded": String(rubriqueOuverte === r.id), "aria-controls": idFeuille } },
+      el("em", { attrs: { "aria-hidden": "true" } }),
+      el("span", { texte: r.titre }),
+      total > 0 ? el("i", { classe: "admin-onglet__nombre", attrs: { "aria-label": `${total} en attente` }, texte: String(total) }) : null,
+    );
+    onglet.addEventListener("click", () => (rubriqueOuverte === r.id ? fermerFeuille(true) : ouvrirFeuille(r.id)));
+    feuilles.push(
+      el(
+        "div",
+        { classe: "admin-feuille", attrs: { id: idFeuille, role: "group", "aria-label": r.titre, hidden: rubriqueOuverte !== r.id, "data-feuille": r.id } },
+        el(
+          "ul",
+          { classe: "admin-feuille__liste" },
+          ...r.liens.map((l) =>
+            el(
+              "li",
+              {},
+              el(
+                "a",
+                { classe: "admin-feuille__lien", attrs: { href: l.href, "data-menu-tel": l.cle, "aria-current": actif === l.cle ? "page" : null } },
+                el("span", { texte: l.texte }),
+                l.sortant ? el("span", { attrs: { "aria-hidden": "true" }, texte: "↗" }) : null,
+                l.compteur ? pastille(compteurs[l.compteur], l.compteur) : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return [onglet];
+  });
+  onglets.replaceChildren(...feuilles, el("div", { classe: "admin-onglets__barre" }, ...tabs));
+}
+
+function ouvrirFeuille(id: string): void {
+  rubriqueOuverte = id;
+  dessinerMenu(lireVue());
+  onglets.querySelector<HTMLElement>(`[data-feuille="${id}"] a`)?.focus();
+}
+function fermerFeuille(rendreLeFocus: boolean): void {
+  const id = rubriqueOuverte;
+  rubriqueOuverte = null;
+  dessinerMenu(lireVue());
+  if (rendreLeFocus && id) onglets.querySelector<HTMLElement>(`[data-onglet="${id}"]`)?.focus();
+}
+
+/**
+ * Lot N3 : lit les compteurs du menu, sans jamais bloquer ni afficher d'erreur. Retours : à chaque vue (une lecture indexée, lot C1). Images : au plus une fois par minute (la liste sans les octets).
+ * Nouveautés : une lecture de GitHub gardée en mémoire de la page (la même que la rubrique « Nouveautés » : une visite n'en coûte pas plus), au plus une fois par ouverture du panneau et après chaque
+ * visite de « Nouveautés » (`force`).
+ */
+async function majCompteurs(force = false): Promise<void> {
+  const taches: Promise<void>[] = [
+    client.retoursCompte().then(({ nonLus }) => void (compteurs.retours = nonLus), () => undefined),
+  ];
+  if (force || Date.now() - imagesLuesA > DELAI_IMAGES_MS) {
+    imagesLuesA = Date.now();
+    taches.push(client.images().then((l) => void (compteurs.images = l.signalees.length + l.nouvelles.length), () => undefined));
   }
+  if (force || compteurs.nouveautes === null) taches.push(lignesARediger(contexteDiffusion).then((n) => void (compteurs.nouveautes = n)));
+  await Promise.all(taches);
+  if (menu?.isConnected) dessinerMenu(lireVue());
 }
 
 async function afficherVue(): Promise<void> {
   const vue = lireVue();
   const courante = ++generation;
+  rubriqueOuverte = null; // la feuille d'une rubrique (téléphone) se referme quand on a choisi
   dessinerMenu(vue);
-  menu.classList.remove("est-ouvert");
-  document.querySelector(".admin-menu-bouton")?.setAttribute("aria-expanded", "false");
   contenu.replaceChildren(el("p", { classe: "admin-message admin-message--info", attrs: { role: "status" }, texte: "Chargement…" }));
-  void montrerNonLus(); // lot C1 : le nombre de retours à lire, dans le menu
+  void majCompteurs(vue.vue === "nouveautes" || vue.vue === "images"); // lot C1 puis N3 : ce qui attend l'éditeur, à côté des liens du menu
   try {
     const noeud = await (vue.vue === "tableau"
       ? vueTableau()
@@ -458,8 +545,7 @@ async function vueTableau(): Promise<Node[]> {
   const prets = e.joursPrets.map((j) => `${j.nom} : ${j.figes} figé${j.figes > 1 ? "s" : ""}${j.planifies !== undefined ? `, ${j.planifies} planifié${j.planifies > 1 ? "s" : ""}` : ""}`).join(" · ");
   const version = [e.version.etiquette, e.version.commit].filter(Boolean).join(" · ") || "—";
   return [
-    titre("Tableau de bord", "h1"),
-    p(`${jourLong(`${tab.date}T12:00:00Z`)} · calculé à ${heure(tab.calculeA).split(", ")[1]}`, "admin-aide"),
+    entetePage({ titre: "Tableau de bord", sousTitre: `${jourLong(`${tab.date}T12:00:00Z`)} · calculé à ${heure(tab.calculeA).split(", ")[1]}` }),
     el(
       "div",
       { classe: "admin-tuiles", attrs: { id: "chiffres" } },
@@ -539,9 +625,11 @@ async function vueJoueurs(v: Extract<Vue, { vue: "joueurs" }>): Promise<Node[]> 
     r.suivante ? el("a", { classe: "dj-bouton dj-bouton--secondaire", attrs: { href: adresseJoueurs(v.q, v.filtre, v.page + 1) }, texte: "Suivant" }) : null,
   );
   return [
-    titre("Joueurs", "h1"),
-    formulaire,
-    el("div", { classe: "admin-filtres", attrs: { role: "group", "aria-label": "Filtre" } }, filtre("tous", "Tous"), filtre("masques", "Masqués")),
+    entetePage({
+      titre: "Joueurs",
+      sousTitre: "Chercher un joueur par pseudo, ouvrir sa fiche.",
+      outils: [formulaire, el("div", { classe: "admin-filtres", attrs: { role: "group", "aria-label": "Filtre" } }, filtre("tous", "Tous"), filtre("masques", "Masqués"))],
+    }),
     lignes.length
       ? el(
           "div",
@@ -738,7 +826,7 @@ async function vueFiche(ref: string): Promise<Node[]> {
 
   return [
     el("a", { classe: "admin-lien", attrs: { href: "#/joueurs" }, texte: "‹ Joueurs" }),
-    el("h1", { classe: "admin-titre-section", attrs: { id: "fiche-pseudo" } }, f.pseudo, f.masque ? el("span", { classe: "admin-pastille admin-pastille--masque", texte: "Masqué" }) : null),
+    entetePage({ titre: f.pseudo, id: "fiche-pseudo", dans: f.masque ? el("span", { classe: "admin-pastille admin-pastille--masque", texte: "Masqué" }) : null }),
     el("p", { classe: "admin-mono admin-aide", texte: `Référence ${f.ref}` }),
     zoneMessage,
     el(
@@ -777,8 +865,7 @@ async function vueFiche(ref: string): Promise<Node[]> {
 async function vueJournal(): Promise<Node[]> {
   const j = await client.journal();
   return [
-    titre("Journal", "h1"),
-    p(`Les ${j.max} dernières actions, la plus récente d'abord. Rien d'autre que ce qui a été fait : jamais le contenu effacé.`, "admin-aide"),
+    entetePage({ titre: "Journal", sousTitre: `Les ${j.max} dernières actions, la plus récente d'abord. Rien d'autre que ce qui a été fait : jamais le contenu effacé.` }),
     j.lignes.length
       ? el(
           "div",

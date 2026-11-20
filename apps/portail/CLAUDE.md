@@ -36,6 +36,8 @@ règles de fond : `CLAUDE.md` racine, `apps/web/CLAUDE.md`, `packages/ui/CLAUDE.
 ## Le panneau d'administration (lot N1)
 **`/admin/`** (`admin/index.html`, `src/admin.ts` la page, `src/adminDonnees.ts` le client et les calculs purs — testés par `test/admin.test.ts` —, `src/admin.css`) : une page **privée pour […] **→ Détail : [docs/regles/portail/le-panneau-d-administration-lot-n1.md](../../docs/regles/portail/le-panneau-d-administration-lot-n1.md)**
 
+**Confirmations (lot N3)** : retirer quelque chose aux joueurs se confirme ; ce qui se défait d'un clic a son « Annuler » ; tout est journalisé. Menu, page « Jeux » : → [détail](../../docs/regles/portail/le-panneau-d-administration-lot-n1.md).
+
 **Refus après confirmation (lot K5b)** : le refus d'une action confirmée s'affiche **sur la ligne de l'action** (fiche du jeu, image, groupe, ligne de résultat, nouveauté), en bandeau d'erreur de la charte (`admin-message--erreur`), avec `role="alert"` et le focus, jusqu'à l'action suivante. **Toute action confirmée passe par `ctx.refuser(e)`** (`src/adminErreur.ts` : `refuserAction`, `poserRefus`) ; plus de zone d'erreur à distance. Le client n'affiche que des codes (`TEXTES_ERREUR` d'`adminDonnees.ts`, jamais le message du serveur) ; `identite_incomplete` dit en plus les champs `manque`. Test : `apps/web/e2e/admin-panneau.spec.ts` (étape « Jeux »).
 
 ## Construction et budget

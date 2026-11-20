@@ -62,7 +62,7 @@ Synthèse de la plateforme : `docs/plateforme/synthese.md`. Guide des coûts : `
 **La date du lancement** : une seule source, `config/lancement.json` (voir le `CLAUDE.md` racine) ; le serveur la prend de `@cdj/core/lancement` (`createApi({ premierJourDuJour })` pour les […] **→ Détail : [docs/regles/api/lancement-public-et-remise-a-zero-lot-r8.md](../../docs/regles/api/lancement-public-et-remise-a-zero-lot-r8.md)**
 
 ## Publication des jeux (lot P)
-**Table `jeux`** (`PLATFORM_SCHEMA`, migration **réversible** : `DROP TABLE jeux`, `ALTER TABLE results|jump_results DROP COLUMN apercu`) : une ligne par jeu, nommé par son dossier sur le […] **→ Détail : [docs/regles/api/publication-des-jeux-lot-p.md](../../docs/regles/api/publication-des-jeux-lot-p.md)**
+**Table `jeux`** (`PLATFORM_SCHEMA`, migration **réversible** : `DROP TABLE jeux`, `ALTER TABLE results|jump_results DROP COLUMN apercu`) : une ligne par jeu, nommé par son dossier sur le […] Lot N3 : champs de `GET /api/admin/jeux` ajoutés. **→ Détail : [docs/regles/api/publication-des-jeux-lot-p.md](../../docs/regles/api/publication-des-jeux-lot-p.md)**
 
 ## Emplacements
 - `docs/plateforme/seed-phase-2.md` — vision et plan en lots de la phase 2.

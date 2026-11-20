@@ -1,9 +1,10 @@
-import { formatDay } from "@cdj/core";
+import { formatDay, parseDay } from "@cdj/core";
+import { parisDayStart } from "@cdj/clock";
 import { compteLe as compteDansPeriodes, etatDe, liveFromDe, lirePeriodes, periodesApres, type EtatJeu, type PeriodeJeu } from "@cdj/core/jeux";
 import { WithHeaders } from "./cache";
 import { FICHES_SERVEUR } from "./fiches.generated";
 import { HttpError } from "./errors";
-import type { Platform, RequestInfo, Statement } from "./games";
+import type { AdminDuJeu, Platform, RequestInfo, Statement } from "./games";
 import { ecrireJournal } from "./journaux";
 import { sha256Hex } from "./players";
 
@@ -45,7 +46,19 @@ export interface JeuInterrupteur {
   nom: string;
   /** Les instructions qui effacent les résultats rangés à part par l'aperçu (quand le jeu passe `on`) : ils ne deviennent jamais publics. */
   viderApercu?: () => Statement[];
+  /** Lot N3 : le nombre de joueurs qui ont un résultat ce jour-là (une seule requête indexée, un nombre et jamais une ligne de joueur) ; absent : le jeu n'a pas de crochet d'administration (`null` dans la liste). */
+  joueursDuJour?: (jour: number) => Promise<number>;
 }
+
+/** Lot N3 : ce qui interdit une position de l'interrupteur — un **code** (le panneau l'écrit, jamais un message du serveur) et ses champs. Le serveur reste le juge : `changerEtat` refuse avec le même code. */
+export interface Blocage {
+  code: "identite_incomplete";
+  /** Les champs de l'identité de la fiche encore « à choisir » (`police`, `motif`, `illustration`). */
+  manque: string[];
+}
+
+/** Lot N3 : la liste des jeux est gardée en mémoire 30 s pour les compteurs du jour (une requête par jeu et par instance, pas par lecture de l'administrateur). */
+export const JOUEURS_DU_JOUR_TTL_MS = 30_000;
 
 interface LigneSql {
   jeu: string;
@@ -55,6 +68,7 @@ interface LigneSql {
   cle_hash: string | null;
   cle_creee_le: number | null;
   modifie_le: number;
+  etat_le: number | null;
 }
 
 interface Jeu {
@@ -63,9 +77,11 @@ interface Jeu {
   cleHash: string | null;
   cleCreeeLe: number | null;
   modifieLe: number;
+  /** Lot N3 : le dernier changement d'état (`null` : avant la colonne, on prend `modifieLe`). */
+  etatLe: number | null;
 }
 
-const SELECT = "SELECT jeu, etat, live_from, periodes, cle_hash, cle_creee_le, modifie_le FROM jeux";
+const SELECT = "SELECT jeu, etat, live_from, periodes, cle_hash, cle_creee_le, modifie_le, etat_le FROM jeux";
 type Corps = Record<string, unknown>;
 
 /** Comparaison à temps constant de deux empreintes (hexadécimales, de même longueur). */
@@ -85,6 +101,17 @@ function nouvelleCle(): string {
 /** Une adresse d'aperçu de PR (`<site>--pr-<n>-<empreinte>.web.app`) : le seul endroit où un jeu `off` se montre sans clé. */
 const APERCU_DE_PR = /--pr-\d+-[a-z0-9]+\.web\.app$/i;
 
+/**
+ * Lot N3 : le compteur « joueurs du jour » d'un jeu pour la ligne de l'administration — **un nombre**, jamais une ligne de joueur. Il lit les tables que le jeu déclare dans son crochet `admin.activite`
+ * (celles du tableau de bord) : une seule requête indexée sur le jour (`day = ?`, plus la portée du jeu sur une table partagée), un joueur compté une fois même s'il a plusieurs lignes. Sans crochet : `undefined`.
+ */
+export function joueursDuJourDe(platform: Platform, admin: AdminDuJeu | undefined): ((jour: number) => Promise<number>) | undefined {
+  const activite = admin?.activite;
+  if (!activite?.length) return undefined;
+  const sql = `SELECT COUNT(*) AS n FROM (${activite.map((a) => `SELECT ${a.joueur} AS joueur FROM ${a.table} WHERE ${a.portee ? `${a.portee} AND ` : ""}${a.jour} = ?`).join(" UNION ")})`;
+  return async (jour) => (await platform.db.first<{ n: number }>(sql, activite.map(() => jour)))?.n ?? 0;
+}
+
 export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[]) {
   const { db, now, log } = platform;
   const parSite = new Map(jeux.map((j) => [j.site, j] as const));
@@ -101,7 +128,7 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
 
   async function lire(): Promise<void> {
     const rows = await db.all<LigneSql>(SELECT);
-    lignes = new Map(rows.map((r) => [r.jeu, { etat: etatDe(r.etat), periodes: lirePeriodes(r.periodes), cleHash: r.cle_hash, cleCreeeLe: r.cle_creee_le, modifieLe: r.modifie_le }] as const));
+    lignes = new Map(rows.map((r) => [r.jeu, { etat: etatDe(r.etat), periodes: lirePeriodes(r.periodes), cleHash: r.cle_hash, cleCreeeLe: r.cle_creee_le, modifieLe: r.modifie_le, etatLe: r.etat_le }] as const));
     lueA = now();
   }
 
@@ -181,23 +208,74 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
   };
   const jour = (d: number | null) => (d === null ? null : formatDay(d));
 
+  /** Lot N3 : la fiche d'un jeu côté serveur (catégorie, couleur, identité) — celle que `npm run fiches` a écrite. */
+  const ficheDe = (site: string) => FICHES_SERVEUR.find((f) => f.id === site) as { categorie?: string; fond?: string; etatDepart?: string; premierJour?: string; identiteManque?: readonly string[] } | undefined;
+
+  /**
+   * Lot N3 : ce qui interdit une position de l'interrupteur. Aujourd'hui : l'identité de la fiche incomplète (lot K5 : ni `preview` ni `on` ; `off` est toujours permis). Une règle de plus s'ajoute ici :
+   * la liste (`bloque`) et le refus (`changerEtat`) la lisent au même endroit, le panneau n'a rien à recalculer.
+   */
+  function blocage(site: string, vers: EtatJeu): Blocage | null {
+    const manque = ficheDe(site)?.identiteManque;
+    return vers !== "off" && manque?.length ? { code: "identite_incomplete", manque: [...manque] } : null;
+  }
+
+  /** Les joueurs du jour d'un jeu : un nombre, gardé 30 s par instance ; `null` sans crochet (le panneau écrit « – »). Aucune donnée de joueur ne sort. */
+  const joueursMemo = new Map<string, { at: number; jour: number; n: number | null }>();
+  async function joueursDuJour(j: JeuInterrupteur, jourParis: number): Promise<number | null> {
+    if (!j.joueursDuJour) return null;
+    const m = joueursMemo.get(j.site);
+    if (m && m.jour === jourParis && now() - m.at < JOUEURS_DU_JOUR_TTL_MS) return m.n;
+    let n: number | null;
+    try {
+      n = await j.joueursDuJour(jourParis);
+    } catch {
+      n = null; // un compteur qui échoue ne ferme pas la page : la ligne écrit « – »
+    }
+    joueursMemo.set(j.site, { at: now(), jour: jourParis, n });
+    return n;
+  }
+
+  /**
+   * Depuis quand le jeu est dans son état : `etat_le` ; **sans lui** (une ligne d'avant la colonne), un jeu `on` public d'emblée (Track, Jump : semés `on` par le schéma) date de son premier jour — la date de leur
+   * mise en ligne, pas celle du semis —, sinon la dernière écriture de la ligne (`modifie_le`). Limite assumée : un jeu changé d'état avant la colonne et revenu à `on` garde la date de son premier jour.
+   */
+  function etatLe(site: string, g: Jeu): number {
+    if (g.etatLe !== null) return g.etatLe;
+    const f = ficheDe(site);
+    const premier = g.etat === "on" && f?.etatDepart === "on" && f.premierJour ? parseDay(f.premierJour) : null;
+    return premier === null ? g.modifieLe : parisDayStart(premier);
+  }
+
   async function lister(): Promise<unknown> {
     lueA = -Infinity; // l'administrateur lit la base, pas la mémoire
     await charger();
+    const aujourdhui = platform.today();
+    const compteurs = await Promise.all(jeux.map((j) => joueursDuJour(j, aujourdhui)));
     return {
-      aujourdhui: formatDay(platform.today()),
-      jeux: jeux.map((j) => {
+      aujourdhui: formatDay(aujourdhui),
+      jeux: jeux.map((j, i) => {
         const g = lignes.get(j.site);
         const periodes = g?.periodes ?? [];
+        const fiche = ficheDe(j.site);
         return {
           jeu: j.site,
           nom: j.nom,
           etat: g?.etat ?? "off",
+          /** Lot N3 : la catégorie de la fiche (`jour`, `arcade`, …) et la couleur du jeu (`etiquette.fond`) : la vignette et le filtre de la ligne. */
+          categorie: fiche?.categorie ?? "jour",
+          couleur: fiche?.fond ?? null,
           /** Le premier jour entier où le jeu compte dans la journée (le jour qui suit l'activation), ou `null`. */
           liveFrom: jour(liveFromDe(periodes)),
           periodes: periodes.map(([du, au]) => ({ du: formatDay(du), au: jour(au) })),
           cle: { presente: !!g?.cleHash, creeeLe: g?.cleCreeeLe ? new Date(g.cleCreeeLe).toISOString() : null },
           modifieLe: g ? new Date(g.modifieLe).toISOString() : null,
+          /** Lot N3 : depuis quand le jeu est dans cet état (le dernier changement d'état, sinon la dernière écriture de sa ligne) ; `null` : un jeu qui n'a jamais eu de ligne. */
+          etatDepuis: g ? new Date(etatLe(j.site, g)).toISOString() : null,
+          /** Lot N3 : les joueurs qui ont un résultat aujourd'hui (un nombre) ; `null` : le jeu n'a pas de compteur. */
+          joueursAujourdhui: compteurs[i],
+          /** Lot N3 : ce qui interdit chaque position (`null` : permise). `off` n'est jamais interdit. */
+          bloque: { off: null, preview: blocage(j.site, "preview"), on: blocage(j.site, "on") },
         };
       }),
     };
@@ -212,7 +290,7 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
   /** La ligne du jeu telle que la base la garde (lue à l'instant : l'action part de l'état réel, pas de la mémoire). */
   async function ligne(site: string): Promise<Jeu | null> {
     const r = await db.first<LigneSql>(`${SELECT} WHERE jeu = ?`, [site]);
-    return r ? { etat: etatDe(r.etat), periodes: lirePeriodes(r.periodes), cleHash: r.cle_hash, cleCreeeLe: r.cle_creee_le, modifieLe: r.modifie_le } : null;
+    return r ? { etat: etatDe(r.etat), periodes: lirePeriodes(r.periodes), cleHash: r.cle_hash, cleCreeeLe: r.cle_creee_le, modifieLe: r.modifie_le, etatLe: r.etat_le } : null;
   }
 
   async function changerEtat(admin: string, site: string, corps: Corps): Promise<unknown> {
@@ -222,8 +300,8 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     const apres: EtatJeu = corps.etat;
     // Lot K5 : un jeu dont l'identité (police, motif, illustration) vaut encore « à choisir » ne passe ni en `preview` ni en `on` (`etatPermis`, `@cdj/core/fiche`) ; `off` est toujours permis.
     // Lot K5b : un code à part, avec les champs qui manquent (`manque`) : le panneau les dit (le client n'affiche jamais un message du serveur).
-    const manque = (FICHES_SERVEUR.find((f) => f.id === site) as { identiteManque?: readonly string[] } | undefined)?.identiteManque;
-    if (apres !== "off" && manque?.length) throw new HttpError(400, "identite_incomplete", "L'identité du jeu n'est pas complète (police, motif ou illustration « à choisir ») : elle est à remplir dans sa fiche avant l'aperçu.", {}, { manque });
+    const bloque = blocage(site, apres);
+    if (bloque) throw new HttpError(400, "identite_incomplete", "L'identité du jeu n'est pas complète (police, motif ou illustration « à choisir ») : elle est à remplir dans sa fiche avant l'aperçu.", {}, { manque: bloque.manque });
     const avant = await ligne(site);
     const etatAvant: EtatJeu = avant?.etat ?? "off";
     if (apres === etatAvant) return await lister(); // rien à changer : pas de ligne de journal pour rien
@@ -231,11 +309,12 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     const periodes = periodesApres(avant?.periodes ?? [], etatAvant, apres, platform.today());
     const instructions: Statement[] = [
       {
-        sql: `INSERT INTO jeux (jeu, etat, live_from, periodes, modifie_le) VALUES (?, ?, ?, ?, ?)
-              ON CONFLICT (jeu) DO UPDATE SET etat = excluded.etat, live_from = excluded.live_from, periodes = excluded.periodes, modifie_le = excluded.modifie_le`,
-        params: [site, apres, liveFromDe(periodes), JSON.stringify(periodes), t],
+        sql: `INSERT INTO jeux (jeu, etat, live_from, periodes, modifie_le, etat_le) VALUES (?, ?, ?, ?, ?, ?)
+              ON CONFLICT (jeu) DO UPDATE SET etat = excluded.etat, live_from = excluded.live_from, periodes = excluded.periodes, modifie_le = excluded.modifie_le, etat_le = excluded.etat_le`,
+        params: [site, apres, liveFromDe(periodes), JSON.stringify(periodes), t, t],
       },
-      ecrireJournal({ at: t, admin, action: "changer l'état d'un jeu", cible: site, avant: { etat: etatAvant }, apres: { etat: apres, liveFrom: jour(liveFromDe(periodes)) } }),
+      // Lot N3 : le bouton « Annuler » du panneau remet l'état d'avant : même route, `annulation: true` ; **chaque changement et chaque annulation restent au journal**, l'annulation sous son propre nom.
+      ecrireJournal({ at: t, admin, action: corps.annulation === true ? "annuler le changement d'état d'un jeu" : "changer l'état d'un jeu", cible: site, avant: { etat: etatAvant }, apres: { etat: apres, liveFrom: jour(liveFromDe(periodes)) } }),
     ];
     // Un résultat d'aperçu ne devient jamais public : quand le jeu passe `on`, ce que l'aperçu avait rangé à part est effacé (dans la même transaction).
     if (apres === "on" && j.viderApercu) instructions.push(...j.viderApercu());

@@ -15,6 +15,7 @@ import {
   type MessagesAdmin,
   type NouveauteAdmin,
 } from "./adminDonnees";
+import { entetePage } from "./adminEntete";
 import { compterPrDepuis, instantDeEtiquette, lirePrs, texteErreurGithub, type LecturePr, type PrLue } from "./adminGithub";
 
 // Lot N2 (plateforme) — les deux rubriques du panneau qui étaient éteintes : **Nouveautés** (rédiger à partir des PR fusionnées depuis la dernière mise en production, aperçu, brouillon,
@@ -94,6 +95,21 @@ function lirePrsGardees(courante: string | null): Promise<LecturePr> {
     });
   }
   return prsGardees.valeur;
+}
+
+/**
+ * Lot N3 : le compteur du menu « Nouveautés » — les lignes « Pour les joueurs » des PR de la fenêtre lue (celles de la mise en production en cours et d'après) **qui ne sont encore dans aucune nouveauté**,
+ * publiée ou brouillon (une ligne reprise dans une nouveauté porte le numéro de sa PR : `LigneAdmin.pr`, la règle qui évite de la proposer deux fois). Une lecture de GitHub, gardée en mémoire de la page
+ * comme celle de « Nouveautés » : la visite du panneau n'en coûte pas plus. Un échec (GitHub injoignable, limite atteinte) rend `null` : le menu n'affiche rien, sans rien bloquer.
+ */
+export async function lignesARediger(ctx: Pick<Contexte, "client" | "etiquette">): Promise<number | null> {
+  try {
+    const [lecture, { nouveautes }] = await Promise.all([ctx.etiquette().then(lirePrsGardees), ctx.client.nouveautes()]);
+    const reprises = new Set(nouveautes.flatMap((n) => n.lignes.flatMap((l) => (l.pr !== undefined ? [l.pr] : []))));
+    return lecture.prs.filter((pr) => !reprises.has(pr.numero)).reduce((n, pr) => n + pr.section.lignes.length, 0);
+  } catch {
+    return null;
+  }
 }
 
 /** Les lignes d'une PR, prêtes pour l'éditeur : une ligne mal formée est reprise telle quelle (zone à choisir, texte à retoucher). */
@@ -560,8 +576,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
   dessinerEditeur();
   void chargerPrs();
   return [
-    el("h1", { classe: "admin-titre-section", texte: "Nouveautés" }),
-    p("Ce que les joueurs lisent sur l'accueil et sur la page Nouveautés. Les PR de gauche viennent de GitHub : coche-les pour reprendre leurs lignes « Pour les joueurs », retouche, relis l'aperçu, publie.", "admin-aide"),
+    entetePage({ titre: "Nouveautés", sousTitre: "Ce que les joueurs lisent sur l'accueil et sur la page Nouveautés. Les PR de gauche viennent de GitHub : coche-les pour reprendre leurs lignes « Pour les joueurs », retouche, relis l'aperçu, publie." }),
     zoneMessage,
     el("section", { classe: "admin-carte", attrs: { "aria-labelledby": "titre-redaction", id: "nouveautes-redaction" } }, titreCarte("Rédiger", "titre-redaction"), el("div", { classe: "admin-deux-colonnes" }, colonnePrs, colonneEditeur)),
     gestion,
@@ -742,8 +757,7 @@ export async function vueMessage(ctx: Contexte): Promise<Node[]> {
     : p("Aucun message passé.", "admin-aide");
 
   return [
-    el("h1", { classe: "admin-titre-section", texte: "Message en direct" }),
-    p("Une phrase pour tous les joueurs, tout de suite : un bandeau sur le portail, à l'accueil, à l'arrivée et en pause des jeux (jamais pendant une partie). Un seul message actif ; il s'éteint seul à l'heure de fin.", "admin-aide"),
+    entetePage({ titre: "Message en direct", sousTitre: "Une phrase pour tous les joueurs, tout de suite : un bandeau sur le portail, à l'accueil, à l'arrivée et en pause des jeux (jamais pendant une partie). Un seul message actif ; il s'éteint seul à l'heure de fin." }),
     zoneMessage,
     actif,
     el("section", { classe: "admin-carte", attrs: { "aria-labelledby": "titre-ecrire", id: "message-ecrire" } }, titreCarte(etat.actif ? "Mettre à jour le message" : "Écrire un message", "titre-ecrire"), formulaire),

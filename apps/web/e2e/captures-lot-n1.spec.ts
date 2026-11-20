@@ -39,8 +39,8 @@ for (const format of [
     await page.screenshot({ path: join(OUT, `lot-N1-tableau-${format.slug}.png`), fullPage: true });
 
     if (format.mobile) {
-      await page.getByRole("button", { name: "Menu" }).click();
-      await page.locator('[data-menu="joueurs"]').click();
+      await page.locator('[data-onglet="communaute"]').click(); // lot N3 : la barre d'onglets du téléphone
+      await page.locator('[data-menu-tel="joueurs"]').click();
     } else {
       await page.locator('[data-menu="joueurs"]').click();
     }

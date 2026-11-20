@@ -30,6 +30,9 @@ export const EXCEPTIONS = [
   "docs/plateforme/budgets.md",
   "packages/ui/test/applications.ts",
   "docs/plateforme/traductions.md",
+  // Lot O1 : le tableau de bord (`npm run tableau`) et son fichier de dates : tout lot de jeu les relance en fin de lot, après la mise à jour de la passation de sa zone (`docs/<jeu>/passation.md`, dans ses zones).
+  "docs/tableau.md",
+  "docs/tableau-dates.json",
   // Lot K7 : **toutes** les sorties de `npm run fiches` (le test de packages/core/test/fiches.test.ts compare cette liste aux fichiers que la commande écrit, variantes de production comprises) : un jeu qui change
   // sa fiche (ses thèmes, ses couleurs) ne sort jamais de ses zones pour ce que la commande en tire.
   "config/jeux/projections/**",

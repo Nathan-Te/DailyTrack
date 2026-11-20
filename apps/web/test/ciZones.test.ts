@@ -275,6 +275,16 @@ describe("les tests unitaires d'une PR (graphe des imports)", () => {
     expect(testsPour(["docs/plateforme/synthese.md"], g).fichiers).not.toContain("apps/portail/test/consignes.test.ts");
   });
 
+  // Lot O1 : le test du tableau de bord lit toutes les passations et tous les README de lots : un seul d'entre eux changé le lance (règle explicite de ci-zones).
+  it("une PR qui ne change que la passation d'un jeu, un README de lot ou docs/tableau.md lance le test du tableau de bord", () => {
+    for (const f of ["docs/blocks/passation.md", "docs/plateforme/passation.md", "docs/rush/lots/lot-BR7-suite.md", "docs/lots/lot-R18.md", "docs/tableau.md", "docs/tableau-dates.json"]) {
+      const r = testsPour([f], g);
+      expect(r.fichiers, f).toContain("apps/portail/test/tableau.test.ts");
+      expect(r.docsSeuls, f).toBe(true);
+    }
+    expect(testsPour(["docs/plateforme/synthese.md"], g).fichiers).not.toContain("apps/portail/test/tableau.test.ts");
+  });
+
   it("un workflow lance les tests qui le lisent", () => {
     const r = testsPour([".github/workflows/ci.yml"], g).fichiers;
     expect(r).toEqual(expect.arrayContaining(["apps/web/test/e2eParts.test.ts", "apps/jump/test/ciE2e.test.ts", "apps/tower/test/ciE2e.test.ts", "apps/web/test/ciZones.test.ts"]));

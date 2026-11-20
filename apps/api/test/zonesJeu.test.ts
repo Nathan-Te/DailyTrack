@@ -85,6 +85,8 @@ describe("les zones", () => {
       "config/jeux/projections/**",
       "docs/plateforme/budgets.md",
       "docs/plateforme/traductions.md",
+      "docs/tableau-dates.json",
+      "docs/tableau.md",
       "packages/core/src/fiches.generated.ts",
       "packages/core/src/fiches.production.generated.ts",
       "packages/musique/src/fiches.generated.ts",
