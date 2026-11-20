@@ -385,7 +385,7 @@ Constat de l'audit R7 (§ 7.1) : ≈ 35 000 minutes de jobs par semaine, 106 min
 **Un 4ᵉ jeu (ou un 5ᵉ) se crée en 5 étapes, dont une seule commande.** Le détail des règles est dans le `CLAUDE.md` racine (« Créer un jeu ») ; la conception du kit dans `docs/plateforme/kit-de-jeu.md` ; le rapport du lot dans `docs/plateforme/lots/lot-K4g-generateur-et-bout-en-bout.md`.
 1. **Nathan écrit le seed** dans la conversation de la plateforme (le jeu, les piliers, une partie, le classement) ; on peut partir du gabarit `docs/<id>/seed.md` (les titres du seed de Tower).
 2. **Un lot court de la plateforme** : `npm run nouveau-jeu -- --id <id> --classement score|temps --categorie jour|arcade` (d'abord `--a-blanc` ; lot A3 : **choisir la catégorie à la création** — `jour` compte dans la journée, `arcade` a son classement mais ni journée parfaite, ni série, ni cumul ; Blocks naîtra `arcade`), puis versement du seed dans `docs/<id>/seed.md`. PR brouillon, étiquette de plateforme (le lot touche les fichiers partagés), « Pour les joueurs : rien ». L'agent s'arrête quand le job « Kit de bout en bout » et la CI de la PR sont verts.
-3. **Nathan ouvre la conversation d'orchestration du jeu** en collant `docs/<id>/passation.md` et le seed.
+3. **Nathan ouvre la conversation d'orchestration du jeu** en collant `docs/<id>/passation.md` et le seed. La passation se termine par trois sections tenues par la conversation (« Où on en est », « Prochain lot », « Décisions en attente »), que tout lot met à jour avant `npm run tableau` (§ 12 quater).
 4. **Les lots du jeu**, dans ses zones (`docs/<id>/passation.md`, § 3) : simulation, rendu, sensations ; maquettes d'abord pour l'étiquette et le HUD ; chaque lot dit ses mesures de budget. **Lot K5 : le premier lot remplit le bloc `identite` de la fiche (police, motif, illustration SVG, panneau « Aujourd'hui »), d'après une maquette validée par Nathan ; pas de `preview` sans identité complète.**
 5. **Nathan publie** depuis `/admin/` : `off` → `preview` → `on`. La liste des jeux du classement cumulé est un réglage à part.
 Ce qui reste à décider par Nathan au moment du lot 2 : la **teinte de l'étiquette** (la première libre est prise), le **premier jour**, le **plafond de budget** de la ligne `<id>.jsCss` (celui du modèle, à fixer avec la mesure du jeu).
@@ -393,6 +393,13 @@ Ce qui reste à décider par Nathan au moment du lot 2 : la **teinte de l'étiqu
 ## 12 ter. Reprendre la direction artistique d'un jeu existant (lot DA1)
 
 **Reprendre la DA d'un jeu existant = extraire d'abord un module commun**, jamais copier. Un lot de plateforme sort les visuels du jeu d'origine dans `packages/visuels/src/<nom>/` en deux couches — **la description** (couleurs, géométrie, états, timings : sans moteur de rendu) et **un dessinateur par moteur** (celui du jeu d'origine, puis celui du nouveau jeu) —, le jeu d'origine s'y branche et perd ses copies (captures de référence identiques au pixel près, golden inchangés, budgets non relevés), une planche de la vitrine `/ui/` montre les dessinateurs côte à côte. Le nouveau jeu vient ensuite (premier cas : Blocks reprend les blocs de Tower, `packages/visuels/CLAUDE.md`, « Réutiliser un design »).
+
+## 12 quater. Les conversations d'orchestration (lot O1, décision de Nathan du 20/11)
+
+**Le dépôt porte l'état, pas les conversations.** Une conversation d'orchestration dure **quelques lots**, se ferme par une mise à jour de la passation de sa zone, et la suivante **repart de ce seul fichier** (`docs/<jeu>/passation.md`, `docs/plateforme/passation.md`) avec la synthèse de la zone. Une page unique, **`docs/tableau.md`** (`npm run tableau`), dit où en est chaque jeu : dernier lot, prochain lot, décisions qui attendent Nathan, passation en retard.
+- **Les conversations** : **la plateforme** ; **« Jeux en ligne »** (Track, Jump, les jeux en production : à la demande, quand un lot les touche) ; **une conversation par jeu en construction, deux au plus à la fois** ; **une seule conversation pour tous les jeux Party**.
+- **Fin de lot, pour tout lot** : mettre à jour les trois sections finales de la passation de sa zone (« Où on en est » : 5 lignes au plus ; « Prochain lot » : une ligne ; « Décisions en attente » : une liste, ou « aucune »), puis lancer `npm run tableau`. Règle détaillée : `docs/regles/racine/tableau-et-passations.md`.
+- **Fermer une conversation** : dernier lot fusionné, passation à jour, `npm run tableau` ; rien d'autre ne doit rester dans la conversation.
 
 ## 13. Index
 - `docs/seed.md` — vision, piliers, plan en lots (source de vérité)

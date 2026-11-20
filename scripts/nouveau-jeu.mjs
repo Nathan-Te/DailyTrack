@@ -12,6 +12,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSyn
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { A_COMPLETER, TITRES_PASSATION } from "./tableau.mjs";
 
 export const RACINE_DEPOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 /** Le jeu qui sert de modèle. */
@@ -408,7 +409,33 @@ export function etatDuJeu(racine, id) {
   return { squelette: catalogue === null || /À remplacer/.test(catalogue), seedVide: seed === null || /\*\*À écrire par Nathan\.\*\*/.test(seed) };
 }
 
-export function construirePassation(racine, fiche, { classement, teinte, aDefinir = true }) {
+/**
+ * Lot O1 : **les trois sections finales de toute passation** (`## Où on en est`, `## Prochain lot`, `## Décisions en attente` : titres fixes, lus par `npm run tableau`). Une passation neuve les écrit
+ * d'après ce que le dépôt sait (un squelette sans seed, une teinte à choisir) ; un jeu qui a dépassé son squelette écrit « à compléter par la conversation du jeu » plutôt que d'inventer.
+ * `--passation` ne les réécrit jamais : `sectionsFinales` lit celles du fichier existant, `construirePassation` les reprend telles quelles (option `conserver`).
+ */
+export function sectionsParDefaut(id, { squelette, seedVide }) {
+  const [ou, prochain, decisions] = TITRES_PASSATION;
+  if (!squelette) return [`## ${ou}`, `- ${A_COMPLETER}`, "", `## ${prochain}`, A_COMPLETER, "", `## ${decisions}`, `- ${A_COMPLETER}`].join("\n");
+  return [
+    `## ${ou}`,
+    `- Squelette de « Cibles », \`off\`${seedVide ? ", seed vide" : ""}.`,
+    "",
+    `## ${prochain}`,
+    seedVide ? "Le seed, puis les maquettes (§ 7)." : "Les maquettes de l'étiquette et du HUD (§ 7).",
+    "",
+    `## ${decisions}`,
+    `- Nathan : ${seedVide ? "le seed et " : ""}la teinte de l'étiquette.`,
+  ].join("\n");
+}
+
+/** Les trois sections finales d'une passation qui existe (du titre « Où on en est » à la fin du fichier), ou `null` si elle ne les a pas encore. */
+export function sectionsFinales(texte) {
+  const debut = texte.search(new RegExp(`^## ${TITRES_PASSATION[0]}\\s*$`, "m"));
+  return debut < 0 ? null : texte.slice(debut).replace(/\s+$/, "");
+}
+
+export function construirePassation(racine, fiche, { classement, teinte, aDefinir = true, conserver = null }) {
   // Lot T1 : la passation RENVOIE aux consignes au lieu de les résumer (elle faisait 22 Ko, et se périmait à chaque changement d'une règle). Elle ne garde
   // que ce qui est propre à ce jeu (état, fiche, zones) et la liste des intitulés des règles communes, lue dans le CLAUDE.md racine.
   const claude = lire(racine, "CLAUDE.md");
@@ -421,7 +448,7 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
   const lignes = [
     `# Passation — ${nom} (\`${id}\`)`,
     "",
-    `> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (\`docs/${id}/seed.md\`). Générée par \`npm run nouveau-jeu\` à partir des \`CLAUDE.md\` du dépôt : **ne pas la retoucher à la main** ; pour la mettre à jour après un changement des règles de la plateforme : \`npm run nouveau-jeu -- --id ${id} --passation\`.`,
+    `> **À coller telle quelle** dans une nouvelle conversation d'orchestration du jeu, avec le seed (\`docs/${id}/seed.md\`). Sections 1 à 7 générées (ne pas retoucher ; \`npm run nouveau-jeu -- --id ${id} --passation\` les remet à jour) ; **les trois dernières sont tenues par la conversation**, puis \`npm run tableau\`.`,
     "",
     "## 1. Où en est ce jeu",
     `- **${nom}** (\`${id}\`) est un jeu de la plateforme **Du Jour** (un niveau par jour, identique pour tous, classement validé par rediffusion côté serveur). ${squelette ? "Il vient d'être créé par le générateur : l'état" : "L'état de départ"} est \`off\` (absent de l'accueil, la page dit « Bientôt »), **Nathan le publie depuis \`/admin/\` › Jeux : \`off\` → \`preview\` → \`on\`**.`,
@@ -464,6 +491,8 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
     "- Avant de pousser : `npm run verifier` ; attendre la CI : `npm run attendre-ci` (une seule commande, silencieuse). Fusionner `main` une seule fois, juste avant de s'arrêter.",
     "- **Ordre conseillé** : (1) Nathan écrit le seed ; (2) maquettes de l'étiquette et du HUD ; (3) la simulation et son golden (`npm run golden:" + id + " -w @cdj/" + id + "-sim`, jamais sans monter la version) ; (4) le rendu et les sensations ; (5) le serveur (le contrat minimal suffit longtemps) ; (6) les textes fr + en ; (7) la publication, par Nathan.",
     "- **Ne pas modifier** les visions (`docs/seed.md`, `docs/*/seed*.md`, `docs/plateforme/seed-phase-*.md`) ni la charte : c'est Nathan qui le fait.",
+    "",
+    conserver ?? sectionsParDefaut(id, { squelette, seedVide }),
   ];
   void aDefinir;
   return lignes.join("\n") + "\n";
@@ -536,7 +565,8 @@ export async function planifier(opts) {
   if (opts.passation) {
     const fiche = JSON.parse(lire(racine, `config/jeux/${opts.id}.json`));
     const classement = fiche.classement.format === "temps" ? "temps" : "score";
-    const texte = construirePassation(racine, fiche, { classement, teinte: [fiche.etiquette.fond, fiche.etiquette.coque] });
+    const existante = existsSync(join(racine, `docs/${opts.id}/passation.md`)) ? sectionsFinales(lire(racine, `docs/${opts.id}/passation.md`)) : null;
+    const texte = construirePassation(racine, fiche, { classement, teinte: [fiche.etiquette.fond, fiche.etiquette.coque], conserver: existante });
     return { opts, creations: [{ chemin: `docs/${opts.id}/passation.md`, contenu: texte, ecraser: true }], editions: [], liens: [], commandes: [] };
   }
   const c = contexte(opts, racine);

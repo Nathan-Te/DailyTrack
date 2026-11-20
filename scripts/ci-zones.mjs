@@ -353,6 +353,11 @@ export function docsLusParLesTests(g) {
 export const TEST_DES_CONSIGNES = "apps/portail/test/consignes.test.ts";
 export const estClaudeMd = (f) => /(^|\/)CLAUDE\.md$/.test(f);
 
+// Lot O1 : le test du tableau de bord (passations à la forme commune, `docs/tableau.md` à jour) lit des fichiers qu'il ne cite pas un par un (toutes les passations, tous les README de lots,
+// les fiches) : règle explicite, comme pour les `CLAUDE.md`. Une PR de jeu qui ne change que sa passation et un README de lot le lance donc (et voit un tableau périmé avant la CI complète).
+export const TEST_DU_TABLEAU = "apps/portail/test/tableau.test.ts";
+export const estSourceDuTableau = (f) => /^docs\/(.+\/)?passation\.md$/.test(f) || /^docs\/(.+\/)?lots\/lot-[^/]+\.md$/.test(f) || /^docs\/tableau(-dates\.json|\.md)$/.test(f);
+
 const RACINE_TOUT = /^(package(-lock)?\.json|tsconfig(\.[\w-]+)?\.json|vitest\.config\.ts)$/;
 
 /**
@@ -369,7 +374,7 @@ export function testsPour(files, g, { complet = false, regression = [] } = {}) {
   const raisons = new Set();
   for (const f of f2) {
     if (RACINE_TOUT.test(f)) return { fichiers: [...g.tests], tous: true, docsSeuls: false, raisons: [`${f} : configuration racine, tout tourne`] };
-    const touches = g.tests.filter((t) => touche(g, t, f) || (estClaudeMd(f) && t === TEST_DES_CONSIGNES));
+    const touches = g.tests.filter((t) => touche(g, t, f) || (estClaudeMd(f) && t === TEST_DES_CONSIGNES) || (estSourceDuTableau(f) && t === TEST_DU_TABLEAU));
     touches.forEach((t) => choix.add(t));
     if (touches.length) raisons.add(`${f} → ${touches.length} fichier(s) de tests`);
   }
