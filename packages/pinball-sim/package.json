@@ -21,6 +21,8 @@
     "profil-robot:pinball": "esbuild tools/profil-robot.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/profil-robot.mjs --log-level=warning && node dist/profil-robot.mjs",
     "jalons-robot:pinball": "esbuild tools/jalons-robot.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/jalons-robot.mjs --log-level=warning && node dist/jalons-robot.mjs",
     "preparer:pinball": "esbuild tools/preparer.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/preparer.mjs --log-level=warning && node dist/preparer.mjs",
+    "tolerance:pinball": "esbuild tools/tolerance.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/tolerance.mjs --log-level=warning && node dist/tolerance.mjs",
+    "vitesse-trou:pinball": "esbuild tools/vitesse-trou.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/vitesse-trou.mjs --log-level=warning && node dist/vitesse-trou.mjs",
     "fenetres:pinball": "esbuild tools/fenetres.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/fenetres.mjs --log-level=warning && node dist/fenetres.mjs"
   },
   "exports": {

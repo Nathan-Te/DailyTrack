@@ -971,8 +971,9 @@ export class Partie {
     // --- les collisions, dans l'ordre de la maquette : murs, poteaux, bumpers, cibles, batteurs
     // lot PBR1 : les murs de la case de la bille seulement (`grille` : les mêmes, dans le même ordre)
     for (const s of t.grille[caseDe(this.x, this.y)]!) if (this.segment(s) && s.type === 1) this.choquerSling(s);
-    // lot PBG3 : fermée, la porte est un mur ; ouverte, la bille passe
-    if (t.passage && this.passageOuvert <= 0) this.segment(t.passage.battant);
+    // lot PBG3 : fermée, la porte est un mur ; ouverte, la bille passe. **Lot PBT1 : une porte à sens unique** (la porte de l'orbite) n'arrête que la bille qui est du côté de l'entrée (le centre en dessous de la ligne du battant) :
+    // une bille qui arrive d'en haut — retombée du couloir, ou lancée par-dessus l'arc — la traverse et ne se pose jamais sur le battant
+    if (t.passage && this.passageOuvert <= 0 && (!t.passage.sensUnique || div((this.x - t.passage.x) * t.passage.ux + (this.y - t.passage.y) * t.passage.uy, NORME) < 0)) this.segment(t.passage.battant);
     // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
     for (const g of t.portes) {
       // lot PBR1 : la bouche n'agit que sur une bille proche de son milieu (sa demi-largeur plus le rayon de la bille, un pixel de marge pour l'arrondi du segment)

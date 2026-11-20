@@ -100,7 +100,11 @@ export class PremierContact {
   private rail = -1;
   private railAvant = 0;
   private passages = 0;
+  /** Lot PBT1 : la porte est celle de l'orbite (sur sa bouche) : la franchir n'est pas la fin du tir, la bille est prise ensuite par le rail ; si elle ne le mène pas à son bout, le tir compte pour la porte. */
+  private readonly porteDeLOrbite: boolean;
+  private porteVue = false;
   constructor(table: Table, theme: Contenu["theme"]) {
+    this.porteDeLOrbite = table.passage !== null && table.rails.some((r) => r.genre === "orbite");
     const types = MODULES_DE_MISSION[MISSION_DU_THEME[theme]] as readonly string[];
     this.poses = table.poses.map((q) => ({ type: q.type, rang: q.rang, n: q.n, nom: nomDuModule(q), mission: types.includes(q.type), verrou: q.type === "trou" && q.rang === table.verrou }));
     // les murs d'un module (spinner, coulée, fond des cibles, murs de la porte) ne sont pas des contacts : la bille qui les longe puis passe est un tir comme un autre. Seul le battant **fermé** de la porte est un obstacle.
@@ -116,6 +120,12 @@ export class PremierContact {
     this.rail = -1;
     this.railAvant = 0;
     this.passages = p.passages;
+    this.porteVue = false;
+  }
+
+  /** L'étiquette d'un tir qui n'a rien touché de plus : `porte` si la bille a franchi la porte de l'orbite sans mener l'orbite à son bout, sinon `rien`. */
+  fin(): string {
+    return this.porteVue ? "porte" : "rien";
   }
 
   /** À appeler après chaque pas : l'étiquette du premier élément touché, ou `null`. */
@@ -123,7 +133,7 @@ export class PremierContact {
     const t = p.table;
     if (this.rail >= 0) {
       if (p.railsFaits[this.rail]! > this.railAvant) return nomDuRail(t, this.rail);
-      if ((p.ev & EV_RECUL) !== 0) return "recul";
+      if ((p.ev & EV_RECUL) !== 0) return this.porteVue ? "porte" : "recul";
       return null;
     }
     if (p.couche === 1 && p.rail >= 0) {
@@ -131,7 +141,11 @@ export class PremierContact {
       this.railAvant = p.railsFaits[p.rail]!;
       return null;
     }
-    if (p.passages > this.passages) return "porte";
+    if (p.passages > this.passages) {
+      if (!this.porteDeLOrbite) return "porte";
+      this.porteVue = true;
+      this.passages = p.passages;
+    }
     let entree = -2;
     for (const q of this.poses) {
       let touche = false;
@@ -198,15 +212,15 @@ function jouerLeTir(p: Partie, det: PremierContact, trace?: { x: number[]; y: nu
       trace.x.push(div(p.x, UNITE));
       trace.y.push(div(p.y, UNITE));
     }
-    if (yMin !== undefined && p.y < yMin * UNITE) return "rien";
-    if (p.finie || p.billes !== NB_BILLES || p.dansLanceur) return "rien";
+    if (yMin !== undefined && p.y < yMin * UNITE) return det.fin();
+    if (p.finie || p.billes !== NB_BILLES || p.dansLanceur) return det.fin();
     const e = det.voir(p);
     if (e !== null) return e;
     if (p.couche === 1) maxPas = RAIL_MAX;
     // la bille retombe vers les batteurs sans avoir rien touché
-    else if (pas > 40 && p.vy > 0 && p.y > 570 * UNITE) return "rien";
+    else if (pas > 40 && p.vy > 0 && p.y > 570 * UNITE) return det.fin();
   }
-  return "rien";
+  return det.fin();
 }
 
 /** Ce que le geste a donné depuis un batteur : l'étiquette du premier contact de chaque moment de frappe `d` = 0, 1, 2… (jusqu'à ce que la bille ait quitté le batteur). */
@@ -288,8 +302,12 @@ export function fenetresDeTir(contenu: Contenu, reglages: Reglages = REGLAGES, s
   const ms: Record<string, number> = {};
   const manquants: string[] = [];
   for (const nom of noms) {
-    const sources = nom === "porte" ? ouverte : fermee;
-    const w: [number, number] = [plusLongueSerie(sources[0], nom), plusLongueSerie(sources[1], nom)];
+    // lot PBT1 : l'orbite est derrière sa porte : on la mesure **porte ouverte**, et la porte compte aussi les tirs qui mènent l'orbite à son bout
+    const surOrbite = table.passage !== null && table.rails.some((r) => r.genre === "orbite");
+    const ouvertes = nom === "porte" || (surOrbite && nom === "orbite");
+    const sources = ouvertes ? ouverte : fermee;
+    const lire = (e: string[]): string[] => (nom === "porte" && surOrbite ? e.map((x) => (x === "orbite" ? "porte" : x)) : e);
+    const w: [number, number] = [plusLongueSerie(lire(sources[0]), nom), plusLongueSerie(lire(sources[1]), nom)];
     objectifs[nom] = w;
     ms[nom] = pasEnMs(Math.max(w[0], w[1]));
     if (Math.max(w[0], w[1]) < seuilPas) manquants.push(nom);
@@ -300,7 +318,7 @@ export function fenetresDeTir(contenu: Contenu, reglages: Reglages = REGLAGES, s
 // --- La zone de tir libre.
 
 /** Le contenu d'une table sans aucun module (le plan d'essai `classique`, sans emplacement garni) : le châssis seul, où le geste dessine l'éventail. */
-const TABLE_VIDE: Contenu = { jour: 0, g: 0, theme: "foire", plan: "classique", modules: [] };
+const TABLE_VIDE: Contenu = { jour: 0, g: 0, theme: "foire", plan: "classique", miroir: false, modules: [] };
 /** La grille de la zone : des cases de 4 px. */
 const CASE_ZONE = 4;
 const COLONNES_ZONE = 94;

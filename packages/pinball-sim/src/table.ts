@@ -2,7 +2,7 @@ import { AXE, RAYON, LAMPE_DEMI, LAMPE_X, LAMPE_Y, NORME, SAUVEUR_R, SAUVEUR_X, 
 import { cosinus, racine, sinus, unitaire, div } from "./entiers";
 import { MISSION_DU_THEME, MODULES_DE_MISSION, type Contenu } from "./generateur";
 import type { ThemePinball } from "./themes";
-import { planDe, type DefAiguillage, type DefMini, type DefPorte, type DefRail } from "./plans";
+import { emplacementsDe, planDe, type DefAiguillage, type DefMini, type DefPorte, type DefRail, type Emplacement } from "./plans";
 import type { Reglages } from "./reglages";
 
 // La géométrie de la table (lot PB1), en unités (4 096 par pixel de la maquette). **Le châssis ne change jamais** : le mur gauche, l'arc du haut, le mur droit, le couloir du lanceur, les deux couloirs de retour
@@ -92,6 +92,12 @@ export interface Porte {
   l: number;
   seg: Segment;
 }
+/** **Un guide** (lot PBT1) : la ligne brisée d'un mur dessiné avec la table (`x`, `y` en unités) et ce qu'il guide. */
+export interface Guide {
+  genre: "orbite" | "bouche";
+  x: number[];
+  y: number[];
+}
 /** Le mini-batteur (lot PBG1), dans le repère du côté gauche : le côté, le pivot et la longueur (unités). Il suit l'angle du batteur du même côté. */
 export interface MiniBatteur {
   cote: 0 | 1;
@@ -118,6 +124,10 @@ export interface Passage {
   bouts: [[number, number], [number, number]];
   /** La longueur du passage (unités). */
   profondeur: number;
+  /** Lot PBT1 : une porte à sens unique n'arrête que la bille qui monte (côté de l'entrée) ; la bille qui arrive d'en haut la traverse. */
+  sensUnique: boolean;
+  /** Lot PBT1 : combien de murs le passage a posés à la fin de `murs` (0 pour une porte sans murs). */
+  murs: number;
 }
 /** **Le poteau sauveur** (lot PBG3) : entre les batteurs, il sort quand les deux lampes des couloirs de retour sont allumées. Un cercle (`x`, `y`, `r`) ; `lampes` : la ligne que la bille franchit dans chaque couloir (le centre `x`, la hauteur `y`, la demi-largeur `l`). */
 export interface Sauveur {
@@ -180,6 +190,8 @@ export interface Table {
   rails: Rail[];
   portes: Porte[];
   mini: MiniBatteur | null;
+  /** Lot PBT1 : les guides dessinés avec la table (le guide intérieur du couloir de l'orbite, les guides de la bouche d'une rampe) : une ligne brisée chacun, en unités ; leurs murs sont dans `murs`. */
+  guides: Guide[];
   /** Lot PBG2 : le rang (dans `trous`) du trou qui sert de verrou — celui du deuxième emplacement du plan — ou −1 (le plan d'essai : pas de verrou, la mission ne se joue qu'une fois). */
   verrou: number;
   /** Lot PBG3 : la porte, le poteau sauveur et l'aiguillage (`null` sur le plan d'essai pour la porte et l'aiguillage ; le poteau est partout). */
@@ -245,8 +257,8 @@ function segment(ax: number, ay: number, bx: number, by: number, e: number, kick
 
 /** La table du jour : le châssis, puis les six emplacements. */
 export function construireTable(contenu: Contenu, r: Reglages): Table {
-  const plan = planDe(contenu.plan);
-  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, verrou: -1, passage: null, sauveur: sauveurDe(), aiguillage: null, grille: [], bandePoteaux: [0, 0], bandeVoies: [0, 0] };
+  const plan = planDe(contenu.plan, contenu.miroir);
+  const t: Table = { murs: [], poteaux: [], bumpers: [], spinners: [], trous: [], voies: [], plateaux: [], tourbillons: [], trousNoirs: [], portails: [], geysers: [], coulees: [], banques: [], poses: [], plan: plan.id, rails: [], portes: [], mini: null, guides: [], verrou: -1, passage: null, sauveur: sauveurDe(), aiguillage: null, grille: [], bandePoteaux: [0, 0], bandeVoies: [0, 0] };
   const mur = (ax: number, ay: number, bx: number, by: number, e: number, kick = 0, type: 0 | 1 = 0): void => void t.murs.push(segment(ax, ay, bx, by, e, kick, type));
   // --- le châssis
   mur(px(20), px(560), px(20), px(205), r.rebondMur);
@@ -268,7 +280,13 @@ export function construireTable(contenu: Contenu, r: Reglages): Table {
   // --- le haut : les rails du plan, son mini-batteur, puis un module par emplacement
   for (const def of plan.orbite ? [...plan.rampes, plan.orbite] : plan.rampes) poserRail(t, def, r);
   if (plan.mini) t.mini = miniDe(plan.mini);
-  contenu.modules.forEach((m, i) => poser(t, r, contenu.theme, m, i, px(plan.emplacements[i]!.x), px(plan.emplacements[i]!.y)));
+  // lot PBT1 : les guides dessinés avec la table (des murs du plateau), avant les modules
+  for (const g of plan.guides ?? []) {
+    t.guides.push({ genre: g.genre, x: g.points.map(([x]) => px(x)), y: g.points.map(([, y]) => px(y)) });
+    for (let i = 0; i < g.points.length - 1; i++) mur(px(g.points[i]![0]), px(g.points[i]![1]), px(g.points[i + 1]![0]), px(g.points[i + 1]![1]), r.rebondGuide);
+  }
+  const emplacements = emplacementsDe(plan, contenu.theme);
+  contenu.modules.forEach((m, i) => poser(t, r, contenu.theme, m, i, px(emplacements[i]!.x), px(emplacements[i]!.y), emplacements[i]!));
   // lot PBG2 : le verrou est le trou du deuxième emplacement (celui de tous les plans du jour ; le plan d'essai n'en a pas)
   t.verrou = t.poses.find((q) => q.emplacement === 1 && q.type === "trou")?.rang ?? -1;
   // lot PBG3 : la porte (ses murs et son battant), puis l'aiguillage d'une rampe
@@ -303,11 +321,13 @@ function poserPassage(t: Table, d: DefPorte, r: Reglages): Passage {
   const [ax, ay] = bout(-1);
   const [bx, by] = bout(1);
   const fond = (x: number, y: number): [number, number] => [x - div(ux * prof, NORME), y - div(uy * prof, NORME)];
-  for (const [x, y] of [[ax, ay], [bx, by]] as const) {
-    const [fx, fy] = fond(x, y);
-    t.murs.push(segment(x, y, fx, fy, 400));
+  if (!d.sansMurs) {
+    for (const [x, y] of [[ax, ay], [bx, by]] as const) {
+      const [fx, fy] = fond(x, y);
+      t.murs.push(segment(x, y, fx, fy, 400));
+    }
   }
-  return { x: cx, y: cy, ux, uy, nx, ny, l, battant: segment(ax, ay, bx, by, r.rebondMur), parBanque: t.banques.length > 0, bouts: [[ax, ay], [bx, by]], profondeur: prof };
+  return { x: cx, y: cy, ux, uy, nx, ny, l, battant: segment(ax, ay, bx, by, r.rebondMur), parBanque: t.banques.length > 0, bouts: [[ax, ay], [bx, by]], profondeur: prof, sensUnique: d.sensUnique === true, murs: d.sansMurs ? 0 : 2 };
 }
 
 /** Le rayon de l'élément d'une mission (le disque que la bille quitte en ressortant). */
@@ -390,22 +410,39 @@ function poserRail(t: Table, def: DefRail, r: Reglages): void {
     t.portes.push({ rail: id, bout, x: cx, y: cy, ux, uy, l, seg: segment(cx - lx, cy - ly, cx + lx, cy + ly, r.rebondGuide) });
   };
   porte(0);
-  if (def.genre === "orbite") porte(1);
+  if (def.genre === "orbite" && !def.unSens) porte(1);
 }
 
-function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, emplacement: number, cx: number, cy: number): void {
+function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, emplacement: number, cx: number, cy: number, e?: Emplacement): void {
   const rangs: Record<string, readonly unknown[]> = { bumpers: t.bumpers, mini: t.bumpers, asteroide: t.bumpers, cibles: t.banques, spinner: t.spinners, trou: t.trous, manege: t.plateaux, tourbillon: t.tourbillons, trouNoir: t.trousNoirs, portailA: t.portails, portailB: t.portails, geyser: t.geysers, coulee: t.coulees };
   const pose: Poser = { type: module, emplacement, x: cx, y: cy, rang: rangs[module]?.length ?? 0, n: 0, m0: t.murs.length, m1: t.murs.length };
   t.poses.push(pose);
   const mur = (ax: number, ay: number, bx: number, by: number, e: number): void => void t.murs.push(segment(ax, ay, bx, by, e));
   switch (module) {
     case "bumpers":
-      for (const [dx, dy] of [[0, -26], [-27, 17], [27, 17]] as const) t.bumpers.push({ x: cx + px(dx), y: cy + px(dy), r: px(17), kick: (theme === "ocean" ? r.kickBulles : r.kickBumper) * UNITE }); // les Bulles de l'océan sont plus douces
+      // lot PBT1 : les trois bumpers d'une table dessinée sont à leurs centres (`points`) ; le plan d'essai les groupe autour de l'emplacement
+      if (e?.points) for (const [x, y] of e.points) t.bumpers.push({ x: px(x), y: px(y), r: px(17), kick: (theme === "ocean" ? r.kickBulles : r.kickBumper) * UNITE });
+      else for (const [dx, dy] of [[0, -26], [-27, 17], [27, 17]] as const) t.bumpers.push({ x: cx + px(dx), y: cy + px(dy), r: px(17), kick: (theme === "ocean" ? r.kickBulles : r.kickBumper) * UNITE }); // les Bulles de l'océan sont plus douces
       break;
     case "mini":
       for (const dx of [-24, 24]) t.bumpers.push({ x: cx + px(dx), y: cy, r: px(12), kick: (theme === "ocean" ? r.kickMiniBulles : r.kickMini) * UNITE });
       break;
     case "cibles": {
+      if (e?.banque) {
+        // lot PBT1 : la banque dessinée — ses trois cibles et son mur de fond, à leurs extrémités
+        const banque: number[] = [];
+        e.banque.cibles.forEach((c, k) => {
+          const s = segment(px(c[0]), px(c[1]), px(c[2]), px(c[3]), r.rebondCible, 0, 2);
+          s.banque = t.banques.length;
+          s.cible = k;
+          banque.push(t.murs.length);
+          t.murs.push(s);
+        });
+        t.banques.push(banque);
+        const f = e.banque.fond;
+        mur(px(f[0]), px(f[1]), px(f[2]), px(f[3]), 300);
+        break;
+      }
       // trois cibles posées en travers, face aux batteurs, devant un mur de fond
       const dx = px(AXE) - cx;
       const dy = px(640) - cy;
@@ -436,8 +473,11 @@ function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, empla
       break;
     }
     case "spinner":
-      mur(cx - px(24), cy - px(32), cx - px(24), cy + px(30), 400);
-      mur(cx + px(24), cy - px(32), cx + px(24), cy + px(30), 400);
+      // lot PBT1 : le spinner du couloir de l'orbite n'a pas de murs (ce sont ceux du couloir)
+      if (!e?.sansMurs) {
+        mur(cx - px(24), cy - px(32), cx - px(24), cy + px(30), 400);
+        mur(cx + px(24), cy - px(32), cx + px(24), cy + px(30), 400);
+      }
       t.spinners.push({ x: cx, y: cy, l: px(22) });
       break;
     case "trou":
@@ -458,6 +498,14 @@ function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, empla
       t.portails.push({ x: cx, y: cy, r: px(14), id: module === "portailA" ? 0 : 1 });
       break;
     case "asteroide":
+      if (e?.points) {
+        // lot PBT1 : **l'astéroïde est l'un des trois bumpers** (le dernier, celui du bas) : il va et vient de 46 px, les deux autres ne bougent pas
+        e.points.forEach(([x, y], k) => {
+          if (k < e.points!.length - 1) t.bumpers.push({ x: px(x), y: px(y), r: px(17), kick: r.kickBumper * UNITE });
+          else t.bumpers.push({ x: px(x), y: px(y), r: px(16), kick: r.kickBumper * UNITE, mobile: { x0: px(x), amp: px(46) }, vx: 0 });
+        });
+        break;
+      }
       // le bumper qui se déplace (amplitude 46 px) et, près de lui, un petit bumper qui ne bouge pas
       t.bumpers.push({ x: cx, y: cy, r: px(16), kick: r.kickBumper * UNITE, mobile: { x0: cx, amp: px(46) }, vx: 0 });
       t.bumpers.push({ x: cx - px(30), y: cy + px(34), r: px(12), kick: r.kickMini * UNITE });
@@ -466,8 +514,11 @@ function poser(t: Table, r: Reglages, theme: ThemePinball, module: string, empla
       t.geysers.push({ x: cx, y: cy, r: px(22) });
       break;
     case "coulee":
-      mur(cx - px(20), cy - px(50), cx - px(20), cy + px(40), 400);
-      mur(cx + px(20), cy - px(50), cx + px(20), cy + px(40), 400);
+      // lot PBT1 : la coulée du volcan est l'accélération du couloir de l'orbite : sans murs, ce sont ceux du couloir
+      if (!e?.sansMurs) {
+        mur(cx - px(20), cy - px(50), cx - px(20), cy + px(40), 400);
+        mur(cx + px(20), cy - px(50), cx + px(20), cy + px(40), 400);
+      }
       t.coulees.push({ x: cx, y: cy, l: px(18), h: px(45) });
       break;
     default:
