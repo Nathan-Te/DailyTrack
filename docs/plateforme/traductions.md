@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-3047 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3054 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -4034,6 +4034,13 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `plan.tremplin` | Tremplin | Ramp-up |
 | `plan.bretelle` | Bretelle | Sliproad |
 | `plan.boucle` | Boucle | Loop |
+| `plan.t1` | Orbite et rampe | Orbit and ramp |
+| `plan.t2` | Poche des bumpers | Bumper pocket |
+| `plan.t3` | Deux banques, un tir central | Two banks, one centre shot |
+| `plan.t4` | Mini-batteur et rampe | Mini flipper and ramp |
+| `plan.t5` | Orbite haute | High orbit |
+| `plan.t6` | Mini-batteur de droite | Right mini flipper |
+| `plan.miroir` | {plan} (retourné) | {plan} (mirrored) |
 
 ### plaque (`plaque.*`, `apps/pinball/src/catalogue.*.ts`)
 
