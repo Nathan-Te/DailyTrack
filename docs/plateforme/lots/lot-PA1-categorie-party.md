@@ -3,7 +3,7 @@
 **État : la partie 1 (catégorie et moule) est faite ; la partie 2 (jeu du jour, classement, portail, mentions) n'est PAS faite** — arrêt prévu par le prompt. Le lot n'est donc pas terminé.
 
 ## À savoir d'abord
-- **`docs/party/seed.md` n'existe pas** : le seed n'était pas joint au prompt (ni dans le dépôt). Il reste à verser par Nathan ; rien n'a été inventé. Les consignes disent « catégorie `party` » sans le citer.
+- **Le seed** (`docs/party/seed.md`, versé tel quel après coup : il n'était pas joint au premier envoi) confirme ce lot : identité allégée, « pas de générateur, pas de thèmes, pas de robot, pas de jours figés : une graine suffit ». Restent ouverts chez lui (à trancher en partie 2) : la règle du tour de rôle (le prompt retient « dans l'ordre des jeux `on`, par date d'ouverture, en boucle »), le record personnel (appareil seulement, selon le prompt), le nom et la couleur de la catégorie à l'écran.
 - **« Pour les joueurs » : rien** (aucun jeu Party n'est ouvert ; rien ne se voit).
 
 ## Livré (partie 1)
