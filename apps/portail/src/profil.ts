@@ -283,7 +283,7 @@ function tousLesJeux(t: T, p: Profil): HTMLElement {
 function parJeu(t: T, p: Profil, day: number): HTMLElement {
   const rangs = rangerLesJeux(p.jeux, (j) => {
     const c = cartes(0).find((x) => x.jeu === j.jeu);
-    return c && categorieDuJeu(c.code, day) === "arcade" ? "arcade" : "jour";
+    return c && categorieDuJeu(c.code, day) !== "jour" ? "arcade" : "jour"; // lot PA1 : un jeu Party est rangé avec l'arcade (hors journée)
   });
   const groupeDe = (id: string, titre: string, jeux: ProfilJeu[]): (HTMLElement | null)[] =>
     jeux.length === 0 ? [] : [el("p", { classe: "profil-cat", texte: titre }), el("div", { classe: "profil-jeux", attrs: { id } }, ...jeux.map((j) => blocJeu(t, j)))];

@@ -1,5 +1,5 @@
 import { formatDay, parseDay } from "@cdj/core";
-import { categorieLe, type CategorieJeu } from "@cdj/core/jeux";
+import { categorieLe, type CategorieJeu, horsJournee } from "@cdj/core/jeux";
 import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "@cdj/core/lancement";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { estNouveau, favorisLe, jeuxDeLaBase, jourDEffet, listeApresChoix, listeDeFavoris, mesJeuxDuJour, type PeriodeFavoris } from "@cdj/core/favoris";
@@ -100,8 +100,10 @@ export interface VuePartagee {
   comptes(day: number): JeuPortail[];
   jourOuvert(day: number): boolean;
   estHauteur(j: JeuPortail): boolean;
-  /** Lot A3 : le jeu est-il d'arcade ce jour-là ? (Son onglet vient après le séparateur « Arcade ».) */
-  estArcade(j: JeuPortail, day: number): boolean;
+  /** Lots A3 et PA1 : le jeu est-il d'arcade ou Party ce jour-là (hors journée, hors cumul) ? Son onglet vient après le séparateur « Arcade ». */
+  estHorsJournee(j: JeuPortail, day: number): boolean;
+  /** Lot PA1 : `{ categorie }` à écrire dans une réponse pour un jeu hors journée (`arcade` ou `party`), `{}` pour un jeu du jour : la forme d'avant n'est pas changée pour les jeux existants. */
+  categorieEcrite(j: JeuPortail, day: number): { categorie?: "arcade" | "party" };
   classementDe(day: number): Promise<ClassementDuJour>;
   etatsDe(id: string, day: number, ouverts: readonly JeuPortail[], c?: ClassementDuJour): Promise<EtatPortail[]>;
   bilanDe(id: string, etats: readonly EtatPortail[], ouverts: readonly JeuPortail[], toutJeu?: boolean): LigneDuJour | null;
@@ -222,7 +224,12 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const categorieDe = (j: JeuPortail, day: number): CategorieJeu => categorieLe(j.portail.categorie ?? "jour", j.portail.categorieDepuis, day);
   /** Le jeu compte-t-il dans la journée (série, journée parfaite, partage) ce jour-là ? L'interrupteur (`compte`) ET la catégorie `jour`. */
   const compteJournee = (j: JeuPortail, day: number): boolean => compte(j, day) && categorieDe(j, day) === "jour";
-  const estArcade = (j: JeuPortail, day: number): boolean => categorieDe(j, day) === "arcade";
+  // Lot PA1 : la catégorie `party` est, comme l'arcade, hors journée et hors cumul (tout ce qui n'est pas `jour`).
+  const estHorsJournee = (j: JeuPortail, day: number): boolean => horsJournee(categorieDe(j, day));
+  const categorieEcrite = (j: JeuPortail, day: number): { categorie?: "arcade" | "party" } => {
+    const c = categorieDe(j, day);
+    return c === "jour" ? {} : { categorie: c };
+  };
   const comptesJournee = (day: number): JeuPortail[] => jeux.filter((j) => compteJournee(j, day));
   /** Lot TP : un jeu classé à la hauteur (Tower) a sa vue ; il n'entre jamais dans le cumul au temps. */
   const estHauteur = (j: JeuPortail): boolean => j.portail.classement === "hauteur";
@@ -258,7 +265,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
           log("WARNING", "portail : jour d'un jeu indisponible", { jeu: j.code, error: e instanceof HttpError ? e.code : "inconnue" });
           jour = { numero: day - j.portail.premierJour + 1, theme: null, seuils: null };
         }
-        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), compte: compteJournee(j, day), ...(estArcade(j, day) ? { categorie: "arcade" as const } : {}), ...(estNouveau(etats?.liveFrom(j.portail.site) ?? null, day) ? { nouveau: true as const } : {}), ...(surLeSite(j) ? {} : { brouillon: true as const }), ...jour };
+        return { jeu: j.code, site: j.portail.site, nom: j.portail.nom, premierJour: formatDay(j.portail.premierJour), compte: compteJournee(j, day), ...categorieEcrite(j, day), ...(estNouveau(etats?.liveFrom(j.portail.site) ?? null, day) ? { nouveau: true as const } : {}), ...(surLeSite(j) ? {} : { brouillon: true as const }), ...jour };
       }),
     );
   }
@@ -598,7 +605,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       journee: numeroDeJournee(day, premierJour),
       ouvert,
       vue,
-      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}), ...(estArcade(j, day) ? { categorie: "arcade" as const } : {}) })),
+      jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}), ...categorieEcrite(j, day) })),
       classes: liste.length,
       top: hauteur ? hauteur.classes.slice(0, CLASSEMENT_TOP).map((x, i) => ligneHauteur(x, i + 1, noms.get(x.playerId)?.name ?? "?", noms.get(x.playerId)?.ref, noms.get(x.playerId)?.avatar, noms.get(x.playerId)?.groupe)) : (gardes as LigneDuJour[]).map((l, i) => ligneCorps(l, i + 1, noms.get(l.id)?.name ?? "?", noms.get(l.id)?.ref, noms.get(l.id)?.avatar, noms.get(l.id)?.groupe)),
       ...(hauteur ? { unite: jeuVue!.portail.unite ?? ("mm" as const) } : {}),
@@ -707,7 +714,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   }
 
   /** Lot F2 : ce que les classements filtrés « Amis » lisent du portail. */
-  const vue: VuePartagee = { jeux, premierJour, comptes, jourOuvert, estHauteur, estArcade, classementDe, etatsDe, bilanDe, resultatsCorps, charger };
+  const vue: VuePartagee = { jeux, premierJour, comptes, jourOuvert, estHauteur, estHorsJournee, categorieEcrite, classementDe, etatsDe, bilanDe, resultatsCorps, charger };
 
   return {
     route,

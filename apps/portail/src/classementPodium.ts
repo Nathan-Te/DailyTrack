@@ -47,4 +47,4 @@ export function groupeDeLigne(l: Pick<LigneClassement, "groupe">): { id: string;
 export const nombreDeColonnes = (n: number): number => Math.min(6, Math.max(0, n));
 
 /** Les jeux d'un cumul : ceux qui comptent dans le temps cumulé — jamais un jeu à la hauteur ou aux points (lot TP), jamais un jeu d'arcade (lot A3 : il garde sa vue, hors du cumul). */
-export const jeuxDuCumul = <J extends { unite?: string; categorie?: string }>(jeux: readonly J[]): J[] => jeux.filter((j) => !j.unite && j.categorie !== "arcade");
+export const jeuxDuCumul = <J extends { unite?: string; categorie?: string }>(jeux: readonly J[]): J[] => jeux.filter((j) => !j.unite && j.categorie !== "arcade" && j.categorie !== "party");

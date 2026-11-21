@@ -412,7 +412,7 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     for (const j of ouverts) {
       if (v.estHauteur(j)) {
         const h = c.hauteurs?.find((x) => x.jeu === j.code);
-        jours.push(vueDe(j.portail.site, "hauteur", (h?.classes ?? []).map((x) => ({ id: x.playerId, valeur: x.score?.valeur ?? 0, at: x.at })), v.estArcade(j, day)));
+        jours.push(vueDe(j.portail.site, "hauteur", (h?.classes ?? []).map((x) => ({ id: x.playerId, valeur: x.score?.valeur ?? 0, at: x.at })), v.estHorsJournee(j, day)));
       } else {
         const g = c.jeux.indexOf(j.code);
         jours.push(vueDe(j.portail.site, "temps", g < 0 ? [] : c.parJeu[g]!.map((l) => ({ id: l.id, valeur: l.resultats[g]!.tempsMs, at: l.resultats[g]!.at }))));

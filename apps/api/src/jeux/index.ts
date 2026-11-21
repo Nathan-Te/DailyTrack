@@ -4,3 +4,4 @@ export { type ContexteTableau, type ContexteValidation, type ContratJeu, type Li
 export { DELAI_REJEU_MS, type ExecuteurRejeu, FILE_MAX_DEFAUT, RefusDuFil, executeurFil } from "./fil";
 export { type ConfigJeu, type DebitDuJeu, type FicheServeur, type OutilsModule, type RoutePropre, creerJeu } from "./module";
 export { type ContratMinimal, contratDeFiche, definirJeuNeuf, medailleParSeuils, type OptionsJeuNeuf, refusDEnveloppe, type RejeuNeuf, type SeuilsMedailles } from "./defauts";
+export { type ContratParty, contratMinimalDeParty, definirJeuParty, type NiveauParty } from "./party";

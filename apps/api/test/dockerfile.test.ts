@@ -30,7 +30,7 @@ describe("le Dockerfile de l'image du serveur nomme chaque jeu des fiches (lot K
       exige(`COPY apps/${app}/package.json apps/${app}/`, "le verrou npm liste l'espace de travail de l'application");
       exige(`COPY packages/${sim}/package.json packages/${sim}/`, "le verrou npm liste l'espace de travail de la simulation");
       exige(`COPY packages/${sim} packages/${sim}`, "le serveur importe la simulation");
-      if (f.jours.dossier) exige(`COPY ${f.jours.dossier} ${f.jours.dossier}`, "les jours figés entrent dans le paquet");
+      if (f.jours?.dossier) exige(`COPY ${f.jours.dossier} ${f.jours.dossier}`, "les jours figés entrent dans le paquet"); // lot PA1 : un jeu Party n'a pas de jours figés
       if (f.rejeu.fil) exige(`/app/apps/api/dist/${f.id}-fil.mjs`, "le fil de calcul des rejeux");
       expect(manques, `apps/api/Dockerfile ne nomme pas le jeu « ${f.id} » : ajoute son bloc (le générateur d'un jeu neuf l'écrit)`).toEqual([]);
     });

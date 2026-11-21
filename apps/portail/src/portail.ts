@@ -586,7 +586,7 @@ function rendre(): void {
   // Les cartouches que le portail sait dessiner, dans l'ordre du serveur quand il a répondu.
   const toutes = cartes(day).filter((c) => (jour ? parJeu.has(c.jeu) : c.numero > 0));
   // Lot A3 : les jeux d'arcade ont leur salle ; ils ne comptent ni dans « n fini sur m », ni dans la journée, ni dans la ligne de partage.
-  const estArcade = (c: CarteJeu) => categorieDuJeu(c.code, day, parJeu.get(c.jeu)) === "arcade";
+  const estArcade = (c: CarteJeu) => categorieDuJeu(c.code, day, parJeu.get(c.jeu)) !== "jour"; // lot PA1 : un jeu Party est hors journée comme l'arcade (sa section propre vient avec le jeu du jour)
   const montrees = toutes.filter((c) => !estArcade(c));
   const statuts = jour?.joueur ? montrees.map((c) => parJeu.get(c.jeu)!) : [];
   const { finis, total } = avancement(statuts, jour?.joueur?.jeuxDuJour);

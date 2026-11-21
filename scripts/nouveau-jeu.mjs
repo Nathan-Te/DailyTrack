@@ -1,7 +1,8 @@
 // Lot K4g (plateforme) — **`npm run nouveau-jeu -- --id <id>`** : crée un jeu neuf à partir de « Cibles » (le modèle, `docs/cibles/consignes.md`) : il copie ses fichiers, les renomme, écrit la fiche, les entrées
 // mécaniques des fichiers partagés (lignes AJOUTÉES seulement), les trois documents du jeu (`docs/<id>/` : seed, consignes, passation), puis lance `npm run fiches`, le golden du jeu et `npm run traductions`.
 //
-//   npm run nouveau-jeu -- --id <id> [--nom "<Nom>"] [--classement score|temps] [--categorie jour|arcade] [--a-blanc]
+//   npm run nouveau-jeu -- --id <id> [--nom "<Nom>"] [--classement score|temps] [--categorie jour|arcade|party] [--a-blanc]
+//   (lot PA1 : `--categorie party` — un jeu sans générateur de niveaux, sans thèmes, sans robot et sans jours figés : `scripts/nouveau-jeu-party.mjs`)
 //   npm run nouveau-jeu -- --id <id> --passation          → réécrit seulement `docs/<id>/passation.md` d'un jeu qui existe (la tenir à jour depuis les CLAUDE.md)
 //   --detail             → avec --a-blanc, un fichier par ligne ; --racine <dossier> → un autre arbre de sources (la copie du dépôt du job « Kit de bout en bout ») ; --sans-commandes : n'écrit que les fichiers (tests).
 //
@@ -12,6 +13,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSyn
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { MOTIF_PARTY, partyAjouts, partySupprime, partyTexte, POLICE_PARTY } from "./nouveau-jeu-party.mjs";
 import { A_COMPLETER, TITRES_PASSATION } from "./tableau.mjs";
 
 export const RACINE_DEPOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,8 +51,10 @@ export const TEINTES = [
 export const DEPENDANCES_COMMUNES = ["@cdj/visuels"];
 const IGNORES = new Set(["node_modules", "dist", "dist-types", "test-results", "playwright-report", "blob-report", ".cache"]);
 const THEMES_MODELE = { sable: "clair", ardoise: "sombre" };
-const THEMES_FR = { clair: "Clair", sombre: "Sombre" };
-const THEMES_EN = { clair: "Light", sombre: "Dark" };
+const THEMES_FR = { clair: "Clair", sombre: "Sombre", unique: "Du jour" };
+const THEMES_EN = { clair: "Light", sombre: "Dark", unique: "Daily" };
+/** Lot PA1 : le seul thème d'un jeu Party (`THEME_UNIQUE` de `@cdj/kit/jeu/types`) : ses clés `theme.unique` et `accueil.phrase.unique`, la fiche n'a aucun thème. */
+const THEMES_PARTY = ["unique"];
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const lire = (racine, chemin) => readFileSync(join(racine, chemin), "utf8");
@@ -77,7 +81,7 @@ export function lireOptions(argv) {
   };
   if (!o.id) throw new Error("--id <id> est obligatoire (minuscules et chiffres, 3 à 20 caractères)");
   if (!["score", "temps"].includes(o.classement)) throw new Error(`--classement : « score » ou « temps » (reçu « ${o.classement} »)`);
-  if (!["jour", "arcade"].includes(o.categorie)) throw new Error(`--categorie : « jour » ou « arcade » (reçu « ${o.categorie} ») — lot A3 : un jeu d'arcade a son classement mais ne compte ni dans la journée ni dans le cumul`);
+  if (!["jour", "arcade", "party"].includes(o.categorie)) throw new Error(`--categorie : « jour », « arcade » ou « party » (reçu « ${o.categorie} ») — lot A3 : un jeu d'arcade a son classement mais ne compte ni dans la journée ni dans le cumul ; lot PA1 : un jeu Party n'a ni générateur de niveaux, ni thèmes, ni robot, ni jours figés`);
   o.nom = o.nom ?? cap(o.id);
   return o;
 }
@@ -177,8 +181,7 @@ export function renommer(texte, c) {
 const cheminRenomme = (chemin, c) => chemin.replaceAll("cibles", c.id);
 
 /** Les textes visibles du jeu de départ ne gardent rien de « Cibles » : nom, phrases, aide, plateau — « à remplacer ». */
-export function genericiserCatalogue(texte, c, langue) {
-  const themes = Object.values(THEMES_MODELE);
+export function genericiserCatalogue(texte, c, langue, themes = Object.values(THEMES_MODELE)) {
   const aide = langue === "fr" ? ["le but du jeu en une phrase", "ce que fait le joueur, en une phrase", "comment les égalités se départagent"] : ["the goal of the game in one sentence", "what the player does, in one sentence", "how ties are broken"];
   const valeurs = {
     "page.titre": `${c.nom} — Du Jour`,
@@ -267,6 +270,17 @@ export async function construireFiche(racine, c, classement, categorie = "jour")
   // Lot A3 : la catégorie se choisit à la création (`jour` par défaut) ; elle naît avec le jeu, sans `categorieDepuis`. Un jeu d'arcade a `classement.cumul: false` (déjà le cas de tout jeu neuf).
   modele.categorie = categorie;
   delete modele.categorieDepuis;
+  if (categorie === "party") {
+    // Lot PA1 — **un jeu Party** : ni thèmes (ni leurs noms, ni leurs scènes de musique : `menu` seulement), ni jours figés (pas de bloc `jours`), identité allégée — la police et le motif sont ceux de la catégorie, seule
+    // l'illustration reste « à choisir » (la couleur d'étiquette est déjà posée) ; pas de panneau « Aujourd'hui » (rien ne change d'un jour à l'autre). Les zones et les specs e2e du modèle n'ont rien à retirer.
+    modele.themes = [];
+    modele.nomsThemes = { fr: {}, en: {} };
+    modele.musique = { scenes: ["menu"] };
+    delete modele.jours;
+    modele.etiquette = { ...modele.etiquette, police: `"${POLICE_PARTY}", "Archivo", sans-serif` };
+    modele.identite = { police: POLICE_PARTY, motif: MOTIF_PARTY, illustration: "à choisir", aujourdhui: false };
+    modele.classement.cumul = false;
+  }
   return { fiche: modele, teinte: [fond, coque] };
 }
 
@@ -341,7 +355,7 @@ export function entreesMecaniques(racine, c) {
     editerLignes(racine, "CLAUDE.md", c, (t) => {
       const modele = t.split("\n").find((l) => l.startsWith(`| \`packages/${MODELE}-sim\` · \`apps/${MODELE}\``));
       if (!modele) throw new Error("CLAUDE.md : la ligne du jeu témoin n'est plus dans la carte du dépôt, le générateur doit suivre");
-      const ligne = `| \`packages/${c.id}-sim\` · \`apps/${c.id}\` | simulation ; le jeu — jeu neuf, branché sur la plateforme par le kit (\`brancherJeu\`), \`off\` jusqu'à ce que Nathan le publie | ${c.nom} | index \`docs/${c.id}/consignes.md\` |`;
+      const ligne = `| \`packages/${c.id}-sim\` · \`apps/${c.id}\` | kit | ${c.nom} | \`docs/${c.id}/consignes.md\` |`;
       return { texte: t.replace(modele, `${ligne}\n${modele}`), ajouts: 1 };
     }),
     editerLignes(racine, "docs/plateforme/budgets.md", c, (t) =>
@@ -456,7 +470,7 @@ export function construirePassation(racine, fiche, { classement, teinte, aDefini
       ? [`- **Le jeu de départ est un squelette** : « toucher des cibles » (${classement === "temps" ? "classé au temps croissant : toucher les 20 cibles le plus vite possible" : "classé au score décroissant : les cibles touchées en 30 secondes"}), copié du jeu témoin « Cibles ». Il est jouable, classé et rejoué par le serveur, avec tous les écrans de la plateforme ; **sa simulation, son rendu et ses textes sont à remplacer** par ceux du vrai jeu. Son vocabulaire (« ${id} » pour des cibles dans le code) n'est pas à garder.`]
       : [`- **Le jeu a dépassé son squelette** : sa simulation, son rendu et ses textes sont ceux de ${nom}. L'état exact (ce qui est fait, ce qui reste, les décisions à relire) est dans \`docs/${id}/consignes.md\`, \`apps/${id}/CLAUDE.md\` et les README de \`docs/${id}/lots/\` ; **cette passation ne le résume pas**.`]),
     `- **Classement** : ${fiche.classement.colonnes.slice(0, -2).map((k) => `\`${k.nom}\` ${k.sens === "desc" ? "↓" : "↑"}`).join(", ")} (fiche \`config/jeux/${id}.json\`). Variante de départ : \`${classement}\` (\`packages/${id}-sim/src/variante.ts\` : tout ce qui dépend du sens du classement y est rangé).`,
-    `- **Catégorie** : \`${fiche.categorie}\` (fiche, lot A3)${fiche.categorie === "arcade" ? " — un jeu d'arcade a son niveau du jour et son classement, mais ne compte ni dans la journée (journée parfaite, série, ligne de partage), ni dans le classement cumulé ; il a sa section « Arcade » sur l'accueil et ses onglets après le séparateur « Arcade » de /classement/" : " — il compte dans la journée (journée parfaite, série, ligne de partage) ; son classement n'entre au cumul que si Nathan le décide"}.`,
+    `- **Catégorie** : \`${fiche.categorie}\` (fiche, lot A3)${fiche.categorie === "party" ? " — un jeu Party (lot PA1) ne change pas d'un jour à l'autre : son « niveau » est la graine du jour, sans générateur de niveaux, sans thèmes, sans robot ni médailles, sans jours figés ; hors de la journée et du cumul comme l'arcade ; identité allégée (la police et le motif sont ceux de la catégorie : seules la couleur d'étiquette et l'illustration restent à choisir)" : fiche.categorie === "arcade" ? " — un jeu d'arcade a son niveau du jour et son classement, mais ne compte ni dans la journée (journée parfaite, série, ligne de partage), ni dans le classement cumulé ; il a sa section « Arcade » sur l'accueil et ses onglets après le séparateur « Arcade » de /classement/" : " — il compte dans la journée (journée parfaite, série, ligne de partage) ; son classement n'entre au cumul que si Nathan le décide"}.`,
     seedVide
       ? `- **Vision** : \`docs/${id}/seed.md\` — **à écrire par Nathan** (un gabarit vide avec ses titres). Tant qu'il est vide, le jeu de départ n'a pas de direction.`
       : `- **Vision** : \`docs/${id}/seed.md\` (**ne pas modifier**, c'est Nathan qui le fait).`,
@@ -538,7 +552,7 @@ const SEED = (c) => `# ${c.nom} — seed (vision du jeu)
 
 *(l'ordre proposé)*
 `;
-const CONSIGNES = (c, classement) => `# ${c.nom} — consignes
+const CONSIGNES = (c, classement, categorie = "jour") => `# ${c.nom} — consignes
 
 Chargé par lecture des fichiers du jeu (zone \`docs/${c.id}/**\`). Réponses et docs en français. **Créé par \`npm run nouveau-jeu -- --id ${c.id} --classement ${classement}\`** (lot K4g) à partir du jeu témoin « Cibles » ; vision : \`docs/${c.id}/seed.md\` (**ne pas modifier**, c'est Nathan qui le fait) ; à coller dans une conversation d'orchestration : \`docs/${c.id}/passation.md\`.
 
@@ -548,9 +562,9 @@ Chargé par lecture des fichiers du jeu (zone \`docs/${c.id}/**\`). Réponses et
 - **Teinte de l'étiquette** : à choisir par Nathan (\`etiquette.fond\` et \`etiquette.coque\` de \`config/jeux/${c.id}.json\`) ; **premier jour** : \`premierJour\` de la fiche, à régler au lancement ; **plafond de budget** : la ligne \`${c.id}.jsCss\` de \`docs/plateforme/budgets.md\` est celle du modèle, à fixer avec la mesure du jeu.
 
 ## Où est quoi
-- \`packages/${c.id}-sim\` : la simulation (pure, entière), le générateur du jour (\`generateur.ts\`), la rediffusion, le bot de l'auteur, les médailles, les jours figés ; **\`src/variante.ts\` : le seul endroit qui sait si le jeu se classe au score ou au temps** (ne garder que la variante utilisée quand le jeu a pris sa forme). Golden : \`npm run golden:${c.id} -w @cdj/${c.id}-sim\`, **jamais sans monter la version concernée**.
+- \`packages/${c.id}-sim\` : la simulation (pure, entière), ${categorie === "party" ? "le tirage du jour (\`tirage.ts\` : le « niveau » d'un jour est la graine du jour, rien d'autre — ni générateur de niveaux, ni bot, ni médailles, ni jours figés, ni thèmes : jeu Party, lot PA1), la rediffusion" : "le générateur du jour (\`generateur.ts\`), la rediffusion, le bot de l'auteur, les médailles, les jours figés"} ; **\`src/variante.ts\` : le seul endroit qui sait si le jeu se classe au score ou au temps** (ne garder que la variante utilisée quand le jeu a pris sa forme). Golden : \`npm run golden:${c.id} -w @cdj/${c.id}-sim\`, **jamais sans monter la version concernée**.
 - \`apps/${c.id}\` : \`main.ts\` (\`brancherJeu\`), \`definition.ts\` (la glue), \`scene.ts\` (le rendu Canvas 2D et les entrées), catalogues, \`e2e/\` (Playwright, ports ${"{site}"} et ${"{serveur}"} dans \`playwright.config.ts\`).
-- \`apps/api/src/${c.id}.ts\` (le contrat minimal : \`definirJeuNeuf\`), \`apps/api/scripts/${c.id}-essais.ts\` (le module d'essais de \`smoke\` et \`recette:seed\`), \`apps/api/scripts/${c.id}-empreintes.ts\`, \`apps/api/test/${c.id}.test.ts\`.
+- \`apps/api/src/${c.id}.ts\` (${categorie === "party" ? "le contrat Party : \`definirJeuParty\`" : "le contrat minimal : \`definirJeuNeuf\`"}), \`apps/api/scripts/${c.id}-essais.ts\` (le module d'essais de \`smoke\` et \`recette:seed\`), ${categorie === "party" ? "" : `\`apps/api/scripts/${c.id}-empreintes.ts\`, `}\`apps/api/test/${c.id}.test.ts\`.
 
 ## Règles
 - Les zones, la méthode et les règles de la plateforme sont dans \`docs/${c.id}/passation.md\` (générée) et le \`CLAUDE.md\` racine. Un lot de ce jeu reste dans ses zones et déclare tout nouveau spec e2e dans sa fiche (\`e2e.specs\`) **et** dans \`apps/${c.id}/e2e/durees.json\`.
@@ -571,11 +585,14 @@ export async function planifier(opts) {
   }
   const c = contexte(opts, racine);
   const creations = [];
-  for (const chemin of fichiersDuModele(racine)) {
-    let texte = renommer(lire(racine, chemin), c);
+  const party = opts.categorie === "party";
+  // Lot PA1 : un jeu Party retire de « Cibles » ce qu'il n'a pas (générateur, thèmes, robot, jours figés) et ajoute ses fichiers à lui (`nouveau-jeu-party.mjs`).
+  const fichiers = party ? [...fichiersDuModele(racine).filter((chemin) => !partySupprime(chemin)), ...partyAjouts(racine)].sort() : fichiersDuModele(racine);
+  for (const chemin of fichiers) {
+    let texte = renommer(party ? partyTexte(chemin, existsSync(join(racine, chemin)) ? lire(racine, chemin) : "") : lire(racine, chemin), c);
     const cible = cheminRenomme(chemin, c);
-    if (/\/src\/catalogue\.fr\.ts$/.test(chemin)) texte = genericiserCatalogue(texte, c, "fr");
-    if (/\/src\/catalogue\.en\.ts$/.test(chemin)) texte = genericiserCatalogue(texte, c, "en");
+    if (/\/src\/catalogue\.fr\.ts$/.test(chemin)) texte = genericiserCatalogue(texte, c, "fr", party ? THEMES_PARTY : undefined);
+    if (/\/src\/catalogue\.en\.ts$/.test(chemin)) texte = genericiserCatalogue(texte, c, "en", party ? THEMES_PARTY : undefined);
     if (opts.classement !== "score" && /packages\/cibles-sim\/src\/variante\.ts$/.test(chemin)) {
       const avant = 'export const VARIANTE_NOM: NomVariante = "score";';
       if (!texte.includes(avant)) throw new Error("variante.ts : la ligne VARIANTE_NOM a changé, le générateur doit suivre");
@@ -597,7 +614,7 @@ export async function planifier(opts) {
   const { fiche, teinte } = await construireFiche(racine, c, opts.classement, opts.categorie);
   creations.push({ chemin: `config/jeux/${c.id}.json`, contenu: json(fiche) });
   creations.push({ chemin: `docs/${c.id}/seed.md`, contenu: SEED(c) });
-  creations.push({ chemin: `docs/${c.id}/consignes.md`, contenu: CONSIGNES(c, opts.classement).replace("{site}", String(c.ports.site)).replace("{serveur}", String(c.ports.serveur)) });
+  creations.push({ chemin: `docs/${c.id}/consignes.md`, contenu: CONSIGNES(c, opts.classement, opts.categorie).replace("{site}", String(c.ports.site)).replace("{serveur}", String(c.ports.serveur)) });
   creations.push({ chemin: `docs/${c.id}/lots/.gitkeep`, contenu: "" });
   const editions = entreesMecaniques(racine, c);
   // La passation se lit sur le dépôt TEL QU'IL SERA (la fiche du jeu comprise) : elle est produite à l'écriture.

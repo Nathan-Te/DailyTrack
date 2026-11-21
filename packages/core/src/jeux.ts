@@ -79,17 +79,23 @@ export function periodesApres(periodes: readonly PeriodeJeu[], avant: EtatJeu, a
 export const liveFromDe = (periodes: readonly PeriodeJeu[]): number | null => periodes.at(-1)?.[0] ?? null;
 
 // --- Lot A3 : la catégorie d'un jeu -----------------------------------------------------------------------------------------------------------
-/** `jour` : le jeu compte dans la journée (journée parfaite, série, partage du portail). `arcade` : niveau du jour et classement, mais hors journée et hors cumul. */
-export type CategorieJeu = "jour" | "arcade";
-export const CATEGORIES_JEU: readonly CategorieJeu[] = ["jour", "arcade"];
+/**
+ * `jour` : le jeu compte dans la journée (journée parfaite, série, partage du portail). `arcade` : niveau du jour et classement, mais hors journée et hors cumul. `party` (lot PA1) : un jeu très simple qui ne
+ * change pas d'un jour à l'autre — son « niveau » est la graine du jour ; hors journée et hors cumul comme l'arcade, et classé seulement quand c'est **le jeu Party du jour**.
+ */
+export type CategorieJeu = "jour" | "arcade" | "party";
+export const CATEGORIES_JEU: readonly CategorieJeu[] = ["jour", "arcade", "party"];
+
+/** Lot PA1 : les catégories qui ne comptent ni dans la journée ni dans le cumul (tout ce qui n'est pas `jour`). */
+export const horsJournee = (categorie: CategorieJeu): boolean => categorie !== "jour";
 
 /**
- * La catégorie d'un jeu **ce jour-là**. `depuis` est le premier jour où `categorie` s'applique ; avant, c'était l'autre catégorie (il n'y en a que deux). Absent : depuis toujours.
+ * La catégorie d'un jeu **ce jour-là**. `depuis` est le premier jour où `categorie` s'applique ; avant, c'était l'autre catégorie (`jour` ↔ `arcade` : seules ces deux-là se changent ; un jeu `party` naît Party et le reste, la fiche refuse `categorieDepuis`). Absent : depuis toujours.
  * Un changement de catégorie compte à partir du lendemain, comme `live_from` : la fiche écrit `depuis` = le lendemain de la fusion, les jours d'avant gardent leur catégorie, donc leurs
  * journées et leurs séries.
  */
 export const categorieLe = (categorie: CategorieJeu, depuis: number | null | undefined, jour: number): CategorieJeu =>
-  depuis === null || depuis === undefined || jour >= depuis ? categorie : categorie === "arcade" ? "jour" : "arcade";
+  categorie === "party" || depuis === null || depuis === undefined || jour >= depuis ? categorie : categorie === "arcade" ? "jour" : "arcade";
 
 /** Le jeu compte-t-il dans la journée ce jour-là, côté catégorie ? Seule la catégorie `jour` compte (l'interrupteur, lui, se dit en périodes : `compteLe`). */
 export const compteDansLaJournee = (categorie: CategorieJeu, depuis: number | null | undefined, jour: number): boolean => categorieLe(categorie, depuis, jour) === "jour";

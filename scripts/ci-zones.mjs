@@ -275,7 +275,7 @@ const PROJECTION_CI = "config/jeux/projections/ci.json";
 /** Les dossiers de jours figés que déclarent les fiches (`jours.dossier` de la projection `ci` de ce dépôt). */
 function dossiersDeJours(racine) {
   const f = join(racine, PROJECTION_CI);
-  return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")).jeux.flatMap((j) => (j.jours.dossier ? [j.jours.dossier] : [])) : [];
+  return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")).jeux.flatMap((j) => (j.jours?.dossier ? [j.jours.dossier] : [])) : [];
 }
 
 /**

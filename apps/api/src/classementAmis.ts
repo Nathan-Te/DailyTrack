@@ -201,7 +201,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
 
     // Lot U4 : le dernier jeu du jour qu'un joueur a fini (son dossier sur le site et l'instant de l'essai classé), lu dans la ligne du classement gardé : aucune requête. Comme « tes amis aujourd'hui » de l'accueil,
     // ni l'arcade ni un jeu à la hauteur n'y comptent (ils ne comptent pas dans la journée) ; rien tant qu'il n'a fini aucun jeu du jour.
-    const pourDernier = ouverts.flatMap((j) => (v.estHauteur(j) || v.estArcade(j, day) || c.jeux.indexOf(j.code) < 0 ? [] : [{ site: j.portail.site, g: c.jeux.indexOf(j.code) }]));
+    const pourDernier = ouverts.flatMap((j) => (v.estHauteur(j) || v.estHorsJournee(j, day) || c.jeux.indexOf(j.code) < 0 ? [] : [{ site: j.portail.site, g: c.jeux.indexOf(j.code) }]));
     const dernierDe = (l: LigneDuJour | null): { dernier?: { site: string; at: number } } => {
       let m: { site: string; at: number } | null = null;
       for (const { site, g } of pourDernier) {
@@ -248,7 +248,7 @@ export function creerClassementAmis(d: DepsClassementAmis) {
         journee: numeroDeJournee(day, v.premierJour),
         ouvert,
         vue: vueNom,
-        jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(v.estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}), ...(v.estArcade(j, day) ? { categorie: "arcade" as const } : {}) })),
+        jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom, ...(v.estHauteur(j) ? { unite: j.portail.unite ?? ("mm" as const) } : {}), ...v.categorieEcrite(j, day) })),
         filtre,
         classes,
         amis: amis.length,

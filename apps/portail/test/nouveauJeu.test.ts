@@ -6,6 +6,9 @@ import { validerFiche } from "@cdj/core/fiche";
 import { ENTREES_MECANIQUES, TEINTES, choisirTeinte, cloner, construirePassation, etatDuJeu, fichesExistantes, fichiersDuModele, lireOptions, planifier, portsLibres, principal, renommer, resume, verifierId } from "../../../scripts/nouveau-jeu.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { classer, contient } from "../../../scripts/kit-bout-en-bout.mjs";
+// @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
+import { MOTIF_PARTY, PARTY_CHEMINS_RETOUCHES, PARTY_MODELES, PARTY_SUPPRIMES, partyTexte, POLICE_PARTY } from "../../../scripts/nouveau-jeu-party.mjs";
+import { MOTIF_PARTY as MOTIF_FICHE, POLICE_PARTY as POLICE_FICHE } from "@cdj/core/fiche";
 
 // Lot K4g — (l'identifiant `banctest` : `scripts/jeu-fictif.mjs` pose lui-même un jeu `essai` dans sa copie) le générateur `npm run nouveau-jeu` (scripts/nouveau-jeu.mjs) : ses règles pures, son plan à blanc sur le dépôt réel (rien n'est écrit) et la preuve que ce qu'il ferait reste dans les zones du jeu.
 // Le vrai passage (génération, typage, tests, construction, e2e) est celui du job « Kit de bout en bout » (scripts/kit-bout-en-bout.mjs), sur une copie du dépôt.
@@ -25,9 +28,10 @@ describe("l'identifiant et les options", () => {
     expect(() => lireOptions([])).toThrow(/--id/);
     expect(() => lireOptions(["--id", "banctest", "--classement", "hauteur"])).toThrow(/score|temps/);
   });
-  it("lot A3 : `--categorie jour|arcade` (défaut : jour), tout autre mot est refusé", () => {
+  it("lot A3 : `--categorie jour|arcade|party` (défaut : jour), tout autre mot est refusé", () => {
     expect(lireOptions(["--id", "banctest"]).categorie).toBe("jour");
     expect(lireOptions(["--id", "banctest", "--categorie", "arcade"]).categorie).toBe("arcade");
+    expect(lireOptions(["--id", "banctest", "--categorie", "party"]).categorie).toBe("party"); // lot PA1
     expect(() => lireOptions(["--id", "banctest", "--categorie", "tournoi"])).toThrow(/jour|arcade/);
   });
 });
@@ -115,6 +119,36 @@ describe("le plan à blanc, sur le dépôt réel", () => {
     const plan = await planifier(lireOptions(["--id", "banctest", "--categorie", "arcade", "--a-blanc", "--sans-commandes"]));
     expect(plan.fiche.categorie).toBe("arcade");
     expect(validerFiche(plan.fiche, "banctest")).toEqual([]);
+  });
+  for (const classement of ["score", "temps"] as const) {
+    it(`lot PA1 : \`--categorie party\` (« ${classement} ») : une fiche Party valide sans thèmes ni jours figés, un jeu sans générateur de niveaux, sans robot et sans médailles`, async () => {
+      const plan = await planifier(lireOptions(["--id", "banctest", "--categorie", "party", "--classement", classement, "--a-blanc", "--sans-commandes"]));
+      expect(validerFiche(plan.fiche, "banctest")).toEqual([]);
+      expect(plan.fiche).toMatchObject({ categorie: "party", themes: [], identite: { police: POLICE_PARTY, motif: MOTIF_PARTY, illustration: "à choisir", aujourdhui: false }, musique: { scenes: ["menu"] } });
+      expect("jours" in plan.fiche).toBe(false);
+      expect(plan.fiche.classement.cumul).toBe(false);
+      const chemins: string[] = plan.creations.map((f: { chemin: string }) => f.chemin);
+      // Rien de ce que la catégorie n'a pas : ni générateur de niveaux, ni bot, ni médailles, ni thèmes, ni jours figés, ni script d'empreinte ou de figement.
+      expect(chemins.filter((f) => /generateur|\/bot\.ts|medailles|themes\.ts|\/jours\.ts|figer|empreintes|public\/jours/.test(f))).toEqual([]);
+      expect(chemins).toEqual(expect.arrayContaining(["packages/banctest-sim/src/tirage.ts", "apps/api/src/banctest.ts"]));
+      const texte = (chemin: string): string => plan.creations.find((f: { chemin: string }) => f.chemin === chemin).contenu;
+      expect(texte("apps/api/src/banctest.ts")).toContain("definirJeuParty");
+      expect(texte("apps/banctest/src/fiche.ts")).toContain('categorie: "party"');
+      expect(texte("apps/banctest/src/catalogue.fr.ts")).toContain('"theme.unique"');
+      expect(texte("apps/banctest/src/catalogue.fr.ts")).not.toMatch(/theme\.(clair|sombre)/);
+      expect(JSON.parse(texte("packages/banctest-sim/package.json")).scripts).not.toHaveProperty("figer:banctest");
+      // Aucun nom de « Cibles » ne reste, et tout reste dans les zones du jeu.
+      for (const f of plan.creations.filter((x: { chemin: string }) => !x.chemin.startsWith("docs/"))) expect(f.contenu ?? "", f.chemin).not.toMatch(/Cibles|CIBLES|cibles/);
+      const zones = (plan.fiche.zones.jeu as string[]).map(globVersRegExp);
+      expect(chemins.filter((ch) => !zones.some((z) => z.test(ch)) && ch !== "config/jeux/banctest.json")).toEqual([]);
+    });
+  }
+  it("lot PA1 : l'identité de la catégorie du générateur est celle de `@cdj/core/fiche`, et chaque retouche Party trouve son texte dans le modèle", () => {
+    expect({ POLICE_PARTY, MOTIF_PARTY }).toEqual({ POLICE_PARTY: POLICE_FICHE, MOTIF_PARTY: MOTIF_FICHE });
+    // `partyTexte` lève si une retouche ne trouve pas son texte : tous les fichiers retouchés passent.
+    for (const f of PARTY_CHEMINS_RETOUCHES as string[]) expect(() => partyTexte(f, readFileSync(join(RACINE, f), "utf8")), f).not.toThrow();
+    for (const f of PARTY_MODELES as string[]) expect(existsSync(join(RACINE, "scripts/modele-party", `${f}.modele`)), f).toBe(true);
+    for (const f of PARTY_SUPPRIMES as Set<string>) expect(existsSync(join(RACINE, f)), f).toBe(true); // ce qu'on retire existe bien dans le modèle
   });
   it("`principal --a-blanc` liste ce qu'il créerait, affiche les 5 étapes et n'écrit rien", async () => {
     const lignes: string[] = await principal(["--id", "banctest", "--a-blanc"]);

@@ -1,0 +1,68 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { daysFromCivil } from "@cdj/core";
+import { DUREE_TICKS, NB_CASES, NB_CIBLES, Partie, VARIANTE, VARIANTE_NOM, VARIANTES, dailyCibles, jouer, scoreParColonnes } from "../src/index";
+
+// Les deux variantes d'un jeu Party (lot K4g, moins le bot, les seuils et les médailles : un jeu Party n'en a pas), chacune par ses propres règles : `variante.ts` est le seul endroit qui les distingue. Ces tests
+// passent les DEUX variantes, quelle que soit celle du jeu : c'est ce qui garde le modèle du générateur (`npm run nouveau-jeu -- --categorie party --classement score|temps`).
+const c = dailyCibles(daysFromCivil(2026, 11, 4));
+const { score, temps } = VARIANTES;
+
+describe("variante « score »", () => {
+  it("compte une cible touchée dans sa fenêtre, ignore le reste", () => {
+    const p = new Partie(c, score);
+    const x = c.cibles[0]!;
+    while (p.tick < x.d - 1) p.avancer();
+    expect(p.toucher(x.c)).toBe(false); // pas encore apparue
+    p.avancer();
+    expect(p.toucher((x.c + 1) % NB_CASES)).toBe(false); // mauvaise case
+    expect(p.toucher(x.c)).toBe(true);
+    expect(p.toucher(x.c)).toBe(false); // déjà touchée
+    const r = p.resultat();
+    expect({ touches: r.touches, dernier: r.dernier, ratees: r.ratees }).toEqual({ touches: 1, dernier: x.d, ratees: 3 });
+  });
+  it("la partie dure 30 s ; un joueur vif touche tout", () => {
+    const r = jouer(c, score.joueur(c, () => 12), score);
+    expect({ touches: r.touches, dernier: r.dernier, ticks: r.ticks }).toEqual({ touches: NB_CIBLES, dernier: c.cibles[NB_CIBLES - 1]!.d + 12, ticks: DUREE_TICKS });
+  });
+  it("une touche après la cible ne compte plus", () => {
+    const x = c.cibles[0]!;
+    expect(jouer(c, [{ tick: x.f, c: x.c }], score).touches).toBe(0);
+    expect(jouer(c, [{ tick: x.f - 1, c: x.c }], score).touches).toBe(1);
+  });
+  it("classe les cibles touchées (↓) puis le tick de la dernière (↑), et écrit son score", () => {
+    expect(score.score({ touches: 17, dernier: 300 })).toEqual([17, 300]);
+    expect(scoreParColonnes({ touches: 17, dernier: 300 }, score)).toEqual({ touches: 17, dernier: 300 });
+    expect(score.formatScore([17], "fr")).toBe(`17 / ${NB_CIBLES}`);
+  });
+});
+
+describe("variante « temps »", () => {
+  it("la cible suivante apparaît tout de suite ; la partie finit quand toutes sont touchées", () => {
+    const vif = jouer(c, temps.joueur(c, () => 15), temps);
+    const hesite = jouer(c, temps.joueur(c, () => 15, (i) => i === 3 || i === 7), temps);
+    expect(vif.touches).toBe(NB_CIBLES);
+    expect(hesite.touches).toBe(NB_CIBLES);
+    expect(hesite.dernier).toBe(vif.dernier + 20);
+    expect(hesite.ratees).toBe(2);
+  });
+  it("une partie inachevée vaut 30 s ; le temps s'écrit en secondes", () => {
+    expect(temps.score({ touches: 3, dernier: 100 })).toEqual([DUREE_TICKS]);
+    expect(temps.formatScore([260], "fr")).toBe("8,67 s");
+    expect(temps.formatScore([260], "en")).toBe("8.67 s");
+  });
+});
+
+describe("la variante de ce jeu et sa fiche", () => {
+  const fiche = JSON.parse(readFileSync(new URL("../../../config/jeux/cibles.json", import.meta.url), "utf8")) as {
+    classement: { colonnes: { nom: string; sens: string }[]; unite: string; format: string; cumul: boolean };
+    medailles: { methode: string; bareme: number[]; plafondDiamant?: number };
+  };
+  it(`« ${VARIANTE_NOM} » : colonnes, unité, format et barème sont ceux de config/jeux/cibles.json`, () => {
+    expect(fiche.classement.colonnes.slice(0, VARIANTE.fiche.colonnes.length)).toEqual(VARIANTE.fiche.colonnes);
+    expect(fiche.classement.colonnes.slice(VARIANTE.fiche.colonnes.length).map((k) => k.nom)).toEqual(["submitted_at", "player_id"]);
+    expect({ unite: fiche.classement.unite, format: fiche.classement.format }).toEqual({ unite: VARIANTE.fiche.unite, format: VARIANTE.fiche.format });
+    expect(fiche.medailles.bareme).toEqual([...VARIANTE.fiche.bareme]);
+    expect(fiche.medailles.plafondDiamant).toBe(VARIANTE.fiche.plafondDiamant);
+  });
+});

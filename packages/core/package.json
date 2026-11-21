@@ -17,6 +17,8 @@
     "./fiche-sorties": "./src/ficheSorties.ts",
     "./favoris": "./src/favoris.ts",
     "./enveloppe": "./src/enveloppe.ts",
-    "./testing": "./testing/purity.ts"
+    "./graine": "./src/graine.ts",
+    "./testing": "./testing/purity.ts",
+    "./testing/fiche-party": "./testing/fichePartie.ts"
   }
 }
