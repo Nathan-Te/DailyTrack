@@ -70,23 +70,30 @@ export const VERSIONS_DES_JEUX = FICHES_SERVEUR.filter((f) => !f.temoin).flatMap
  * Les jeux de la chaîne, dans l'ordre des fiches : `{ id, nom, mode, dossier, registre, sim, versions, moduleEmpreinte, moduleRegistre?, figer?, preparer? }`. `mode` : `registre` (un fichier de plages,
  * `registre`) ou `fichier-par-jour` (un fichier par jour dans `dossier`) ; `sim` : le dossier de la simulation (`packages/<sim>`), où l'on voit si un code contient le jeu.
  */
-export const CHAINE = FICHES_CI.filter((f) => !f.temoin).map((f) => {
-  const { empreinte, registre, figer, preparer, apresPose } = f.jours.fabrication;
-  return {
-    id: f.id,
-    nom: NOMS_DES_JEUX[f.id],
-    mode: f.jours.registre ? "registre" : "fichier-par-jour",
-    dossier: f.jours.dossier,
-    registre: f.jours.registre,
-    sim: f.sim,
-    versions: FICHES_SERVEUR.find((x) => x.id === f.id).versions,
-    moduleEmpreinte: empreinte,
-    moduleRegistre: registre,
-    figer,
-    preparer,
-    apresPose,
-  };
-});
+// Lot PA1 : **un jeu Party n'a pas de jours à figer** (`jours` absent de sa fiche) : la chaîne l'ignore, comme le garde-fou des jours et l'étape `figer`. `chaineDesFiches` est pure (les projections en
+// paramètres) : le test (`apps/portail/test/partieChaine.test.ts`) lui passe une fiche Party.
+export function chaineDesFiches(fichesCI, fichesServeur) {
+  return fichesCI
+    .filter((f) => !f.temoin && f.jours)
+    .map((f) => {
+      const { empreinte, registre, figer, preparer, apresPose } = f.jours.fabrication;
+      return {
+        id: f.id,
+        nom: NOMS_DES_JEUX[f.id],
+        mode: f.jours.registre ? "registre" : "fichier-par-jour",
+        dossier: f.jours.dossier,
+        registre: f.jours.registre,
+        sim: f.sim,
+        versions: fichesServeur.find((x) => x.id === f.id).versions,
+        moduleEmpreinte: empreinte,
+        moduleRegistre: registre,
+        figer,
+        preparer,
+        apresPose,
+      };
+    });
+}
+export const CHAINE = chaineDesFiches(FICHES_CI, FICHES_SERVEUR);
 /** Un jeu de la chaîne d'après son identifiant ; une erreur claire s'il n'a pas de fiche. */
 export function jeuDeLaChaine(id) {
   const j = CHAINE.find((x) => x.id === id);

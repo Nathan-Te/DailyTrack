@@ -11,7 +11,7 @@ const racine = new URL("../../../", import.meta.url);
 const fiches = JSON.parse(readFileSync(new URL("config/jeux/projections/serveur.json", racine), "utf8")).jeux;
 const joursFiges = {};
 for (const f of fiches) {
-  if (!f.jours.dossier) continue;
+  if (!f.jours?.dossier) continue; // lot PA1 : un jeu Party n'a pas de jours figés
   const dossier = new URL(`${f.jours.dossier}/`, racine);
   joursFiges[f.id] = {};
   if (!existsSync(dossier)) continue;

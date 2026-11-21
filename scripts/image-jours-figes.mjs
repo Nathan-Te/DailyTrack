@@ -60,7 +60,7 @@ export async function controlerJeu({ jeu, jours, appel, environnement }) {
 
 export function jeuxAControler(racine = RACINE_DEPOT) {
   const ci = JSON.parse(readFileSync(join(racine, "config/jeux/projections/ci.json"), "utf8"));
-  return ci.jeux.filter((j) => j.jours.dossier).map((j) => ({ jeu: j, jours: joursDuDossier(join(racine, j.jours.dossier)) }));
+  return ci.jeux.filter((j) => j.jours?.dossier).map((j) => ({ jeu: j, jours: joursDuDossier(join(racine, j.jours.dossier)) }));
 }
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

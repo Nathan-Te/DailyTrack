@@ -25,8 +25,8 @@ describe("les fiches du dépôt", () => {
     expect(t.etatDepart).toBe("off");
     expect(t.classement).toMatchObject({ cumul: false, unite: "mm", format: "hauteur" });
     expect(t.classement.colonnes[0]).toEqual({ nom: "hauteur_mm", sens: "desc" });
-    expect(t.jours.mode).toBe("fichier-par-jour");
-    expect(t.jours.preuveInterditeEnProd).toBe(true);
+    expect(t.jours?.mode).toBe("fichier-par-jour");
+    expect(t.jours?.preuveInterditeEnProd).toBe(true);
   });
 
   it("les fichiers générés (projections et vues des paquets) sont à jour : `npm run fiches` sinon", () => {
@@ -136,9 +136,9 @@ describe("la validation refuse ce qui sortirait du jeu", () => {
   it("un jeu à la hauteur n'entre pas dans le cumul au temps", () => {
     refuse((f) => (f.classement.cumul = true), "seul un jeu au temps entre dans le cumul");
   });
-  it("lot A3 : la catégorie est `jour` ou `arcade` ; un jeu d'arcade n'entre jamais dans le cumul ; `categorieDepuis` est une date", () => {
+  it("lot A3 : la catégorie est `jour`, `arcade` ou `party` ; un jeu d'arcade n'entre jamais dans le cumul ; `categorieDepuis` est une date", () => {
     refuse((f) => delete f.categorie, "categorie");
-    refuse((f) => (f.categorie = "tournoi"), "categorie : `jour` ou `arcade`");
+    refuse((f) => (f.categorie = "tournoi"), "categorie : `jour`, `arcade` ou `party`");
     refuse((f) => (f.categorieDepuis = "demain"), "categorieDepuis");
     refuse((f) => (f.categorieDepuis = 20261103), "categorieDepuis");
     // Un jeu d'arcade a `classement.cumul: false` (règle de la catégorie, en plus de celle de l'unité).
@@ -311,7 +311,7 @@ describe("jours.fabrication (lot K4b) : la chaîne de « Mettre en production »
     return validerFiche(f, id).join("\n");
   };
   it("Tower : un module d'empreinte, un script qui fige les jours protégés et un script qui prépare (fenêtre, garde)", () => {
-    expect(lireFiche(brut("tower"), "tower").jours.fabrication).toEqual({
+    expect(lireFiche(brut("tower"), "tower").jours?.fabrication).toEqual({
       empreinte: "apps/api/scripts/tower-empreintes.ts",
       figer: { paquet: "@cdj/tower-sim", script: "figer:tower", forme: "jours-proteges" },
       preparer: { paquet: "@cdj/tower-sim", script: "preparer:tower", joursApresBascule: 14, garde: "packages/tower-sim/test/jours.test.ts" },

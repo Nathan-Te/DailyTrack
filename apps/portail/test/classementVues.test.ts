@@ -35,6 +35,11 @@ describe("les onglets", () => {
     expect(onglets([JEUX[0]!]).map((o) => o.vue)).toEqual(["cumul", "track"]);
   });
 
+  it("lot PA1 : l'onglet d'un jeu Party vient après l'arcade, sous le même séparateur, et jamais dans le cumul", () => {
+    const l = onglets([{ jeu: "fete", site: "fete", nom: "Fête", categorie: "party" }, { jeu: "tower", site: "tower", nom: "Tower", categorie: "arcade" }, ...JEUX]);
+    expect(l.map((o) => o.vue).slice(-2)).toEqual(["tower", "fete"]);
+    expect(l.filter((o) => o.arcade).map((o) => o.vue)).toEqual(["tower", "fete"]);
+  });
   it("lot A3 : les onglets des jeux d'arcade viennent après ceux du jour, marqués `arcade` (la barre y met le séparateur), même s'ils sont avant dans l'ordre du registre", () => {
     const l = onglets([{ jeu: "tower", site: "tower", nom: "Tower", categorie: "arcade" }, ...JEUX]);
     expect(l.map((o) => o.vue)).toEqual(["cumul", "track", "jump", "tower"]);

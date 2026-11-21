@@ -37,9 +37,10 @@ export interface Onglet {
  * Les onglets d'un jour : Cumulé, puis un par jeu du jour qui existe ce jour-là, dans l'ordre du registre, puis (lot A3) **ceux des jeux d'arcade**, que la barre sépare par « Arcade ». Un jeu d'arcade
  * n'est jamais dans « Cumulé » ; il garde ses vues Tous, Amis, Mon groupe et Groupes.
  */
-export function onglets(jeux: readonly { jeu: string; site: string; nom: string; categorie?: "arcade" }[]): Onglet[] {
-  const un = (j: (typeof jeux)[number]): Onglet => ({ vue: j.site, jeu: j.jeu, nom: j.nom, ...(j.categorie === "arcade" ? { arcade: true as const } : {}) });
-  return [{ vue: VUE_CUMUL }, ...jeux.filter((j) => j.categorie !== "arcade").map(un), ...jeux.filter((j) => j.categorie === "arcade").map(un)];
+export function onglets(jeux: readonly { jeu: string; site: string; nom: string; categorie?: "arcade" | "party" }[]): Onglet[] {
+  const un = (j: (typeof jeux)[number]): Onglet => ({ vue: j.site, jeu: j.jeu, nom: j.nom, ...(j.categorie === "arcade" || j.categorie === "party" ? { arcade: true as const } : {}) });
+  const horsJour = (j: (typeof jeux)[number]) => j.categorie === "arcade" || j.categorie === "party"; // lot PA1 : l'onglet d'un jeu Party vient après l'arcade (même séparateur)
+  return [{ vue: VUE_CUMUL }, ...jeux.filter((j) => !horsJour(j)).map(un), ...jeux.filter((j) => j.categorie === "arcade").map(un), ...jeux.filter((j) => j.categorie === "party").map(un)];
 }
 
 /** L'onglet voisin au clavier (flèches, Début, Fin), en bouclant ; `null` pour une autre touche. */

@@ -10,7 +10,7 @@ import { creerI18n, type I18n } from "./i18n";
 import { creerDessin, creerFond, habillerPage } from "./peau";
 import { baseDeLaPage, choisirJour, lireOptions, serieLocale, type OptionsUrl } from "./session";
 import type { ClassementJeu } from "./source";
-import type { DefinitionJeu, FicheClient, OptionsBrancher } from "./types";
+import { type DefinitionJeu, type DefinitionJeuParty, definitionDeParty, type FicheClient, type OptionsBrancher } from "./types";
 
 // Lot K4f — **`brancherJeu(fiche, definition, options)`** : l'assemblage côté jeu d'un jeu neuf. Le jeu donne sa fiche (le sous-ensemble que lit le client), sa définition (simulation, rendu, aide) et ses
 // catalogues ; le kit branche tout le reste, à partir des briques de `@cdj/kit` et `@cdj/ui` : la génération de données, l'interrupteur et l'aperçu, la langue, l'accueil (record, série, classement du jour, décompte,
@@ -29,7 +29,9 @@ export interface JeuBranche {
   options: OptionsUrl;
 }
 
-export async function brancherJeu<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsBrancher<C>): Promise<JeuBranche> {
+export async function brancherJeu<C>(fiche: FicheClient, definition: DefinitionJeu<C> | DefinitionJeuParty<C>, o: OptionsBrancher<C>): Promise<JeuBranche> {
+  // Lot PA1 : un jeu Party (`fiche.categorie`) n'écrit ni thème, ni seuils, ni médailles, ni fantôme : le kit complète sa définition.
+  const def: DefinitionJeu<C> = fiche.categorie === "party" ? definitionDeParty(definition as DefinitionJeuParty<C>) : (definition as DefinitionJeu<C>);
   const options = lireOptions(location.search);
   noterGeneration(() => options.api === "demo");
   // La manette : le moteur des menus se charge à la première manette (jamais avant).

@@ -17,9 +17,11 @@ import { fileURLToPath } from "node:url";
 import { ENTREES_MECANIQUES, FICHIERS_GENERES } from "./nouveau-jeu.mjs";
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), "..");
-export const JEUX = [
+/** Lot PA1 : `essaiparty` est un jeu **Party** (`--categorie party` : sans générateur de niveaux, sans thèmes, sans robot, sans jours figés) ; les deux autres sont des jeux du jour. */
+export const TOUS_LES_JEUX = [
   { id: "essai", classement: "score" },
   { id: "essaitemps", classement: "temps" },
+  { id: "essaiparty", classement: "score", categorie: "party" },
 ];
 /** Les tests de la plateforme qui lisent « les jeux des fiches » : ils parcourent le jeu généré comme les autres. */
 export const TESTS_DE_LA_PLATEFORME = [
@@ -43,7 +45,9 @@ const option = (nom) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const source = resolve(option("--source") ?? RACINE);
-const jeuxE2e = option("--e2e") ? [option("--e2e")] : JEUX.map((j) => j.id); // les deux par défaut (≈ 10 s chacun) ; `--e2e essaitemps` : un seul
+/** `--jeux essaiparty` (ou `essai,essaitemps`) : ne génère que ceux-là (essais locaux) ; la CI les génère tous. */
+export const JEUX = option("--jeux") ? TOUS_LES_JEUX.filter((j) => option("--jeux").split(",").includes(j.id)) : TOUS_LES_JEUX;
+const jeuxE2e = option("--e2e") ? [option("--e2e")] : JEUX.map((j) => j.id); // tous par défaut (≈ 10 s chacun) ; `--e2e essaitemps` : un seul
 
 const globVersRegExp = (glob) => new RegExp(`^${glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\u0000").replace(/\*/g, "[^/]*").replace(/\u0000/g, ".*")}$`);
 
@@ -116,7 +120,7 @@ export function classer(avant, apres, racine, sauve, zonesParJeu) {
  * Lot K7 — **un lot de jeu qui change ses thèmes et crée ses CLAUDE.md**, joué sur un jeu généré : un thème ajouté (`aube`), un thème renommé (le nom de `sombre`, dans les deux langues), les deux CLAUDE.md du jeu.
  * Tout reste dans les zones du jeu (sa fiche, `apps/<id>/src`, ses CLAUDE.md) : les noms des thèmes sont dans la fiche, le catalogue du portail n'est pas touché. Rend la liste des fichiers créés ou réécrits.
  */
-export function changerLesThemes(copie, id) {
+export function changerLesThemes(copie, id, categorie = "jour") {
   const ecrire = (chemin, f) => {
     const avant = readFileSync(join(copie, chemin), "utf8");
     const apres = f(avant);
@@ -125,7 +129,8 @@ export function changerLesThemes(copie, id) {
     return chemin;
   };
   const touches = [];
-  touches.push(
+  // Lot PA1 : un jeu Party n'a pas de thèmes (la fiche n'en a aucun, il n'y a rien à ajouter ni à renommer) : seuls ses CLAUDE.md sont créés.
+  if (categorie !== "party") touches.push(
     ecrire(`config/jeux/${id}.json`, (t) => {
       const fiche = JSON.parse(t);
       fiche.themes = [...fiche.themes, "aube"];
@@ -136,7 +141,7 @@ export function changerLesThemes(copie, id) {
     }),
     ecrire(`apps/${id}/src/fiche.ts`, (t) => t.replace('themes: ["clair", "sombre"]', 'themes: ["clair", "sombre", "aube"]')),
   );
-  for (const [langue, nom, phrase] of [["fr", "Aube (à remplacer)", "À remplacer : une phrase d'accroche pour le thème « Aube »."], ["en", "Dawn (to replace)", "To replace: a tagline for the “Dawn” theme."]])
+  if (categorie !== "party") for (const [langue, nom, phrase] of [["fr", "Aube (à remplacer)", "À remplacer : une phrase d'accroche pour le thème « Aube »."], ["en", "Dawn (to replace)", "To replace: a tagline for the “Dawn” theme."]])
     touches.push(
       ecrire(`apps/${id}/src/catalogue.${langue}.ts`, (t) =>
         t
@@ -165,7 +170,7 @@ function lancer(nom, cmd, argv, cwd, env = {}) {
   return ok;
 }
 function finir(copie, ok, garder) {
-  const lignes = ["### Kit de bout en bout", "", "| étape | résultat | durée |", "|---|---|---|", ...etapes.map((e) => `| ${e.nom} | ${e.ok ? "✅" : "❌"} | ${e.duree} |`), "", ok ? "Les deux jeux générés (`essai` au score, `essaitemps` au temps) passent : typage, fiches, unitaires, construction, budgets, e2e, aucun fichier hors zones." : "**Rouge** : voir l'étape en échec ci-dessus (scripts/kit-bout-en-bout.mjs, docs/plateforme/lots/lot-K4g-generateur-et-bout-en-bout.md)."];
+  const lignes = ["### Kit de bout en bout", "", "| étape | résultat | durée |", "|---|---|---|", ...etapes.map((e) => `| ${e.nom} | ${e.ok ? "✅" : "❌"} | ${e.duree} |`), "", ok ? "Les jeux générés (`essai` au score, `essaitemps` au temps, `essaiparty` en catégorie Party) passent : typage, fiches, unitaires, construction, budgets, e2e, aucun fichier hors zones." : "**Rouge** : voir l'étape en échec ci-dessus (scripts/kit-bout-en-bout.mjs, docs/plateforme/lots/lot-K4g-generateur-et-bout-en-bout.md)."];
   console.log("\n" + lignes.join("\n"));
   if (resume) appendFileSync(resume, lignes.join("\n") + "\n");
   if (garder) console.log(`copie gardée : ${copie}`);
@@ -187,7 +192,7 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
   console.log(`copie : ${copie} (${duree(t0)})`);
   const changerLesThemesEtRegenerer = (id) => {
     try {
-      const touches = changerLesThemes(copie, id);
+      const touches = changerLesThemes(copie, id, JEUX.find((j) => j.id === id)?.categorie);
       console.log(`  ${id} : thèmes changés, fichiers écrits : ${touches.join(", ")}`);
     } catch (e) {
       etapes.push({ nom: `${id} : thèmes changés et CLAUDE.md créés`, ok: false, duree: "0 s" });
@@ -202,7 +207,7 @@ if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
     return ok;
   };
 
-  for (const j of JEUX) if (ok) etape(lancer(`génération de ${j.id}`, "node", ["scripts/nouveau-jeu.mjs", "--id", j.id, "--classement", j.classement], copie));
+  for (const j of JEUX) if (ok) etape(lancer(`génération de ${j.id}`, "node", ["scripts/nouveau-jeu.mjs", "--id", j.id, "--classement", j.classement, ...(j.categorie ? ["--categorie", j.categorie] : [])], copie));
   if (ok) {
     // Prudent : le générateur ne réécrit jamais un jeu qui existe ; la passation, elle, se remet à jour à la demande.
     const t1 = Date.now();
