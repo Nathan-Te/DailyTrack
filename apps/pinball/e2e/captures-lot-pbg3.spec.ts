@@ -5,14 +5,14 @@ import { appareil, lancer } from "./appareil";
 //   CAPTURES=1 DOSSIER=/chemin npx playwright test captures-lot-pbg3 -g "porte"      (dans `apps/pinball`, après `npm run build`) → la porte fermée puis ouverte, haute et basse qualité, 390 × 844
 //   CAPTURES=1 DOSSIER=/chemin npx playwright test captures-lot-pbg3 -g "poteau"     → le poteau rentré, avec une lampe, armé (`?essai=poteau`), puis la bille renvoyée
 //   CAPTURES=1 DOSSIER=/chemin npx playwright test captures-lot-pbg3 -g "aiguillage" → la lame vers le verrou (`?essai=verrou`) et la bille qui vole, puis vers l'élément du thème (`?essai=multibille`)
-//   CAPTURES=1 MESURE=1 PLAN=doublette npx playwright test captures-lot-pbg3 -g mesure → la fluidité, comme au PBG2 (fil principal, processeur ralenti ×4, 390 × 844, bloom compris), porte ouverte et poteau armé
+//   CAPTURES=1 MESURE=1 PLAN=B npx playwright test captures-lot-pbg3 -g mesure → la fluidité, comme au PBG2 (fil principal, processeur ralenti ×4, 390 × 844, bloom compris), porte ouverte et poteau armé
 const dossier = process.env.DOSSIER ?? "captures";
 const prefixe = process.env.PREFIXE ?? "pbg3";
 const THEMES = ["foire", "ocean", "espace", "volcan"] as const;
 
 for (const qualite of ["haute", "basse"] as const) {
   test(`porte ${qualite} 390 × 844`, async ({ browser }) => {
-    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=doublette&theme=volcan&qualite=${qualite}&essai=porte`);
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=B&theme=volcan&qualite=${qualite}&essai=porte`);
     await page.setViewportSize({ width: 390, height: 844 });
     await lancer(page);
     await page.evaluate(() => window.__pinball!.contours(false));
@@ -20,7 +20,7 @@ for (const qualite of ["haute", "basse"] as const) {
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${dossier}/${prefixe}-porte-ouverte-${qualite}.png` });
     // fermée : la même table sans l'essai
-    await page.goto(`/?debug&manuel&tactile=1&plan=doublette&theme=volcan&qualite=${qualite}`);
+    await page.goto(`/?debug&manuel&tactile=1&plan=B&theme=volcan&qualite=${qualite}`);
     await lancer(page);
     await page.evaluate(() => window.__pinball!.contours(false));
     await page.evaluate(() => window.__jeu.avancer(10));
@@ -54,7 +54,7 @@ for (const qualite of ["haute", "basse"] as const) {
   });
   test(`aiguillage ${qualite} 390 × 844`, async ({ browser }) => {
     for (const essai of ["verrou", "multibille"] as const) {
-      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=tremplin&theme=ocean&qualite=${qualite}&essai=${essai}`);
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=C&theme=ocean&qualite=${qualite}&essai=${essai}`);
       await page.setViewportSize({ width: 390, height: 844 });
       await lancer(page);
       await page.evaluate(() => window.__pinball!.contours(false));
@@ -83,7 +83,7 @@ for (const qualite of ["haute", "basse"] as const) {
 // La fluidité : la porte ouverte, le poteau armé et l'aiguillage vers le verrou, trois billes (multibille) sur le plan donné.
 for (const theme of process.env.MESURE ? THEMES : []) {
   test(`mesure ${theme}`, async ({ browser }) => {
-    const plan = process.env.PLAN ?? "doublette";
+    const plan = process.env.PLAN ?? "B";
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=${plan}&theme=${theme}&qualite=haute&essai=multibille`);
     await page.setViewportSize({ width: 390, height: 844 });
     await lancer(page);

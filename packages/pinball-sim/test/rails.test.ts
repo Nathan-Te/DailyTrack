@@ -148,7 +148,7 @@ describe("sur un rail : une autre couche", () => {
 
 describe("trop lente sur le rail : la bille redescend par l'entrée", () => {
   it("avec un frottement fort, prise à la vitesse minimale elle n'atteint pas le sommet : elle ressort par l'entrée, vers l'arrière, sans point ni combo", () => {
-    const r = { ...copierReglages(), rampeFrottement: 1500 };
+    const r = { ...copierReglages(), rampeFrottement: 3000 };
     const c = contenuDe("B");
     const p = versLaBouche(c, 0, r.rampeVitesseMin + 20, 0, r);
     const s = jusquaLaSortie(p, 6000);

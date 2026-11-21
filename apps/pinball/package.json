@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "schemas": "esbuild tools/schemas.ts --bundle --platform=node --format=esm --target=node22 --external:playwright --outfile=dist/schemas.mjs --log-level=warning && node dist/schemas.mjs"
   },
   "dependencies": {
     "@cdj/clock": "*",

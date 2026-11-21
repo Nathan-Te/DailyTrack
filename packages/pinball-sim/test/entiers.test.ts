@@ -46,7 +46,7 @@ describe("tout l'état d'une partie est entier", () => {
 
 describe("lot PBG2 : tout l'état d'une multibille est entier", () => {
   it("trois billes en jeu, des collisions entre elles, un jackpot : chaque nombre de la partie et de chaque bille est un entier", () => {
-    const p = new Partie(dailyPinball(daysFromCivil(2026, 11, 9), undefined, "ocean", "doublette"));
+    const p = new Partie(dailyPinball(daysFromCivil(2026, 11, 9), undefined, "ocean", "B"));
     p.lancerLaMultibille();
     p.dansLanceur = false;
     p.x = 184 * UNITE;
