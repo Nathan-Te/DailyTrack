@@ -14,26 +14,26 @@ const poseDe = (p: Partie, theme: ThemePinball, emplacement: number): { x: numbe
 };
 
 describe("les éléments de chaque table sont aux coordonnées dessinées", () => {
-  it("A : trois bumpers (152, 152), (214, 152), (183, 192) ; le tir central (190, 285) ; la banque du flanc droit (cibles en x = 329, y = 340, 366, 392 ; fond en x = 340) ; le spinner du couloir de l'orbite (36, 275)", () => {
+  it("A : trois bumpers (152, 152), (214, 152), (183, 192) ; le tir central (190, 285) ; la banque du flanc droit (dessin : cibles en x = 329, y = 340, 366, 392, fond en x = 340 ; posée à (+6, −6) : x = 335, y = 334, 360, 386, fond en x = 346) ; le spinner du couloir de l'orbite (36, 275)", () => {
     const p = table("A");
     expect(centres(p.table.bumpers)).toEqual([[152, 152], [214, 152], [183, 192]]);
     expect(p.table.bumpers.every((b) => px(b.r) === 17)).toBe(true);
     expect(poseDe(p, "foire", 0)).toEqual({ x: 190, y: 285 });
     expect(centres(p.table.plateaux)).toEqual([[190, 285]]);
     const banque = p.table.banques[0]!.map((k) => p.table.murs[k]!);
-    expect(banque.map((s) => [px(s.ax), px(s.ay), px(s.bx), px(s.by)])).toEqual([[329, 330, 329, 350], [329, 356, 329, 376], [329, 382, 329, 402]]);
+    expect(banque.map((s) => [px(s.ax), px(s.ay), px(s.bx), px(s.by)])).toEqual([[335, 324, 335, 344], [335, 350, 335, 370], [335, 376, 335, 396]]);
     const fond = p.table.murs[p.table.banques[0]![2]! + 1]!;
-    expect([px(fond.ax), px(fond.ay), px(fond.bx), px(fond.by)]).toEqual([340, 322, 340, 408]);
+    expect([px(fond.ax), px(fond.ay), px(fond.bx), px(fond.by)]).toEqual([346, 316, 346, 402]);
     expect(centres(p.table.spinners)).toEqual([[36, 275]]);
     // ni rampe, ni aiguillage, ni mini-batteur ; l'orbite seule, avec sa porte
     expect([p.table.rails.map((r) => r.genre), p.table.aiguillage, p.table.mini, p.table.passage !== null]).toEqual([["orbite"], null, null, true]);
   });
-  it("B : trois bumpers (222, 150), (266, 162), (238, 196) ; le tir central (176, 300) ; la banque en diagonale (88, 267), (112, 255), (136, 243) inclinée de −28° ; la rampe droite et son aiguillage ; l'orbite et sa porte", () => {
+  it("B : trois bumpers (222, 150), (266, 162), (238, 196) ; le tir central (176, 300) ; la banque en diagonale (dessin : (88, 267), (112, 255), (136, 243), posée à (+12, −6) : (100, 261), (124, 249), (148, 237)) inclinée de −28° ; la rampe droite et son aiguillage ; l'orbite et sa porte", () => {
     const p = table("B");
     expect(centres(p.table.bumpers)).toEqual([[222, 150], [266, 162], [238, 196]]);
     expect(poseDe(p, "foire", 0)).toEqual({ x: 176, y: 300 });
     const milieux = p.table.banques[0]!.map((k) => p.table.murs[k]!).map((s) => [Math.round(px(s.ax + s.bx) / 2), Math.round(px(s.ay + s.by) / 2)]);
-    expect(milieux).toEqual([[88, 267], [112, 255], [136, 243]]);
+    expect(milieux).toEqual([[100, 261], [124, 249], [148, 237]]);
     const s = p.table.murs[p.table.banques[0]![1]!]!;
     const angle = (Math.atan2(s.by - s.ay, s.bx - s.ax) * 180) / Math.PI;
     // −28° dessinés ; les extrémités des cibles sont tronquées en pixels entiers (±8, ∓4 pour ±10 px) : −26,6° construits

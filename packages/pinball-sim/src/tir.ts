@@ -103,6 +103,7 @@ export class PremierContact {
   /** Lot PBT1 : la porte est celle de l'orbite (sur sa bouche) : la franchir n'est pas la fin du tir, la bille est prise ensuite par le rail ; si elle ne le mène pas à son bout, le tir compte pour la porte. */
   private readonly porteDeLOrbite: boolean;
   private porteVue = false;
+  private manegeVu = false;
   constructor(table: Table, theme: Contenu["theme"]) {
     this.porteDeLOrbite = table.passage !== null && table.rails.some((r) => r.genre === "orbite");
     const types = MODULES_DE_MISSION[MISSION_DU_THEME[theme]] as readonly string[];
@@ -121,15 +122,25 @@ export class PremierContact {
     this.railAvant = 0;
     this.passages = p.passages;
     this.porteVue = false;
+    this.manegeVu = false;
   }
 
   /** L'étiquette d'un tir qui n'a rien touché de plus : `porte` si la bille a franchi la porte de l'orbite sans mener l'orbite à son bout, sinon `rien`. */
   fin(): string {
-    return this.porteVue ? "porte" : "rien";
+    return this.manegeVu ? "mission" : this.porteVue ? "porte" : "rien";
   }
 
-  /** À appeler après chaque pas : l'étiquette du premier élément touché, ou `null`. */
+  /**
+   * À appeler après chaque pas : l'étiquette du premier élément touché, ou `null`. **Lot PBT1 : le manège ne arrête pas la bille** (elle le traverse en tournant : une poussée tangentielle) — le franchir n'est pas la fin du tir : une bille
+   * qui le traverse puis touche un autre objectif compte pour les deux (`mission+verrou`, `plusLongueSerie` lit chaque nom) ; sans autre contact, le tir compte pour la mission.
+   */
   voir(p: Partie): string | null {
+    const e = this.voirBrut(p);
+    if (e === null || e === "mission" && !this.manegeVu) return e;
+    return this.manegeVu && e !== "mission" ? `mission+${e}` : e;
+  }
+
+  private voirBrut(p: Partie): string | null {
     const t = p.table;
     if (this.rail >= 0) {
       if (p.railsFaits[this.rail]! > this.railAvant) return nomDuRail(t, this.rail);
@@ -162,7 +173,8 @@ export class PremierContact {
           touche = p.captif > 0 && p.captifDe === q.rang;
           break;
         case "manege":
-          touche = p.manegeSecteur[q.rang]! >= 0;
+          // le manège se traverse : on note qu'il a été franchi et le tir continue
+          if (p.manegeSecteur[q.rang]! >= 0) this.manegeVu = true;
           break;
         case "tourbillon":
           touche = p.captif > 0 && p.captifTb === q.rang;
@@ -266,7 +278,7 @@ export function plusLongueSerie(etiquettes: readonly string[], cible: string): n
   let pire = 0;
   let serie = 0;
   for (const e of etiquettes) {
-    serie = e === cible ? serie + 1 : 0;
+    serie = e === cible || (e.length > cible.length && e.includes("+") && e.split("+").includes(cible)) ? serie + 1 : 0;
     if (serie > pire) pire = serie;
   }
   return pire;
@@ -278,6 +290,8 @@ export function objectifsDeLaTable(table: Table): string[] {
   if (table.verrou >= 0) o.push("verrou");
   table.rails.forEach((_, i) => o.push(nomDuRail(table, i)));
   if (table.passage) o.push("porte");
+  // lot PBT1 : la banque de cibles est un tir numéroté de chaque table (elle ouvre la porte) : sa fenêtre compte aussi
+  for (const q of table.poses) if (q.type === "cibles") o.push(nomDuModule(q));
   return o;
 }
 

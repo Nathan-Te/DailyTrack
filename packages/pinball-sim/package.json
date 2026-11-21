@@ -23,6 +23,7 @@
     "chercher-verrou:pinball": "esbuild tools/chercher-verrou.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/chercher-verrou.mjs --log-level=warning && node dist/chercher-verrou.mjs",
     "chercher-orbite:pinball": "esbuild tools/chercher-orbite.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/chercher-orbite.mjs --log-level=warning && node dist/chercher-orbite.mjs",
     "regler-rampe:pinball": "esbuild tools/regler-rampe.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/regler-rampe.mjs --log-level=warning && node dist/regler-rampe.mjs",
+    "regler-banque:pinball": "esbuild tools/regler-banque.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/regler-banque.mjs --log-level=warning && node dist/regler-banque.mjs",
     "tolerance:pinball": "esbuild tools/tolerance.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/tolerance.mjs --log-level=warning && node dist/tolerance.mjs",
     "vitesse-trou:pinball": "esbuild tools/vitesse-trou.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/vitesse-trou.mjs --log-level=warning && node dist/vitesse-trou.mjs",
     "fenetres:pinball": "esbuild tools/fenetres.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/fenetres.mjs --log-level=warning && node dist/fenetres.mjs"

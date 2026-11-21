@@ -15,6 +15,12 @@ function deplacer(dx: number, dy: number) {
     for (const g of plan.guides) if (g.genre === "bouche") for (const p of g.points) { p[0] += dx; p[1] += dy; }
     plan.rampes[0].points[0][0] += dx; plan.rampes[0].points[0][1] += dy;
   }
+  if (quoi === "banque") {
+    const e = plan.emplacements[3];
+    e.x += dx; e.y += dy;
+    for (const c of e.banque.cibles) { c[0] += dx; c[1] += dy; c[2] += dx; c[3] += dy; }
+    const f = e.banque.fond; f[0] += dx; f[1] += dy; f[2] += dx; f[3] += dy;
+  }
   if (quoi === "orbite") {
     plan.porte.y += dy; plan.guides[0].points[0][1] += dy; // la bouche du couloir monte ou descend
   }
