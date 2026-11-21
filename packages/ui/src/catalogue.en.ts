@@ -107,7 +107,7 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "erreur.sim_version": "A new version of the game is out: reload the page.",
   "erreur.version": "A new version of the game is out: reload the page.",
   "erreur.no_ghost": "No ghost to show.",
-  "erreur.not_party_of_the_day": "This is not today's Party game: it is free play, with no leaderboard.",
+  "erreur.not_party_of_the_day": "Free play: not today's Party game.",
   "erreur.not_ranked": "This ghost unlocks once you are ranked that day.",
   "erreur.invalid_session": "Invalid Room session.",
   "erreur.unknown_session": "This Room session is over.",

@@ -119,7 +119,7 @@ const fr = {
   "erreur.sim_version": "Une nouvelle version du jeu est disponible : recharge la page.",
   "erreur.version": "Une nouvelle version du jeu est disponible : recharge la page.",
   "erreur.no_ghost": "Pas de fantôme à montrer.",
-  "erreur.not_party_of_the_day": "Ce n'est pas le jeu Party du jour : il se joue librement, sans classement.",
+  "erreur.not_party_of_the_day": "Pas le jeu Party du jour.",
   "erreur.not_ranked": "Ce fantôme se débloque quand tu es classé ce jour-là.",
   "erreur.invalid_session": "Session du Salon invalide.",
   "erreur.unknown_session": "Cette session du Salon est terminée.",

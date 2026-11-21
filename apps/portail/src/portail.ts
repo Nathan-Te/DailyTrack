@@ -47,6 +47,7 @@ import {
   visibiliteDeLaPage,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
+import { CATALOGUE_PARTY } from "./catalogueParty";
 import { lienCommunaute } from "@cdj/ui/src/liensCommunaute";
 import { avancement, baseApi, compteAujourdhui, formatCompte, lireJour, prochainMinuit, type AmiDuJour, type Etat, type JeuDuJour, type JourDeSemaine, type Lecture, type LigneEntreAmis } from "./jour";
 import { choixPourDemain, epinglesEnTete } from "./mesJeux";
@@ -109,7 +110,9 @@ let surveillanceActive = false;
 /** Le bandeau de l'écran, gardé tant que le message et la langue ne changent pas (le délai de 10 s de « Important » ne redémarre pas à chaque rendu). */
 let bandeauGarde: { id: number; langue: Langue; noeud: HTMLElement } | null = null;
 
-const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
+// Lot PA1b : le catalogue de l'accueil = celui du portail + les textes de la section « Party » (fichier à part : la page des classements ne les paie pas).
+const CATALOGUE_ACCUEIL = { fr: { ...CATALOGUE_PORTAIL.fr, ...CATALOGUE_PARTY.fr }, en: { ...CATALOGUE_PORTAIL.en, ...CATALOGUE_PARTY.en } } as typeof CATALOGUE_PORTAIL & { readonly fr: typeof CATALOGUE_PARTY.fr; readonly en: typeof CATALOGUE_PARTY.en };
+const traduire = (l: Langue) => traducteur(l, CATALOGUE_ACCUEIL, CATALOGUE_COMMUN);
 type T = ReturnType<typeof traduire>;
 type Cle = Parameters<T["t"]>[0];
 /** Une clé calculée (thème, réplique, code d'erreur du serveur) : connue des catalogues, ou `null`. */
