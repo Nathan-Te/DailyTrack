@@ -16,6 +16,10 @@ const fr = {
   "portail.brouillon": "Brouillon",
   // Lot F1 : « Mes jeux » — les jeux épinglés en haut, les autres en cartouches compactes.
   "portail.arcade.titre": "Arcade",
+  "portail.party.titre": "Party",
+  "portail.party.classe": "Classé aujourd'hui",
+  "portail.party.libre": "Jeu libre",
+  "portail.party.libreLe": "Jeu libre · classé le {date}",
   "portail.favoris.invite": "Touche l'étoile pour garder tes jeux en haut.",
   "portail.favoris.demain": "Ton choix compte pour ta journée à partir de demain.",
   "portail.favoris.echec": "Ton choix n'a pas pu être enregistré. Réessaie dans un instant.",
@@ -101,6 +105,7 @@ const fr = {
   "portail.semaine.rien": "rien de joué",
   "portail.semaine.avenir": "à venir",
   "portail.arcade.sous": "Un classement par jeu, pour le plaisir. Ces jeux ne comptent pas dans ta journée.",
+  "portail.party.sous": "Un jeu en tête chaque jour, lui seul est classé ; les autres se jouent librement.",
   // Lot U1, partie 2 : la colonne de droite
   "portail.journee.titre": "Ta journée",
   "portail.vue.aria": "Classement à montrer",
@@ -136,6 +141,10 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.jeux.titre": "Today's games",
   "portail.brouillon": "Draft",
   "portail.arcade.titre": "Arcade",
+  "portail.party.titre": "Party",
+  "portail.party.classe": "Ranked today",
+  "portail.party.libre": "Free play",
+  "portail.party.libreLe": "Free play · ranked on {date}",
   "portail.favoris.invite": "Tap the star to keep your games at the top.",
   "portail.favoris.demain": "Your choice counts for your day from tomorrow.",
   "portail.favoris.echec": "Your choice couldn't be saved. Try again in a moment.",
@@ -218,6 +227,7 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.semaine.rien": "nothing played",
   "portail.semaine.avenir": "coming up",
   "portail.arcade.sous": "A leaderboard for each game, just for fun. These games don't count towards your day.",
+  "portail.party.sous": "One game leads each day and only it is ranked; the others are free play.",
   // Lot U1, part 2: the right-hand column
   "portail.journee.titre": "Your day",
   "portail.vue.aria": "Leaderboard to show",

@@ -143,6 +143,8 @@ export interface Jour {
   maintenant: string;
   prochainJour: string;
   jeux: JeuDuJour[];
+  /** Lot PA1b : le tour de rôle des jeux Party — le dossier du jeu Party du jour (`null` : aucun) et la prochaine date (`AAAA-MM-JJ`) de chaque jeu Party en lice. Absent tant que le serveur n'a aucun jeu Party. */
+  party?: { jeu: string | null; prochains: Record<string, string> };
   joueur?: JoueurDuJour;
   /** Lot N2 : la dernière nouveauté publiée (`null` : aucune, la ligne n'apparaît pas) et le message en direct (`null` : aucun) — dans la même réponse, jamais une requête de plus. */
   nouveaute?: NouveauteAccueil | null;

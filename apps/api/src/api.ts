@@ -209,7 +209,7 @@ export function createApi(options: ApiOptions) {
   // Lot P : l'interrupteur des jeux (état de chaque jeu, clé d'aperçu). Un jeu sans crochet `portail` est nommé par son code ; le portail et la garde lisent le même état.
   const interrupteur = createJeux(
     platform,
-    instances.map((g) => ({ code: g.code, site: g.instance.portail?.site ?? g.code, nom: g.instance.portail?.nom ?? g.code, viderApercu: g.instance.viderApercu?.bind(g.instance), joueursDuJour: joueursDuJourDe(platform, g.instance.admin) })),
+    instances.map((g) => ({ code: g.code, site: g.instance.portail?.site ?? g.code, nom: g.instance.portail?.nom ?? g.code, categorie: g.instance.portail?.categorie, premierJour: g.instance.portail?.premierJour, viderApercu: g.instance.viderApercu?.bind(g.instance), joueursDuJour: joueursDuJourDe(platform, g.instance.admin) })),
   );
   // Lot C1 : les retours des joueurs (`/api/retours…`), « Un bug ? Une idée ? ». Leur nombre de réponses non lues entre dans `GET /api/portail/jour` (`messagesNonLus`).
   const retours = createRetours(platform, { version: options.admin?.releaseTag ?? options.revision?.slice(0, 12) ?? "local" });
@@ -472,10 +472,14 @@ export function createApi(options: ApiOptions) {
         let infoJeu = info;
         if (!path.startsWith("/api/admin/")) {
           const site = interrupteur.siteDe(g.code)!;
-          if ((await interrupteur.garde(site, req)) === "preview") {
+          const mode = await interrupteur.garde(site, req);
+          // Lot PA1b : le tour de rôle des jeux Party, lu par le module des jeux (un envoi classé ne vaut que pour le jeu du jour). En aperçu tous les jeux Party du registre sont en lice.
+          const tout = mode === "preview" || interrupteur.apercuDePr(req);
+          infoJeu = { ...info, party: { duJour: (jour) => interrupteur.partyDuJour(jour, tout), prochain: (s) => interrupteur.partyProchain(s, platform.today(), tout) } };
+          if (mode === "preview") {
             const ecriture = req.method !== "GET" && req.method !== "HEAD";
             if (ecriture && !g.instance.ecrituresApercu?.includes(path)) throw new HttpError(404, "game_unavailable", "Ce jeu n'accepte pas cette écriture pendant l'aperçu");
-            infoJeu = { ...info, apercu: true };
+            infoJeu = { ...infoJeu, apercu: true };
           }
         }
         // Lot F2 : le classement du jeu filtré aux amis (`?filtre=amis`), après la garde de l'interrupteur ; sans `filtre`, le classement « Tous » du jeu, inchangé.

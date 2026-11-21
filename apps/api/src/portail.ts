@@ -218,7 +218,11 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
   const surLeSite = (j: JeuPortail): boolean => (etats ? etats.etat(j.portail.site) === "on" : true);
   const compte = (j: JeuPortail, day: number): boolean => j.portail.premierJour <= day && (etats ? etats.compteLe(j.portail.site, day) : true);
   /** Les jeux qui comptent ce jour-là : ceux du cumul, du classement du jour, de la journée parfaite. */
-  const comptes = (day: number): JeuPortail[] => jeux.filter((j) => compte(j, day));
+  // Lot PA1b : **un jeu Party n'a de classement que le jour où il est le jeu Party du jour** (tour de rôle, `Jeux.partyDuJour`) : les autres jeux Party n'ont ce jour-là ni vue, ni onglet, ni ligne dans le classement.
+  const comptes = (day: number): JeuPortail[] => {
+    const duJour = etats?.partyDuJour(day);
+    return jeux.filter((j) => compte(j, day) && (categorieDe(j, day) !== "party" || j.portail.site === duJour));
+  };
   // Lot A3 : la catégorie. Un jeu d'arcade a son niveau du jour et son classement (il reste dans `comptes`, donc dans les vues du classement) mais **ne compte pas dans la journée** : ni journée
   // parfaite, ni « n fini sur m », ni série, ni ligne de partage — qu'il soit épinglé ou non. La catégorie se lit ce jour-là (`categorieLe`) : un changement compte à partir du lendemain.
   const categorieDe = (j: JeuPortail, day: number): CategorieJeu => categorieLe(j.portail.categorie ?? "jour", j.portail.categorieDepuis, day);
@@ -270,6 +274,12 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     );
   }
 
+  /** Lot PA1b : `{ party }` (le jeu Party du jour et les prochaines dates), ou rien quand le registre n'a aucun jeu Party. */
+  const partieParty = (day: number, toutVoir: boolean): { party?: { jeu: string | null; prochains: Record<string, string> } } => {
+    const tour = etats?.party(day, toutVoir);
+    return tour ? { party: tour } : {};
+  };
+
   /** La partie publique : les jeux du jour, l'heure du serveur, le prochain minuit de Paris (ISO, UTC). */
   async function partiePublique(day: number, toutVoir = false) {
     const t = now();
@@ -283,6 +293,8 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
       maintenant: new Date(t).toISOString(),
       prochainJour: new Date(parisDayStart(day + 1)).toISOString(),
       jeux: await jeuxDuJour(day, toutVoir),
+      // Lot PA1b : le jeu Party du jour et la prochaine date de chaque jeu Party en lice (`{ jeu, prochains }`) — **absent tant que le registre n'a aucun jeu Party** (la forme d'avant, bancs inchangés).
+      ...partieParty(day, toutVoir),
       // Lot N2 : la dernière nouveauté publiée (la ligne de l'accueil) et le message en direct : **dans la même réponse** (la règle du lot I3 : une seule requête au chargement).
       ...(diffusion ? await diffusion.pourLAccueil() : { nouveaute: null, annonce: null }),
     };

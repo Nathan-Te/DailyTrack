@@ -135,7 +135,7 @@ export const FICHE_ESSAI_PARTY = (() => {
     ordre: FICHE_ESSAI.ordre + 1,
     nom: { fr: "Essai Party", en: "Party Trial" },
     etiquette: { fond: "#F7C59F", coque: "#8A3B12", police: '"Lilita One", "Archivo", sans-serif', dessin: "generique" },
-    identite: { police: "Lilita One", motif: "losanges", illustration: "apps/partyessai/public/illustration.svg", aujourdhui: false },
+    identite: { police: "Lilita One", motif: "confettis", illustration: "apps/partyessai/public/illustration.svg", aujourdhui: false },
     categorie: "party",
     versions: { sim: "packages/partyessai-sim/src/constantes.ts:PARTYESSAI_SIM_VERSION", generateur: "packages/partyessai-sim/src/constantes.ts:PARTYESSAI_GENERATOR_VERSION" },
     themes: [],
@@ -237,6 +237,8 @@ const contrat = (): ContratParty<Rejeu, Mesure> => ({
 
 export const PARTYESSAI_GAME: GameDefinition<never> = definirJeuParty<Rejeu, Mesure, never>({ fiche, nom: "Essai Party" }, contrat) as GameDefinition<never>;
 `,
+  // Lot PA1b : la preuve du tour de rôle (le texte vit dans `scripts/modele-fictif/`, lu ici).
+  "apps/api/test/partyessai.test.ts": readFileSync(join(dirname(fileURLToPath(import.meta.url)), "modele-fictif/partyessai.test.ts.modele"), "utf8"),
   "apps/partyessai/e2e/partie.spec.ts": "// Spec de l'essai Party (jamais lancé : la fiche le déclare, les contrôles de cohérence le lisent).\n",
   "apps/partyessai/e2e/durees.json": JSON.stringify({ _: "Durées du jeu fictif Party.", secondes: { "partie.spec.ts": 5 }, essentiel: { "partie.spec.ts": 5 } }, null, 2) + "\n",
   "apps/partyessai/package.json": JSON.stringify({ name: "@cdj/partyessai", private: true, version: "0.0.0", type: "module" }, null, 2) + "\n",

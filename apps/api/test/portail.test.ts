@@ -176,7 +176,10 @@ describe(`portail : GET /api/portail/jour sans joueur (${TEST_DB})`, () => {
     const r = await t.call("GET", "/api/portail/jour");
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     const m = medalsFor(circuitOf(TODAY).authorMs);
-    expect(r.body).toEqual({
+    // Lot PA1b : `party` (le jeu Party du jour) n'existe que si le registre a un jeu Party (le jeu fictif de la CI) ; aucun n'est `on` ici : pas de jeu du jour.
+    const { party, ...corps } = r.body;
+    expect(party === undefined || party.jeu === null).toBe(true);
+    expect(corps).toEqual({
       date: DATE,
       journee: null, // lot I3 : avant la journée n° 1 (lot R8 : `config/lancement.json`), aucun numéro
       lancement: formatDay(PREMIER_JOUR_DU_JOUR), // lot R8 : la source unique de la date du lancement

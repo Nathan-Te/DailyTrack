@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-3047 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3054 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -204,6 +204,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.sim_version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.no_ghost` | Pas de fantôme à montrer. | No ghost to show. |
+| `erreur.not_party_of_the_day` | Ce n'est pas le jeu Party du jour : il se joue librement, sans classement. | This is not today's Party game: it is free play, with no leaderboard. |
 | `erreur.not_ranked` | Ce fantôme se débloque quand tu es classé ce jour-là. | This ghost unlocks once you are ranked that day. |
 | `erreur.invalid_session` | Session du Salon invalide. | Invalid Room session. |
 | `erreur.unknown_session` | Cette session du Salon est terminée. | This Room session is over. |
@@ -502,6 +503,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.egalitePoints` | Aux points. À égalité : le premier arrivé à ce score. | By points. Tie: whoever got there first. |
 | `classement.vues.aria` | Vues du classement | Leaderboard views |
 | `classement.vues.arcade` | Arcade | Arcade |
+| `classement.vues.party` | Party | Party |
 | `classement.vue.cumul` | Cumulé | Combined |
 | `classement.separation` | Un jeu sur deux | One game out of two |
 | `classement.veille` | ‹ Veille | ‹ Previous day |
@@ -672,6 +674,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.jeux.titre` | Les jeux du jour | Today's games |
 | `portail.brouillon` | Brouillon | Draft |
 | `portail.arcade.titre` | Arcade | Arcade |
+| `portail.party.titre` | Party | Party |
+| `portail.party.classe` | Classé aujourd'hui | Ranked today |
+| `portail.party.libre` | Jeu libre | Free play |
+| `portail.party.libreLe` | Jeu libre · classé le {date} | Free play · ranked on {date} |
 | `portail.favoris.invite` | Touche l'étoile pour garder tes jeux en haut. | Tap the star to keep your games at the top. |
 | `portail.favoris.demain` | Ton choix compte pour ta journée à partir de demain. | Your choice counts for your day from tomorrow. |
 | `portail.favoris.echec` | Ton choix n'a pas pu être enregistré. Réessaie dans un instant. | Your choice couldn't be saved. Try again in a moment. |
@@ -750,6 +756,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.semaine.rien` | rien de joué | nothing played |
 | `portail.semaine.avenir` | à venir | coming up |
 | `portail.arcade.sous` | Un classement par jeu, pour le plaisir. Ces jeux ne comptent pas dans ta journée. | A leaderboard for each game, just for fun. These games don't count towards your day. |
+| `portail.party.sous` | Un jeu en tête chaque jour, lui seul est classé ; les autres se jouent librement. | One game leads each day and only it is ranked; the others are free play. |
 | `portail.journee.titre` | Ta journée | Your day |
 | `portail.vue.aria` | Classement à montrer | Leaderboard to show |
 | `portail.vue.tous` | Tous | Everyone |

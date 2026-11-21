@@ -10,7 +10,7 @@ import { creerI18n, type I18n } from "./i18n";
 import { creerDessin, creerFond, habillerPage } from "./peau";
 import { baseDeLaPage, choisirJour, lireOptions, serieLocale, type OptionsUrl } from "./session";
 import type { ClassementJeu } from "./source";
-import { type DefinitionJeu, type DefinitionJeuParty, definitionDeParty, type FicheClient, type OptionsBrancher } from "./types";
+import type { DefinitionJeu, DefinitionJeuParty, FicheClient, OptionsBrancher } from "./types";
 
 // Lot K4f — **`brancherJeu(fiche, definition, options)`** : l'assemblage côté jeu d'un jeu neuf. Le jeu donne sa fiche (le sous-ensemble que lit le client), sa définition (simulation, rendu, aide) et ses
 // catalogues ; le kit branche tout le reste, à partir des briques de `@cdj/kit` et `@cdj/ui` : la génération de données, l'interrupteur et l'aperçu, la langue, l'accueil (record, série, classement du jour, décompte,
@@ -30,8 +30,9 @@ export interface JeuBranche {
 }
 
 export async function brancherJeu<C>(fiche: FicheClient, definition: DefinitionJeu<C> | DefinitionJeuParty<C>, o: OptionsBrancher<C>): Promise<JeuBranche> {
-  // Lot PA1 : un jeu Party (`fiche.categorie`) n'écrit ni thème, ni seuils, ni médailles, ni fantôme : le kit complète sa définition.
-  const def: DefinitionJeu<C> = fiche.categorie === "party" ? definitionDeParty(definition as DefinitionJeuParty<C>) : (definition as DefinitionJeu<C>);
+  // Lot PA1 : un jeu Party (`fiche.categorie`) n'écrit ni thème, ni seuils, ni médailles, ni fantôme : le kit complète sa définition. Lot PA1b : par le morceau `party` (à la demande), que seuls les jeux Party chargent.
+  const party = fiche.categorie === "party" ? await import("./party") : null;
+  const def: DefinitionJeu<C> = party ? party.definitionDeParty(definition as DefinitionJeuParty<C>) : (definition as DefinitionJeu<C>);
   const options = lireOptions(location.search);
   noterGeneration(() => options.api === "demo");
   // La manette : le moteur des menus se charge à la première manette (jamais avant).
@@ -47,13 +48,13 @@ export async function brancherJeu<C>(fiche: FicheClient, definition: DefinitionJ
   document.documentElement.lang = i18n.langue;
   document.title = i18n.t("page.titre");
   habillerPage(fiche.id, def.peau); // lot « écrans du kit » : la peau du jeu (étiquette de la fiche, accent)
-  void accueil(fiche, def, o, options, i18n);
+  void accueil(fiche, def, o, options, i18n, party);
   return { i18n, options };
 }
 
 const communs = (i18n: I18n): TraducteurCommun => i18n.socle() as unknown as TraducteurCommun;
 
-async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsBrancher<C>, options: OptionsUrl, i18n: I18n): Promise<void> {
+async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsBrancher<C>, options: OptionsUrl, i18n: I18n, party: typeof import("./party") | null): Promise<void> {
   const { t } = i18n;
   const musique = o.musique;
   musique.scene("menu");
@@ -166,6 +167,7 @@ async function accueil<C>(fiche: FicheClient, def: DefinitionJeu<C>, o: OptionsB
   // --- Les données (records, série, classement) : un module à la demande, après le premier dessin ---
   let donnees: Donnees | null = null;
   const prets = import("./donnees").then((m) => (donnees = m.creerDonnees(fiche, options)));
+  party?.monter(fiche, def, i18n, prets); // lot PA1b : l'état « classé / libre » d'un jeu Party
   const ctxPartie = import("./partie"); // préchargé : JOUER n'attend plus que le contenu du jour
   ctxPartie.catch(() => undefined);
   let classement: ClassementJeu | null = null;

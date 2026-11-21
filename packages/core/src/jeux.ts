@@ -99,3 +99,33 @@ export const categorieLe = (categorie: CategorieJeu, depuis: number | null | und
 
 /** Le jeu compte-t-il dans la journée ce jour-là, côté catégorie ? Seule la catégorie `jour` compte (l'interrupteur, lui, se dit en périodes : `compteLe`). */
 export const compteDansLaJournee = (categorie: CategorieJeu, depuis: number | null | undefined, jour: number): boolean => categorieLe(categorie, depuis, jour) === "jour";
+
+// --- Lot PA1b : le tour de rôle des jeux Party ---------------------------------------------------------------------------------------------------
+/** Un jeu Party que le tour de rôle d'un jour compte : son dossier sur le site et le jour où sa période en cours a commencé (sa date d'ouverture). */
+export interface JeuPartyEnLice {
+  site: string;
+  depuis: number;
+}
+
+/** Le début de la période `[du, au)` qui contient `jour`, ou `null` si le jeu ne compte pas ce jour-là (sa date d'ouverture pour le tour de rôle de ce jour). */
+export const debutDePeriode = (periodes: readonly PeriodeJeu[], jour: number): number | null => periodes.find(([du, au]) => jour >= du && (au === null || jour < au))?.[0] ?? null;
+
+/** L'ordre du tour de rôle : par date d'ouverture, puis par dossier (le départage est fixe : jamais deux ordres pour les mêmes jeux). */
+export const ordreParty = (enLice: readonly JeuPartyEnLice[]): string[] => [...enLice].sort((a, b) => a.depuis - b.depuis || (a.site < b.site ? -1 : a.site > b.site ? 1 : 0)).map((j) => j.site);
+
+/**
+ * **Le jeu Party d'un jour** : dans l'ordre des jeux en lice (`ordreParty`), en boucle, à partir du seul numéro du jour — aucune table. `null` sans jeu en lice. Le calcul d'un jour ne dépend que des jeux qui comptent
+ * **ce jour-là** (périodes `[du, au)` : un jeu ouvert ou fermé en cours de journée compte à partir du lendemain, donc ne change pas le jeu du jour commencé). Pure.
+ */
+export function jeuPartyDuJour(enLice: readonly JeuPartyEnLice[], jour: number): string | null {
+  const ordre = ordreParty(enLice);
+  return ordre.length === 0 ? null : ordre[((jour % ordre.length) + ordre.length) % ordre.length]!;
+}
+
+/** Le prochain jour **après** `jour` où `site` sera en tête, si les jeux en lice restent ceux-là ; `null` si `site` n'y est pas. Pure. */
+export function prochainJourParty(enLice: readonly JeuPartyEnLice[], site: string, jour: number): number | null {
+  const ordre = ordreParty(enLice);
+  if (!ordre.includes(site)) return null;
+  for (let d = jour + 1; d <= jour + ordre.length; d++) if (jeuPartyDuJour(enLice, d) === site) return d;
+  return null;
+}

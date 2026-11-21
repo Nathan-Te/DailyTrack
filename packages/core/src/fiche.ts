@@ -49,14 +49,14 @@ import type { CategorieJeu } from "./jeux";
 export type { CategorieJeu };
 
 /** Lot K5 — les motifs d'étiquette de la charte (rév. 18, § 5) : dessinés en CSS net, en deux tons tirés de la teinte du jeu, jamais de dégradé. */
-export const MOTIFS = ["rayures", "lignes", "quadrillage", "losanges", "uni"] as const;
+export const MOTIFS = ["rayures", "lignes", "quadrillage", "losanges", "confettis", "uni"] as const;
 export type Motif = (typeof MOTIFS)[number];
 /**
  * Lot PA1 — **l'identité de la catégorie Party** : la police et le motif sont ceux de la catégorie, pas ceux du jeu (la police est l'une de celles que le portail charge déjà : aucune face de plus). Un jeu
  * Party ne choisit donc que sa **couleur d'étiquette** et son **illustration** ; la fiche d'un jeu Party porte ces deux valeurs et `validerFiche` refuse toute autre.
  */
 export const POLICE_PARTY = "Lilita One";
-export const MOTIF_PARTY: Motif = "losanges";
+export const MOTIF_PARTY: Motif = "confettis"; // lot PA1b : Pinball porte déjà les losanges
 /** Lot K5 — la valeur que `npm run nouveau-jeu` écrit dans le bloc `identite` d'un jeu neuf : elle bloque `preview` et `on`. */
 export const A_CHOISIR = "à choisir";
 /** Lot K5 — l'illustration d'un jeu dont la carte est dessinée à la main dans `@cdj/ui` (Track et Jump) : pas de fichier SVG. */

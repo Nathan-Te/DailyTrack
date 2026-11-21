@@ -29,6 +29,7 @@ import {
   el,
   etiquetteDe,
   formatDate,
+  formatDateCourte,
   formatNombre,
   formatNumeroJour,
   formatRang,
@@ -155,6 +156,8 @@ function statut(t: T, c: CarteJeu, etat: Etat | undefined): HTMLElement {
 interface OptionsCarte {
   /** Lot F1 : le jeu est-il épinglé ? (Lot U1 : il passe alors en tête de sa zone.) */
   epingle: boolean;
+  /** Lot PA1b : le statut d'un jeu Party (« Classé aujourd'hui », « Jeu libre · classé le … ») ; `undefined` pour un autre jeu. */
+  party?: { texte: string; classe: boolean };
 }
 
 /** Le numéro du jour et le thème sous le nom du jeu (« n° 8 · Nuit »), ou rien tant que le jeu n'a pas de numéro. */
@@ -214,7 +217,7 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: Option
 function cartoucheArcade(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: OptionsCarte): HTMLElement {
   const etat = jeu?.etat;
   const fiche = ficheDuJeu(c.code)!;
-  const numeroTheme = numeroEtTheme(c, t, jeu);
+  const numeroTheme = opts.party ? undefined : numeroEtTheme(c, t, jeu); // un jeu Party n'a pas de numéro : il dit son statut
   const etiquette = el(
     "div",
     { classe: ["dj-etiquette", "salle-etiquette", `jeu-etiquette--${c.code}`] },
@@ -224,6 +227,7 @@ function cartoucheArcade(c: CarteJeu, t: T, jeu: JeuDuJour | undefined, opts: Op
       { classe: "salle-etiquette__info" },
       el("h3", { classe: "salle-etiquette__nom", texte: titreDeCarte(fiche, t, t.t(nomCleDe(c.code))) }),
       numeroTheme ? el("span", { classe: "salle-etiquette__numero", texte: numeroTheme }) : null,
+      opts.party ? el("span", { classe: ["salle-etiquette__numero", "salle-etiquette__party"], attrs: { "data-party": opts.party.classe ? "classe" : "libre" }, texte: opts.party.texte }) : null,
       statut(t, c, etat),
       boutonDeCarte(c, t, etat),
     ),
@@ -490,7 +494,7 @@ function panneauGroupe(t: T): HTMLElement | null {
 }
 
 /** Une étagère de cartouches (celle des jeux du jour, ou celle de la salle d'arcade) : les jeux épinglés d'abord, tous de la même taille. */
-function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string, JeuDuJour>, jour: Lecture["jour"] | undefined, neuf: boolean, o: { id: string; favoris: readonly string[]; arcade?: boolean }): HTMLElement {
+function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string, JeuDuJour>, jour: Lecture["jour"] | undefined, neuf: boolean, o: { id: string; favoris: readonly string[]; arcade?: boolean; party?: (c: CarteJeu) => { texte: string; classe: boolean } }): HTMLElement {
   return el(
     "div",
     { classe: ["portail-etagere", "salle-etagere", o.arcade && "salle-etagere--arcade"], attrs: { id: o.id } },
@@ -499,7 +503,7 @@ function etagereDe(t: T, cartesMontrees: readonly CarteJeu[], parJeu: Map<string
       // Un joueur inconnu du serveur n'a rien joué : « Pas encore joué » ; sans identité, pareil (rien à attendre).
       const etat = j?.etat ?? (jour && neuf && lecture?.erreur !== "code_revoked" ? ({ statut: "pas_joue" } as const) : undefined);
       const jeu = j ? { ...j, etat } : etat ? { jeu: c.jeu, numero: c.numero, theme: null, seuils: null, premierJour: "", etat } : undefined;
-      const opts = { epingle: o.favoris.includes(c.code) };
+      const opts = { epingle: o.favoris.includes(c.code), ...(o.party ? { party: o.party(c) } : {}) };
       return o.arcade ? cartoucheArcade(c, t, jeu, opts) : cartoucheDe(c, t, jeu, opts);
     }),
   );
@@ -586,14 +590,26 @@ function rendre(): void {
   // Les cartouches que le portail sait dessiner, dans l'ordre du serveur quand il a répondu.
   const toutes = cartes(day).filter((c) => (jour ? parJeu.has(c.jeu) : c.numero > 0));
   // Lot A3 : les jeux d'arcade ont leur salle ; ils ne comptent ni dans « n fini sur m », ni dans la journée, ni dans la ligne de partage.
-  const estArcade = (c: CarteJeu) => categorieDuJeu(c.code, day, parJeu.get(c.jeu)) !== "jour"; // lot PA1 : un jeu Party est hors journée comme l'arcade (sa section propre vient avec le jeu du jour)
-  const montrees = toutes.filter((c) => !estArcade(c));
+  const categorieDe = (c: CarteJeu) => categorieDuJeu(c.code, day, parJeu.get(c.jeu));
+  const estArcade = (c: CarteJeu) => categorieDe(c) === "arcade";
+  const estParty = (c: CarteJeu) => categorieDe(c) === "party"; // lot PA1b : un jeu Party est hors journée comme l'arcade, dans sa propre section sous l'arcade
+  const montrees = toutes.filter((c) => categorieDe(c) === "jour");
   const statuts = jour?.joueur ? montrees.map((c) => parJeu.get(c.jeu)!) : [];
   const { finis, total } = avancement(statuts, jour?.joueur?.jeuxDuJour);
   // Lot U1 : plus de section « Mes jeux » — un jeu épinglé passe en tête de sa zone (jeux du jour, ou salle d'arcade).
   const favoris = listeAffichee(jour?.joueur?.favoris, !!jour?.joueur, favorisLocaux);
   const duJour = epinglesEnTete(montrees, favoris);
   const arcade = epinglesEnTete(toutes.filter(estArcade), favoris);
+  // Lot PA1b : la section « Party » (absente tant qu'aucun jeu Party n'est ouvert : le serveur ne les liste pas) : le jeu du jour **en tête**, « Classé aujourd'hui », les autres « Jeu libre ».
+  const jeuPartyDuJour = jour?.party?.jeu ?? null;
+  const partys = toutes.filter(estParty);
+  const party = [...partys.filter((c) => c.code === jeuPartyDuJour), ...epinglesEnTete(partys.filter((c) => c.code !== jeuPartyDuJour), favoris)];
+  const statutParty = (c: CarteJeu): { texte: string; classe: boolean } => {
+    if (c.code === jeuPartyDuJour) return { texte: t.t("portail.party.classe"), classe: true };
+    const prochain = jour?.party?.prochains[c.code];
+    const j = prochain ? parseDay(prochain) : null;
+    return { texte: j === null || j === undefined ? t.t("portail.party.libre") : t.t("portail.party.libreLe", { date: formatDateCourte(j, langue) }), classe: false };
+  };
   const sansFavori = !duJour.some((c) => favoris.includes(c.code));
   const pourDemain = !!jour?.joueur && choixPourDemain(favoris, statuts.filter(compteAujourdhui).map((j) => j.site ?? ""), jour.joueur.jeuxDuJour);
   const neuf = !identite.exists || lecture?.erreur === "unknown_player";
@@ -663,6 +679,17 @@ function rendre(): void {
                 { classe: "salle-arcade", attrs: { "aria-labelledby": "portail-arcade-titre" } },
                 el("div", { classe: "salle-arcade__tete" }, el("h2", { classe: "salle-arcade__titre", attrs: { id: "portail-arcade-titre" }, texte: t.t("portail.arcade.titre") }), el("p", { classe: "salle-arcade__texte", texte: t.t("portail.arcade.sous") })),
                 etagereDe(t, arcade, parJeu, jour, neuf, { id: "arcade", favoris, arcade: true }),
+              ),
+            ]
+          : []),
+        // Lot PA1b : la section « Party », sous l'arcade, sur le même modèle (cartouches de la salle) ; le jeu du jour d'abord.
+        ...(party.length > 0
+          ? [
+              el(
+                "section",
+                { classe: ["salle-arcade", "salle-party"], attrs: { "aria-labelledby": "portail-party-titre" } },
+                el("div", { classe: "salle-arcade__tete" }, el("h2", { classe: "salle-arcade__titre", attrs: { id: "portail-party-titre" }, texte: t.t("portail.party.titre") }), el("p", { classe: "salle-arcade__texte", texte: t.t("portail.party.sous") })),
+                etagereDe(t, party, parJeu, jour, neuf, { id: "party", favoris, arcade: true, party: statutParty }),
               ),
             ]
           : []),

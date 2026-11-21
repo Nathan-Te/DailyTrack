@@ -62,6 +62,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `invalid_view` | 400 | Classement du jour du portail : `vue` n'est ni `cumul` ni le dossier d'un jeu qui existe ce jour-là (lot A1). | `GET /api/portail/classement?vue=` |
 | `unknown_day` | 404 | Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu. | `/api/day/<j>…`, `/api/submit`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3 : un jour futur, ou d'avant les jeux) |
 | `day_closed` | 409 | Envoi pour un jour dont le classement est figé (jour passé, après la grâce de 10 minutes). | `POST /api/submit`, `/api/jump/submit`, `/api/jump/lives` |
+| `not_party_of_the_day` | 409 | Jeu Party (lot PA1b) : ce jeu n'est pas le jeu Party du jour de la partie (tour de rôle des jeux Party) : seul le jeu du jour a un classement, les autres se jouent librement ; l'envoi est refusé. | `POST /api/<jeu>/submit` d'un jeu Party |
 | `day_started` | 409 | Admin, planning : ce jour a déjà commencé, son circuit ne peut plus être remplacé. | `PUT` / `DELETE /api/admin/planning/<j>` |
 | `too_far` | 400 | Admin, planning : jour trop loin dans le futur (plus de `PLANNING_HORIZON` jours). | `PUT` / `DELETE /api/admin/planning/<j>` |
 | `invalid_variant` | 400 | Admin, planning : variante hors de 0 à `MAX_VARIANT`. | `PUT /api/admin/planning/<j>` |
