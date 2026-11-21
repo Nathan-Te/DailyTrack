@@ -10,7 +10,9 @@ Branche `ccr-162193cc-ju669l` (le nom imposé à cette session ; la consigne dis
 ## Écarts avec le dessin (position voulue → position finale, raison)
 | Élément | Voulue | Finale | Écart | Raison |
 |---|---|---|---|---|
-| Bumpers A, B, C ; banques A, B, C ; mini-batteur C ; poteau sauveur ; portails ± 30 px | dessin | dessin | 0 | — |
+| Bumpers A, B, C ; banque C ; mini-batteur C ; poteau sauveur ; portails ± 30 px | dessin | dessin | 0 | — |
+| **Banque A** (flanc droit) | cibles x = 329, y = 340, 366, 392 ; fond x = 340 | cibles x = 335, y = 334, 360, 386 ; fond x = 346, de 316 à 402 | (+6, −6) | la banque est un tir numéroté : 11 → 96 ms |
+| **Banque B** (diagonale −28°) | (88, 267), (112, 255), (136, 243) | (100, 261), (124, 249), (148, 237) | (+12, −6) | 21 → 45 ms (Espace : le trou noir dévie les tirs) |
 | Élément de la mission A | (184, 285) | (190, 285) | 6 px | tourbillon (océan) : fenêtre de 20 à 45 ms |
 | Élément de la mission B, C | (176, 300), (205, 350) | idem | 0 | — |
 | **Verrou A** | (262, 250) | **(208, 464)** | 230 px | option 1 : 5 ms → 40 ms (devant les batteurs, seul endroit où l'éventail est large et lent) |
@@ -41,7 +43,25 @@ Branche `ccr-162193cc-ju669l` (le nom imposé à cette session ; la consigne dis
 - **Mini-batteur C** : côté gauche, pivot (46, 405), longueur 38.
 - Le verrou de A et de C est **devant les batteurs** : il garde la bille qui arrive lentement et la relance ; c'est la zone où l'éventail du geste de référence est large et lent (comme au lot PBL2).
 
+## Les fenêtres de tir finales (ms, 24 tables, `fenetres:pinball -- --defauts --n=0 --resume`)
+| Table | mission | verrou | rampe | orbite | porte | banque |
+|---|---|---|---|---|---|---|
+| A, A' (4 thèmes) | 36 à 86 | 40 | — | 111 | 113 | 96 |
+| B, B' | 45 à 191 | 50 | 36 | 111 | 113 | 45 à 195 |
+| C, C' | 71 à 188 | 40 | 88 | — | — | 61 |
+
+**Aucun tir sous 30 ms**, dans les deux sens et dans les quatre thèmes. Deux précisions de mesure : (1) **la banque entre dans les objectifs** (`objectifsDeLaTable`) ; (2) **le manège se traverse** (`tir.ts`) : la bille qui le franchit puis touche un autre objectif compte pour les deux (`mission+banque`), sans quoi le manège « volait » la banque de la table B (16 ms). Les bumpers (P) ne sont pas un objectif : ils se touchent en passant (21 à 173 ms selon la table).
+
 ## Vérifié / non vérifié
-(complété à la fin du lot : voir la suite)
+- **Vérifié** : `npm run valider:pinball` (24/24 valides : aucune bille coincée, chaque module touché, mission, porte ouverte et franchie, rampes et orbite menées à leur bout par le robot) ; `vitest` du paquet (431 tests) et de `apps/pinball` (146 tests) verts ; le golden (régénéré, il porte le miroir) et les jours figés du 19 au 23/11 refaits ; budget du robot : 8,39 M pas pour la pire table (plafond 10,4 M), 10,62 pas pour 1 000 pas joués (plafond 13,5) ; fluidité du rendu mesurée comme au PBL2 (390 × 844, processeur ralenti ×4, multibille) : 12,9 à 16,7 ms sur les trois tables, quatre thèmes, contre 15 à 26 ms sur `main` ; les schémas et les captures dans `docs/pinball/lots/captures-pbt1/` (schémas A, B, C ; tables A, B, C en Volcan et Foire ; miroirs ; rendu de secours ; essai du verrou).
+- **Budgets de poids** (plafonds inchangés) : `pinball.jsCss` 46 546 / 48 Ko, `pinball.rendu` 189 130 / 190 Ko, `pinball.demande` 254 108 / 255 Ko ; la marge de `rendu` et `demande` est de moins de 1 Ko, le prochain lot Pinball devra en retirer ou demander un relèvement chiffré à Nathan (le delta de ce lot n'a pas été mesuré sur `main`).
+- **Écarts connus** : la banque est inclinée de −26,6° et non −28° (les extrémités des cibles sont tronquées en pixels entiers) ; l'inclinaison du dessin n'est pas retrouvée au dixième de degré. La légende du schéma (PNG) est tronquée à droite. La page d'administration ne liste pas les paramètres d'adresse de Pinball (`?miroir` n'y est donc pas déclaré).
+- **Non vérifié** : le jeu n'a pas été joué à la main par un humain (Nathan : les URL ci-dessous) ; `?plan=` en production est ignoré, non testé sur la recette.
+
+## Scénario de test pour Nathan (2 clics, base : l'aperçu de la PR)
+- `/pinball/?plan=A&theme=volcan`, `?plan=B&theme=foire`, `?plan=C&theme=ocean` ;
+- un miroir : `/pinball/?plan=B&theme=espace&miroir` ;
+- le verrou et la rampe : `/pinball/?plan=B&theme=volcan&essai=verrou`.
+Ce que Nathan regarde : chaque table ressemble à son dessin, chaque tir se vise, et rien ne bloque ni ne traîne sans servir. **Les écarts voulus sont dans le tableau en haut de ce README** (le verrou de A et de C est devant les batteurs).
 
 Pour les joueurs : rien
