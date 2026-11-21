@@ -23,4 +23,4 @@ Tour de rôle dans l'ordre des jeux Party `on` par date d'ouverture, en boucle ;
 - Hors ligne, un jeu Party tente l'envoi (statut inconnu) ; le serveur refuse au besoin (`not_party_of_the_day`, terminal : le record reste local).
 - La prochaine date « classé le … » suppose que les jeux Party en lice restent ceux de demain.
 - Marge de Track en jetons : +15 jetons (`npm run mesure-jetons`, 53 844 pour 54 000).
-- Non vérifié ici : la CI de la PR (voir son résultat).
+- **Vérifié en local** : `npm run verifier` (typage, unitaires SQLite et libSQL, e2e Chromium de tous les jeux, budgets) ; `node scripts/jeu-fictif.mjs` (0 échec sur 9 542 + 1 052 tests) ; `kit-bout-en-bout --jeux essaiparty` ; `npm run consignes`. **Non vérifié** : la CI de la PR (voir son résultat) et le rendu de la section « Party » à l'écran (aucune capture : aucun jeu Party à montrer).
