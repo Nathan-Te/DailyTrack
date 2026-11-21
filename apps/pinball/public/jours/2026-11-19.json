@@ -2,26 +2,25 @@
   "format": 1,
   "jeu": "pinball",
   "date": "2026-11-19",
-  "g": 8,
-  "sim": 9,
-  "bot": 8,
+  "g": 9,
+  "sim": 10,
+  "bot": 9,
   "seuils": {
-    "bronze": 1486600,
-    "silver": 3468800,
-    "gold": 5946500,
-    "author": 9910900
+    "bronze": 951900,
+    "silver": 2221100,
+    "gold": 3807500,
+    "author": 6345900
   },
   "contenu": {
     "theme": "foire",
-    "plan": "bretelle",
+    "plan": "C",
+    "miroir": true,
     "modules": [
       "manege",
       "trou",
-      "cibles",
-      "mini",
       "bumpers",
-      "mini"
+      "cibles"
     ],
-    "empreinte": "49378e8f"
+    "empreinte": "1f4db871"
   }
 }

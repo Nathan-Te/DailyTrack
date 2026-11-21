@@ -29,7 +29,7 @@ for (let dy = -15; dy <= 15; dy += pas) {
     deplacer(dx, dy);
     const c = dailyPinball(1, undefined, theme as never, id, false);
     const f = fenetresDeTir(c);
-    const ms = f.ms[objectif] ?? -1;
+    const ms = f.ms[objectif!] ?? -1;
     ligne += String(ms).padStart(4);
     if (ms > meilleur.ms) meilleur = { ms, dx, dy };
   }

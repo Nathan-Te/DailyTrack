@@ -35,7 +35,7 @@ const reds = [
   // Lot PBG2 : une partie entière du robot (15 minutes) passe par plusieurs multibilles (verrou, trois billes, jackpots, missions des niveaux suivants)
   { nom: "robot-multibilles", jour: jourDe("espace", "A", true), evenements: robot(jourDe("espace", "A", true), 540000) },
   // Lot PBG3 : une partie du robot (3 minutes) qui franchit la porte (4 ouvertures, 1 passage), est sauvée six fois par le poteau et dérivée quatre fois par l'aiguillage
-  { nom: "robot-deblocages", jour: daysFromCivil(2026, 11, 11), evenements: robot(daysFromCivil(2026, 11, 11), 108000, 1) },
+  { nom: "robot-deblocages", jour: daysFromCivil(2026, 11, 3), evenements: robot(daysFromCivil(2026, 11, 3), 108000, 1) },
   { nom: "robot-multibilles-court", jour: jourDe("foire", "C", true), evenements: robot(jourDe("foire", "C", true), 216000) },
 ].map((r) => {
   const contenu = dailyPinball(r.jour);

@@ -101,8 +101,8 @@ describe("Pinball sur le serveur", () => {
   }, 60_000);
 
   it("lot PBG3 : une partie où la porte est franchie, le poteau renvoie une bille et l'aiguillage dérive une bille : le serveur rejoue les mêmes événements et retrouve le même score", async () => {
-    // le 11/11/2026 (foire, bretelle) : la partie du robot de 3 minutes (graine 1) passe une fois la porte, est sauvée 6 fois par le poteau, dérivée 4 fois par l'aiguillage (golden : « robot-deblocages »)
-    const jour = daysFromCivil(2026, 11, 11);
+    // le 03/11/2026 (volcan, table B) : la partie du robot de 3 minutes (graine 1) passe une fois la porte, est sauvée une fois par le poteau, dérivée 7 fois par l'aiguillage (golden : « robot-deblocages »)
+    const jour = daysFromCivil(2026, 11, 3);
     const t = await monter({ frozen: { [DATE]: figerJour(JOUR, { bronze: 1000, silver: 3000, gold: 8000, author: 20000 }) } });
     t.clock.now = jour * DAY_MS + 12 * 3_600_000;
     await ouvrirJeu(t, "pinball");
