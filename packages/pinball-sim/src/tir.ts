@@ -418,7 +418,7 @@ export function obstaclesDansLaZone(table: Table): ObstacleDansLaZone[] {
     }
   }
   if (table.passage) {
-    for (let i = table.murs.length - 2; i < table.murs.length; i++) verifier("porte", table.murs[i]!.ax, table.murs[i]!.ay, table.murs[i]!.bx, table.murs[i]!.by);
+    for (let i = table.murs.length - table.passage.murs; i < table.murs.length; i++) verifier("porte", table.murs[i]!.ax, table.murs[i]!.ay, table.murs[i]!.bx, table.murs[i]!.by);
     const b = table.passage.battant;
     verifier("porte", b.ax, b.ay, b.bx, b.by);
   }

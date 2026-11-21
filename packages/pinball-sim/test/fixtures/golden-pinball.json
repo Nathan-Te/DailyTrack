@@ -1,180 +1,186 @@
 {
   "_": "Golden de Pinball (lots PB1 à PBG3). Régénérer : npm run golden:pinball -w @cdj/pinball-sim, seulement en montant la version concernée.",
-  "sim": 9,
-  "generateur": 8,
-  "bot": 8,
+  "sim": 10,
+  "generateur": 9,
+  "bot": 9,
   "jours": [
     {
       "date": "2026-11-02",
       "theme": "espace",
-      "plan": "boucle",
+      "plan": "A",
+      "miroir": false,
       "modules": [
         "trouNoir",
         "trou",
         "asteroide",
-        "portailB",
+        "cibles",
+        "spinner",
         "portailA",
-        "mini"
+        "portailB"
       ],
-      "empreinte": "c2000963",
+      "empreinte": "47024623",
       "seuils": {
-        "bronze": 367200,
-        "silver": 856700,
-        "gold": 1468700,
-        "author": 2447800
+        "bronze": 286800,
+        "silver": 669100,
+        "gold": 1147000,
+        "author": 1911700
       }
     },
     {
       "date": "2026-11-05",
       "theme": "foire",
-      "plan": "boucle",
+      "plan": "A",
+      "miroir": true,
       "modules": [
         "manege",
         "trou",
         "bumpers",
-        "mini",
-        "mini",
-        "mini"
+        "cibles",
+        "spinner"
       ],
-      "empreinte": "caedc029",
+      "empreinte": "3545593e",
       "seuils": {
-        "bronze": 658500,
-        "silver": 1536600,
-        "gold": 2634200,
-        "author": 4390300
+        "bronze": 386300,
+        "silver": 901300,
+        "gold": 1545100,
+        "author": 2575200
       }
     },
     {
       "date": "2026-11-08",
       "theme": "ocean",
-      "plan": "bretelle",
+      "plan": "B",
+      "miroir": true,
       "modules": [
         "tourbillon",
         "trou",
-        "cibles",
-        "mini",
         "bumpers",
-        "mini"
+        "cibles",
+        "spinner"
       ],
-      "empreinte": "eb07da64",
+      "empreinte": "6c6766aa",
       "seuils": {
-        "bronze": 769600,
-        "silver": 1795700,
-        "gold": 3078400,
-        "author": 5130600
+        "bronze": 3101300,
+        "silver": 7236300,
+        "gold": 12405000,
+        "author": 20675000
       }
     },
     {
       "date": "2026-11-11",
       "theme": "foire",
-      "plan": "bretelle",
+      "plan": "A",
+      "miroir": true,
       "modules": [
         "manege",
         "trou",
+        "bumpers",
         "cibles",
-        "mini",
-        "spinner",
-        "mini"
+        "spinner"
       ],
-      "empreinte": "5d6e44ec"
+      "empreinte": "70293b14"
     },
     {
       "date": "2026-11-14",
       "theme": "ocean",
-      "plan": "boucle",
+      "plan": "B",
+      "miroir": true,
       "modules": [
         "tourbillon",
         "trou",
         "bumpers",
-        "mini",
-        "bumpers",
-        "mini"
+        "cibles",
+        "spinner"
       ],
-      "empreinte": "49e3a31b"
+      "empreinte": "9a73c9fc"
     },
     {
       "date": "2026-11-17",
       "theme": "espace",
-      "plan": "bretelle",
+      "plan": "A",
+      "miroir": true,
       "modules": [
         "trouNoir",
         "trou",
         "asteroide",
-        "portailB",
+        "cibles",
+        "spinner",
         "portailA",
-        "mini"
+        "portailB"
       ],
-      "empreinte": "d90e3c7d"
+      "empreinte": "9967f073"
     },
     {
       "date": "2026-11-20",
       "theme": "volcan",
-      "plan": "doublette",
+      "plan": "A",
+      "miroir": false,
       "modules": [
         "geyser",
         "trou",
         "bumpers",
-        "mini",
-        "coulee",
-        "mini"
+        "cibles",
+        "spinner",
+        "coulee"
       ],
-      "empreinte": "96c438af",
+      "empreinte": "1bf2e173",
       "seuils": {
-        "bronze": 818400,
-        "silver": 1909600,
-        "gold": 3273600,
-        "author": 5456000
+        "bronze": 254400,
+        "silver": 593600,
+        "gold": 1017600,
+        "author": 1696000
       }
     },
     {
       "date": "2026-11-23",
       "theme": "espace",
-      "plan": "bretelle",
+      "plan": "C",
+      "miroir": true,
       "modules": [
         "trouNoir",
         "trou",
         "asteroide",
-        "portailB",
+        "cibles",
         "portailA",
-        "mini"
+        "portailB"
       ],
-      "empreinte": "9f8ae40b"
+      "empreinte": "75bbd6f8"
     },
     {
       "date": "2026-11-26",
       "theme": "volcan",
-      "plan": "doublette",
+      "plan": "C",
+      "miroir": false,
       "modules": [
         "geyser",
         "trou",
         "bumpers",
-        "mini",
-        "coulee",
-        "mini"
+        "cibles"
       ],
-      "empreinte": "f3a48f75"
+      "empreinte": "7a8aa2e0"
     },
     {
       "date": "2026-11-29",
       "theme": "volcan",
-      "plan": "doublette",
+      "plan": "B",
+      "miroir": true,
       "modules": [
         "geyser",
         "trou",
         "bumpers",
-        "mini",
-        "coulee",
-        "mini"
+        "cibles",
+        "spinner",
+        "coulee"
       ],
-      "empreinte": "8521502c"
+      "empreinte": "56e7d1a8"
     }
   ],
   "rediffusions": [
     {
       "nom": "vide",
       "date": "2026-11-02",
-      "g": 8,
-      "code": "AQkIAJeiAQ",
+      "g": 9,
+      "code": "AQoJAJeiAQ",
       "resultat": {
         "score": 0,
         "ticks": 540000,
@@ -185,10 +191,10 @@
     {
       "nom": "batteurs-tenus",
       "date": "2026-11-02",
-      "g": 8,
-      "code": "AQkIAJeiAUDRDZAcPu1FAw",
+      "g": 9,
+      "code": "AQoJAJeiAUDRDZAcPu1FAw",
       "resultat": {
-        "score": 110,
+        "score": 50,
         "ticks": 540000,
         "billes": 3,
         "multMax": 1
@@ -197,46 +203,46 @@
     {
       "nom": "robot-30-secondes",
       "date": "2026-11-20",
-      "g": 8,
-      "code": "AQkIAKmiAZIFjRSGM7kCzH-hC9oEowveCPMBsB_bAdpe5wGIGKMCxg3LAuoZoQKicaML4g7rAepI6xX0L7kC1AytAogWvw0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6AG2wGUFaML",
+      "g": 9,
+      "code": "AQoJAKmiAZIFjRToMrMCjCHfAYROixWEMbkC3CODBdws3wGOIN8B8hihAu41oQK8WO0EohmhC64EkwOgR98BxDajC6wJ5wHMH9kB4hXzAdgN9QU",
       "resultat": {
-        "score": 35770,
+        "score": 6370,
         "ticks": 540000,
         "billes": 2,
-        "multMax": 2
+        "multMax": 1
       }
     },
     {
       "nom": "robot-volcan",
-      "date": "2026-11-10",
-      "g": 8,
-      "code": "AQkIAJ-iAZIFjRSGM7kCpifhAaJBqwSiKZECug7bAfBQwQW0Ee0B_BzBB7IPowuwBK8FwiSzApYX6wKYQ-EBxgqPAuQxoQvUD6cC0JAB5wG2MeMDlkOhC4oH3wHMF4sCxBTZAcgYhwaQN-UBwkKPAtwa5QHmYfkB4hXbAdhc5wGYI5UW7DDfAbg_owuWDOMT4DOzAsZc_wGYJ98BxH3rAZBG2QGsPqELoAmjC_QJ8wHCILMQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguUBtsBmhWjC8YahQLKGNsBjhShC_oGnQiGDPEBpA2jC7AEowu-CaMLzATrAdIciQL2K98BoAi7BJgS-wK2I_AB6wGKB5kDnwIKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6oJ6wGSH6cDqhPnAf4fowuoBwKhCwPsBpUC0CyhC7IP8wHKGvcB4g6JApATgwL2BaML8h-jC-4MkQLmQqEL9AWVAvIf2wHAI-cB2A75AZQq4QG8Iv8Bqh6DAqIKAuUBA5gQywOsHcEEngXjEAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLnESjC5QFoQuQB5UC",
+      "date": "2026-11-20",
+      "g": 9,
+      "code": "AQoJAKmiAZIFjRToMrMCjCHfAYROixWEMbkC3CODBdws3wGOIN8B8hihAu41oQK8WO0EohmhC64EkwOgR98BxDajC6wJ5wHMH9kB4hXzAdgN9QWuNN8B3BGhC5QFoQucBM0H8gLDFN5B4QHOG88JzjzfAaY2owv4BPECvinfAYYY6wHmJK0Crh_ZAZ4z2QG0EoEX5i2lBog15QHID-UByiOtAoQvwQL8GesBxBiLAuoRowvkBf8B9BvtAcAQxQKmHvkB1BIC6wED7jDnAZBAoQuUBtsBmFzJCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvKAt8ByhTfAZwgowvWCaMLnAWJA64WoQuWFqELzg-TA6AOqQTaBEylAc4PUwoLCgsKCwoLCgsKCwoL-wKyD98FhiLTAsQJowuwB6kC8BqjC84Towv-AqIBoQvZAwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv4Hs8DgiejC7oH8QGmFOUB6BrlAeQK2QHkGusC5Av5AeoQoQu-D_MBjCnFE6JJvwLSXKMLsAS7AqA-2QGeGP0BuCHhAd4i8QSQL6ML2gSjC8IEgQTKL98B8iffAZ4q",
       "resultat": {
-        "score": 1478060,
-        "ticks": 540000,
-        "billes": 2,
-        "multMax": 3
-      }
-    },
-    {
-      "nom": "robot-espace",
-      "date": "2026-11-04",
-      "g": 8,
-      "code": "AQkIAJmiAZIFjRSgYNsB5CPhAeYu2wG-JOEBzBqLAvIZ4QGUG9sB1hivBYopowKKHOUBihrzAaIs5wGuGuEB4B7fAcoYqQLmK80CvpgBuweUDtkB7hipApYs7QG6GuEB7h3lAaYf4xbIM9kB7BH1EAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguIBtsBzBSjC74Y7QHAHdsBhhbXBs4cowu-BaEL9An_AdIO4QHUEqELkhKhC6IIowuCBqMLnAiLApgl2wHgIqMLggmjC94EiQLMEZcC8geFAvwLnQKMGN8BjA_fAbI-At8BA_QJiwKEJdUD2BDfAdoNowv6BvkBiheLAqIphQLmENsBrhn3AbwhjwLQKaELugf3Ac4WnQKkIoUC0iOLAow2qwOKB7MCiiWhC6AJhQLQI6EL5gzZAdIFhQL4IaELqATrAYYZhQL4IaELtAShC-YEowvCEZUT9jSzAroloQu6BN8BgiTRA4AinQLmKOEBmhuvCKQboQuKB48C2C7jAsgh6wHqHccC8j8C5QED3laFAvohowKmKsECilmDA5w-8wGEGrsC2hj3AQ",
-      "resultat": {
-        "score": 712870,
+        "score": 229190,
         "ticks": 540000,
         "billes": 1,
         "multMax": 4
       }
     },
     {
+      "nom": "robot-espace",
+      "date": "2026-12-21",
+      "g": 9,
+      "code": "AQoJAMiiAZIFjRT4QbcXhmGRAsIT2wH0U5sCyk2hC9AI6wGQDucB_CC7AqQd7xOYQesVmEmRAqoXqRIKCwoLCgsKCwoLCgsKCwoLCgsKC8QR5QHWFOUB3hKeBL0ICgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoJBQoLCgsKC8oI5QGiEf8H8hTrDwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgALCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_UCzBH1A-If9w8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgALCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLnwn-DPcB1h3uBLcGyASDBAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL1QT2BKELqAr9AcQPmQS0BuQL8wHtAgoLCgsKCwoLCgsKC7AM5QHsDaMLwgSjC_oBuAajCykKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvUA_EH6CG9B74Hgw0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLug3rAZgqAtID0wcD9wMKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL5AGDAvoe5wHiE6oM0QLDAgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC5gB-QH6IfsD5gSNB_QH1ga3BQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLtQKqCu0BpCKHBPICsRQKCwoLpBL3AeQn9w8KCwoLCgsKC9AMowveCKML2ASPCJoEvQsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwjxAowx7QGaB7sMCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgILCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_cCvBuDApgSmwLYBqsOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC5QjrQKkFMIM5QGDBAoLCguaCecBoi3eApcC8w4KCwoLCguGHP8BxhOlA8wG5QwKCwoLCgsKCwoLCgsKCwoLCgsKAgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCQQLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvMCoED1i7NFYRQnQK4FIMC_BPxAbYV9wHmFuEB0CCDAoQ1nQKwHKMCnhXlAdAV2wGYDP8JlASZFNhTnQLmRuEB7h2hC9IO4QHMDeEJmiHtAbIOAtkBA_QYlwLaFMsWtkqbE9BAuRO6P4MW9lzhAQ",
+      "resultat": {
+        "score": 1541980,
+        "ticks": 540000,
+        "billes": 1,
+        "multMax": 3
+      }
+    },
+    {
       "nom": "robot-foire",
       "date": "2026-11-07",
-      "g": 8,
-      "code": "AQkIAJyiAZIFjRSGM7kC4EjfAdYXmwKgM-EBpD-hC9gI4QHYHdsB8j2jC84H4QG-GOEB8haFAtpn7QGyvQHhAYYeAusBA_Qa3wHmOY8CziHfAdAtiwLMQ6EL3gjbAYxopxb2LtsGthPtAeAZlwLeE6ELzAShC6YIgwL6Ko8D0DztAawV_wG8Z6ML7gaRApglxwLYWKELuAvfAZoW2wsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLmgbbAfwUowvGGvMB5hajC-oIowuqDwKhCwPgBKML6A-jC64I_wGQEwLZBAPwBecBkB_9Ad4L4QGuQ6EL-gzZAuYc4QGMFQL_BgPOE-EBkiKjC7AJrQLAJqMLvgbhAfon5wHubOcB2CKbAoYotQKeE4UCkCCLAsBP2QH6F9kB0DbbAaBU4QHwbesBlkbZAapD-QHyNuUB9BWRAoILiQL-RaEL3AjlAQ",
+      "g": 9,
+      "code": "AQoJAJyiAZIFjRTqN8sC-CWLAoygAaMLzAWdArYc7QGmQZUC7hqhC4oI2wG6KMUCjGejC_IH5wGWagLlAQOgGuUBgByjAqJXvxb8Q_cByBnnAdhE8wHmJOsB1COnFsIwlQi2DaML7AqXAtwelwL4G9kB-jOXAogg3wG8IMcPCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC44qlwLaCqML0gShC_IeoQviC6ELkg29BMgeAuUBA44howv0DKMLlgrlAeYZowuqB4sCjjihC8QIoQuqBJsG-hLnAZor5xEKAAsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv7AsgS2QHGGdkB0A4ChwMDjBuhC-wSrQLELecBnCCjC4AC0AaLAr0CCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwKjC4IFoQvuCKELuBSVAuQT3wGQHwLrAQPUDOUBygj3AcIhAv0BA9AsAuUBA-Qx2QHMDI8QCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguwDNkBjDONA8AynQiMJJUC0IMBoQvwB_EB-CfZBIoW6wGIGPMBxCCPAvYZAusBA8IYoQv2B4MC2hydArhloQukBsUC7ifnAcwtgxaoMdcC",
       "resultat": {
-        "score": 212080,
+        "score": 1520970,
         "ticks": 540000,
         "billes": 2,
         "multMax": 3
@@ -244,11 +250,11 @@
     },
     {
       "nom": "robot-ocean",
-      "date": "2026-11-06",
-      "g": 8,
-      "code": "AQkIAJuiAZIFjRTyM-sBzI0CkQKYEJ0CgBPzAYQc6wHmJ98BznCRAowVlQLgKuUB5hbtAfQu-xbkLq0C1lqdArAtrQKCHacC2CXrAf4f4QHoGpsCnhXfAe4ajwLuDOEBshqbAtRGnQKM_gLbAagaowvUB6MC1DChC5AHmwLGN_cB7jXZAdKSAZcC3jGhC9QE2wGgDO0B_IIBoQvaBIsCiirBFexD7QHIcJcC8B3tAeI39xKMNrkCnBrbAbYbjwLOQqELkgbZAfz4AusB4iftAdwoiRO2M98Byjs",
+      "date": "2026-11-30",
+      "g": 9,
+      "code": "AQoJALOiAZIFjRTANN8BwBqvAqI42wHEeqELzATZAdI66wHyFu0B-A-VAsYUkQLyEOUCvEUC6wEDzC-hA8IZiwKIErkJ2hOjC4IGxwKYMOUB1B79AfROowv-Cd8B_iqJAv4e3wHYFeMWkjDfAcZ3qQKCLeEBhCvZAdwvoQv4De0BhCnnAYQslwL-Hf8OCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgumBdkBgBXZAeYoowv0DP8B4iGcCYsCugTHB80DCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguuDdkByBLxAbge2wHaCf0BsBWhC-4s2QG0KdsBjByjC_oGowvGBKEL5gaJAtgdowvYBNEChBPlAdwX3wGWHOkFiCDrAcYX4QHOLJUNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_wmowvwBwLlAQO8CqML4gbBArwWowu-EeUE8BGjC7IIAt8BA8oj_QHyJPcBlAjZAeYSxQLKFecB9CGjC-4RoQuYCZsC-iOhC9oJmwKiJQLrAQO6B6ELqgSZBIAJ6wGiFpUC8hSrDgoLCgsKCwoLCgsACgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwcEC8JJowukBJ0Cgg_hAc4woQu8FpcC6AXfAZgk2QGqB-EB3C2jC-wl8wGwK_8B6jCZFPhFmQPGLOEB8C7fAQ",
       "resultat": {
-        "score": 54660,
+        "score": 1335070,
         "ticks": 540000,
         "billes": 2,
         "multMax": 2
@@ -256,38 +262,38 @@
     },
     {
       "nom": "robot-multibilles",
-      "date": "2026-11-13",
-      "g": 8,
-      "code": "AQkIAKKiAZIFjRTEYNsB9CGXAuZGowuyCfMB5BDZAchLoQvoCOUB6DadApoL_QHkTNkBphijApgciwL0CNkB0hejAuQm5wH4GYsCohTbAYwW7waOGKkChjHnAd4XnQLaJeEB3hzxAZQe-QHWDM0C-FjtAf4ZhQLgJ9cC_CXrAdgcoQvIBI8DgjIC5QEDrjT9AcY77QGMG_0BxiLfAeQXowK2QOcB2izvFoQxmwKsgQGFAo4piQLQJOEB9hedAr4v3wGSGfMB1ibZAd4XlwKOGrkCjBL1ArwUiRP-VP0BiiPtAYAhoQu2BM8HngitE9J6owuqCQLlAQPcFYsC7B_5AbwXiwwKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC44G2wGmFaMLqBrzAZAfoQuMCqMLjAbrAdoN5wGOKqMLngSjC6gEoQvaBKMLxAe8AdsBvQ4KCwoCCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsJBAu0C6ML4AelBJwavwbgFaELjgihC6wMowvyB5ECtBqXApAHoQuiBPsC3CflAsAI2wHoBeUB5BqLAtoW8wGkB_MBwhmpCMAHoQvcIecBqBejAqQl2wGyPtkB2BejAo5L2wHQKpcC9h8C5QED1CHfAfYZlQK-YqEL1gXZAdQZkQLeCu8CrD4C6wEDwEm_AtAg_QHmL-cU0jGTA-Qm5wGUC-sB8BmzArIv2QG2GKEC2ioC6wED5GLbAZgihQLmH-EBxhedAuIk7QH2GfsCsBznAawXoQLMJrsC2kbbAYAinQLaKMcCkgkCgwID-BnnBLoWoQuOCIkChCLfAfQXoQLgKNsB7BmRAvIrowuGB50CyiftAc4e5QH4ggHbAaQilwKeJeEBwBepAv4f5wHwF5cCnD_jFtguswLYDY8C1CLNAog1gwL8HK0CyiSFArgpgwK-IeEB3hedAqIW5QHOPqUXiogBhwOsIPcBgk2hC_4J5QHSEt0W0kHhAYIb4QGYHusBok-hApg6owu2B5cC5CbzAdIs5wG2HuUB6DHzDgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLjgbbAYgVowvqGsEC4h3ZAYAZ4QGiItkBohP3AcQt7QH4D60C5gyBA-wl7QGiDbcDiAWhC9YIlQLUD8kGyA-VApoP2wGuGaELpBOjC7YJiQKYCuEBxBj_B9wbowvYBKELng67FfQ12QHKPOEB-AzZAcQ5owv6BvkB7BzhAegq7QGeDaMLsgXxAaAbpwPWF98BsCPRFrousQa0GoUCiiWhC6AI2QGUHesB2BPlAdBHrQjuC98B4h3fAeQXnQKkUtsB1CKFAs4flwLUK_kBgButAvAskQKSEt8B3jmNFPQyuQKISJcC7kflAfA-rwKSNNsBhiKFArAf7QHaGf8B_EChC8QG2wGiRNsB4iGdAvgl8wGeGZ0CwmfbAfQhlwLUJecB8iy5FpAxgwLKFNkBvCWLAroU2wG-Y6MLxgSPAsob5wGWZscVtjC5AoItowu-Bp0CrCftAeAe5QG8OqMC6ijlAcIZ2wHqIgLrAQPEOZcC-A3hAbRfowLkHPcB8hufA-or3wHeOt8ByBS_E940pwL6GIsC9EfxAfQj3wH2Eu0OCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC44G2wGOFaMLzBr_AYANowviD6ML3AjfAZwTjQPOHokCqB2jC6gE5QHeCO0BkBqvAtYm2QHGKdsB5BrbBK5SoQvYCt8BjBvxAYQ7owKiNNkBtjTnAfQXmwLUGL8CpjDbAcIi_wGIHu0BsB79AdRPowvsB4UCjiG1AuAe8QHqGoUC4CrxAeoroQuICN8Bql2zAt41iwKWKN8B2IUB5QGIHeUB0g67AqQi_wH4HLUCviahC-QHoQucB4kCvCLhAYgV0wKQJQLrAQPWLskUrDKzAs4hAuUBA_hDzQLIJdsBuheFBYI58wGuGacChiiLAqYOoQuoBwLlAQOMGecBojDRFt4uswLGDeUB0BffAaYktQLCCdkB2ETbAfQY4QHWGOEB6hedApov5QHwGuEB6hedAvZboQukCd0CyDHbAaoiiwL8IPMBtg-hC6QEows",
+      "date": "2026-11-17",
+      "g": 9,
+      "code": "AQoJAKaiAZIFjRT4QbcX9l-jC-YM3wGkbKELoAgC8QEDlg3VA5QelQOMMKELrg2hC54GvwK2GeEBsDGjC8IH2wH6LJkDmiDlAcYtpReUVusBxg63CowetwOoDMMUkDzDFOo8vRTCOKEWpkvtAc4y7xPqP-0UtEqdArhC7QHoDucJ0BujC9YJ5wGaDvMG0hqjC6AJ4QG4I-UBog6rBKYmjwL8EOMCwBT5Abod-QGULN8B6Dz_AY4moQLAFgLPBgPyMwLrAQOODukI9hejC_oJ4QGgSoED5h_zAaQtoQvyCQLrAQPyDIEDogO5E7RC-xPMUqEL4gWHA-gNsQsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLjCiRAsoM1gHRCcEGCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLAgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL0QOiBoIImQgKCwoLCgsKCwoLCgsKCwoLCgsKCwoLiQLuG6MLqgejCzqeBMsHCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCQQLCgsKCwoLCgsKCwoLpASjC-wE5wGMD7EDpgzhAbYCwgqXArUGCgsKC9wO2QG6KrsMCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCpYI5wHHCQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4AT2wruBM8RCguIBeACxQihBAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgALCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL-wW6A6AM-QHZAwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguUDrMIzhyuBvkEmAeXAgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguIBp0CgiOhC8gCnAidAsUHCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu-C-UBsBOjC4wGAvQHsQMD2gblAZsECgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvqBwLlAQOwEKML_gmhC1j4A8cJCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLBwQLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6QGoQKEFO0Bxha5Ar4EuwwKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC9wbjQTmGrwG6wHPCAoLCgsKCwoLCgsKCwoLCgvUBO0Bki-6BOUJCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgcFCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKzAShAqcNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_wEAuUBA4wa6gffBO8ECgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLqgWYCvMB1QUKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguuCZsQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-IIoQKeMukNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv8AuEBjhujC_wN5QEohg-_AQoLCgsHBAsKCwoLCgsKC_okhQLGEqILnwSjAwoLgjO5A6wBpxAKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu-D6ML7gnhAaATxxIKCwoLlgOZFAoLCgsKC_w58Q8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLgAOhC9oG9wG0EYsCzhGJDQoLCgILCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLkQjGDbMCyiKCAuMC0wwKCwoLjCGPAtIV8w4KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC5g3gAWnBtUFCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwIKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv9AuId_QG0E9kBjgT9DAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL2AL7CcYZoQvABKUDqgLZDAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLiDboAb8JkgeDAQoLCgsKCwoLCgsKCwoLCgsKCwoLCQQLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv-D6EL-By2AvEI0QcKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4AB_wGmDocJpBn0BLMGygnnAREKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv6C98B4B-3B4IEvxPMD8MOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL1CvzAbIKwBACxQEKCwoLCgsHAwQLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL-jWeBYcGzQYKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKAAsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwcECwoLCgsKCwoLCgsKCwoLCgsKCwoLCguGD9kBlCjREAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-wS3wH2DQLrAQPqGKsOCgsKCwoLCgsKCwoLCgsKC_w83wwKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC8gc_wG-HMsQCgsKCwoLCgsKCwoLCgvmDYUC4ikcwQGJEAoLCgsKCwoLCgsKCwoLCgsKCwoLrhD3AeoQAtkBA-AUqgyTAgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL6wSuCokC8hIC2QEDpBexCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL7Dj5DgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_growvKAcAF_wH_CwoLsAahC_Qbowu6A8oDlwKFCQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgukD98BzCbnAdwBuQ0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC9Y6gREKCwoLCgsKCwoLCgsKC-g3xxIKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL6gujC_QGhQLwEP8D4gSUCYsCuQQKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguMIOcRCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLiAq_DQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL9DexFJQCoQvkBKELsAThAfgXsQ4KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLhAbLDQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC7wz9wHyBekNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu8CZMD6C7gCp0CmwEKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLnDn3DwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLohSjC8YK3wG-DaMPCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvMBeEBwC2JDQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCvsTCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC9QgvxAKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu4B6sOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgviCpESCgsKCwoLCgsKCwoLiiPzAcQW-w0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvSKaMLtAaGAYsCtQwKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-YD6wHYMxqjC7oEAusBA2sKCwoLCgsKCwoL1AzBB8gjhgGLAv0MCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL6BaZEQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu2Dr0OCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv-CMUQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvmC_MOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6IJvQ4KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguiCYUSCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu4DeEOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguaDZMOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvsBe8NCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLoDrfDwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLjiOhC4QKLvcKtwUKCwoLCgsKCwoLCgsKCwoLCgsKCwoLAAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv1AsgT-QHMEOsBuA2-A9sBkA3RAQoL-wKuI5cC7hCBEQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC5oH9Q0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLijWIBF2SD78BCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguDCIgFtwPyKZ8OCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLwg2jC5QGiwLyF7wH7QG9CAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC8YEmQPgKLEEgAWjEgoLCguQFvEB_A7nAewR6RAKCwoLCgsKCwoLCgsKCwoLCgsKC6gJmQ4KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv6LroCowtfCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLogT9AdYR2QGWHtYJiwLvBAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-Q59w8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvUO9EQ0gijC54H_wG6EKkHgAjeAp0CiQoKCwoLCgsKCwoL6Dq3DgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC3SlBJYL4QGQIokC2gWlDgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLoDLFAvADyREKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-oXkQKQIakPCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwrHFQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguIJfsKCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLlgn9DAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC8QNuw8KCwoLCgsKCwoLwCPtAdoUiRAKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguCNY8CigaaC-8BCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLuweoB-UB0A4C2QEDjhxyAusBA6ULCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6Q3RpkBoRAKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu2JKELwASfA7gEhQ8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgusM6wH-wPACOcBywEKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_wK3wHuKesBiAGhEAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL_CztB5AD2Q8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLqgrbAaYP2wG6G6wF2QHbCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKAgv3ApA2jBDLAQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsJBAsKCwoLCgsKCwoL1jeYAaML4QUKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLxgLzAYIg9wGoEuUPCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-4P4QGSKYEp-COtDQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLoAe7DwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4wLtQ8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL5DmnEAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgs-owuwCQLrAQP4DIcDqhH9FdI_wRXUUKUX3lXlAdgd2wGyDs8JxhqjC4AK4QGOGgLrAQOCGOEB0Cv1E95RtRWUN5MXwlPjE-hL8wHSEPEB0BHlAY4SqQLMHfMBxhTbAbZY5wHMEPUFplGjC4wH_wHkEOUBskbdE_JSnQKSLOcUgk-DFqRenQLMa80CxBrfAeAkoQL4Q-EB1CGhC6gH5QGEDv8BwDehC4AH2wGId6ELugXbAfQO_wbcG6MLygapAvZo_wHqEPEB2A7bAeoNswLCiAGjC44GiwKsJuUBjBLRAqA_2wHiFcEC_h7ZAf4prRPkNpkU8FadAvxDqQSoJpEC4Cy3F4hgowv6C-UB0AzzAbQtqxSeSoMWyF6dArgvpwKgGtcCqBX1DQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgu2KIsCuAyaBI0HowYKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLAgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-sCrAenDQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgusI5kD-gWhC5IChASHBrcFCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvyCYcDiBcC_QEDpg79BNoC8AiLAp8FCgsKC_olkQ8KCwoLCgsKCwoLCgsKCwoLCgsKC1CpAqw6cqEL-wEKCwoLCgsKCwoLCgsKCwoLCgsKC-4CAusBA6oNowuYB-sCjBGmDKkCiQQKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLlBehC_oFoQv-Bb4DrwLzCAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4Yr_wHAD7UMCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLpAahC9wPqQL0Fv0PCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC9oJlQKUEb8C1Br1EAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLsB6PBZQW6gKRBaMGCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL9BKLAt4nxwwKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL7gTrDwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLwjuTDgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL6Bi1AsAeqxEKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_Q6-ginAoECCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-A7VucBmw0KCwoLCgsKCwoLCgsKCwoLCgsKC7IXswKUItMMCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLxhHhAaok2QH2A7cOCgsKCwoLCgsKCwoLCgu0MrsCvAWRDwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL1BH7DQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwqbEwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLpiKBEQoLCgsKCwoLCgsKCwoLCgsKCwoLsgSFEgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC9IMiQ0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_I4gxMKCwoLCgsKC1CjC-4IAusBA84j2AHfAY8NCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-Y05wHaApMRCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-ILAusBA_Aq4xAKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL1AOhC9IFxwKYFaELwgWYAeEB-woKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgusEuEBvg_bAa4Vng3BAt0BCgsKCwoL_DeyBPMG7R3YP40UvkDlFcpdowviBvkBjk7rAtQZowuMCuEB3nejC4AH-QGQEOUBhBOhC_4GoQvUCd8B-g4C6wEDvBnhAbgu9RPIU8sTmDjjFtBioQvMBJsCsBzhAdSLAaMLpAf5AZAQ8QG2FtsB0luVAuRS8QHILMcVmkijAtwv2wO0KYsCpijbFIA4mxbcPfMUjFWjAoRB0QO8GaML9AnhAaQc8wHeNrkWoj-5E7Q_9RO0VMcVmkijAsov7QPeKZECrirlFb5dowuGB_kBzByhC94EoQu0Ct8B_A0C6wED8j_3AYw8swKgL48CzDSTA5xKxwLYVaELogffAf4N3wjiHbcD_HinE-JO8wHCQKMLrgXnAY4O3wGIJtkBmECLApQenQLoLe0Bmi6HF65WnQL4LcMD0B7zAbAP2QGKH-0DkESjC4gGqQKMFeUBrk_bA6QesQPedKML_gfzAdoYxwf8GKEQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6QoiwKmDJgCjwnyB8UBCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-UCsgTqCt8GCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLtwPKG6MLigacBZ0CrwkKCwoLCguyHIkTCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL5gTbAQS5EAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL9Df0BqMLZQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC8QDowLgGIMC2hbrAijVEQoLCgsKC74MswPOJALlAQPEBJoI8QGZBQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_YIowv2HdcGlAHnDgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-4DhQLeBPcBlA-jC8oGowjQBMUQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL8gbfAcIVAusBA4QN5QemBOERCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLjBKhC_IM3wGQD4cOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvABNkBxjPeESMKCwoLCgsKCwoLCgv3ArQa4QH2GPEPCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC5QV4QGiIf0PCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLgDftAaAEvQsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_Q6iAP_Ae8KCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvCMssNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC_gCqxEKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLlDqxDgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLxBujApoclxIKCwoLihmhC7wGoQLQDfQIAtkBA7cCCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCguGFQLrAQOQIbkQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6Y2xwLOAv0MCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4Az6wHIBecOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLyg6nAoIrlRAKCwoLCgv2CNsBoA6FB7AakgqRArcCCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLnib1DQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC6wH2w4KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC8AvrwX-AqMSCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLwATZAfgMyQPYJKUX_FXlAaoP2QGiF4UC9A6zAqpO1QPEJqELtAShC8wEuQWUOaMLvgnnAbgOmQnaGaMLkgrhAfQb5wHyMNkBplGjC8gH7QGOfqML9gWRAogatQTSF6MLhgrhAdg1qQLcOcEC_GKjC-QI5wGaDs8DsBmjC-IF2QGQDqML_guPFqpH_RLIPskUwE7LFspJ6RaUSJcC-Cb3Etw30ROSPokTxk35AYYTowvGBJUClDajC9IEoQvEBeMC5DTlAZY2sRTITJ0CgDbfAQ",
       "resultat": {
-        "score": 1488130,
-        "ticks": 296315,
-        "billes": 0,
+        "score": 13624450,
+        "ticks": 540000,
+        "billes": 1,
         "multMax": 6
       }
     },
     {
       "nom": "robot-deblocages",
       "date": "2026-11-11",
-      "g": 8,
-      "code": "AQkIAKCiAYQGlxWkQ9sBgBmvAsgr2QKQMqMLtAjzAcobgwboNucBmjKhC-wJAuUBA_JgoQuqDPcBxijRBdw_owvaBNsB6FwC5QEDvhi1ArhT3wHQWd8BghoC5QEDjlHhAbZCAuUBA_gu2wHSJoUCqkOpAshI5QGOMIsCsi2jC5IHkQKUJM0C7hTfAbYz1wKMOuEBqBrzAcBJ2QHEKucBjBmvAvxQ8wH0IeEByiGjC8AEoQuQCpUCvn7bAYIf4xOkM4sHqhCjC5QGhQK6J_MOCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgv8BdsB0hSjC-gY_wH0FdsByhShC54E4QHoBtsBuCHZAqAa-wKQBeEB1hvzAbIVowuoB7MCoh2jC4AN_wGgFYUC9imFAugV5wGgLAKHBgOAH6ML0A-FAsxB5wHKGK8CsDnZAbIYtQKOIaMLsgrLE_Q19wHMOqELgAnlAZwZvwKyKQLrAQOePZcCzi6DA_4b6wGkG98BuCS7AtBWlQKUINkBzBqFAvop8QGoHbsC7BKhC6oNkQLQJ9sB3hqRAuQ47wO2IosC3iPhAb4w9wK6VesBhBntA5oh-QHyIPMUxjGtAuwt3wGqL9kV0jHfAaQ23wGa9QGhC5gN-QH4D6EL2gSRAoJs0wXsE-0B6iSNCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgs",
+      "g": 9,
+      "code": "AQoJAKCiAYQGlxXKN4UVolH_FMo93xWeUK0W_Ej9Eqo-mxaqPuMTxEvnAdYu9ROeUPEV9kudFco9gxOYRMkUuE-NF65LtxfqX6MLggvrAboW5QHYJdkBpkWFAqhlowvaB-0B7h7NAvg34QG-RP0E6lnhAfwd7QHiN_ESxEuRAqgqhxTqPMsTxDeTFPhQmReIPbEXvkmhE-xNxRPqU68ChFPhAcg98QLWGMECtk_tAbI85wGoKssWkEjxFZxI4RT6Pb0UjjrdFrhAnRWYPuUVrF2jC6QH-QHAI6ML4AThAZY-lwWKI6MC1lmzAtRD4QG0GrsC8CvfAcoaAuUBA4JFowv-BMEC-iTtAYSwAaMLhAXBAo4j2QGgHdkBniX5Ad4fiQL0EaELzgahC8YEpQPmC78TxFGjAqZr2QE",
       "resultat": {
-        "score": 332990,
+        "score": 103310,
         "ticks": 540000,
-        "billes": 1,
+        "billes": 2,
         "multMax": 4
       }
     },
     {
       "nom": "robot-multibilles-court",
-      "date": "2026-11-11",
-      "g": 8,
-      "code": "AQkIAKCiAZIFjRSGM7kCjCiLAtAU5QH4Oa0CjhLhAfo2owvgBO0BvhuLAtAPowvkBZcC4k2hC54MjwKiPvMB7BmvAsws6wKwHJcCqCnZArYnoQvWBucBoDihC64EoQuwBOEB8CnrAuQW_QHcKuEBzDjbAcAm_wHyQ5cC4G_fAbYb5QG8Ip0CwiijC9IE6QK6MtsBoh2jC_wI7QGMHP8BiD_ZAo4w2wHAHaML7ATfAq495QGCR4kC0hnZAcRcyQO8LeUB9CKNF8JDnQKyLoMNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4IG2wGCFaMLmhv3BcAUowvMBN8BzA7hAZYToQvSBJMGvgyjC4QLwQKcEI8C5hOjC5wEvwXMCNsBqCCRAq4L2wHwF6ML_grhAaQN2wGoHRaRC4EFCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsCCgsKCwoL_QL-QOcE6CThAbgX3wGgJ50C0hDZAYorAusBA54VlQLcJKMLigoC6wEDokGVBp4lzQj-HKMLvgajAuwMAusBA7wf4QHKJqELggnnAegSkQKgJgLrAQOKF40E4gnbAcYZoQukBOUI-iPZAaA43wGUSuUB2mijFfIwrQKSLoUC1EOXApAurwTKJpUCyB7rAcwO4QHcGKkChkvrAZ4n3wG-HakE6EKjC-YE4QGoEbsCzhmjC7wHnQKQKdMCiiajC4YHlwL-SaMLnAuLAvAj4QHMGosCrBvnAewZ4QG-GJ0FsDahC7oE3wGQGfEBohrnAa4a-QGOO6ELsgsC6wED4FHDA7Y5gwKiN6ELmAbfAbQU2wGSGakC6CrhAb4YowXWR4kCzDijC8oG-QHGHcECzhnnAaga-QHcG-EBqDqhC8IMAuUBA9oQ4QHcJOEB_B3nAZoOpwKOKaELjgXfAa5AAusBA74t_wGkQ68C0A6zApAR4QHGIOcB5iCbE-o0vwKMHOcB0A7ZAfIgoRAKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLpgbbAboUowvUFokD6hrbAZYmowuoBKELwiWdAqYkowvuCKUD3h_1Aqwd8QHuHYMChCKhC4IqowukBKMLggmLAoww2QGKF9sBkB2jC-oI8wGCG7UCgPkB3wHEdALrAQO4GokC2BkC6wEDgjuhC-4L9wGCP-EBxBipAuosxwKOJ6MLygbbAfRxnwP-K-cByhi1Augg8QGkGYsCgjnvA_Ii-QGaG48DujLhAagdowvCB4UC1jWhC-QL7QGCS6ML9gXbAYImoQuuDpcC0lWhC8AKAusBA7ZO3wHwGfcB-hiXAt4QmwKcE4kC9ijrAcJy5QGyD6MLqASnApIV3wGuFtkBqkWhC6AI3wH2I_MBgBihC5IG3QKOHvMB3hSjC8QG2wH-Y-8C5iXzAeIV2wHiGK8CoCqXAv4l5wHoGKkCokejArRKkQKmHd8BxDyjC-AKkQKERK8C0hbxAaIgowv0BucBjg6VAuwe3wHEG_kBkC-jC8wFiwK4JK8C1CWjC6wG4QGQW6EL8gbZAQ",
+      "date": "2026-11-19",
+      "g": 9,
+      "code": "AQoJAKiiAZIFjRTyM-sBlDDbAa4f2QHmG6UD6nPfAcYZ2QHkNaMLvgaLAuYr8QKwHt8BvhflAc4kgQOaNccEpBsC6wEDnBqJA6Ay3wGsNuMDgkvzAa4xoQu4BbMChFajC7AE-QGePKELjAaDAoApuRO6NLkCsi3bAfJI_QHqMJUW_DGhAowz5QHiIKEL6gjnAfwm2wG8P98B-hq5AsIzoQveDY8Cqh6hC5oF5QGeQt8BjkujC7gGlwK8IfEBoBjbAdgy5wHuINkB0hmJAvgboQveCt8BhBnfAdAq8wGGHo8Cvj3PFI4yswLsLZ0EwiHxAeod8QK8HKML1ASPA_wMiwwKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCx7dAqAU9wGqGdsBlhThAcIK8wGqFvEC2AjnAaIQoQucBN8BqA7tAcQLrQL-CqML-AahC6QJoQu6B_0BwASLBIwOgREKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-og4QH6HtsBlBv1CaYaoQvGBKUDvgWVAo4mAuUBA8Af9wGwH5cCuB3rAeAkjQOMLd8B8G75Abo9oQu-Bb8C-EXfAY457QGKHKUDgCiLAq4c9wH-HPkBkDCfF6IurQKUMpUC_h7fAcpT3wGeH-cB7i_fAZge3wHmKv0ByDzZAdYtswOuFgLrAQOsQd8Bqjz9Adwk8wGyHZ0E0C3hAdIyhQKQPuEB5DPLFrYw3wHsJP0BjjPhAeggAusBA_QV8wGAL7cUrDK_AsYwgQ4KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC0KzAuoTgwLKFN8B9A-jC9QMqQSIDv0BlBSDAoIdoQuOBqMLmAr3AtAL_QGcNAL9AQPyG4MC0g2hC-YKowuUHqMLnA6FAtIl5QHMQecBiDWhBcodAusBA7RLkxfmLZMGxEHfAb4aAusBA6hBowLiIOsBymbtAcRl3wHUMfMBrlvfAegbkQKiUP0C-EOjC4AH_wGqXqMLmAqpAoSVAfkB6hnfAdI6oQugBdkB0DP5AdAa3wGgbt8BoDgCoQID0GXfAYhjowvkBKEL2gmJAuIm5QGSRucBiFHnAZwWzwbKOeEBwkznAbYZmwa8D5UC3iWbAqpFxQKMId8BxBrlAfpQ_QGSH-cBvB4C6wED8DWjC8oGlwLUNpUC3harA74n8wGONcUF0hfbAewrpwPoSPMByB4CgwID0iy_A4IUAuUBA6waoQueBKMLuAqhE6I0-QaMEKML2gSJA6oLoxWWMaECvinrAaQYoQvyBKMLvgbZAt4ojwLEM9sBwirfAbgXlQKqG-UB3iWnAvwcoQu4DKMLwgeFAvAp0QPIG5UC6CGjC9wVoQOyCskRCgsKCwoLCgsKCwoLCgsKCwoLCgtCuQKaFPcBgB-jC6gOowvaBKcD5jGjC8gEowv0CaMLqgThAd4uoQv2B6ELpAejC44FoQu6BKELuAyjC-oO-QGCEckD3BqhC5AKoQs",
       "resultat": {
-        "score": 1315690,
+        "score": 1686490,
         "ticks": 540000,
         "billes": 2,
-        "multMax": 6
+        "multMax": 5
       }
     }
   ]

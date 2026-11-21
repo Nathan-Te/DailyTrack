@@ -1449,6 +1449,8 @@ export class Partie {
    */
   private surRail(d: Derives, r: Reglages, t: Table): void {
     const rl = t.rails[this.rail]!;
+    const ox = this.x;
+    const oy = this.y;
     const n = rl.ux.length;
     let k = 0;
     while (k < n - 1 && rl.cum[k + 1]! <= this.railS) k++;
@@ -1499,6 +1501,36 @@ export class Partie {
       // la vitesse du tracé (pour le rendu et le robot : une bille sur un rail a une vitesse, pas un arrêt)
       this.vx = div(rl.ux[j]! * this.railV, NORME);
       this.vy = div(rl.uy[j]! * this.railV, NORME);
+      if (rl.genre === "orbite") this.capteursDeLOrbite(ox, oy, d);
+    }
+  }
+
+  /**
+   * **Les capteurs du couloir de l'orbite** (lot PBT1) : le spinner et la coulée sont posés dans le couloir, sous le rail de l'orbite ; la bille qui le suit les déclenche comme celle qui roulerait au plateau (le spinner à la
+   * traversée de sa ligne, la coulée l'accélère tant qu'elle y monte).
+   */
+  private capteursDeLOrbite(ox: number, oy: number, d: Derives): void {
+    const t = this.table;
+    for (let i = 0; i < t.spinners.length; i++) {
+      const c = t.spinners[i]!;
+      if (Math.abs(this.x - c.x) < c.l && ((oy < c.y && this.y >= c.y) || (oy > c.y && this.y <= c.y))) {
+        this.spin[i] = this.spin[i]! + 1000 * Math.min(30, div(Math.abs(this.vy), 40 * UNITE));
+        this.ev |= EV_SPINNER;
+        this.points(POINTS.spinner);
+      }
+    }
+    void ox;
+    for (let i = 0; i < t.coulees.length; i++) {
+      const z = t.coulees[i]!;
+      const dedans = Math.abs(this.x - z.x) < z.l && Math.abs(this.y - z.y) < z.h;
+      if (dedans && this.railV > 0) {
+        this.railV += d.couleeParPas;
+        if (!this.couleeDedans[i]) {
+          this.ev |= EV_COULEE;
+          this.points(POINTS.coulee);
+        }
+      }
+      this.couleeDedans[i] = dedans;
     }
   }
 

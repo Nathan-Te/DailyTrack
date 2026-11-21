@@ -124,20 +124,21 @@ const arc = (a: number, r: number): [number, number] => [196 + Math.trunc((cos(a
 const ANGLES = [180, 160, 140, 120, 100, 90];
 
 /**
- * **L'orbite gauche** : un couloir de 32 px le long du mur gauche puis de l'arc du haut. Son **guide intérieur** est un mur du plateau, vertical en x = 52 de la bouche (`yBouche`) à y = 205, puis en arc (centre (196, 205),
- * rayon 144) jusqu'à (196, 61) ; la bille en ressort en haut, dans les couloirs et les bumpers. **Le rail** (`orbiteDuCouloir`) prend la bille quand elle a monté le couloir assez vite (il commence à `yRail`, au-dessus
- * des modules du couloir) et la mène au sommet par le milieu du couloir (rayon 160) : la porte (`porteDuCouloir`) ferme la bouche du couloir, en bas.
+ * **L'orbite gauche** : un couloir de 32 px le long du mur gauche puis de l'arc du haut. Son **guide intérieur** est un mur du plateau, vertical en x = 52 de `yBas` à y = 205, puis en arc (centre (196, 205), rayon 144)
+ * jusqu'à (196, 61) ; la bille en ressort en haut, dans les couloirs et les bumpers. **Le rail** (`orbiteDuCouloir`) prend la bille à **sa bouche**, large et basse (`xm`, `ym` : le milieu, `demi` : sa demi-largeur), puis la
+ * mène par le milieu du couloir (rayon 160) jusqu'au sommet ; le spinner et la coulée du couloir se déclenchent à son passage. **La bouche est là où l'éventail du batteur droit passe large** (lot PBT1, option 1 de
+ * Nathan : le pied du couloir de 32 px, à 370 px du batteur, ne donnait que 5 ms) : elle recueille les tirs directs et ceux qui rebondissent sur le mur gauche. La porte (`porteDuCouloir`) la ferme, 26 px plus bas.
  */
-export const guideDeLOrbite = (yBouche: number): DefGuide => ({ genre: "orbite", points: [[52, yBouche], ...ANGLES.map((a) => arc(a, 144))] });
-export const orbiteDuCouloir = (yRail: number, hauteur: number): DefRail => ({
+export const guideDeLOrbite = (yBas: number): DefGuide => ({ genre: "orbite", points: [[52, yBas], ...ANGLES.map((a) => arc(a, 144))] });
+export const orbiteDuCouloir = (xm: number, ym: number, hauteur: number, demi = 38): DefRail => ({
   genre: "orbite",
-  points: [[36, yRail], ...ANGLES.map((a) => arc(a, 160))],
+  points: [[xm, ym], [xm - 4, ym - 34], [36, ym - 68], ...ANGLES.map((a) => arc(a, 160))],
   hauteur,
-  demiPorte: 17,
+  demiPorte: demi,
   unSens: true,
 });
-/** La porte de l'orbite : le battant ferme la bouche du couloir (de x = 20 à x = 52), sans murs, à sens unique. */
-export const porteDuCouloir = (yBouche: number): DefPorte => ({ x: 36, y: yBouche, angle: 0, largeur: 32, profondeur: 0, sansMurs: true, sensUnique: true });
+/** La porte de l'orbite : un battant de `largeur` px, centré en `x`, à 26 px sous la bouche (`ym`), sans murs, à sens unique. */
+export const porteDuCouloir = (x: number, ym: number, largeur: number): DefPorte => ({ x, y: ym + 26, angle: 0, largeur, profondeur: 0, sansMurs: true, sensUnique: true });
 
 /**
  * **Une banque de cibles dessinée en diagonale** : trois cibles de 20 px centrées en `centres`, sur une droite inclinée de `angle` degrés (−28 : en montant vers la droite), tournées vers le batteur droit, et un mur de fond
@@ -177,17 +178,17 @@ export const PLANS: readonly Plan[] = [
     // Pas de rampe, pas d'aiguillage, pas de mini-batteur. L'orbite ressort en haut, dans les couloirs et les bumpers ; la banque complète ouvre la porte.
     id: "A",
     emplacements: [
-      theme(184, 285),
-      trou(262, 250),
+      theme(190, 285),
+      trou(208, 464),
       bumpers(183, 165, [[152, 152], [214, 152], [183, 192]]),
       { x: 329, y: 366, banque: banqueDuFlanc(329, [340, 366, 392], 340, 322, 408), permis: ["cibles"] },
       spinnerDuCouloir(36, 275),
     ],
-    extras: { espace: portails(184, 285), volcan: [{ x: 36, y: 300, permis: ["coulee"], sansMurs: true }] },
-    guides: [guideDeLOrbite(340)],
+    extras: { espace: portails(190, 285), volcan: [{ x: 36, y: 300, permis: ["coulee"], sansMurs: true }] },
+    guides: [guideDeLOrbite(328)],
     rampes: [],
-    orbite: orbiteDuCouloir(230, 20),
-    porte: porteDuCouloir(340),
+    orbite: orbiteDuCouloir(52, 340, 20),
+    porte: porteDuCouloir(52, 340, 64),
   },
   {
     // Table B « Rampe et orbite » (les flippers des années 90, simplifié) : l'orbite gauche (bouche à y = 330), la banque en diagonale en haut à gauche (tournée vers le batteur droit), le tir central, le verrou, et la
@@ -195,16 +196,16 @@ export const PLANS: readonly Plan[] = [
     id: "B",
     emplacements: [
       theme(176, 300),
-      trou(236, 250),
+      trou(288, 352),
       bumpers(242, 170, [[222, 150], [266, 162], [238, 196]]),
       { x: 112, y: 255, banque: banqueDiagonale([[88, 267], [112, 255], [136, 243]], -28), permis: ["cibles"] },
       spinnerDuCouloir(36, 270),
     ],
     extras: { espace: portails(176, 300), volcan: [{ x: 36, y: 295, permis: ["coulee"], sansMurs: true }] },
-    guides: [guideDeLOrbite(330), { genre: "bouche", points: [[262, 322], [272, 300]] }, { genre: "bouche", points: [[296, 332], [304, 310]] }],
+    guides: [guideDeLOrbite(328), { genre: "bouche", points: [[250, 322], [272, 300]] }, { genre: "bouche", points: [[311, 332], [304, 310]] }],
     rampes: [{ genre: "rampe", points: [[286, 310], [302, 206], [310, 176], [326, 196], [332, 300], [332, 540]], hauteur: 32, demiPorte: 17 }],
-    orbite: orbiteDuCouloir(230, 20),
-    porte: porteDuCouloir(330),
+    orbite: orbiteDuCouloir(52, 340, 20),
+    porte: porteDuCouloir(52, 340, 64),
     aiguillage: { rampe: 0, partie: 450 },
   },
   {
@@ -213,12 +214,12 @@ export const PLANS: readonly Plan[] = [
     id: "C",
     emplacements: [
       theme(205, 350),
-      trou(282, 338),
+      trou(160, 464),
       bumpers(181, 163, [[152, 150], [210, 150], [181, 188]]),
       { x: 92, y: 245, banque: banqueDiagonale([[68, 257], [92, 245], [116, 233]], -28), permis: ["cibles"] },
     ],
     extras: { espace: portails(205, 350) },
-    guides: [{ genre: "bouche", points: [[246, 246], [256, 226]] }, { genre: "bouche", points: [[280, 256], [288, 236]] }],
+    guides: [{ genre: "bouche", points: [[246, 246], [244, 226]] }, { genre: "bouche", points: [[295, 256], [288, 236]] }],
     rampes: [{ genre: "rampe", points: [[270, 236], [290, 150], [300, 120], [320, 140], [332, 300], [332, 540]], hauteur: 32, demiPorte: 17 }],
     orbite: null,
     mini: { cote: 0, x: 46, y: 405, longueur: 38 },
