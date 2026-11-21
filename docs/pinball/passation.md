@@ -66,14 +66,14 @@
 - **Ne pas modifier** les visions (`docs/seed.md`, `docs/*/seed*.md`, `docs/plateforme/seed-phase-*.md`) ni la charte : c'est Nathan qui le fait.
 
 ## Où on en est
-- Pinball (arcade, `off`, branché par le kit) ; dernier README de lot : PBR1 (18/11), un robot des médailles 4,5 fois plus rapide (2,4 à 2,8 s sur ordinateur, ≈ 10,6 s avec un processeur ralenti ×4), scores identiques.
-- `PINBALL_SIM_VERSION` inchangée ; `PINBALL_BOT_VERSION` n'a pas monté (résultats identiques).
-- Non vérifié : la vitesse sur un vrai téléphone ; l'aperçu `/pinball/?robot` n'a pas été regardé par un humain.
-- Repris le 20/11 (lot O1) des README de lots et des CLAUDE.md ; à compléter par la conversation du jeu.
+- Pinball (arcade, `off`, branché par le kit) ; dernier README de lot : PBT1 (21/11), les trois tables dessinées avec Nathan (A, B, C, chacune en miroir : 24 tables, le jour tire le thème, la table et le miroir), PR brouillon.
+- Verrou et bouche de l'orbite redessinés sur l'éventail du geste (option 1 de Nathan) ; fenêtres de tir ≥ 30 ms partout, 24 tables valides ; versions sim 10, générateur 9, robot 9.
+- Non vérifié : le jeu n'a pas été joué à la main (URL de test dans le README) ; poids : `pinball.rendu` et `pinball.demande` à moins de 1 Ko du plafond.
+- « Rayon 25 au plus » de l'élément de la mission (table A) non appliqué ; banque inclinée de −26,6° au lieu de −28° (pixels entiers).
 
 ## Prochain lot
-à compléter par la conversation du jeu (le README de PBR1 n'annonce pas de suite).
+à compléter par la conversation du jeu (le README de PBT1 n'annonce pas de suite ; budgets de poids à relever ou à alléger d'abord).
 
 ## Décisions en attente
-- Nathan : monter ou non `PINBALL_BOT_VERSION` (PBR1 : non, pour ne pas changer l'empreinte des jours protégés ; une ligne à changer pour garder la trace).
-- Nathan : si 3,3 s d'attente reste trop, passer les tranches du calcul du navigateur de 4 ms à 8 ms toutes les 16 ms (divise l'attente par deux ; hors périmètre de PBR1, non fait).
+- Nathan : valider les écarts avec le dessin (tableau du README de PBT1 : verrous de A et C devant les batteurs, bouche de l'orbite large, banques et guides retouchés dans les 15 px) en jouant les URL du README.
+- Nathan : le rayon de l'élément de la mission (table A, « 25 au plus ») ; le relèvement chiffré des budgets `pinball.rendu` / `pinball.demande` si un prochain lot en a besoin.
