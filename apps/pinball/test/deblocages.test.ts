@@ -7,16 +7,16 @@ const table = (plan: string, theme: "foire" | "ocean" | "espace" | "volcan" = "f
 const etat = (o: Partial<{ passageOuvert: number; lampes: [boolean, boolean]; sauveurTick: number; tick: number }>) => ({ passageOuvert: 0, lampes: [false, false] as [boolean, boolean], sauveurTick: -100000, tick: 1000, reglages: REGLAGES, ...o });
 
 describe("la géométrie de la porte", () => {
-  it.each(["A", "B"])("%s : un battant de 64 px sur la bouche de l'orbite, sans murs, et la flèche 22 px devant lui (lot PBT1)", (plan) => {
+  it.each(["A", "B"])("%s : un battant de 64 px sur la bouche de l'orbite, sans murs, et la flèche 13 px derrière lui, côté de la bouche (lot PBT1)", (plan) => {
     const def = planDe(plan).porte!;
     const g = geoPorte(table(plan))!;
     expect(Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y)).toBeCloseTo(def.largeur, 0);
     expect(def.largeur).toBe(64);
     expect(g.murs).toHaveLength(0);
     expect(g.b.y).toBeCloseTo(g.a.y, 3); // horizontal
-    // la flèche est devant le battant, côté de l'entrée (en dessous), tournée vers le haut
-    expect(Math.hypot(g.fleche.x - g.x, g.fleche.y - g.y)).toBeCloseTo(22, 0);
-    expect(g.fleche.y).toBeGreaterThan(g.y);
+    // la flèche est entre le battant et la bouche (au-dessus du battant), tournée vers le haut
+    expect(Math.hypot(g.fleche.x - g.x, g.fleche.y - g.y)).toBeCloseTo(13, 0);
+    expect(g.fleche.y).toBeLessThan(g.y);
     expect(Math.sin(g.fleche.a)).toBeCloseTo(-1, 3);
   });
   it("la table C n'a pas de porte ; en miroir, la porte de A et B est de l'autre côté de l'axe", () => {

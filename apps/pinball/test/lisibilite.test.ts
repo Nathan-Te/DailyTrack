@@ -7,8 +7,8 @@ import { nomDuModule } from "../src/noms";
 import { CATALOGUE_FR } from "../src/catalogue.fr";
 import { CATALOGUE_EN } from "../src/catalogue.en";
 
-// LA MESURE DE LISIBILITÉ (lot PBL1) — « avec tous les éléments et toutes les étiquettes, on s'y perd ». Ce test la garde sur **les 500 tables** que le générateur peut tirer (`toutesLesTables` : quatre plans × quatre thèmes ×
-// leurs modules), en français et en anglais :
+// LA MESURE DE LISIBILITÉ (lot PBL1) — « avec tous les éléments et toutes les étiquettes, on s'y perd ». Ce test la garde sur **les 24 tables** que le générateur peut tirer (`toutesLesTables` : trois tables dessinées, de face et en miroir, × quatre thèmes ;
+// lot PBT1), en français et en anglais :
 //   • **au plus deux plaques permanentes** (l'élément de la mission et le verrou) — la porte a la sienne, mais elle ne s'affiche que porte ouverte ;
 //   • **aucune plaque à plus de `ECART_MAX_PLAQUE` px de son élément** (sa boîte à son empreinte), jamais réduite sous 68 % ;
 //   • **aucune plaque sur un rail**, une bouche, le mini-batteur, ni sur un module, un poteau, une lampe, une flèche au sol, la porte, ni sur une autre plaque ;
@@ -40,9 +40,9 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
           const etiquettes = placerEtiquettes(table, theme, noms(langue, theme));
           const permanentes = etiquettes.filter((e) => e.permanente);
           expect(permanentes.length, quoi).toBeLessThanOrEqual(2);
-          // l'élément de la mission, le verrou (tous les plans du jour en ont un), la porte
-          expect(etiquettes.map((e) => e.role), quoi).toEqual(["mission", "verrou", "porte"]);
-          const porte = geoPorte(table)!;
+          // l'élément de la mission, le verrou (toutes les tables en ont un), la porte (la table C n'en a pas : pas d'orbite)
+          expect(etiquettes.map((e) => e.role), quoi).toEqual(plan === "C" ? ["mission", "verrou"] : ["mission", "verrou", "porte"]);
+          const porte = geoPorte(table) ?? { murs: [], a: { x: 0, y: 0 }, b: { x: 0, y: 0 } };
           const rails = [...disquesDesRails(table), ...disquesDuMini(table)];
           const element = table.poses.find((m) => comptePourLaMission(theme, m.type) && m.type !== "portailB")!;
           const style = styleEtiquette(theme);
@@ -66,10 +66,8 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
             const ap = e.ancres[0]!;
             expect(Math.abs(Math.atan2(ap.y - e.y, ap.x - e.x) - e.pointe), quoi).toBeLessThan(1e-9);
             // jamais sur un rail, une bouche ou le mini-batteur
-            // lot PBL2 : un seul cas connu — la plaque « PORTE » de la « doublette » (sa porte est au coin haut droit, entre l'orbite, la coulée et les rampes : la plaque ne s'affiche que porte ouverte, brièvement) ; elle ne recouvre
-            // jamais un module, une flèche ni une autre plaque. L'ancien cas (le geyser de l'emplacement (250, 252)) a disparu avec les emplacements.
-            const connu = plan === "doublette" && e.role === "porte";
-            if (e.surUnRail) expect(connu, `${quoi} : la plaque ${e.role} n'a de place que sur un rail`).toBe(true);
+            // lot PBT1 : plus aucun cas connu (les tables sont dessinées : la plaque « PORTE » a sa place sur le flanc gauche)
+            if (e.surUnRail) expect(false, `${quoi} : la plaque ${e.role} n'a de place que sur un rail`).toBe(true);
             else for (const d of rails) expect(boiteTouche(b, d.x, d.y, d.r), `${quoi} : la plaque ${e.role} recouvre un rail`).toBe(false);
             // ni sur un module, un poteau, une lampe, une flèche au sol
             table.poses.forEach((m) => {
@@ -88,13 +86,13 @@ describe("les plaques sont rares, collées à leur élément, jamais sur un rail
             expect(b.x1, quoi).toBeLessThanOrEqual(344);
           });
         }
-        expect(tables).toBeGreaterThan(10);
+        expect(tables).toBe(8); // lot PBT1 : quatre thèmes, de face et en miroir
       });
     }
   }
 
   it("la mise en place est déterministe, et les plaques sont les mêmes dans les deux langues pour un même texte", () => {
-    const { table } = tablesDuPlan("doublette")[0]!;
+    const { table } = tablesDuPlan("B")[0]!;
     const a = placerEtiquettes(table, "volcan", noms("fr", "volcan"));
     expect(placerEtiquettes(table, "volcan", noms("fr", "volcan"))).toEqual(a);
   });
@@ -150,7 +148,7 @@ describe("les flèches vives : trois au plus, la même couleur par intention (lo
   }
 
   it("au repos, la flèche de l'élément de la mission est jaune ; verrou allumé, celle du verrou est bleue ; en multibille, l'élément est rose ; la porte ouverte s'allume ; un combo allume l'autre rail en vert", () => {
-    const c = toutesLesTables().find((q) => q.plan === "doublette" && q.theme === "volcan")!;
+    const c = toutesLesTables().find((q) => q.plan === "B" && q.theme === "volcan" && !q.miroir)!;
     const p = new Partie(c);
     const sol = flechesAuSol(p.table, "volcan");
     expect(indiquer(p, sol, -1).map((a) => [a.fleche.cible, a.intention])).toEqual([["element", "mission"]]);
@@ -173,14 +171,16 @@ describe("les flèches vives : trois au plus, la même couleur par intention (lo
     expect(combo.some((a) => a.intention === "combo")).toBe(true);
   });
 
-  it("une flèche au sol seulement devant l'élément de la mission, le verrou, chaque bouche de rail et la porte", () => {
-    for (const c of toutesLesTables().slice(0, 60)) {
+  it("une flèche au sol seulement devant l'élément de la mission, le verrou, chaque bouche de rail, la porte et la banque (éteinte)", () => {
+    for (const c of toutesLesTables()) {
       const t = new Partie(c).table;
       const sol = flechesAuSol(t, c.theme);
       expect(sol.filter((f) => f.cible === "element").length, `${c.theme}:${c.plan}`).toBe(t.poses.filter((m) => comptePourLaMission(c.theme, m.type)).length);
       expect(sol.filter((f) => f.cible === "verrou")).toHaveLength(1);
       expect(sol.filter((f) => f.cible === "rail")).toHaveLength(t.portes.length);
-      expect(sol.filter((f) => f.cible === "porte")).toHaveLength(1);
+      expect(sol.filter((f) => f.cible === "porte")).toHaveLength(t.passage ? 1 : 0);
+      // lot PBT1 : et une flèche éteinte devant la banque de cibles (un tir de la table)
+      expect(sol.filter((f) => f.cible === "banque")).toHaveLength(t.poses.filter((m) => m.type === "cibles").length);
     }
   });
 });

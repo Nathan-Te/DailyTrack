@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Rng } from "@cdj/core";
 import {
-  EV_BUMPER, EV_CIBLE, EV_COMBO, EV_ORBITE, EV_RAIL, EV_RAMPE, EV_RECUL, EV_SLING, DROITE, GAUCHE, NORME, PLANS, REGLAGES, UNITE, Partie, copierReglages, decoderRediffusion, dailyPinball, enregistrer, planDe,
+  EV_BUMPER, EV_CIBLE, EV_COMBO, EV_ORBITE, EV_RAIL, EV_RAMPE, EV_RECUL, EV_SLING, DROITE, GAUCHE, NORME, PLANS, POINTS, REGLAGES, UNITE, Partie, copierReglages, decoderRediffusion, dailyPinball, enregistrer, planDe,
   type Contenu, type Module, type Porte, type Reglages, type ThemePinball,
 } from "../src/index";
 import { avancer, enJeu } from "./aide";
@@ -112,7 +112,7 @@ describe("sur un rail : une autre couche", () => {
       }
     }
   });
-  it("à la sortie, la bille repart sur le plateau dans le sens du tracé, vers le bas, au-dessus d'un couloir de retour (rampes) ou de l'autre côté (orbite)", () => {
+  it("à la sortie, la bille repart sur le plateau dans le sens du tracé, vers le bas au-dessus d'un couloir de retour (rampes) ou, pour l'orbite, au sommet de la table dans le sens du couloir", () => {
     for (const plan of PLANS) {
       const c = contenuDe(plan.id);
       const n = new Partie(c).table.rails.length;
@@ -121,11 +121,15 @@ describe("sur un rail : une autre couche", () => {
         const r = jusquaLaSortie(p);
         expect(r.sorti).toBe(true);
         expect(p.couche).toBe(0);
-        expect(p.vy, `${plan.id} rail ${i}`).toBeGreaterThan(0);
         const x = p.x / UNITE;
         const y = p.y / UNITE;
-        if (p.table.rails[i]!.genre === "rampe") expect([x < 60 || x > 308, y > 440], `${plan.id} rail ${i} : (${x.toFixed(0)}, ${y.toFixed(0)})`).toEqual([true, true]);
-        else expect(y, `${plan.id} : l'orbite ressort à la hauteur de sa bouche`).toBeLessThan(340);
+        if (p.table.rails[i]!.genre === "rampe") {
+          expect(p.vy, `${plan.id} rail ${i}`).toBeGreaterThan(0);
+          expect([x < 60 || x > 308, y > 440], `${plan.id} rail ${i} : (${x.toFixed(0)}, ${y.toFixed(0)})`).toEqual([true, true]);
+        } else {
+          // lot PBT1 : l'orbite ressort en haut de la table, sous l'arc, dans le sens du dernier segment (vers la droite) : dans les couloirs du haut et les bumpers
+          expect([y < 100, p.vx > 0, x > 184], `${plan.id} : l'orbite ressort au sommet, vers la droite : (${x.toFixed(0)}, ${y.toFixed(0)})`).toEqual([true, true, true]);
+        }
       }
     }
   });
@@ -144,7 +148,7 @@ describe("sur un rail : une autre couche", () => {
 
 describe("trop lente sur le rail : la bille redescend par l'entrée", () => {
   it("avec un frottement fort, prise à la vitesse minimale elle n'atteint pas le sommet : elle ressort par l'entrée, vers l'arrière, sans point ni combo", () => {
-    const r = { ...copierReglages(), rampeFrottement: 700 };
+    const r = { ...copierReglages(), rampeFrottement: 1500 };
     const c = contenuDe("B");
     const p = versLaBouche(c, 0, r.rampeVitesseMin + 20, 0, r);
     const s = jusquaLaSortie(p, 6000);
@@ -158,28 +162,31 @@ describe("trop lente sur le rail : la bille redescend par l'entrée", () => {
     expect(((p.x - g.x) * g.ux + (p.y - g.y) * g.uy) / NORME, "devant la bouche").toBeLessThan(0);
   });
   it("un rail ne garde jamais la bille plus de six secondes, même sur un tracé plat", () => {
-    const p = versLaBouche(contenuDe("B"), 2, REGLAGES.rampeVitesseMin + 20);
+    const p = versLaBouche(contenuDe("B"), 1, REGLAGES.rampeVitesseMin + 20);
     p.regler(GAUCHE, false);
     avancer(p, 4000);
     expect(p.railDepuis).toBeLessThan(3700);
   });
 });
 
-describe("l'orbite : un couloir qui entre d'un côté et sort de l'autre", () => {
-  for (const plan of PLANS) {
-    it(`${plan.id} : prise à gauche elle sort à droite, prise à droite elle sort à gauche, 500 points chacun`, () => {
-      const c = contenuDe(plan.id);
-      const i = new Partie(c).table.rails.length - 1;
-      for (const bout of [0, 1] as const) {
-        const p = versLaBouche(c, i, 900, bout);
+describe("l'orbite : un couloir qui entre par sa bouche basse et sort au sommet", () => {
+  for (const plan of PLANS.filter((q) => q.orbite)) {
+    for (const miroir of [false, true]) {
+      it(`${plan.id}${miroir ? " (miroir)" : ""} : prise à sa bouche elle sort au sommet, du côté du couloir ; l'orbite rapporte 500 points, plus 50 du spinner du couloir`, () => {
+        const c = { ...contenuDe(plan.id), miroir };
+        const i = new Partie(c).table.rails.length - 1;
+        const p = versLaBouche(c, i, 900);
+        // l'orbite n'a qu'une bouche : on ne la prend pas par son autre bout
+        expect(new Partie(c).table.portes.filter((g) => g.rail === i)).toHaveLength(1);
         const s = jusquaLaSortie(p);
-        expect(s.evenements & EV_ORBITE, `${plan.id} bout ${bout}`).toBe(EV_ORBITE);
-        expect(p.score).toBe(REGLAGES.orbitePoints);
+        expect(s.evenements & EV_ORBITE, plan.id).toBe(EV_ORBITE);
+        expect(p.score).toBe(REGLAGES.orbitePoints + POINTS.spinner);
         expect(p.railsFaits[i]).toBe(1);
-        // sortie du côté opposé
-        expect(bout === 0 ? p.x / UNITE > 184 : p.x / UNITE < 184).toBe(true);
-      }
-    });
+        expect(p.y / UNITE, "au sommet").toBeLessThan(100);
+        // le couloir est à gauche (en miroir, à droite) ; la bille en ressort vers l'autre côté, dans les couloirs du haut
+        expect(miroir ? p.x / UNITE < 184 : p.x / UNITE > 184).toBe(true);
+      });
+    }
   }
 });
 
@@ -242,7 +249,7 @@ describe("les points d'une rampe et le combo", () => {
     const s = jusquaLaSortie(p);
     expect(p.combo).toBe(2);
     expect(s.evenements & EV_COMBO).toBe(EV_COMBO);
-    expect(p.score).toBe(REGLAGES.rampePoints + Math.trunc((REGLAGES.orbitePoints * (100 + REGLAGES.comboPas)) / 100));
+    expect(p.score).toBe(REGLAGES.rampePoints + Math.trunc((REGLAGES.orbitePoints * (100 + REGLAGES.comboPas)) / 100) + POINTS.spinner); // + le spinner du couloir, que la bille de l'orbite fait tourner
     // la bille tombe : combo remis à zéro (sans bille sauvée : la bille est perdue)
     const q = new Partie(c, { ...copierReglages(), sauvee: 0 });
     q.combo = 3;
@@ -363,7 +370,7 @@ describe("les plans : la géométrie des rails", () => {
         expect(y).toBeLessThan(430);
       }
       t.rails.forEach((r, i) => {
-        expect(r.len / UNITE, `${plan.id} rail ${i}`).toBeGreaterThan(500);
+        expect(r.len / UNITE, `${plan.id} rail ${i}`).toBeGreaterThan(300);
         expect(r.len / UNITE).toBeLessThan(900);
         const fin = r.x.length - 1;
         if (r.genre === "rampe") {

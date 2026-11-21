@@ -19,7 +19,8 @@ describe("les flèches et les obstacles des rails (lot PBG1)", () => {
         expect(Math.cos(fl.a)).toBeCloseTo(g.ux / NORME, 3);
         expect(Math.sin(fl.a)).toBeCloseTo(g.uy / NORME, 3);
         // devant la bouche : de l'autre côté de la bouche que le rail
-        expect(Math.hypot(fl.x - g.x / UNITE, fl.y - g.y / UNITE), plan).toBeCloseTo(26, 1);
+        // lot PBT1 : 26 px, et 44 px pour l'orbite derrière sa porte (la flèche de la porte est entre le battant et la bouche)
+        expect(Math.hypot(fl.x - g.x / UNITE, fl.y - g.y / UNITE), plan).toBeCloseTo(t.passage && t.rails[g.rail]!.genre === "orbite" ? 44 : 26, 1);
         expect((fl.x - g.x / UNITE) * (g.ux / NORME) + (fl.y - g.y / UNITE) * (g.uy / NORME), plan).toBeLessThan(0);
       });
       // une rampe n'a qu'une bouche ; lot PBT1 : l'orbite d'une table dessinée n'en a qu'une aussi (large, au pied du couloir) — la table C n'a pas d'orbite
