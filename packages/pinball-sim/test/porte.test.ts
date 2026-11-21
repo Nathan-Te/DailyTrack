@@ -6,7 +6,8 @@ import { avancer, enJeu, evenements2, partiePlan, surLeRail } from "./aide";
 // LA PORTE (lot PBG3) : un passage incliné fermé par un battant. Fermé, c'est un mur ; la banque de cibles complète l'ouvre (sur une table sans banque, l'orbite menée à son bout) ; un passage rapporte `portePoints`, fait
 // avancer la mission d'un cran (en multibille : un jackpot de plus) ; elle se referme à la fin de son temps, ou peu après un passage.
 
-const PLANS_DU_JOUR = PLANS.map((p) => p.id);
+// lot PBT1 : les tables A et B ont leur porte (sur la bouche de l'orbite) ; la table C n'a ni orbite ni porte
+const PLANS_DU_JOUR = PLANS.filter((p) => p.porte).map((p) => p.id);
 /** La bille posée dans le passage, à `d` px derrière le battant (sur son axe), lancée le long de l'axe à `v` px/s : elle monte vers le battant. */
 function versLaPorte(p: Partie, d: number, v: number): Partie {
   const g = p.table.passage!;
@@ -23,20 +24,55 @@ const cote = (p: Partie): number => {
 describe("la porte : un passage incliné fermé par un battant", () => {
   it.each(PLANS_DU_JOUR)("le plan %s a sa porte et son orbite ; elle s'ouvre par la banque quand la table en a une, par l'orbite sinon", (plan) => {
     const avecBanque = partiePlan(plan, "ocean", { 3: "cibles" });
-    const sansBanque = partiePlan(plan, "ocean", { 3: "mini", 4: "mini" });
+    const sansBanque = partiePlan(plan, "ocean", { 3: "mini" });
     expect(avecBanque.table.passage, plan).not.toBeNull();
     expect(avecBanque.table.passage!.parBanque).toBe(true);
     expect(sansBanque.table.passage!.parBanque).toBe(false);
     expect(avecBanque.passageOuvert).toBe(0);
   });
 
+  it("la table C (ni orbite ni porte) et le plan d'essai n'ont pas de porte ; la porte des tables A et B est à sens unique, sans murs, posée sur la bouche de l'orbite", () => {
+    expect(PLANS_DU_JOUR).toEqual(["A", "B"]);
+    expect(partiePlan("C").table.passage).toBeNull();
+    for (const plan of PLANS_DU_JOUR) {
+      const t = partiePlan(plan).table;
+      expect([t.passage!.sensUnique, t.passage!.murs], plan).toEqual([true, 0]);
+      // le battant est horizontal, de l'arc... du mur gauche (x = 20) à x = 84, 26 px sous la bouche du rail de l'orbite
+      const b = t.passage!.battant;
+      expect([b.ay === b.by, Math.min(b.ax, b.bx) / UNITE, Math.max(b.ax, b.bx) / UNITE], plan).toEqual([true, 20, 84]);
+      const orbite = t.portes.find((g) => t.rails[g.rail]!.genre === "orbite")!;
+      expect(Math.round((b.ay - orbite.y) / UNITE), plan).toBe(26);
+    }
+  });
+
+  it("à sens unique : une bille qui tombe d'en haut sur le battant fermé le traverse (elle ne s'y pose pas) ; celle qui monte rebondit", () => {
+    for (const plan of PLANS_DU_JOUR) {
+      const g0 = partiePlan(plan).table.passage!;
+      // d'en haut : lâchée à 12 px au-dessus du battant, au repos
+      const haut = partiePlan(plan, "foire", {}, { ...copierReglages(), sauvee: 0 });
+      enJeu(haut, g0.x / UNITE, g0.y / UNITE - 12, 0, 0);
+      let dessous = false;
+      for (let i = 0; i < 600 && !dessous; i++) {
+        haut.avancer();
+        dessous = haut.y > g0.y + 12 * UNITE;
+      }
+      expect(dessous, `${plan} : la bille qui tombe traverse le battant`).toBe(true);
+      // d'en bas : lancée à 700 px/s vers le battant fermé, elle ne le franchit jamais
+      const bas = versLaPorte(partiePlan(plan, "foire"), 14, 700);
+      for (let i = 0; i < 200; i++) {
+        bas.avancer();
+        expect(cote(bas), `${plan} pas ${i}`).toBeLessThan(2);
+      }
+    }
+  });
+
   it("le plan d'essai n'a pas de porte", () => {
-    expect(new Partie({ jour: 0, g: 6, theme: "foire", plan: "classique", modules: ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"] }).table.passage).toBeNull();
+    expect(new Partie({ jour: 0, g: 6, theme: "foire", plan: "classique", miroir: false, modules: ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"] }).table.passage).toBeNull();
   });
 
   it.each(PLANS_DU_JOUR)("%s : fermée, la porte est un mur — la bille qui la heurte de bas en haut, à toute vitesse, ne passe jamais", (plan) => {
     for (const v of [300, 700, 1100, 1500]) {
-      const p = versLaPorte(partiePlan(plan, "foire", { 3: "mini", 4: "mini" }), 14, v);
+      const p = versLaPorte(partiePlan(plan, "foire", { 3: "mini" }), 14, v);
       expect(cote(p)).toBeLessThan(0);
       for (let i = 0; i < 400; i++) {
         p.avancer();
@@ -50,7 +86,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   });
 
   it("une banque de cibles complète ouvre la porte : l'événement, le temps ouvert, puis elle se referme", () => {
-    const p = partiePlan("doublette", "ocean", { 3: "cibles", 4: "mini" });
+    const p = partiePlan("B", "ocean", { 3: "cibles" });
     // deux cibles de la banque sont déjà tombées ; la bille tombe sur la troisième
     const banque = p.table.banques[0]!;
     banque.slice(0, 2).forEach((k) => (p.bas[k] = true));
@@ -81,7 +117,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   });
 
   it("sur une table sans banque, l'orbite menée à son bout ouvre la porte ; une rampe, non", () => {
-    const p = partiePlan("tremplin", "ocean", { 3: "mini", 4: "mini" });
+    const p = partiePlan("B", "ocean", { 3: "mini" });
     const orbite = p.table.rails.findIndex((r) => r.genre === "orbite");
     const rampe = p.table.rails.findIndex((r) => r.genre === "rampe");
     surLeRail(p, rampe, p.table.rails[rampe]!.len / UNITE - 1, 600);
@@ -96,7 +132,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   });
 
   it("sur une table avec banque, l'orbite n'ouvre pas la porte", () => {
-    const p = partiePlan("tremplin", "ocean", { 3: "cibles" });
+    const p = partiePlan("B", "ocean", { 3: "cibles" });
     const orbite = p.table.rails.findIndex((r) => r.genre === "orbite");
     surLeRail(p, orbite, p.table.rails[orbite]!.len / UNITE - 1, 600);
     avancer(p, 3);
@@ -105,7 +141,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   });
 
   it.each(PLANS_DU_JOUR)("%s : ouverte, la bille passe — points, un cran de mission, un seul passage par ouverture, la porte se referme peu après", (plan) => {
-    const p = partiePlan(plan, "ocean", { 3: "mini", 4: "mini" });
+    const p = partiePlan(plan, "ocean", { 3: "mini" });
     p.ouvrirLaPorte();
     p.passageOuvert = REGLAGES.porteDuree; // une ouverture ordinaire, pas l'essai
     versLaPorte(p, 14, 700);
@@ -127,7 +163,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   });
 
   it("le passage rapporte le multiplicateur en plus : portePoints × le cran", () => {
-    const p = partiePlan("doublette", "ocean", { 3: "mini", 4: "mini" });
+    const p = partiePlan("B", "ocean", { 3: "mini" });
     p.mult = 3;
     p.ouvrirLaPorte();
     versLaPorte(p, 14, 700);
@@ -136,7 +172,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   });
 
   it("pendant la multibille, un passage ajoute un jackpot", () => {
-    const p = partiePlan("doublette", "ocean", { 3: "mini", 4: "mini" });
+    const p = partiePlan("B", "ocean", { 3: "mini" });
     p.lancerLaMultibille();
     avancer(p, 1);
     const avant = p.jackpotsPartie;
@@ -150,7 +186,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   });
 
   it("la mission du niveau avance d'un cran par passage, jusqu'à la réussir", () => {
-    const p = partiePlan("doublette", "foire", { 3: "mini", 4: "mini" });
+    const p = partiePlan("B", "foire", { 3: "mini" });
     p.compteur = p.but - 1;
     p.ouvrirLaPorte();
     versLaPorte(p, 14, 700);
@@ -162,7 +198,7 @@ describe("la porte : un passage incliné fermé par un battant", () => {
   it("la porte qui se ferme sur la bille ne la coince pas, ne la fait pas traverser le battant", () => {
     for (const plan of PLANS_DU_JOUR) {
       for (const d of [-6, -2, 0, 2, 6]) {
-        const p = partiePlan(plan, "foire", { 3: "mini", 4: "mini" });
+        const p = partiePlan(plan, "foire", { 3: "mini" });
         p.passageOuvert = 2;
         p.passageServi = true;
         const g = p.table.passage!;
@@ -181,14 +217,14 @@ describe("la porte : un passage incliné fermé par un battant", () => {
     // posée contre elle — ni dans sa poche, ni sur son battant, ni sur le bout de ses murs
     for (const plan of PLANS_DU_JOUR) {
       for (const ouverte of [false, true]) {
-        const base = partiePlan(plan, "foire", { 3: "mini", 4: "mini" });
+        const base = partiePlan(plan, "foire", { 3: "mini" });
         const g = base.table.passage!;
         const occupe = (x: number, y: number): boolean => !dansLaTable(x, y) || pointOccupe(base.table, x, y);
         for (let dy = -49; dy <= 49; dy += 7) {
           for (let dx = -49; dx <= 49; dx += 7) {
             for (const v of [0, 500]) {
               if (occupe(g.x / UNITE + dx + 1, g.y / UNITE + dy + 1)) continue;
-              const p = partiePlan(plan, "foire", { 3: "mini", 4: "mini" }, { ...copierReglages(), sauvee: 0 });
+              const p = partiePlan(plan, "foire", { 3: "mini" }, { ...copierReglages(), sauvee: 0 });
               if (ouverte) p.ouvrirLaPorte();
               enJeu(p, g.x / UNITE + dx + 1, g.y / UNITE + dy + 1, v === 0 ? 0 : v, v === 0 ? 0 : -v / 2);
               // 20 s : une bille posée dans la poche y resterait ; on regarde les 2 dernières secondes
@@ -209,41 +245,21 @@ describe("la porte : un passage incliné fermé par un battant", () => {
     }
   }, 120_000);
 
-  it.each(PLANS_DU_JOUR)("%s : ses murs sont à 24 px au moins de tous les autres (une bille de 18 px ne s'y coince pas : le coin entre la porte et l'arc retenait la bille)", (plan) => {
-    const t = partiePlan(plan).table;
-    const porte = [...t.murs.slice(-2), t.passage!.battant];
-    const dseg = (x: number, y: number, ax: number, ay: number, bx: number, by: number): number => {
-      const ex = bx - ax;
-      const ey = by - ay;
-      const u = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey)));
-      return Math.hypot(x - ax - ex * u, y - ay - ey * u) / UNITE;
-    };
-    let min = Infinity;
-    for (const m of t.murs.slice(0, -2)) for (const q of porte) for (let k = 0; k <= 12; k++) min = Math.min(min, dseg(q.ax + ((q.bx - q.ax) * k) / 12, q.ay + ((q.by - q.ay) * k) / 12, m.ax, m.ay, m.bx, m.by));
-    expect(min, plan).toBeGreaterThanOrEqual(24);
-  });
-
-  it("la porte ne touche à aucun module des 500 tables : ses murs sont à 6 px au moins de l'emprise de chaque module", () => {
-    const rayon: Record<string, number> = { bumpers: 44, mini: 36, cibles: 44, spinner: 40, trou: 14, manege: 50, tourbillon: 56, trouNoir: 12, portailA: 14, portailB: 14, asteroide: 62, geyser: 22, coulee: 52 };
+  it("la porte ne touche à aucun module des 16 tables qui en ont une : son battant est à 6 px au moins de l'emprise de chaque module (bumpers, cibles, trou, éléments des thèmes)", () => {
     const dist = (x: number, y: number, ax: number, ay: number, bx: number, by: number): number => {
       const ex = bx - ax;
       const ey = by - ay;
       const u = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey)));
       return Math.hypot(x - ax - ex * u, y - ay - ey * u);
     };
-    for (const plan of PLANS) {
-      const g = plan.porte!;
-      const a = (g.angle * Math.PI) / 180;
-      const [ux, uy] = [Math.sin(a), -Math.cos(a)];
-      const [nx, ny] = [Math.cos(a), Math.sin(a)];
-      const w = g.largeur / 2;
-      const bouts = [-1, 1].map((k) => [g.x + k * nx * w, g.y + k * ny * w] as const);
-      const segs = [[bouts[0]!, bouts[1]!], ...bouts.map((b) => [b, [b[0] - ux * g.profondeur, b[1] - uy * g.profondeur]] as const)] as const;
-      for (const t of toutesLesTables().filter((c) => c.plan === plan.id)) {
-        t.modules.forEach((m, i) => {
-          const e = plan.emplacements[i]!;
-          for (const s of segs) expect(dist(e.x, e.y, s[0][0], s[0][1], s[1][0], s[1][1]) - (rayon[m] ?? 40), `${plan.id}:${m} (emplacement ${i})`).toBeGreaterThan(6);
-        });
+    for (const c of toutesLesTables().filter((q) => PLANS_DU_JOUR.includes(q.plan))) {
+      const t = new Partie(c).table;
+      const b = t.passage!.battant;
+      const cercles = [...t.bumpers, ...t.trous, ...t.plateaux, ...t.tourbillons, ...t.portails, ...t.geysers];
+      for (const z of cercles) expect(dist(z.x, z.y, b.ax, b.ay, b.bx, b.by) / UNITE - z.r / UNITE, `${c.theme}:${c.plan}${c.miroir ? "'" : ""}`).toBeGreaterThan(6);
+      for (const k of t.banques.flat()) {
+        const m = t.murs[k]!;
+        expect(dist((m.ax + m.bx) / 2, (m.ay + m.by) / 2, b.ax, b.ay, b.bx, b.by) / UNITE, `${c.theme}:${c.plan} cible`).toBeGreaterThan(20);
       }
     }
   });

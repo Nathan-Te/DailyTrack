@@ -1,9 +1,9 @@
-import { PINBALL_GENERATOR_VERSION, UNITE, Partie, planDe, type Contenu, type Module, type Reglages, REGLAGES, type ThemePinball } from "../src/index";
+import { PINBALL_GENERATOR_VERSION, UNITE, Partie, emplacementsDe, planDe, type Contenu, type Module, type Reglages, REGLAGES, type ThemePinball } from "../src/index";
 
 // Des aides pour les tests de règles : une table écrite à la main (les six modules, dans l'ordre des emplacements) et une bille posée où l'on veut, en pixels.
 export const JOUR_ESSAI = 20800;
 /** `plan` : par défaut le plan d'essai (`classique`, la table des lots PB1 à PB4 : six emplacements, ni rampe ni orbite), pour que les tests des règles posent leurs modules aux mêmes endroits. */
-export const contenuDe = (modules: readonly Module[] = ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"], theme: ThemePinball = "foire", plan = "classique"): Contenu => ({ jour: JOUR_ESSAI, g: PINBALL_GENERATOR_VERSION, theme, plan, modules: [...modules] });
+export const contenuDe = (modules: readonly Module[] = ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"], theme: ThemePinball = "foire", plan = "classique"): Contenu => ({ jour: JOUR_ESSAI, g: PINBALL_GENERATOR_VERSION, theme, plan, miroir: false, modules: [...modules] });
 /** Une partie dont les six emplacements portent ce `module` (ou la liste donnée). */
 export const partieDe = (modules?: readonly Module[], reglages: Reglages = REGLAGES, theme: ThemePinball = "foire"): Partie => new Partie(contenuDe(modules, theme), reglages);
 export const pleine = (m: Module): Module[] => [m, m, m, m, m, m];
@@ -57,10 +57,10 @@ export function dansLaTable(x: number, y: number, marge: number): boolean {
 
 // --- Lot PBG3 : la porte, le poteau sauveur et l'aiguillage.
 /** Une partie du plan `plan` et du thème `theme`, aux modules par défaut de ses emplacements (l'élément du thème, le trou, puis le premier module permis) ; `modules` en remplace certains par rang (`{ 3: "cibles" }`). */
-export function partiePlan(plan: string, theme: ThemePinball = "ocean", modules: Readonly<Record<number, Module>> = {}, reglages: Reglages = REGLAGES): Partie {
-  const p = planDe(plan);
-  const liste = p.emplacements.map((e, i) => e.fixe?.[theme] ?? modules[i] ?? e.permis[0]!);
-  return new Partie({ jour: JOUR_ESSAI, g: PINBALL_GENERATOR_VERSION, theme, plan, modules: liste }, reglages);
+export function partiePlan(plan: string, theme: ThemePinball = "ocean", modules: Readonly<Record<number, Module>> = {}, reglages: Reglages = REGLAGES, miroir = false): Partie {
+  const p = planDe(plan, miroir);
+  const liste = emplacementsDe(p, theme).map((e, i) => e.fixe?.[theme] ?? modules[i] ?? e.permis[0]!);
+  return new Partie({ jour: JOUR_ESSAI, g: PINBALL_GENERATOR_VERSION, theme, plan, miroir, modules: liste }, reglages);
 }
 /** Pose la bille principale sur le rail `rang`, à l'abscisse `s` (px depuis l'entrée), vers l'avant à `v` px/s. */
 export function surLeRail(p: Partie, rang: number, s: number, v: number): Partie {

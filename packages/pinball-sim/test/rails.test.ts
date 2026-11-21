@@ -79,7 +79,7 @@ describe("la bouche d'un rail : la vitesse minimale d'entrée", () => {
     });
   }
   it("une bille qui descend, ou qui passe à côté de la bouche, n'est jamais prise (la bille d'une orbite qui retombe le long du mur la traverse sans s'arrêter)", () => {
-    const c = contenuDe("doublette");
+    const c = contenuDe("B");
     for (const [dx, dy, vx, vy] of [[0, -30, 0, 900], [40, 10, 0, -900], [-40, 10, 0, -900], [0, 12, 700, 0]] as const) {
       const p = new Partie(c);
       const g = bouche(p, 0);
@@ -145,7 +145,7 @@ describe("sur un rail : une autre couche", () => {
 describe("trop lente sur le rail : la bille redescend par l'entrée", () => {
   it("avec un frottement fort, prise à la vitesse minimale elle n'atteint pas le sommet : elle ressort par l'entrée, vers l'arrière, sans point ni combo", () => {
     const r = { ...copierReglages(), rampeFrottement: 700 };
-    const c = contenuDe("tremplin");
+    const c = contenuDe("B");
     const p = versLaBouche(c, 0, r.rampeVitesseMin + 20, 0, r);
     const s = jusquaLaSortie(p, 6000);
     expect(s.pris && s.sorti).toBe(true);
@@ -158,7 +158,7 @@ describe("trop lente sur le rail : la bille redescend par l'entrée", () => {
     expect(((p.x - g.x) * g.ux + (p.y - g.y) * g.uy) / NORME, "devant la bouche").toBeLessThan(0);
   });
   it("un rail ne garde jamais la bille plus de six secondes, même sur un tracé plat", () => {
-    const p = versLaBouche(contenuDe("doublette"), 2, REGLAGES.rampeVitesseMin + 20);
+    const p = versLaBouche(contenuDe("B"), 2, REGLAGES.rampeVitesseMin + 20);
     p.regler(GAUCHE, false);
     avancer(p, 4000);
     expect(p.railDepuis).toBeLessThan(3700);
@@ -184,7 +184,7 @@ describe("l'orbite : un couloir qui entre d'un côté et sort de l'autre", () =>
 });
 
 describe("les points d'une rampe et le combo", () => {
-  const c = contenuDe("doublette");
+  const c = contenuDe("B");
   it("une rampe rapporte `rampePoints` au multiplicateur courant (×2 : le double)", () => {
     const p = versLaBouche(c, 0, 900);
     p.mult = 2;
@@ -377,7 +377,7 @@ describe("les plans : la géométrie des rails", () => {
   }
   it("plan inconnu : refusé ; le plan d'essai n'a ni rail ni mini-batteur", () => {
     expect(() => planDe("xyz")).toThrow();
-    const t = new Partie({ jour: 0, g: 0, theme: "foire", plan: "classique", modules: ["spinner", "bumpers", "cibles", "cibles", "trou", "manege"] }).table;
+    const t = new Partie({ jour: 0, g: 0, theme: "foire", plan: "classique", miroir: false, modules: ["spinner", "bumpers", "cibles", "cibles", "trou", "manege"] }).table;
     expect([t.rails.length, t.portes.length, t.mini]).toEqual([0, 0, null]);
   });
 });
