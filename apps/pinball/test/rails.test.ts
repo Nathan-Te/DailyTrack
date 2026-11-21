@@ -19,12 +19,13 @@ describe("les flèches et les obstacles des rails (lot PBG1)", () => {
         expect(Math.cos(fl.a)).toBeCloseTo(g.ux / NORME, 3);
         expect(Math.sin(fl.a)).toBeCloseTo(g.uy / NORME, 3);
         // devant la bouche : de l'autre côté de la bouche que le rail
-        expect(Math.hypot(fl.x - g.x / UNITE, fl.y - g.y / UNITE), plan).toBeCloseTo(26, 1);
+        // lot PBT1 : 26 px, et 44 px pour l'orbite derrière sa porte (la flèche de la porte est entre le battant et la bouche)
+        expect(Math.hypot(fl.x - g.x / UNITE, fl.y - g.y / UNITE), plan).toBeCloseTo(t.passage && t.rails[g.rail]!.genre === "orbite" ? 44 : 26, 1);
         expect((fl.x - g.x / UNITE) * (g.ux / NORME) + (fl.y - g.y / UNITE) * (g.uy / NORME), plan).toBeLessThan(0);
       });
-      // une rampe n'a qu'une bouche, l'orbite en a deux
+      // une rampe n'a qu'une bouche ; lot PBT1 : l'orbite d'une table dessinée n'en a qu'une aussi (large, au pied du couloir) — la table C n'a pas d'orbite
       expect(f.filter((x) => t.rails[x.rail]!.genre === "rampe")).toHaveLength(t.rails.filter((r) => r.genre === "rampe").length);
-      expect(f.filter((x) => t.rails[x.rail]!.genre === "orbite")).toHaveLength(2);
+      expect(f.filter((x) => t.rails[x.rail]!.genre === "orbite")).toHaveLength(plan === "C" ? 0 : 1);
     }
   });
 
@@ -62,10 +63,12 @@ describe("les flèches et les obstacles des rails (lot PBG1)", () => {
   });
 
   it("les petites lampes de l'arc ne sont jamais recouvertes par un rail (l'orbite longe l'arc)", () => {
-    const arc = lampesDecor().filter((l) => !l.pierre);
     for (const plan of IDS_PLANS) {
       for (const theme of THEMES_PINBALL) {
         const t = table(plan, theme);
+        // lot PBT1 : les lampes du flanc que suit l'orbite s'éteignent (`lampesDecor(table)`), celles de l'autre flanc restent
+        const arc = lampesDecor(t).filter((l) => !l.pierre);
+        expect(arc.length, `${plan} : des lampes restent sur l'arc`).toBeGreaterThanOrEqual(5);
         for (const rail of t.rails) {
           const pts = echantillons(rail, 2);
           for (const l of arc) {
@@ -112,7 +115,7 @@ describe("le dessin des rails à plat (lot PBG1)", () => {
   });
 
   it("le dessin ne dépend que de la table : deux appels, mêmes traits", () => {
-    const t = table("boucle", "espace");
+    const t = table("B", "espace");
     const a = faux();
     const b = faux();
     dessinerRails(a.c, t, "espace");

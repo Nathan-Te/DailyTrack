@@ -42,7 +42,7 @@ export function modulesDeLaTable(contenu: Contenu, t: (cle: string) => string): 
     if (nom !== null) vus.set(nom, (vus.get(nom) ?? false) || dediesALaMission.has(m));
   }
   const liste = [...vus].map(([nom, mission]) => ({ nom, mission })).sort((a, b) => Number(b.mission) - Number(a.mission));
-  const plan = contenu.plan ? planDe(contenu.plan) : null;
+  const plan = contenu.plan ? planDe(contenu.plan, contenu.miroir) : null;
   for (const genre of ["rampe", "orbite"] as const) {
     const present = genre === "rampe" ? (plan?.rampes.length ?? 0) > 0 : plan?.orbite != null;
     const nom = present ? nomDuModule(t, contenu.theme, genre) : null;
@@ -90,8 +90,8 @@ export function remplirAujourdhui(contenu: Contenu, hote: HTMLElement, ctx: Cont
   );
 
   const modules = modulesDeLaTable(contenu, (cle) => t(cle));
-  // lot PBG1 : le plan du jour, nommé (l'aperçu à côté le montre avec ses rails)
-  const sur = el("div", "p-table", el("p", "p-legende", t("aujourdhui.table")), el("p", "p-plan", t("aujourdhui.plan", { plan: t(`plan.${contenu.plan}`) })), el("ul", "p-modules", ...modules.map((m) => { const li = el("li", "p-module", m.nom); li.dataset.mission = m.mission ? "1" : "0"; return li; })));
+  // lot PBG1 : la table du jour, nommée (lot PBT1 : « en miroir » s'il y a lieu) (l'aperçu à côté le montre avec ses rails)
+  const sur = el("div", "p-table", el("p", "p-legende", t("aujourdhui.table")), el("p", "p-plan", t("aujourdhui.plan", { plan: contenu.miroir ? t("aujourdhui.miroir", { plan: t(`plan.${contenu.plan}`) }) : t(`plan.${contenu.plan}`) })), el("ul", "p-modules", ...modules.map((m) => { const li = el("li", "p-module", m.nom); li.dataset.mission = m.mission ? "1" : "0"; return li; })));
 
   const seuils = el("div", "p-seuils");
   seuils.setAttribute("role", "status");

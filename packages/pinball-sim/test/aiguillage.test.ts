@@ -5,8 +5,9 @@ import { avancer, evenements2, partiePlan, surLeRail } from "./aide";
 // L'AIGUILLAGE (lot PBG3) : sur une rampe de chaque plan, une dérivation. Par défaut la rampe va jusqu'à son bout ; le verrou allumé, elle envoie la bille de la rampe droit au verrou (une prise du verrou qui récompense le
 // tir de rampe) ; pendant la multibille, elle l'envoie à l'élément du thème, pour un jackpot.
 
-const IDS = PLANS.map((p) => p.id);
-const partie = (plan: string, theme: ThemePinball = "ocean", r = REGLAGES): Partie => partiePlan(plan, theme, { 3: "mini", 4: theme === "volcan" ? "geyser" : "mini" }, r);
+// lot PBT1 : les tables B et C ont une rampe, donc son aiguillage ; la table A n'en a pas
+const IDS = PLANS.filter((p) => p.aiguillage).map((p) => p.id);
+const partie = (plan: string, theme: ThemePinball = "ocean", r = REGLAGES): Partie => partiePlan(plan, theme, {}, r);
 /** La bille sur la rampe de l'aiguillage, 3 px avant son point, à 600 px/s. */
 const surLaRampe = (p: Partie): number => {
   const a = p.table.aiguillage!;
@@ -14,7 +15,12 @@ const surLaRampe = (p: Partie): number => {
   return a.rail;
 };
 
-describe("l'aiguillage : une dérivation sur une rampe de chaque plan", () => {
+describe("l'aiguillage : une dérivation sur la rampe de chaque table qui en a une", () => {
+  it("les tables B et C ont leur aiguillage ; la table A (ni rampe ni mini-batteur) n'en a pas", () => {
+    expect(IDS).toEqual(["B", "C"]);
+    expect(partie("A").table.aiguillage).toBeNull();
+  });
+
   it.each(IDS)("le plan %s a son aiguillage, sur une rampe, avec ses deux trajets", (plan) => {
     const t = partie(plan).table;
     const a = t.aiguillage!;
@@ -61,7 +67,7 @@ describe("l'aiguillage : une dérivation sur une rampe de chaque plan", () => {
   });
 
   it("la bille dérivée voyage en ligne droite, ne touche rien, et arrive au pas dit par la table", () => {
-    const p = partie("doublette");
+    const p = partie("B");
     p.allumerLeVerrou();
     surLaRampe(p);
     const a = p.table.aiguillage!;
@@ -108,7 +114,7 @@ describe("l'aiguillage : une dérivation sur une rampe de chaque plan", () => {
   });
 
   it("aiguillageActif à 0 : la rampe va jusqu'au bout, verrou allumé ou non", () => {
-    const p = partie("tremplin", "ocean", { ...copierReglages(), aiguillageActif: 0 });
+    const p = partie("B", "ocean", { ...copierReglages(), aiguillageActif: 0 });
     p.allumerLeVerrou();
     expect(p.aiguillageVers).toBe(0);
     const rampe = surLaRampe(p);
@@ -118,7 +124,7 @@ describe("l'aiguillage : une dérivation sur une rampe de chaque plan", () => {
   });
 
   it("une bille qui monte la rampe moins vite que la vitesse d'entrée, ou qui la redescend, n'est jamais dérivée", () => {
-    const p = partie("bretelle");
+    const p = partie("C");
     p.allumerLeVerrou();
     const a = p.table.aiguillage!;
     // elle redescend la rampe (vitesse négative) en passant le point de l'aiguillage
@@ -128,7 +134,7 @@ describe("l'aiguillage : une dérivation sur une rampe de chaque plan", () => {
   });
 
   it("deux billes : celle qui n'est pas sur la rampe ne joue pas l'aiguillage ; la dérivée ne touche pas l'autre", () => {
-    const p = partie("doublette");
+    const p = partie("B");
     p.lancerLaMultibille();
     avancer(p, 700); // les deux billes verrouillées sont lâchées
     expect(p.autres.length).toBeGreaterThanOrEqual(1);

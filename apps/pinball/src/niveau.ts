@@ -70,10 +70,13 @@ export async function contenuDuJour(jour: number, base: string, theme: string): 
   contenu ??= dailyPinball(jour, PINBALL_GENERATOR_VERSION);
   const essai = lireEssai(typeof location === "undefined" ? "" : location.search, production);
   // Un autre thème (`?theme=`, essai) : la table de ce thème ce jour-là, avec ses éléments et sa mission (lot PB3), jamais celle du jour avec d'autres couleurs.
-  // Lot PBG1 : un autre plan (`?plan=<id>`, essai), seul ou avec le thème : la table de ce plan ce jour-là ; un plan inconnu est ignoré.
+  // Lot PBG1 : une autre table (`?plan=A|B|C`, essai), seule ou avec le thème : la table de ce plan ce jour-là ; une table inconnue est ignorée.
   const themeVoulu = (THEMES_PINBALL as readonly string[]).includes(theme) ? (theme as ThemePinball) : contenu.theme;
   const planVoulu = essai.plan !== null && (IDS_PLANS as readonly string[]).includes(essai.plan) ? essai.plan : contenu.plan;
-  if (themeVoulu !== contenu.theme || planVoulu !== contenu.plan) contenu = dailyPinball(jour, PINBALL_GENERATOR_VERSION, themeVoulu, planVoulu);
+  // Lot PBT1 : `?plan=` donne la table de face, en miroir avec `?miroir` ; `?miroir` seul reflète la table du jour
+  const planDemande = essai.plan !== null && (IDS_PLANS as readonly string[]).includes(essai.plan);
+  const miroirVoulu = planDemande ? essai.miroir : essai.miroir || contenu.miroir;
+  if (themeVoulu !== contenu.theme || planVoulu !== contenu.plan || miroirVoulu !== contenu.miroir) contenu = dailyPinball(jour, PINBALL_GENERATOR_VERSION, themeVoulu, planVoulu, miroirVoulu);
   const calcul = contenu.seuilsFiges ? null : seuilsEnArrierePlan(contenu);
   const rendu: Contenu & PretSeuils & { robot?: RobotDuJour } = { ...contenu, seuilsFiges: contenu.seuilsFiges ?? calcul!.seuils, pretSeuils: calcul ? calcul.pret : () => contenu.seuilsFiges ?? null };
   // L'essai de recette `?robot` (hors production) : le robot joue ici, avant la partie (quelques secondes), et la scène rejoue ses appuis. C'est l'une des parties qui donnent les seuils (la première, ou `?robot=<n>`).

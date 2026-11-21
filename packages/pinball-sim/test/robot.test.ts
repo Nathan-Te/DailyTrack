@@ -113,7 +113,7 @@ describe("le robot a des contraintes d'humain", () => {
 describe("le robot vise : la mission du jour compte en premier", () => {
   // lot PBG3 : trois minutes (au lieu de deux) — sur huit graines la mission est faite en 31 à 122 s (océan) et 32 à 95 s (foire) : la graine 0 de l'océan la fait à 122 s
   it.each(THEMES_PINBALL)("%s : il réussit la mission en trois minutes de jeu", (theme) => {
-    const c = dailyPinball(JOUR + 4, undefined, theme, "doublette"); // lot PBG1 : un plan fixé (la validation éprouve les 500 tables)
+    const c = dailyPinball(JOUR + 4, undefined, theme, "B"); // lot PBG1 : un plan fixé (la validation éprouve les 24 tables)
     const r = jouerRobot(c, graineDuRobot(0), { maxTicks: 108000 });
     expect(r.partie.missionFaite || r.partie.niveau > 1, `${theme} : mission ${r.partie.compteur} / ${r.partie.but}`).toBe(true); // lot PBG2 : la mission revient après la multibille
     expect(r.partie.score).toBeGreaterThan(20000);
@@ -129,7 +129,8 @@ describe("le robot vise : la mission du jour compte en premier", () => {
         combo = Math.max(combo, r.partie.comboMaxPartie);
       }
       expect(faits.size, plan).toBe(new Partie(c).table.rails.length);
-      expect(combo, plan).toBeGreaterThanOrEqual(2);
+      // un combo demande deux rails réussis de suite : la table A n'a qu'un rail (l'orbite), la table C qu'une rampe — au moins un rail réussi ; la table B (une rampe et l'orbite) enchaîne un combo
+      expect(combo, plan).toBeGreaterThanOrEqual(new Partie(c).table.rails.length >= 2 ? 2 : 1);
     }
   }, 180_000); // 16 parties de deux minutes
 });
@@ -181,7 +182,7 @@ describe("la copie d'une partie", () => {
 });
 
 describe("lot PBG2 : le robot en multibille", () => {
-  const c = dailyPinball(JOUR + 3, undefined, "espace", "doublette");
+  const c = dailyPinball(JOUR + 3, undefined, "espace", "B");
   it("il vise le verrou allumé, lance la multibille et y joue la bille la plus menacée : des frappes tant que plusieurs billes sont en jeu, un jackpot au moins ; rejouée, c'est la même partie", () => {
     let pasMulti = 0;
     let maxBilles = 0;

@@ -6,7 +6,7 @@ import { avancer, enJeu, evenements2, partiePlan } from "./aide";
 // redescend (les lampes s'éteignent). Pendant la multibille il sert à la première bille qui le touche. Le bas de la table ne change pas : rentré, il n'existe pas.
 // LOT PBL1 : il ne s'arme qu'UNE FOIS PAR BILLE. Une bille qu'il a servie n'allume plus ses lampes et n'est plus servie avant la bille suivante : trois sauvetages au plus par partie (une fois par bille en multibille).
 
-const partie = (plan = "doublette", r = REGLAGES): Partie => partiePlan(plan, "foire", { 3: "mini", 4: "mini" }, r);
+const partie = (plan = "B", r = REGLAGES): Partie => partiePlan(plan, "foire", { 3: "mini", 4: "mini" }, r);
 /** Une bille qui descend le couloir de retour de gauche (x ≈ 31) ou de droite (x ≈ 337), au-dessus de la lampe. */
 const dansLeCouloir = (p: Partie, droite: boolean): Partie => enJeu(p, droite ? 337 : 31, 480, 0, 120);
 /** Une bille qui tombe sur l'axe de la table, entre les batteurs. */
@@ -39,7 +39,7 @@ describe("les lampes des couloirs de retour", () => {
   });
 
   it("les lampes se gardent d'une bille à l'autre", () => {
-    const p = partie("doublette", { ...copierReglages(), sauvee: 0 });
+    const p = partie("B", { ...copierReglages(), sauvee: 0 });
     dansLeCouloir(p, false);
     avancer(p, 90);
     // la bille est perdue : une nouvelle arrive, la lampe reste allumée
@@ -79,7 +79,7 @@ describe("le poteau armé", () => {
   });
 
   it("un seul sauvetage : la bille suivante qui tombe entre les batteurs est perdue", () => {
-    const p = partie("doublette", { ...copierReglages(), sauvee: 0 });
+    const p = partie("B", { ...copierReglages(), sauvee: 0 });
     p.armerLeSauveur();
     entreLesBatteurs(p);
     avancer(p, 120);
@@ -97,7 +97,7 @@ describe("le poteau armé", () => {
   });
 
   it("non armé, le poteau n'existe pas : la bille entre les batteurs est perdue", () => {
-    const p = partie("doublette", { ...copierReglages(), sauvee: 0 });
+    const p = partie("B", { ...copierReglages(), sauvee: 0 });
     p.lampes = [true, false];
     entreLesBatteurs(p);
     let perdue = false;
@@ -133,7 +133,7 @@ describe("le poteau armé", () => {
   });
 
   it("pendant la multibille, une seule bille est renvoyée : la première qui touche le poteau", () => {
-    const p = partie("doublette");
+    const p = partie("B");
     p.lancerLaMultibille();
     avancer(p, 800); // les deux billes verrouillées sont lâchées
     expect(p.autres.length + (p.vide ? 0 : 1)).toBeGreaterThanOrEqual(2);
@@ -191,7 +191,7 @@ describe("le poteau armé", () => {
 });
 
 describe("une fois par bille (lot PBL1)", () => {
-  const sansSauvee = (): Partie => partie("doublette", { ...copierReglages(), sauvee: 0 });
+  const sansSauvee = (): Partie => partie("B", { ...copierReglages(), sauvee: 0 });
 
   it("une bille servie n'allume plus les lampes : elle descend les deux couloirs et le poteau ne s'arme pas", () => {
     const p = sansSauvee();
@@ -263,7 +263,7 @@ describe("une fois par bille (lot PBL1)", () => {
   });
 
   it("la bille sauvée (revenue au lanceur) garde son état : le poteau qui l'avait servie ne la sert pas deux fois", () => {
-    const p = partie("doublette"); // `sauvee` par défaut : une bille perdue dans les cinq secondes revient
+    const p = partie("B"); // `sauvee` par défaut : une bille perdue dans les cinq secondes revient
     p.armerLeSauveur();
     entreLesBatteurs(p);
     avancer(p, 120);
@@ -277,7 +277,7 @@ describe("une fois par bille (lot PBL1)", () => {
   });
 
   it("en multibille, chaque bille est servie une fois : la deuxième bille l'est après la première, jamais deux fois la même", () => {
-    const p = partie("doublette");
+    const p = partie("B");
     p.lancerLaMultibille();
     avancer(p, 800);
     expect(p.autres.length).toBeGreaterThanOrEqual(1);

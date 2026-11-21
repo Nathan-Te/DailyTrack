@@ -17,8 +17,8 @@ const tenus: Evenement[] = [
   { tick: 2400, c: DROITE, enfonce: false },
 ];
 /** Le premier jour depuis le premier jour du jeu qui tombe sur ce thème et ce plan : les rediffusions du robot jouent chaque plan (lot PBG1). */
-const jourDe = (theme: ThemePinball, plan: string): number => {
-  for (let j = daysFromCivil(2026, 11, 2); ; j++) if (themeDuJour(j) === theme && dailyPinball(j).plan === plan) return j;
+const jourDe = (theme: ThemePinball, plan: string, miroir = false): number => {
+  for (let j = daysFromCivil(2026, 11, 2); ; j++) if (themeDuJour(j) === theme && dailyPinball(j).plan === plan && dailyPinball(j).miroir === miroir) return j;
 };
 const robot = (jour: number, pas: number, graine = 0): Evenement[] => jouerRobot(dailyPinball(jour), graineDuRobot(graine), { maxTicks: pas }).evenements;
 
@@ -27,16 +27,16 @@ const reds = [
   { nom: "batteurs-tenus", jour: jourRef, evenements: tenus },
   // Lot PB4 : les tables du robot portent les éléments des thèmes (volcan : geyser et coulée ; espace : trou noir, portails, astéroïde ; foire : manège ; océan : tourbillon), et leur mission est réussie par le robot
   { nom: "robot-30-secondes", jour: jours[6]!, evenements: robot(jours[6]!, 18000) },
-  // Lot PBG1 : les quatre robots jouent quatre plans différents (rampes, orbite, combo, mini-batteur)
-  { nom: "robot-volcan", jour: jourDe("volcan", "boucle"), evenements: robot(jourDe("volcan", "boucle"), 72000) },
-  { nom: "robot-espace", jour: jourDe("espace", "bretelle"), evenements: robot(jourDe("espace", "bretelle"), 72000) },
-  { nom: "robot-foire", jour: jourDe("foire", "doublette"), evenements: robot(jourDe("foire", "doublette"), 72000) },
-  { nom: "robot-ocean", jour: jourDe("ocean", "tremplin"), evenements: robot(jourDe("ocean", "tremplin"), 72000) },
+  // Lot PBT1 : les quatre robots jouent quatre dispositions différentes (A, B en miroir, C, B : orbite et porte, rampe, mini-batteur)
+  { nom: "robot-volcan", jour: jourDe("volcan", "A"), evenements: robot(jourDe("volcan", "A"), 72000) },
+  { nom: "robot-espace", jour: jourDe("espace", "B", true), evenements: robot(jourDe("espace", "B", true), 72000) },
+  { nom: "robot-foire", jour: jourDe("foire", "C"), evenements: robot(jourDe("foire", "C"), 72000) },
+  { nom: "robot-ocean", jour: jourDe("ocean", "B"), evenements: robot(jourDe("ocean", "B"), 72000) },
   // Lot PBG2 : une partie entière du robot (15 minutes) passe par plusieurs multibilles (verrou, trois billes, jackpots, missions des niveaux suivants)
-  { nom: "robot-multibilles", jour: jourDe("espace", "doublette"), evenements: robot(jourDe("espace", "doublette"), 540000) },
+  { nom: "robot-multibilles", jour: jourDe("espace", "A", true), evenements: robot(jourDe("espace", "A", true), 540000) },
   // Lot PBG3 : une partie du robot (3 minutes) qui franchit la porte (4 ouvertures, 1 passage), est sauvée six fois par le poteau et dérivée quatre fois par l'aiguillage
-  { nom: "robot-deblocages", jour: daysFromCivil(2026, 11, 11), evenements: robot(daysFromCivil(2026, 11, 11), 108000, 1) },
-  { nom: "robot-multibilles-court", jour: jourDe("foire", "bretelle"), evenements: robot(jourDe("foire", "bretelle"), 216000) },
+  { nom: "robot-deblocages", jour: daysFromCivil(2026, 11, 3), evenements: robot(daysFromCivil(2026, 11, 3), 108000, 1) },
+  { nom: "robot-multibilles-court", jour: jourDe("foire", "C", true), evenements: robot(jourDe("foire", "C", true), 216000) },
 ].map((r) => {
   const contenu = dailyPinball(r.jour);
   return { nom: r.nom, date: formatDay(r.jour), g: contenu.g, code: enregistrer(contenu, r.evenements), resultat: jouer(contenu, r.evenements) };
@@ -53,7 +53,7 @@ const sortie = {
     // les seuils du robot : le premier jour de chaque thème seulement (4 secondes chacun)
     const seuils = themesVus.has(c.theme) ? undefined : seuilsDuRobot(c);
     themesVus.add(c.theme);
-    return { date: formatDay(j), theme: c.theme, plan: c.plan, modules: c.modules, empreinte: empreinteContenu(c), ...(seuils ? { seuils } : {}) };
+    return { date: formatDay(j), theme: c.theme, plan: c.plan, miroir: c.miroir, modules: c.modules, empreinte: empreinteContenu(c), ...(seuils ? { seuils } : {}) };
   }),
   rediffusions: reds,
 };

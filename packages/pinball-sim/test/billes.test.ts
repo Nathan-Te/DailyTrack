@@ -6,8 +6,8 @@ import { JOUR_ESSAI, avancer } from "./aide";
 // LES BILLES SE TOUCHENT (lot PBG2) : collision élastique entre billes de même masse, dans un ordre fixe ; aucune ne traverse l'autre ; aucune bille ne reste coincée pendant la multibille.
 
 /** Une partie en multibille (trois billes sur la table), sans pente ni batteurs levés : seules les collisions entre billes et les murs jouent. */
-// lot PBG3 : par défaut le plan « bretelle », dont le bas de la table (entre les lance-pierres, au-dessus des batteurs) est libre : les portes des autres plans y entrent un peu, et ces essais veulent un coin sans mur
-function multibille(theme: ThemePinball = "ocean", plan = "bretelle", pente = 0): Partie {
+// lot PBG3 : par défaut la table C, dont le bas (entre les lance-pierres, au-dessus des batteurs) est libre, pour que ces essais aient un coin sans mur
+function multibille(theme: ThemePinball = "ocean", plan = "C", pente = 0): Partie {
   const r = copierReglages();
   r.pente = pente;
   const p = new Partie(dailyPinball(JOUR_ESSAI, PINBALL_GENERATOR_VERSION, theme, plan), r);
@@ -158,7 +158,7 @@ describe("collision entre deux billes", () => {
 
 describe("la multibille ne coince jamais une bille", () => {
   // toutes les tables : trois billes lâchées en plusieurs endroits de la table, sans batteur levé ; la multibille finit toujours (chaque bille est perdue, le délai de bille sauvée passé)
-  for (const plan of ["doublette", "tremplin", "bretelle", "boucle"]) {
+  for (const plan of ["A", "B", "C"]) {
     for (const theme of ["foire", "ocean", "espace", "volcan"] as const) {
       it(`${theme} × ${plan} : la multibille finit, aucune bille ne reste en jeu`, () => {
         const rng = new Rng(plan.length * 31 + theme.length);

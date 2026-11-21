@@ -3812,7 +3812,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aujourdhui.mission` | Mission | Mission |
 | `aujourdhui.mission.gain` | +{points} et un cran de multiplicateur, de plus en plus à chaque niveau | +{points} and one step of multiplier, more at every level |
 | `aujourdhui.table` | Sur la table | On the table |
-| `aujourdhui.plan` | Plan : {plan} | Layout: {plan} |
+| `aujourdhui.plan` | Table : {plan} | Table: {plan} |
+| `aujourdhui.miroir` | {plan} (en miroir) | {plan} (mirrored) |
 | `aujourdhui.medailles` | Médailles du jour | Today's medals |
 | `aujourdhui.apercu` | Aperçu de la table du jour : {theme} | Preview of today's table: {theme} |
 | `aujourdhui.seuils.calcul` | Seuils en calcul… | Thresholds being calculated… |
@@ -4030,10 +4031,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `plan.doublette` | Doublette | Double ramp |
-| `plan.tremplin` | Tremplin | Ramp-up |
-| `plan.bretelle` | Bretelle | Sliproad |
-| `plan.boucle` | Boucle | Loop |
+| `plan.A` | Classique | Classic |
+| `plan.B` | Rampe et orbite | Ramp and orbit |
+| `plan.C` | Mini-batteur | Mini-flipper |
 
 ### plaque (`plaque.*`, `apps/pinball/src/catalogue.*.ts`)
 

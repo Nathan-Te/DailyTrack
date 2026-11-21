@@ -36,7 +36,7 @@ describe("le bout de la pointe de chaque plaque tombe dans l'emprise de son él�
         }
       }
       void geoPorte;
-      expect(n).toBeGreaterThan(20);
+      expect(n).toBeGreaterThanOrEqual(16); // lot PBT1 : 8 tables par plan, deux plaques (trois avec la porte : A et B)
       const groupes = new Map<string, number>();
       for (const q of pires) {
         const k = q.replace(/^(\w+):(\w+):[^ ]+ (\w+)(?: \(\d lignes?\))? : (bout à [\d.]+|bout dans \w+).*$/, (_m, th, pl, r, x) => `${th}:${pl} ${r} ${x.startsWith("bout à") ? "bout trop loin" : x}`);

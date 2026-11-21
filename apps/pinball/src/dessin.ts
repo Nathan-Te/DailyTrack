@@ -44,11 +44,15 @@ export const TAU = 6.283185307179586;
 export const comptePourLaMission = (theme: ThemePinball, type: string): boolean => (MODULES_DE_MISSION[MISSION_DU_THEME[theme]] as readonly string[]).includes(type);
 /** Les flèches clignotent deux fois par seconde (150 pas allumée, 150 pas éteinte), en fonction du seul pas. */
 export const clignote = (tick: number): boolean => Math.floor(tick / 150) % 2 === 0;
-/** La flèche de tir d'un module : où elle se pose (devant lui, sur la ligne qui vient des batteurs) et son angle. */
+/**
+ * La flèche de tir d'un module : où elle se pose (devant lui, sur la ligne qui vient du batteur qui le vise) et son angle. **Lot PBT1 : le batteur qui vise** — le batteur gauche tire vers la droite de la table, le batteur
+ * droit vers la gauche (les tirs rapides sont croisés), un module du centre vient de l'axe : la flèche a l'angle du tir, pas celui d'un batteur imaginaire au milieu.
+ */
 export function flecheDe(m: { type: string; x: number; y: number }): { x: number; y: number; a: number } {
   const mx = px(m.x);
   const my = px(m.y);
-  const dx = mx - AXE;
+  const origine = mx > AXE + 24 ? 128 : mx < AXE - 24 ? 2 * AXE - 128 : AXE;
+  const dx = mx - origine;
   const dy = my - 600;
   const d = Math.hypot(dx, dy);
   const r = RAYON_MODULE[m.type] ?? 30;
@@ -85,15 +89,18 @@ export const BANDES: readonly (readonly [number, number, number])[] = [
 /** L'arc du haut de la table (le même que la simulation et que `masque`). */
 export const ARC_CENTRE = { x: 196.25, y: 205, r: 176.25 } as const;
 /** Les petites lampes du décor, allumées : sur les deux flancs de l'arc (au ras du rail, hors des couloirs du haut) et sur le dessus des lance-pierres. `pierre` : posée sur un lance-pierre (en three.js, à sa hauteur). */
-export function lampesDecor(): { x: number; y: number; pierre: boolean }[] {
+export function lampesDecor(table?: Table): { x: number; y: number; pierre: boolean }[] {
   const l: { x: number; y: number; pierre: boolean }[] = [];
-  // lot PBG1 : à 8 px du rail de l'arc (12 avant) : l'orbite, qui le longe à 150–152 px du centre, ne les recouvre pas
+  // lot PBG1 : à 8 px du rail de l'arc (12 avant)
   const r = ARC_CENTRE.r - 8;
   for (let k = 0; k < 5; k++) {
     for (const a of [Math.PI + 0.16 + k * 0.2, 2 * Math.PI - 0.16 - k * 0.2]) l.push({ x: ARC_CENTRE.x + Math.cos(a) * r, y: ARC_CENTRE.y + Math.sin(a) * r, pierre: false });
   }
   for (const [x, y] of [[47, 500], [49, 520], [53, 540]] as const) for (const xx of [x, 2 * AXE - x]) l.push({ x: xx, y, pierre: true });
-  return l;
+  // lot PBT1 : l'orbite d'une table dessinée longe l'arc à 160 px du centre (le milieu de son couloir) : les lampes du flanc qu'elle suit s'éteignent sous son ruban et son cerne
+  if (!table) return l;
+  const orbites = table.rails.filter((r) => r.genre === "orbite").map((r) => ({ r, pts: echantillons(r, 2) }));
+  return l.filter((lampe) => lampe.pierre || orbites.every(({ r, pts }) => Math.min(...pts.map((p) => Math.hypot(lampe.x - p.x, lampe.y - p.y))) > largeurDuRail(r) / 2 + 2.5 + 3.2));
 }
 /** La lueur d'une lampe du décor (de 0,35 à 1) : une vague qui court le long de l'arc, en fonction du seul pas. */
 export const lueurLampe = (i: number, tick: number): number => 0.35 + 0.65 * Math.max(0, Math.cos((tick / TICKS_PAR_SECONDE) * 3 - i * 0.7)) ** 2;
@@ -936,9 +943,9 @@ export function ombresDeContact(c: CanvasRenderingContext2D, t: Table, theme: Th
   c.restore();
 }
 /** La lueur que chaque petite lampe du décor pose sur le sol autour d'elle (cuite dans le sol du rendu de secours ; le rendu three.js la pose à part, réglée par le curseur « Lueur des bandes »). */
-export function lueursLampes(c: CanvasRenderingContext2D, couleur: string, force = 1): void {
+export function lueursLampes(c: CanvasRenderingContext2D, couleur: string, force = 1, table?: Table): void {
   c.save();
-  for (const l of lampesDecor()) {
+  for (const l of lampesDecor(table)) {
     const r = l.pierre ? 15 : 20;
     const g = c.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
     g.addColorStop(0, couleur);
@@ -1306,6 +1313,8 @@ export function pastille(c: CanvasRenderingContext2D, police: string, x: number,
 export const largeurDuRail = (rail: Pick<Rail, "genre">): number => (rail.genre === "orbite" ? 16 : 18);
 /** À quelle distance avant sa bouche la flèche de tir d'un rail se pose (px) : devant l'entonnoir. */
 const RECUL_FLECHE_RAIL = 26;
+/** Lot PBT1 : la porte de l'orbite est posée à 26 px sous sa bouche : la flèche de l'orbite se pose 18 px plus bas, devant le battant (celle de la porte est entre le battant et la bouche). */
+const RECUL_FLECHE_ORBITE_PORTE = RECUL_FLECHE_RAIL + 18;
 export interface FlecheDeRail {
   x: number;
   y: number;
@@ -1319,7 +1328,8 @@ export function flechesDesRails(table: Table): FlecheDeRail[] {
   return table.portes.map((g) => {
     const ux = g.ux / NORME;
     const uy = g.uy / NORME;
-    return { x: g.x / UNITE - ux * RECUL_FLECHE_RAIL, y: g.y / UNITE - uy * RECUL_FLECHE_RAIL, a: Math.atan2(uy, ux), rail: g.rail, bout: g.bout };
+    const recul = table.passage && table.rails[g.rail]!.genre === "orbite" ? RECUL_FLECHE_ORBITE_PORTE : RECUL_FLECHE_RAIL;
+    return { x: g.x / UNITE - ux * recul, y: g.y / UNITE - uy * recul, a: Math.atan2(uy, ux), rail: g.rail, bout: g.bout };
   });
 }
 // --- Lot PBL1 : les flèches au sol — celles qui disent quoi viser maintenant. Toutes peintes au sol, éteintes et discrètes (`flecheEteinte`, cuites dans le sol) ; `indications.ts` dit lesquelles s'allument, dans quelle couleur.
@@ -1329,10 +1339,10 @@ export interface FlecheAuSol {
   x: number;
   y: number;
   a: number;
-  cible: "element" | "verrou" | "rail" | "porte";
+  cible: "element" | "verrou" | "rail" | "porte" | "banque";
   rang: number;
 }
-/** Les flèches au sol d'une table : devant chaque module qui compte pour la mission, devant le verrou, devant la bouche de chaque rail et dans le passage de la porte. **Plus aucune flèche devant les autres modules** (bumpers, cibles, spinner, trou simple, éléments sans mission) : les flèches blanches partout ne disaient pas quoi viser. */
+/** Les flèches au sol d'une table : devant chaque module qui compte pour la mission, devant le verrou, devant la bouche de chaque rail, sur la porte et (éteinte) devant la banque de cibles. **Plus aucune flèche devant les autres modules** (bumpers, cibles, spinner, trou simple, éléments sans mission) : les flèches blanches partout ne disaient pas quoi viser. */
 export function flechesAuSol(table: Table, theme: ThemePinball): FlecheAuSol[] {
   const sortie: FlecheAuSol[] = [];
   table.poses.forEach((m, i) => {
@@ -1345,6 +1355,10 @@ export function flechesAuSol(table: Table, theme: ThemePinball): FlecheAuSol[] {
   for (const f of flechesDesRails(table)) sortie.push({ id: `r${f.rail}.${f.bout}`, x: f.x, y: f.y, a: f.a, cible: "rail", rang: f.rail });
   const porte = geoPorte(table);
   if (porte) sortie.push({ id: "p", x: porte.fleche.x, y: porte.fleche.y, a: porte.fleche.a, cible: "porte", rang: 0 });
+  // lot PBT1 : la banque de cibles est un tir de la table (le 4 de la table A, le 2 de la B, le 1 de la C) : une flèche éteinte devant elle, jamais allumée (elle ouvre la porte, qui a la sienne)
+  table.poses.forEach((m, i) => {
+    if (m.type === "cibles") sortie.push({ id: `b${i}`, ...flecheDe(m), cible: "banque", rang: i });
+  });
   return sortie;
 }
 
@@ -1817,7 +1831,7 @@ export function dessinerSol(c: CanvasRenderingContext2D, d: DonneesSol): void {
   c.fill();
   if (theme === "ocean") margesOcean(c);
   ombresDeContact(c, t, theme, d.occlusion ?? 1, d.vignettage ?? 1);
-  if (!d.sansLueurBandes) lueursLampes(c, P.lampe);
+  if (!d.sansLueurBandes) lueursLampes(c, P.lampe, 1, t);
   // le nom du thème est peint par le sol de chaque thème (la bannière, le nom blanc et sa vague, les lettres de néon, la gravure)
   // lot PBL1 : les flèches au sol, **éteintes et discrètes** : devant l'élément de la mission, le verrou, chaque bouche de rail et dans le passage de la porte (rien devant les autres modules) ; `indications.ts` allume celles qui comptent
   for (const f of flechesAuSol(t, theme)) flecheEteinte(c, P, f.x, f.y, f.a);
@@ -1931,7 +1945,7 @@ export function creerRendu(canvas: HTMLCanvasElement, partie: Partie, theme: The
   /** Lot PBG1 : les rails, cuits une fois à la taille de l'écran (leur ombre sur le sol, les rubans, les entonnoirs) : rien par image que la bille qui roule dessus. */
   let rails: HTMLCanvasElement | null = null;
   const modules = modulesAPlat(theme, partie);
-  const decor = lampesDecor();
+  const decor = lampesDecor(t);
   const etiquettes = placerEtiquettes(t, theme, nom);
   const indications = creerIndications(partie, flechesAuSol(t, theme));
 

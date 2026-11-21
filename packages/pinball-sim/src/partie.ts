@@ -971,8 +971,13 @@ export class Partie {
     // --- les collisions, dans l'ordre de la maquette : murs, poteaux, bumpers, cibles, batteurs
     // lot PBR1 : les murs de la case de la bille seulement (`grille` : les mêmes, dans le même ordre)
     for (const s of t.grille[caseDe(this.x, this.y)]!) if (this.segment(s) && s.type === 1) this.choquerSling(s);
-    // lot PBG3 : fermée, la porte est un mur ; ouverte, la bille passe
-    if (t.passage && this.passageOuvert <= 0) this.segment(t.passage.battant);
+    // lot PBG3 : fermée, la porte est un mur ; ouverte, la bille passe. **Lot PBT1 : une porte à sens unique** (la porte de l'orbite) n'arrête que la bille qui monte vers elle, de l'entrée (le centre en dessous de la ligne du
+    // battant, vitesse vers le haut du passage) : une bille qui arrive d'en haut — retombée du couloir, ou lancée par-dessus l'arc — la traverse sans s'y poser, et sans être repoussée de 9 px d'un coup quand son centre
+    // passe la ligne (un saut que `test/themes-surete.test.ts` refuse)
+    if (t.passage && this.passageOuvert <= 0) {
+      const g = t.passage;
+      if (!g.sensUnique || (div((this.x - g.x) * g.ux + (this.y - g.y) * g.uy, NORME) < 0 && this.vx * g.ux + this.vy * g.uy > 0)) this.segment(g.battant);
+    }
     // lot PBG1 : les bouches des rails — assez vite la bille est prise (elle quitte le plateau), sinon la bouche est un mur
     for (const g of t.portes) {
       // lot PBR1 : la bouche n'agit que sur une bille proche de son milieu (sa demi-largeur plus le rayon de la bille, un pixel de marge pour l'arrondi du segment)
@@ -1448,6 +1453,8 @@ export class Partie {
    */
   private surRail(d: Derives, r: Reglages, t: Table): void {
     const rl = t.rails[this.rail]!;
+    const ox = this.x;
+    const oy = this.y;
     const n = rl.ux.length;
     let k = 0;
     while (k < n - 1 && rl.cum[k + 1]! <= this.railS) k++;
@@ -1498,6 +1505,36 @@ export class Partie {
       // la vitesse du tracé (pour le rendu et le robot : une bille sur un rail a une vitesse, pas un arrêt)
       this.vx = div(rl.ux[j]! * this.railV, NORME);
       this.vy = div(rl.uy[j]! * this.railV, NORME);
+      if (rl.genre === "orbite") this.capteursDeLOrbite(ox, oy, d);
+    }
+  }
+
+  /**
+   * **Les capteurs du couloir de l'orbite** (lot PBT1) : le spinner et la coulée sont posés dans le couloir, sous le rail de l'orbite ; la bille qui le suit les déclenche comme celle qui roulerait au plateau (le spinner à la
+   * traversée de sa ligne, la coulée l'accélère tant qu'elle y monte).
+   */
+  private capteursDeLOrbite(ox: number, oy: number, d: Derives): void {
+    const t = this.table;
+    for (let i = 0; i < t.spinners.length; i++) {
+      const c = t.spinners[i]!;
+      if (Math.abs(this.x - c.x) < c.l && ((oy < c.y && this.y >= c.y) || (oy > c.y && this.y <= c.y))) {
+        this.spin[i] = this.spin[i]! + 1000 * Math.min(30, div(Math.abs(this.vy), 40 * UNITE));
+        this.ev |= EV_SPINNER;
+        this.points(POINTS.spinner);
+      }
+    }
+    void ox;
+    for (let i = 0; i < t.coulees.length; i++) {
+      const z = t.coulees[i]!;
+      const dedans = Math.abs(this.x - z.x) < z.l && Math.abs(this.y - z.y) < z.h;
+      if (dedans && this.railV > 0) {
+        this.railV += d.couleeParPas;
+        if (!this.couleeDedans[i]) {
+          this.ev |= EV_COULEE;
+          this.points(POINTS.coulee);
+        }
+      }
+      this.couleeDedans[i] = dedans;
     }
   }
 

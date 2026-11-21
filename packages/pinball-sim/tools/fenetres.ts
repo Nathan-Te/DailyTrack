@@ -2,20 +2,19 @@ import { writeFileSync } from "node:fs";
 import { plusLongueSerie, pasEnMs } from "../src/index";
 import { UNITE, dansLaZoneDeTir, obstaclesDansLaZone, zoneDeTir, Partie, cleDeTable, fenetresDeTir, FENETRE_MIN_MS, toutesLesTables, tirsDuBatteur, billeTenue, GAUCHE, DROITE, type Contenu } from "../src/index";
 
-// `npm run fenetres:pinball -w @cdj/pinball-sim -- [--plan=tremplin] [--theme=volcan] [--cle=<début de clé>] [--n=4] [--detail]` : les fenêtres de tir humaines (lot PBL2) de quelques tables.
+// `npm run fenetres:pinball -w @cdj/pinball-sim -- [--plan=A [--miroir=true]] [--theme=volcan] [--cle=<début de clé>] [--n=4] [--detail]` : les fenêtres de tir humaines (lot PBL2) de quelques tables.
 const args = process.argv.slice(2);
 const valeur = (nom: string): string | undefined => args.find((a) => a.startsWith(`--${nom}=`))?.slice(nom.length + 3);
-import { appliquerParams } from "./params-plan";
 const plan = valeur("plan");
-if (valeur("params")) appliquerParams(plan!, valeur("params")!);
 const theme = valeur("theme");
+const miroir = valeur("miroir");
 const cle = valeur("cle");
 const n = Number(valeur("n") ?? 1);
 const regex = valeur("regex");
-let tables: Contenu[] = toutesLesTables().filter((c) => (!plan || c.plan === plan) && (!theme || c.theme === theme) && (!cle || cleDeTable(c).startsWith(cle)) && (!regex || new RegExp(regex).test(cleDeTable(c))));
+let tables: Contenu[] = toutesLesTables().filter((c) => (!plan || c.plan === plan) && (miroir === undefined || String(c.miroir) === miroir) && (!theme || c.theme === theme) && (!cle || cleDeTable(c).startsWith(cle)) && (!regex || new RegExp(regex).test(cleDeTable(c))));
 if (args.includes("--defauts")) {
   const vus = new Set<string>();
-  tables = tables.filter((c) => !vus.has(`${c.plan}:${c.theme}`) && vus.add(`${c.plan}:${c.theme}`));
+  tables = tables.filter((c) => !vus.has(`${c.plan}:${c.theme}:${c.miroir}`) && vus.add(`${c.plan}:${c.theme}:${c.miroir}`));
 } else if (n > 0) tables = tables.filter((_, i) => i % Math.max(1, Math.floor(tables.length / n)) === 0).slice(0, n);
 for (const c of tables) {
   const t0 = performance.now();

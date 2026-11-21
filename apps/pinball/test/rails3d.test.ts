@@ -21,7 +21,7 @@ describe("les rails en volume (lot PBG1)", () => {
         const maillages = [r.opaque, r.translucide, r.rayonne].filter((m): m is Mesh => m !== null);
         expect(maillages.length).toBeGreaterThanOrEqual(2);
         expect(maillages.length).toBeLessThanOrEqual(3);
-        expect(r.triangles).toBeGreaterThan(1500);
+        expect(r.triangles).toBeGreaterThan(450 * partie.table.rails.length); // lot PBT1 : 1 500 pour deux rails ou plus ; la table A n'a que l'orbite
         expect(r.triangles).toBeLessThan(9000);
         let hMax = 0;
         for (const m of maillages) {
@@ -49,7 +49,7 @@ describe("les rails en volume (lot PBG1)", () => {
   }
 
   it("la bille est au ras du plateau aux bouts d'un rail et à sa hauteur dessinée au milieu", () => {
-    const partie = new Partie(dailyPinball(20, undefined, "foire", "doublette"));
+    const partie = new Partie(dailyPinball(20, undefined, "foire", "B"));
     for (const rail of partie.table.rails) {
       expect(hauteurBille(rail, 0)).toBeCloseTo(RAYON, 6);
       expect(hauteurBille(rail, rail.len)).toBeCloseTo(RAYON, 6);

@@ -34,7 +34,7 @@ describe("les options d'essai de l'adresse", () => {
     expect(lireEssai("?essai=autre", false)).toMatchObject({ verrou: false, multibille: false, essai: false });
   });
   it("sur la production (`restreint`), aucune option n'existe : `?essai=mission` ne fait rien", () => {
-    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=boucle", true)).toEqual({ tune: false, fps: false, sons: false, tirs: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, essai: false });
+    expect(lireEssai("?essai=mission&debug&tune&sons&qualite=basse&plan=B&miroir", true)).toEqual({ tune: false, fps: false, sons: false, tirs: false, qualite: null, reglages: null, mission: false, verrou: false, multibille: false, porte: false, poteau: false, robot: null, plan: null, miroir: false, essai: false });
   });
 });
 
@@ -61,21 +61,26 @@ describe("`?plan=` : la table de ce plan, seule ou avec un thème", () => {
   afterEach(() => vi.unstubAllGlobals());
   const avec = (recherche: string): void => void vi.stubGlobal("location", { search: recherche });
 
-  it("`?plan=<id>` est lu tel quel (des lettres), c'est un essai : non classable ; sur la production il n'existe pas", () => {
-    expect(lireEssai("?plan=boucle", false)).toMatchObject({ plan: "boucle", essai: true });
-    expect(lireEssai("?plan=boucle&theme=volcan", false)).toMatchObject({ plan: "boucle", essai: true });
+  it("`?plan=<lettre>` est lu en majuscules (A, B, C), c'est un essai : non classable ; sur la production il n'existe pas ; `?miroir` est un drapeau", () => {
+    expect(lireEssai("?plan=B", false)).toMatchObject({ plan: "B", miroir: false, essai: true });
+    expect(lireEssai("?plan=c&theme=volcan", false)).toMatchObject({ plan: "C", essai: true });
     expect(lireEssai("?plan=", false)).toMatchObject({ plan: null, essai: false });
     expect(lireEssai("?plan=<script>", false)).toMatchObject({ plan: null, essai: false });
-    expect(lireEssai("?plan=boucle", true)).toMatchObject({ plan: null, essai: false });
+    expect(lireEssai("?plan=B", true)).toMatchObject({ plan: null, miroir: false, essai: false });
+    expect(lireEssai("?miroir", false)).toMatchObject({ plan: null, miroir: true, essai: true });
+    expect(lireEssai("?plan=A&miroir", false)).toMatchObject({ plan: "A", miroir: true, essai: true });
+    expect(lireEssai("?miroir=0", false)).toMatchObject({ miroir: false, essai: false });
+    expect(lireEssai("?miroir", true)).toMatchObject({ miroir: false, essai: false });
   });
 
-  it("chaque plan donne sa table ce jour-là, avec le thème du jour ; un plan inconnu est ignoré (la table du jour)", async () => {
+  it("chaque table donne sa table ce jour-là, avec le thème du jour, de face ; une table inconnue est ignorée (la table du jour)", async () => {
     const jour = 20850;
     const duJour = dailyPinball(jour);
     for (const plan of IDS_PLANS) {
       avec(`?plan=${plan}`);
       const c = await contenuDuJour(jour, "", duJour.theme);
       expect(c.plan).toBe(plan);
+      expect(c.miroir).toBe(false);
       expect(c.theme).toBe(duJour.theme);
       expect(c.modules).toEqual(dailyPinball(jour, undefined, duJour.theme, plan).modules);
       expect(c.seuilsFiges).toBeDefined();
@@ -83,10 +88,25 @@ describe("`?plan=` : la table de ce plan, seule ou avec un thème", () => {
     avec("?plan=inconnu");
     const ignore = await contenuDuJour(jour, "", duJour.theme);
     expect(ignore.plan).toBe(duJour.plan);
+    expect(ignore.miroir).toBe(duJour.miroir);
     expect(ignore.modules).toEqual(duJour.modules);
   });
 
-  it("`?plan=` se combine avec `?theme=` : le thème et le plan demandés, tous les deux", async () => {
+  it("`?miroir` reflète la table du jour, ou celle de `?plan=` ; sans lui, `?plan=` donne la table de face", async () => {
+    const jour = 20850;
+    const duJour = dailyPinball(jour);
+    avec("?miroir");
+    const seul = await contenuDuJour(jour, "", duJour.theme);
+    expect([seul.plan, seul.miroir]).toEqual([duJour.plan, true]);
+    for (const plan of IDS_PLANS) {
+      avec(`?plan=${plan}&miroir`);
+      const c = await contenuDuJour(jour, "", duJour.theme);
+      expect([c.plan, c.miroir]).toEqual([plan, true]);
+      expect(c.modules).toEqual(dailyPinball(jour, undefined, duJour.theme, plan, true).modules);
+    }
+  });
+
+  it("`?plan=` se combine avec `?theme=` : le thème et la table demandés, tous les deux", async () => {
     const jour = 20850;
     for (const theme of ["foire", "ocean", "espace", "volcan"] as const) {
       for (const plan of IDS_PLANS) {

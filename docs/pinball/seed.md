@@ -110,3 +110,5 @@ Chaque module porte son nom sur la table, dans le vocabulaire du thème, avec un
    - La multibille s'arrête quand il ne reste qu'une bille sur la table.
 4. **Puis la mission revient, au niveau suivant** : un but plus haut, et elle rapporte plus. La boucle recommence.
 - Une partie reste à trois billes, avec une durée maximale.
+
+> **Les tables (décision de Nathan du 21/11/2026).** Les tables ne sont plus tirées en emplacements. Elles sont dessinées : la table A « Classique », la table B « Rampe et orbite » et la table C « Mini-batteur », chacune jouable en miroir. Le jour tire le thème, la table et le miroir. Le kickback est un poteau sauveur entre les batteurs, armé une fois par bille.
