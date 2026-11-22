@@ -1,0 +1,200 @@
+{
+  "id": "pilepoil",
+  "code": "pilepoil",
+  "ordre": 11,
+  "nom": {
+    "fr": "Pile poil",
+    "en": "Pile poil"
+  },
+  "accroche": "portail.pilepoil.accroche",
+  "etiquette": {
+    "fond": "#C7E9A8",
+    "coque": "#3F6B1E",
+    "police": "\"Lilita One\", \"Archivo\", sans-serif",
+    "dessin": "generique"
+  },
+  "identite": {
+    "police": "Lilita One",
+    "motif": "confettis",
+    "illustration": "à choisir",
+    "aujourdhui": false
+  },
+  "etatDepart": "off",
+  "premierJour": "2026-11-02",
+  "categorie": "party",
+  "classement": {
+    "colonnes": [
+      {
+        "nom": "touches",
+        "sens": "desc"
+      },
+      {
+        "nom": "dernier",
+        "sens": "asc"
+      },
+      {
+        "nom": "submitted_at",
+        "sens": "asc"
+      },
+      {
+        "nom": "player_id",
+        "sens": "asc"
+      }
+    ],
+    "cumul": false,
+    "unite": "points",
+    "format": "entier"
+  },
+  "medailles": {
+    "methode": "pourcentage-diamant",
+    "bareme": [
+      50,
+      30,
+      15
+    ],
+    "plafondDiamant": 20
+  },
+  "partage": {
+    "extras": []
+  },
+  "themes": [],
+  "nomsThemes": {
+    "fr": {},
+    "en": {}
+  },
+  "versions": {
+    "sim": "packages/pilepoil-sim/src/constantes.ts:PILEPOIL_SIM_VERSION",
+    "generateur": "packages/pilepoil-sim/src/constantes.ts:PILEPOIL_GENERATOR_VERSION"
+  },
+  "rejeu": {
+    "unitesServeur": 1,
+    "maxTicks": 900
+  },
+  "donnees": {
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "stockage": {
+      "prefixe": "pilepoil:",
+      "reglagesGardes": []
+    }
+  },
+  "message": {
+    "ou": "pilepoil"
+  },
+  "zoneNouveautes": "pilepoil",
+  "musique": {
+    "scenes": [
+      "menu"
+    ]
+  },
+  "admin": {
+    "outils": false
+  },
+  "zones": {
+    "jeu": [
+      "apps/pilepoil/**",
+      "packages/pilepoil-sim/**",
+      "apps/api/src/pilepoil*.ts",
+      "apps/api/test/pilepoil*.test.ts",
+      "apps/api/scripts/pilepoil-*.ts",
+      "docs/pilepoil/**"
+    ],
+    "serveur": [
+      "apps/api/src/pilepoil*.ts",
+      "apps/api/test/pilepoil*.test.ts",
+      "apps/api/scripts/pilepoil-*.ts"
+    ]
+  },
+  "e2e": {
+    "dossier": "apps/pilepoil/e2e",
+    "suite": "pilepoil",
+    "fumee": [
+      "determinisme.spec.ts",
+      "partie.spec.ts",
+      "poids.spec.ts"
+    ],
+    "zones": {
+      "pilepoil-sim": {
+        "globs": [
+          "packages/pilepoil-sim/**"
+        ]
+      },
+      "pilepoil-jeu": {
+        "globs": [
+          "apps/pilepoil/index.html",
+          "apps/pilepoil/vite.config.ts",
+          "apps/pilepoil/verify.html",
+          "apps/pilepoil/src/*"
+        ]
+      },
+      "api-pilepoil": {
+        "globs": [
+          "apps/api/src/pilepoil*.ts",
+          "apps/api/scripts/pilepoil-*.ts"
+        ]
+      }
+    },
+    "specs": {
+      "determinisme.spec.ts": [
+        "pilepoil-sim",
+        "pilepoil-jeu",
+        "core-clock"
+      ],
+      "partie.spec.ts": [
+        "pilepoil-sim",
+        "pilepoil-jeu",
+        "ui"
+      ],
+      "classement.spec.ts": [
+        "pilepoil-sim",
+        "pilepoil-jeu",
+        "api-pilepoil",
+        "api-jeux"
+      ],
+      "poids.spec.ts": [
+        "pilepoil-jeu",
+        "ui"
+      ],
+      "ecrans-kit.spec.ts": [
+        "pilepoil-jeu",
+        "ui"
+      ],
+      "chargement-partie.spec.ts": [
+        "pilepoil-jeu",
+        "ui"
+      ],
+      "surimpression.spec.ts": [
+        "pilepoil-jeu",
+        "ui"
+      ],
+      "fin-et-aide.spec.ts": [
+        "pilepoil-jeu",
+        "ui"
+      ]
+    },
+    "parts": {
+      "main": 1,
+      "complet": 1,
+      "nuit": 1
+    },
+    "regression": [
+      "ecrans-kit.spec.ts",
+      "chargement-partie.spec.ts",
+      "surimpression.spec.ts",
+      "fin-et-aide.spec.ts"
+    ]
+  },
+  "budget": {
+    "lignes": [
+      "pilepoil.jsCss"
+    ],
+    "aLaDemande": [
+      "partie-",
+      "classement-",
+      "reglages-",
+      "retours-",
+      "version-"
+    ]
+  },
+  "temoin": false
+}

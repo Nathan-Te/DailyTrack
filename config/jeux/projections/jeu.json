@@ -316,6 +316,31 @@
         "theme:espace",
         "theme:volcan"
       ]
+    },
+    {
+      "id": "pilepoil",
+      "code": "pilepoil",
+      "ordre": 11,
+      "nom": {
+        "fr": "Pile poil",
+        "en": "Pile poil"
+      },
+      "etiquette": {
+        "fond": "#C7E9A8",
+        "coque": "#3F6B1E",
+        "police": "\"Lilita One\", \"Archivo\", sans-serif",
+        "dessin": "generique"
+      },
+      "etatDepart": "off",
+      "format": "entier",
+      "unite": "points",
+      "prefixe": "pilepoil:",
+      "messageOu": "pilepoil",
+      "zoneNouveautes": "pilepoil",
+      "themes": [],
+      "scenes": [
+        "menu"
+      ]
     }
   ],
   "publics": [
@@ -331,7 +356,8 @@
     "rush:",
     "vertige:",
     "gravity:",
-    "pinball:"
+    "pinball:",
+    "pilepoil:"
   ],
   "ou": [
     "portail",
@@ -343,7 +369,8 @@
     "rush",
     "vertige",
     "gravity",
-    "pinball"
+    "pinball",
+    "pilepoil"
   ],
   "zones": [
     "dujour",
@@ -355,7 +382,8 @@
     "rush",
     "vertige",
     "gravity",
-    "pinball"
+    "pinball",
+    "pilepoil"
   ],
   "nomsDeZones": {
     "dujour": "Du Jour",
@@ -367,6 +395,7 @@
     "rush": "Rush",
     "vertige": "Vertige",
     "gravity": "Gravity",
-    "pinball": "Pinball"
+    "pinball": "Pinball",
+    "pilepoil": "Pile poil"
   }
 }

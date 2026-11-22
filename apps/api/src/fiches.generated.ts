@@ -675,5 +675,62 @@ export const FICHES_SERVEUR = [
     "reglagesGardes": [],
     "messageOu": "pinball",
     "zoneNouveautes": "pinball"
+  },
+  {
+    "id": "pilepoil",
+    "code": "pilepoil",
+    "etatDepart": "off",
+    "premierJour": "2026-11-02",
+    "categorie": "party",
+    "fond": "#C7E9A8",
+    "classement": {
+      "colonnes": [
+        {
+          "nom": "touches",
+          "sens": "desc"
+        },
+        {
+          "nom": "dernier",
+          "sens": "asc"
+        },
+        {
+          "nom": "submitted_at",
+          "sens": "asc"
+        },
+        {
+          "nom": "player_id",
+          "sens": "asc"
+        }
+      ],
+      "cumul": false,
+      "unite": "points",
+      "format": "entier"
+    },
+    "medailles": {
+      "methode": "pourcentage-diamant",
+      "bareme": [
+        50,
+        30,
+        15
+      ],
+      "plafondDiamant": 20
+    },
+    "versions": {
+      "sim": "packages/pilepoil-sim/src/constantes.ts:PILEPOIL_SIM_VERSION",
+      "generateur": "packages/pilepoil-sim/src/constantes.ts:PILEPOIL_GENERATOR_VERSION"
+    },
+    "rejeu": {
+      "unitesServeur": 1,
+      "maxTicks": 900
+    },
+    "tables": [],
+    "tableCommune": "resultats_jeu",
+    "prefixe": "pilepoil:",
+    "reglagesGardes": [],
+    "messageOu": "pilepoil",
+    "zoneNouveautes": "pilepoil",
+    "identiteManque": [
+      "illustration"
+    ]
   }
 ] as const;

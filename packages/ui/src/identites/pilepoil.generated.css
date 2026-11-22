@@ -1,0 +1,4 @@
+/* GÉNÉRÉ par `npm run fiches` (lot K4e : config/jeux/<id>.json → ui, identité) — NE PAS MODIFIER À LA MAIN : changer la fiche du jeu, puis relancer la commande. Un test vérifie que ce fichier est à jour. */
+@import "../jeux.structure.generated.css";
+@import "../polices/lilita-one-400.css";
+.jeu-etiquette--pilepoil{--jeu-fond:#C7E9A8;--jeu-coque:#3F6B1E;--jeu-police:"Lilita One", "Archivo", sans-serif;--jeu-motif:radial-gradient(circle at 20% 25%,#bcdb9e 0 3px,transparent 3px) 0 0/34px 34px,radial-gradient(circle at 70% 65%,#bcdb9e 0 2px,transparent 2px) 0 0/22px 26px,radial-gradient(circle at 40% 85%,#bcdb9e 0 4px,transparent 4px) 0 0/46px 40px,#c7e9a8}

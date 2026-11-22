@@ -6,6 +6,7 @@ import { CATALOGUE_RUSH } from "../apps/rush/src/catalogue";
 import { CATALOGUE_VERTIGE } from "../apps/vertige/src/catalogue";
 import { CATALOGUE_GRAVITY } from "../apps/gravity/src/catalogue";
 import { CATALOGUE_PINBALL } from "../apps/pinball/src/catalogue";
+import { CATALOGUE_PILEPOIL } from "../apps/pilepoil/src/catalogue";
 
 type Bilingue = { fr: Record<string, string>; en: Record<string, string> };
 // [nom (de l'application), fichiers, catalogue, titre dans le document].
@@ -16,4 +17,5 @@ export const CATALOGUES_JEUX_NEUFS: [string, string, Bilingue, string][] = [
   ["apps/vertige", "apps/vertige/src/catalogue.*.ts", CATALOGUE_VERTIGE as unknown as Bilingue, "Vertige"],
   ["apps/gravity", "apps/gravity/src/catalogue.*.ts", CATALOGUE_GRAVITY as unknown as Bilingue, "Gravity"],
   ["apps/pinball", "apps/pinball/src/catalogue.*.ts", CATALOGUE_PINBALL as unknown as Bilingue, "Pinball"],
+  ["apps/pilepoil", "apps/pilepoil/src/catalogue.*.ts", CATALOGUE_PILEPOIL as unknown as Bilingue, "Pile poil"],
 ];

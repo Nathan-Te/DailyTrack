@@ -1810,6 +1810,116 @@
         }
       ],
       "outilsAdmin": false
+    },
+    {
+      "id": "pilepoil",
+      "zones": {
+        "jeu": [
+          "apps/pilepoil/**",
+          "packages/pilepoil-sim/**",
+          "apps/api/src/pilepoil*.ts",
+          "apps/api/test/pilepoil*.test.ts",
+          "apps/api/scripts/pilepoil-*.ts",
+          "docs/pilepoil/**"
+        ],
+        "serveur": [
+          "apps/api/src/pilepoil*.ts",
+          "apps/api/test/pilepoil*.test.ts",
+          "apps/api/scripts/pilepoil-*.ts"
+        ]
+      },
+      "e2e": {
+        "dossier": "apps/pilepoil/e2e",
+        "suite": "pilepoil",
+        "fumee": [
+          "determinisme.spec.ts",
+          "partie.spec.ts",
+          "poids.spec.ts"
+        ],
+        "zones": {
+          "pilepoil-sim": {
+            "globs": [
+              "packages/pilepoil-sim/**"
+            ]
+          },
+          "pilepoil-jeu": {
+            "globs": [
+              "apps/pilepoil/index.html",
+              "apps/pilepoil/vite.config.ts",
+              "apps/pilepoil/verify.html",
+              "apps/pilepoil/src/*"
+            ]
+          },
+          "api-pilepoil": {
+            "globs": [
+              "apps/api/src/pilepoil*.ts",
+              "apps/api/scripts/pilepoil-*.ts"
+            ]
+          }
+        },
+        "specs": {
+          "determinisme.spec.ts": [
+            "pilepoil-sim",
+            "pilepoil-jeu",
+            "core-clock"
+          ],
+          "partie.spec.ts": [
+            "pilepoil-sim",
+            "pilepoil-jeu",
+            "ui"
+          ],
+          "classement.spec.ts": [
+            "pilepoil-sim",
+            "pilepoil-jeu",
+            "api-pilepoil",
+            "api-jeux"
+          ],
+          "poids.spec.ts": [
+            "pilepoil-jeu",
+            "ui"
+          ],
+          "ecrans-kit.spec.ts": [
+            "pilepoil-jeu",
+            "ui"
+          ],
+          "chargement-partie.spec.ts": [
+            "pilepoil-jeu",
+            "ui"
+          ],
+          "surimpression.spec.ts": [
+            "pilepoil-jeu",
+            "ui"
+          ],
+          "fin-et-aide.spec.ts": [
+            "pilepoil-jeu",
+            "ui"
+          ]
+        },
+        "parts": {
+          "main": 1,
+          "complet": 1,
+          "nuit": 1
+        },
+        "regression": [
+          "ecrans-kit.spec.ts",
+          "chargement-partie.spec.ts",
+          "surimpression.spec.ts",
+          "fin-et-aide.spec.ts"
+        ]
+      },
+      "app": "pilepoil",
+      "sim": "pilepoil-sim",
+      "budget": [
+        "pilepoil.jsCss"
+      ],
+      "budgetALaDemande": [
+        "partie-",
+        "classement-",
+        "reglages-",
+        "retours-",
+        "version-"
+      ],
+      "outilsAdmin": false
     }
   ]
 }
