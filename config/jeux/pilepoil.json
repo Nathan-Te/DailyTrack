@@ -16,7 +16,7 @@
   "identite": {
     "police": "Lilita One",
     "motif": "confettis",
-    "illustration": "à choisir",
+    "illustration": "apps/pilepoil/public/illustration.svg",
     "aujourdhui": false
   },
   "etatDepart": "off",

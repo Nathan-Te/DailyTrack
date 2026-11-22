@@ -15,6 +15,7 @@
 .jeu-etiquette--vertige{--jeu-motif:repeating-linear-gradient(0deg,#e9b995 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,#e9b995 0 1px,transparent 1px 24px),#f7c59f}
 .jeu-etiquette--gravity{--jeu-motif:repeating-linear-gradient(0deg,#ffb892 0 22px,#f0ad89 22px 23px)}
 .jeu-etiquette--pinball{--jeu-motif:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px)}
+.jeu-etiquette--pilepoil{--jeu-motif:radial-gradient(circle at 20% 25%,#e8a99a 0 3px,transparent 3px) 0 0/34px 34px,radial-gradient(circle at 70% 65%,#e8a99a 0 2px,transparent 2px) 0 0/22px 26px,radial-gradient(circle at 40% 85%,#e8a99a 0 4px,transparent 4px) 0 0/46px 40px,#f6b3a4}
 .admin-zone.admin-zone--cibles {
   background: #F4A6B8;
   color: var(--dj-encre);

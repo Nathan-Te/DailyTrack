@@ -212,7 +212,8 @@
       },
       "cumul": false,
       "categorie": "party",
-      "format": "entier"
+      "format": "entier",
+      "illustration": true
     }
   ]
 }

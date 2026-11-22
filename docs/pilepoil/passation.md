@@ -68,7 +68,7 @@
 ## Où on en est
 - Lot PA2 : le jeu de la maquette, jouable et rejoué par le serveur (rejeu ≈ 0,08 ms, rediffusion de 34 caractères) ; `off`.
 - Scène Canvas 2D, HUD en surimpression, sons de synthèse, vibration, `?debug&tune` avec export JSON.
-- Étiquette rose `#F6B3A4` / coque `#B8473A` ; illustration livrée (`apps/pilepoil/public/illustration.svg`) mais « à choisir » dans la fiche (moule : README du lot PA2).
+- Étiquette rose `#F6B3A4` / coque `#B8473A`, illustration (`apps/pilepoil/public/illustration.svg`) ; CI rouge sur trois points de plateforme (README du lot PA2).
 - Réplique et « Comment jouer » encore préfixés « À remplacer » : attendent les mentions légales.
 
 ## Prochain lot

@@ -728,9 +728,6 @@ export const FICHES_SERVEUR = [
     "prefixe": "pilepoil:",
     "reglagesGardes": [],
     "messageOu": "pilepoil",
-    "zoneNouveautes": "pilepoil",
-    "identiteManque": [
-      "illustration"
-    ]
+    "zoneNouveautes": "pilepoil"
   }
 ] as const;

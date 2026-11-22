@@ -128,14 +128,20 @@ describe("Pilepoil sur le serveur", () => {
 
   it("aperçu de PR : la partie est rangée à part, n'est dans aucun classement ; effacée quand le jeu passe `on`", async () => {
     const t = await makeApi({ seed: false, games: GAMES, allowCopies: true, environment: "recette" });
-    t.clock.now = MIDI;
+    // En aperçu, tous les jeux Party du registre sont en lice à tour de rôle (lot PA1b) : un autre jeu Party (le jeu fictif de la CI) peut être celui du jour. On prend le premier jour où Pile poil l'est.
+    let jour = JOUR;
+    for (; jour < JOUR + 8; jour++) {
+      t.clock.now = jour * DAY_MS + 12 * 3_600_000;
+      if ((await t.call("GET", `/api/pilepoil/day/${formatDay(jour)}/board`, undefined, { headers: hotePr })).body.party?.classe) break;
+    }
+    expect(jour, "Pile poil est le jeu Party du jour un jour de la semaine").toBeLessThan(JOUR + 8);
     await t.call("GET", "/api/health");
-    const rep = ESSAIS_PILEPOIL.partie(JOUR, VERSIONS, 2).rediffusion;
+    const rep = ESSAIS_PILEPOIL.partie(jour, VERSIONS, 2).rediffusion;
     expect((await t.call("POST", "/api/pilepoil/submit", { replay: rep, name: "Joueur1" }, { headers: entete(1) })).body.error).toBe("game_unavailable"); // `off`, sans la clé d'un aperçu
     const r = await t.call("POST", "/api/pilepoil/submit", { replay: rep, name: "Joueur1" }, { headers: { ...entete(1), ...hotePr } });
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(await t.db.first("SELECT hidden, apercu FROM resultats_jeu WHERE jeu = 'pilepoil' AND player_id = ?", [playerId(1)])).toEqual({ hidden: 1, apercu: 1 });
-    expect((await t.call("GET", `/api/pilepoil/day/${DATE}/board`, undefined, { headers: { ...hotePr, ...entete(2) } })).body).toMatchObject({ participants: 0, top: [] });
+    expect((await t.call("GET", `/api/pilepoil/day/${formatDay(jour)}/board`, undefined, { headers: { ...hotePr, ...entete(2) } })).body).toMatchObject({ participants: 0, top: [] });
   });
 
   it("effacement d'un joueur : ses parties (crochet `erase`), le classement se recalcule sans lui", async () => {
