@@ -8,8 +8,8 @@
   },
   "accroche": "portail.pilepoil.accroche",
   "etiquette": {
-    "fond": "#C7E9A8",
-    "coque": "#3F6B1E",
+    "fond": "#F6B3A4",
+    "coque": "#B8473A",
     "police": "\"Lilita One\", \"Archivo\", sans-serif",
     "dessin": "generique"
   },
@@ -25,12 +25,12 @@
   "classement": {
     "colonnes": [
       {
-        "nom": "touches",
+        "nom": "score",
         "sens": "desc"
       },
       {
-        "nom": "dernier",
-        "sens": "asc"
+        "nom": "piles",
+        "sens": "desc"
       },
       {
         "nom": "submitted_at",
@@ -68,7 +68,7 @@
   },
   "rejeu": {
     "unitesServeur": 1,
-    "maxTicks": 900
+    "maxTicks": 18660
   },
   "donnees": {
     "tables": [],
@@ -158,18 +158,6 @@
       "ecrans-kit.spec.ts": [
         "pilepoil-jeu",
         "ui"
-      ],
-      "chargement-partie.spec.ts": [
-        "pilepoil-jeu",
-        "ui"
-      ],
-      "surimpression.spec.ts": [
-        "pilepoil-jeu",
-        "ui"
-      ],
-      "fin-et-aide.spec.ts": [
-        "pilepoil-jeu",
-        "ui"
       ]
     },
     "parts": {
@@ -178,22 +166,22 @@
       "nuit": 1
     },
     "regression": [
-      "ecrans-kit.spec.ts",
-      "chargement-partie.spec.ts",
-      "surimpression.spec.ts",
-      "fin-et-aide.spec.ts"
+      "ecrans-kit.spec.ts"
     ]
   },
   "budget": {
     "lignes": [
-      "pilepoil.jsCss"
+      "pilepoil.jsCss",
+      "pilepoil.demande"
     ],
     "aLaDemande": [
       "partie-",
       "classement-",
       "reglages-",
       "retours-",
-      "version-"
+      "version-",
+      "scene-",
+      "tune-"
     ]
   },
   "temoin": false

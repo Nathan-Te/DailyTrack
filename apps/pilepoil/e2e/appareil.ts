@@ -1,4 +1,4 @@
-import { dailyPilepoil, jouer, VARIANTE, type Resultat } from "@cdj/pilepoil-sim";
+import { dailyPilepoil, jouer, joueurScripte, type Resultat } from "@cdj/pilepoil-sim";
 import { parseDay } from "@cdj/core";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
 
@@ -54,20 +54,20 @@ export async function lancer(page: Page): Promise<void> {
 }
 
 /**
- * Joue la partie du jour à la main, pas à pas : une touche sur la case de chaque cible, `delai` ticks après son apparition (la rediffusion du jeu est donc la suite de ces touches). `sauf` : les rangs des pilepoil
- * qu'on laisse filer (variante « score ») ou sur lesquelles on hésite (variante « temps »). Rend ce que la simulation (Node, la même) attend de ces touches.
+ * Joue la partie du jour à la main, pas à pas : un appui (l'action `arreter`, comme Espace ou un toucher) quand le curseur est à `ecart` du centre de la cible au plus (en millièmes de jauge) ; `sauf` : les rangs des
+ * jauges qu'on laisse filer (ratées faute d'appui). La rediffusion du jeu est la suite de ces pas. Rend ce que la simulation (Node, la même) attend de ces appuis.
  */
-export async function jouerLeJour(page: Page, delai = 15, sauf: readonly number[] = []): Promise<Resultat> {
+export async function jouerLeJour(page: Page, ecart = 30000, sauf: readonly number[] = []): Promise<Resultat> {
   const contenu = dailyPilepoil(parseDay(JOUR)!);
-  const touches = VARIANTE.joueur(contenu, () => delai, (i) => sauf.includes(i));
-  await page.evaluate((touches) => {
+  const appuis = joueurScripte(contenu.jauges, (i) => (sauf.includes(i) ? null : ecart));
+  await page.evaluate((appuis) => {
     let t = 0;
-    for (const x of touches) {
-      window.__jeu.avancer(x.tick - t);
-      t = x.tick;
-      window.__jeu.action(`case:${x.c}`);
+    for (const p of appuis) {
+      window.__jeu.avancer(p - t);
+      t = p;
+      window.__jeu.action("arreter");
     }
-    window.__jeu.avancer(1000);
-  }, touches);
-  return jouer(contenu, touches);
+    window.__jeu.avancer(20000);
+  }, appuis);
+  return jouer(contenu.jauges, appuis);
 }

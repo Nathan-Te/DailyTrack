@@ -1,4 +1,4 @@
-import { PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION, VARIANTE } from "@cdj/pilepoil-sim";
+import { PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION } from "@cdj/pilepoil-sim";
 import { expect, test, type Page } from "@playwright/test";
 import { ESSAIS_PILEPOIL } from "../../api/scripts/pilepoil-essais";
 import { API, appareil, jouerLeJour, lancer } from "./appareil";
@@ -36,16 +36,16 @@ test("une partie scriptée est classée par le serveur, sa copie est refusée, e
   const pseudo = `Eve${Date.now() % 100000}`;
   const a = await appareil(browser);
   await lancer(a.page);
-  const attendu = await jouerLeJour(a.page, 15, [3]);
+  const attendu = await jouerLeJour(a.page, 30000, [3]);
   await choisirPseudo(a.page, pseudo);
   await expect(a.page.locator("#jeu-fin-rang")).toContainText("e sur 3", { timeout: 20_000 }); // classée parmi Carla, Denis et elle
   expect(await a.page.evaluate(() => window.__jeu.envoi().statut)).toBe("ranked");
-  await expect(a.page.locator("#jeu-fin-score")).toHaveText(VARIANTE.formatScore(VARIANTE.score(attendu), "fr"));
+  expect(await a.page.evaluate(() => window.__jeu.score())).toEqual([attendu.score, attendu.piles]);
 
   // La même partie, d'un autre appareil : le serveur reconnaît la copie et la refuse.
   const b = await appareil(browser);
   await lancer(b.page);
-  await jouerLeJour(b.page, 15, [3]);
+  await jouerLeJour(b.page, 30000, [3]);
   await choisirPseudo(b.page, `Bob${Date.now() % 100000}`);
   await expect.poll(() => b.page.evaluate(() => window.__jeu.envoi().statut), { timeout: 20_000 }).toBe("refused");
   await expect(b.page.locator("#jeu-fin-rang")).toContainText("refusée");

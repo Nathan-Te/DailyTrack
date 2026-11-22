@@ -1,0 +1,56 @@
+/* Le panneau `?debug&tune` de « Pile poil » (à la demande, jamais en production) : la maquette, aux jetons de la charte. */
+.pilepoil-tune {
+  position: fixed;
+  right: max(var(--dj-espace-2), env(safe-area-inset-right));
+  top: max(var(--dj-espace-2), env(safe-area-inset-top));
+  z-index: 60;
+  width: min(280px, calc(100vw - 2 * var(--dj-espace-2)));
+  max-height: calc(100dvh - 2 * var(--dj-espace-2));
+  overflow: auto;
+  padding: var(--dj-espace-3);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  box-shadow: var(--dj-ombre-cartouche);
+  font: 12px/1.3 var(--dj-police-texte);
+}
+.pilepoil-tune h4 {
+  margin: 0 0 var(--dj-espace-1);
+  font-family: var(--dj-police-marque);
+}
+.pilepoil-tune p {
+  margin: 0 0 var(--dj-espace-2);
+}
+.pilepoil-tune__ligne {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--dj-espace-1);
+  align-items: center;
+  margin-bottom: var(--dj-espace-2);
+}
+.pilepoil-tune__ligne input {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.pilepoil-tune output {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+}
+.pilepoil-tune button {
+  min-height: 44px;
+  margin: var(--dj-espace-1) var(--dj-espace-1) 0 0;
+  padding: 0 var(--dj-espace-2);
+  font: 700 12px var(--dj-police-texte);
+  color: var(--dj-encre);
+  background: var(--dj-creme);
+  border: 2px solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  cursor: pointer;
+}
+.pilepoil-tune textarea {
+  width: 100%;
+  height: 90px;
+  margin-top: var(--dj-espace-2);
+  font: 11px var(--dj-police-chiffres);
+}

@@ -11,7 +11,7 @@ const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-pilepoil.json"
   rediffusions: { nom: string; date: string; g: number; code: string; resultat: unknown }[];
 };
 
-describe("golden de Pilepoil", () => {
+describe("golden de Pile poil", () => {
   it("nomme les versions du code", () => {
     expect({ sim: golden.sim, generateur: golden.generateur }).toEqual({ sim: PILEPOIL_SIM_VERSION, generateur: PILEPOIL_GENERATOR_VERSION });
   });

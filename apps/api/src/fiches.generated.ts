@@ -682,16 +682,16 @@ export const FICHES_SERVEUR = [
     "etatDepart": "off",
     "premierJour": "2026-11-02",
     "categorie": "party",
-    "fond": "#C7E9A8",
+    "fond": "#F6B3A4",
     "classement": {
       "colonnes": [
         {
-          "nom": "touches",
+          "nom": "score",
           "sens": "desc"
         },
         {
-          "nom": "dernier",
-          "sens": "asc"
+          "nom": "piles",
+          "sens": "desc"
         },
         {
           "nom": "submitted_at",
@@ -721,7 +721,7 @@ export const FICHES_SERVEUR = [
     },
     "rejeu": {
       "unitesServeur": 1,
-      "maxTicks": 900
+      "maxTicks": 18660
     },
     "tables": [],
     "tableCommune": "resultats_jeu",

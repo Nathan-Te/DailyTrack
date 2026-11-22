@@ -1,16 +1,25 @@
-import { graineDuJour, mixSeed, Rng } from "@cdj/core";
-import { PILEPOIL_GENERATOR_VERSION, NB_CASES, NB_PILEPOIL } from "./constantes";
+import { graineDuJour } from "@cdj/core";
+import { JAUGES, LONGUEUR, PILEPOIL_GENERATOR_VERSION } from "./constantes";
+import { REGLAGES, type Reglages } from "./reglages";
 
 // **Le tirage du jour d'un jeu Party** (lot PA1) : il n'y a pas de générateur de niveaux — le « niveau » d'un jour est **la graine du jour** (`graineDuJour(code, jour)` de `@cdj/core`, la même au serveur) et rien
-// d'autre ; le jeu en tire ses pilepoil. **Pure** : la graine vient du numéro de jour civil, jamais d'une horloge. Les pilepoil apparaissent une à une : la fenêtre de la i-ᵉ finit avant l'apparition de la suivante.
+// d'autre ; le jeu en tire ses dix jauges (`tirerJauges`, celui de la maquette, au tirage près). **Pur** : la graine vient du numéro de jour civil, jamais d'une horloge.
 
-export interface Cible {
-  /** La case (0 à 47, ligne par ligne). */
-  c: number;
-  /** Le tick d'apparition. */
-  d: number;
-  /** Le tick de disparition (exclu) : on peut la toucher aux ticks `d` à `f − 1`. */
-  f: number;
+export interface Jauge {
+  /** Demi-largeur de la cible. */
+  demi: number;
+  /** Centre de la cible (au repos). */
+  centre: number;
+  /** Millièmes de jauge par pas. */
+  vitesse: number;
+  /** Place du curseur au départ. */
+  depart: number;
+  /** Sens du curseur au départ. */
+  sens: 1 | -1;
+  /** La cible bouge (les dernières jauges). */
+  bouge: boolean;
+  /** Phase du mouvement de la cible, en millièmes de tour. */
+  phase: number;
 }
 export interface Contenu {
   jour: number;
@@ -18,7 +27,7 @@ export interface Contenu {
   g: number;
   /** La graine du jour : le seul niveau d'un jeu Party. */
   graine: number;
-  pilepoil: Cible[];
+  jauges: Jauge[];
 }
 
 export class ErreurGenerateur extends Error {
@@ -28,32 +37,42 @@ export class ErreurGenerateur extends Error {
   }
 }
 
-/** Sel du tirage de Pilepoil (propre au jeu). */
-const SEL = 0x2cdf7d;
-const PERIODE = 42;
-const DECALAGE = 20;
+/** Le hasard de la maquette (mulberry32) : des entiers de 32 bits sans signe. */
+function hasard(graine: number): () => number {
+  let a = graine >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return (t ^ (t >>> 14)) >>> 0;
+  };
+}
 
-/** Les 20 pilepoil tirées d'une graine : une case chacune, et la fenêtre de ticks pendant laquelle on peut la toucher. */
-export function tirerPilepoil(graine: number): Cible[] {
-  const rng = new Rng(mixSeed(graine, SEL));
-  const pilepoil: Cible[] = [];
-  let avant = -1;
-  for (let i = 0; i < NB_PILEPOIL; i++) {
-    let c = rng.int(NB_CASES);
-    if (c === avant) c = (c + 1 + rng.int(NB_CASES - 1)) % NB_CASES; // jamais deux fois la même case de suite
-    avant = c;
-    const d = DECALAGE + PERIODE * i + rng.int(6);
-    // De plus en plus brèves : 36 ticks (1,2 s) pour la première, 27 (0,9 s) pour la dernière ; la suivante apparaît au plus tôt 37 ticks après.
-    pilepoil.push({ c, d, f: d + 36 - Math.floor(i / 2) });
+/** Les dix jauges d'une graine : de jauge en jauge le curseur accélère et la cible rétrécit ; la cible bouge à partir de la jauge `bougeDes`. Entiers seulement. */
+export function tirerJauges(graine: number, r: Readonly<Reglages> = REGLAGES): Jauge[] {
+  const h = hasard(graine);
+  const lerp = (a: number, b: number, i: number): number => a + Math.trunc(((b - a) * i) / (JAUGES - 1));
+  const liste: Jauge[] = [];
+  for (let i = 0; i < JAUGES; i++) {
+    const demi = lerp(r.demiCibleDebut, r.demiCibleFin, i);
+    const marge = demi + 60000;
+    const centre = marge + (h() % Math.max(1, LONGUEUR - 2 * marge));
+    const vitesse = lerp(r.vitesseDebut, r.vitesseFin, i) + (h() % 400);
+    const depart = h() % LONGUEUR;
+    const sens = h() % 2 ? 1 : -1;
+    const bouge = i + 1 >= r.bougeDes;
+    const phase = h() % 1000;
+    liste.push({ demi, centre, vitesse, depart, sens, bouge, phase });
   }
-  return pilepoil;
+  return liste;
 }
 
 /** Le contenu d'un jour : sa graine et ce qu'on en tire. Une version inconnue de la dérivation est refusée (`ErreurGenerateur`). */
 export function dailyPilepoil(jour: number, version: number = PILEPOIL_GENERATOR_VERSION): Contenu {
   if (version !== 1) throw new ErreurGenerateur(`version de tirage inconnue : ${version}`);
   const graine = graineDuJour("pilepoil", jour);
-  return { jour, g: version, graine, pilepoil: tirerPilepoil(graine) };
+  return { jour, g: version, graine, jauges: tirerJauges(graine) };
 }
 
 /** L'empreinte du contenu (FNV-1a 32 bits sur ses entiers) : un texte de huit hexadécimaux. */
@@ -62,7 +81,7 @@ export function empreinteContenu(contenu: Contenu): string {
   const octet = (n: number): void => {
     h = Math.imul(h ^ (n & 0xff), 0x01000193) >>> 0;
   };
-  for (const n of [contenu.jour, contenu.g, contenu.graine, ...contenu.pilepoil.flatMap((x) => [x.c, x.d, x.f])]) {
+  for (const n of [contenu.jour, contenu.g, contenu.graine, ...contenu.jauges.flatMap((j) => [j.demi, j.centre, j.vitesse, j.depart, j.sens + 1, j.bouge ? 1 : 0, j.phase])]) {
     octet(n);
     octet(n >>> 8);
     octet(n >>> 16);

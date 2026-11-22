@@ -27,8 +27,8 @@ export const ETIQUETTE_GRAVITY_POLICE = "\"Lilita One\", \"Archivo\", sans-serif
 export const ETIQUETTE_PINBALL_FOND = "#F6A2D8";
 export const ETIQUETTE_PINBALL_COQUE = "#962170";
 export const ETIQUETTE_PINBALL_POLICE = "\"Barlow Condensed\", \"Archivo\", sans-serif";
-export const ETIQUETTE_PILEPOIL_FOND = "#C7E9A8";
-export const ETIQUETTE_PILEPOIL_COQUE = "#3F6B1E";
+export const ETIQUETTE_PILEPOIL_FOND = "#F6B3A4";
+export const ETIQUETTE_PILEPOIL_COQUE = "#B8473A";
 export const ETIQUETTE_PILEPOIL_POLICE = "\"Lilita One\", \"Archivo\", sans-serif";
 // Lot K4e : y a-t-il un jeu à étiquette générique ? Tant que non, le dessin générique de `composants.ts` est du code mort que l'empaqueteur retire (aucun octet de plus dans les applications).
 export const A_DES_JEUX_GENERIQUES = true;

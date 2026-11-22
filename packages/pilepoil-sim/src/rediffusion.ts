@@ -1,17 +1,18 @@
 import { CodecError, pushVarint, readVarint } from "@cdj/core";
 import { decoderEnveloppe, encoderEnveloppe, ErreurEnveloppe, type ContenuEnveloppe } from "@cdj/core/enveloppe";
-import { PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION, DUREE_TICKS, MAX_TOUCHES, NB_CASES } from "./constantes";
+import { MAX_APPUIS, PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION } from "./constantes";
 import { dailyPilepoil, type Contenu } from "./tirage";
-import { jouer, type Resultat, type Touche } from "./partie";
+import { AppuiImpossible, jouer, maxPas, type Resultat } from "./partie";
 
-// La rediffusion d'une partie de Pilepoil : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, **la suite des touches** : pour chacune, le nombre de ticks depuis la touche
-// précédente (entier de longueur variable) puis la case (un octet). Une partie est la suite de ses touches : tout le reste se rejoue.
+// La rediffusion d'une partie de « Pile poil » : l'enveloppe commune des jeux neufs (`@cdj/core/enveloppe`) et, pour charge, **les pas des appuis** (dix au plus), chacun en entier de longueur variable
+// (2 à 3 octets). Une partie est la suite de ses appuis : tout le reste se rejoue. Une suite impossible est refusée : un pas qui recule ou se répète, plus de dix appuis, un pas au-delà de la plus longue partie,
+// et (au rejeu) un appui pendant une pause ou après la fin.
 
-/** Une longueur de texte au-delà de laquelle on ne lit rien : 200 touches de 3 octets au plus, en base64url, plus l'en-tête. */
-export const MAX_CARACTERES = 1000;
+/** Une longueur de texte au-delà de laquelle on ne lit rien : dix appuis de 3 octets au plus, en base64url, plus l'en-tête. */
+export const MAX_CARACTERES = 200;
 export const LIMITES = { maxCaracteres: MAX_CARACTERES, sims: [PILEPOIL_SIM_VERSION], generateurs: [PILEPOIL_GENERATOR_VERSION] } as const;
 
-export type CodeRefus = "format_illisible" | "version_inconnue" | "trop_longue" | "contenu_different";
+export type CodeRefus = "format_illisible" | "version_inconnue" | "trop_longue" | "contenu_different" | "appui_impossible";
 export class ErreurRediffusion extends Error {
   constructor(
     readonly code: CodeRefus,
@@ -26,70 +27,70 @@ export interface Rediffusion {
   sim: number;
   g: number;
   contenu: ContenuEnveloppe;
-  touches: Touche[];
+  /** Les pas des appuis, strictement croissants. */
+  appuis: number[];
 }
 
-/** Les octets de la charge pour une suite de touches (ticks croissants, 0 à 899). */
-export function chargeDe(touches: readonly Touche[]): number[] {
+/** Les octets de la charge pour une suite de pas. */
+export function chargeDe(appuis: readonly number[]): number[] {
   const o: number[] = [];
-  let avant = 0;
-  for (const t of touches) {
-    pushVarint(o, t.tick - avant);
-    o.push(t.c);
-    avant = t.tick;
-  }
+  for (const p of appuis) pushVarint(o, p);
   return o;
 }
 
-export function lireCharge(charge: readonly number[]): Touche[] {
-  const touches: Touche[] = [];
+export function lireCharge(charge: readonly number[]): number[] {
+  const appuis: number[] = [];
   let i = 0;
   const suivant = (): number => {
     if (i >= charge.length) throw new CodecError("charge tronquée");
     return charge[i++]!;
   };
-  let tick = 0;
+  const borne = maxPas();
   try {
     while (i < charge.length) {
-      tick += readVarint(suivant, 14);
-      const c = suivant();
-      if (c >= NB_CASES) throw new ErreurRediffusion("format_illisible", "case inconnue");
-      if (tick >= DUREE_TICKS) throw new ErreurRediffusion("format_illisible", "touche après la fin de la partie");
-      if (touches.length >= MAX_TOUCHES) throw new ErreurRediffusion("trop_longue", "trop de touches");
-      touches.push({ tick, c });
+      const p = readVarint(suivant, 21);
+      if (appuis.length >= MAX_APPUIS) throw new ErreurRediffusion("trop_longue", "plus de dix appuis");
+      if (appuis.length > 0 && p <= appuis[appuis.length - 1]!) throw new ErreurRediffusion("appui_impossible", "un pas qui recule");
+      if (p >= borne) throw new ErreurRediffusion("appui_impossible", "un appui après la fin de la partie");
+      appuis.push(p);
     }
   } catch (e) {
     if (e instanceof CodecError) throw new ErreurRediffusion("format_illisible", e.message);
     throw e;
   }
-  return touches;
+  return appuis;
 }
 
 export function encoderRediffusion(r: Rediffusion): string {
-  return encoderEnveloppe({ sim: r.sim, g: r.g, contenu: r.contenu, charge: chargeDe(r.touches) });
+  return encoderEnveloppe({ sim: r.sim, g: r.g, contenu: r.contenu, charge: chargeDe(r.appuis) });
 }
 
 /** Le texte → la rediffusion, ou une `ErreurRediffusion` (jamais une exception brute). */
 export function decoderRediffusion(texte: unknown): Rediffusion {
   try {
     const e = decoderEnveloppe(texte, LIMITES);
-    return { sim: e.sim, g: e.g, contenu: e.contenu, touches: lireCharge(e.charge) };
+    return { sim: e.sim, g: e.g, contenu: e.contenu, appuis: lireCharge(e.charge) };
   } catch (e) {
     if (e instanceof ErreurEnveloppe) throw new ErreurRediffusion(e.code, e.message);
     throw e;
   }
 }
 
-/** Rejoue une rediffusion sur le contenu donné : le même code que le jeu. Un autre jour ou une autre version du générateur est refusé (`contenu_different`). */
+/** Rejoue une rediffusion sur le contenu donné : le même code que le jeu, avec les réglages du jeu. Un autre jour ou une autre version du tirage est refusé (`contenu_different`), un appui impossible aussi. */
 export function rejouer(contenu: Contenu, rediffusion: string | Rediffusion): Resultat {
   const r = typeof rediffusion === "string" ? decoderRediffusion(rediffusion) : rediffusion;
   if (!("jour" in r.contenu) || r.contenu.jour !== contenu.jour || r.g !== contenu.g) throw new ErreurRediffusion("contenu_different", "cette rediffusion n'est pas celle de ce jour");
-  return jouer(contenu, r.touches);
+  try {
+    return jouer(contenu.jauges, r.appuis);
+  } catch (e) {
+    if (e instanceof AppuiImpossible) throw new ErreurRediffusion("appui_impossible", e.message);
+    throw e;
+  }
 }
 
 /** La rediffusion d'une partie du jour (le texte à envoyer). */
-export function enregistrer(contenu: Contenu, touches: readonly Touche[]): string {
-  return encoderRediffusion({ sim: PILEPOIL_SIM_VERSION, g: contenu.g, contenu: { jour: contenu.jour }, touches: [...touches] });
+export function enregistrer(contenu: Pick<Contenu, "jour" | "g">, appuis: readonly number[]): string {
+  return encoderRediffusion({ sim: PILEPOIL_SIM_VERSION, g: contenu.g, contenu: { jour: contenu.jour }, appuis: [...appuis] });
 }
 
 export { dailyPilepoil };

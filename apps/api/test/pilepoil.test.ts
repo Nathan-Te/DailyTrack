@@ -1,21 +1,21 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION, VARIANTE, dailyPilepoil, enregistrer, jouer, scoreParColonnes } from "@cdj/pilepoil-sim";
+import { COLONNES_CLASSEMENT, PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION, dailyPilepoil, enregistrer, jouer, joueurScripte, scoreParColonnes } from "@cdj/pilepoil-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_PILEPOIL } from "../scripts/pilepoil-essais";
 import { crc32Hex } from "../src/identity";
+import { contratPilepoil } from "../src/pilepoil";
 import { GAMES } from "../src/registry";
 import { DAY_MS, makeApi, ouvrirJeu, playerId, type TestApi } from "./helpers";
 
-// Lot PA1 — le jeu Party de départ (copié de « Pile poil », lot K4f), sur le contrat minimal d'un jeu neuf et la table commune `resultats_jeu` : le serveur sert le contenu du jeu (serveur = jeu), rejoue, classe dans le sens de la fiche
-// (les colonnes de la fiche : celles de la variante du jeu, `variante.ts`), refuse les copies et les rediffusions abîmées, range l'aperçu à part, efface un joueur, filtre « Mon groupe » et lit le jour figé de l'image.
-// SQLite et libSQL (`file:`), jamais Turso. Ce test passe pour les deux variantes (score, temps) : ce qui diffère passe par `VARIANTE`.
+// Lot PA2 — « Pile poil », le premier jeu Party, sur le contrat Party (lot PA1) et la table commune `resultats_jeu` : le serveur sert la graine du jour, rejoue les pas des appuis, classe dans le sens de la fiche
+// (le score, puis les « pile »), refuse les copies et les rediffusions abîmées ou impossibles, range l'aperçu à part, efface un joueur et filtre « Mon groupe ». SQLite et libSQL (`file:`), jamais Turso.
 
 const JOUR = daysFromCivil(2026, 11, 10);
 const DATE = formatDay(JOUR);
 const MIDI = JOUR * DAY_MS + 12 * 3_600_000;
 const VERSIONS = { simVersion: PILEPOIL_SIM_VERSION, generatorVersion: PILEPOIL_GENERATOR_VERSION };
 const entete = (n: number) => ({ "X-Player-Id": playerId(n) });
-const PREMIERE = VARIANTE.fiche.colonnes[0]!;
+const PREMIERE = COLONNES_CLASSEMENT[0];
 const hotePr = { "X-Forwarded-Host": "site-recette--pr-12-0123abcd.web.app" };
 
 async function monter(options: { copies?: boolean; frozen?: Record<string, unknown>; adminToken?: string } = {}): Promise<TestApi> {
@@ -53,21 +53,47 @@ describe("Pilepoil sur le serveur", () => {
     const board = await t.call("GET", `/api/pilepoil/day/${DATE}/board`, undefined, { headers: entete(3) });
     expect(board.body.participants).toBe(3);
     const lignes = board.body.top as ({ name: string; medal: string | null } & Record<string, number>)[];
-    expect(lignes.map((l) => l.name)).toEqual(["Joueur2", "Joueur1", "Joueur3"]);
+    const attendus = ([[1, 3], [2, 0], [3, 9]] as const).map(([n, v]) => ({ nom: `Joueur${n}`, s: ESSAIS_PILEPOIL.partie(JOUR, VERSIONS, v).attendu as Record<string, number> }));
+    attendus.sort((a, b) => b.s.score! - a.s.score! || b.s.piles! - a.s.piles!);
+    expect(lignes.map((l) => l.name)).toEqual(attendus.map((a) => a.nom));
     // La première colonne de la fiche range le classement, dans son sens.
     for (let i = 1; i < lignes.length; i++) expect(PREMIERE.sens === "desc" ? lignes[i - 1]![PREMIERE.nom]! >= lignes[i]![PREMIERE.nom]! : lignes[i - 1]![PREMIERE.nom]! <= lignes[i]![PREMIERE.nom]!).toBe(true);
     expect(lignes[0]!.medal ?? null).toBeNull(); // pas de médaille pour un jeu Party
     expect(board.body.me).toMatchObject({ name: "Joueur3", rank: 3 });
   });
 
-  it("à score égal, le plus rapide passe devant (le départage de la fiche)", async () => {
+  it("à score égal, le plus de « pile » passe devant (le départage de la fiche), même envoyé après", async () => {
     const t = await monter();
     const c = dailyPilepoil(JOUR);
-    const avecDelai = (delai: number) => enregistrer(c, VARIANTE.joueur(c, () => delai));
-    await t.call("POST", "/api/pilepoil/submit", { replay: avecDelai(20), name: "Lent" }, { headers: entete(1) });
-    await t.call("POST", "/api/pilepoil/submit", { replay: avecDelai(15), name: "Vif" }, { headers: entete(2) });
+    // 150 points chacun : deux arrêts « bien » aux deux premières jauges, ou un seul « pile » à la première (cherchés une fois sur ce jour).
+    const sansPile = joueurScripte(c.jauges, (i) => (i === 0 ? 16500 : i === 1 ? 39500 : null));
+    const unPile = joueurScripte(c.jauges, (i) => (i === 0 ? 9000 : null));
+    expect([jouer(c.jauges, sansPile), jouer(c.jauges, unPile)].map((r) => [r.score, r.piles])).toEqual([[150, 0], [150, 1]]);
+    await t.call("POST", "/api/pilepoil/submit", { replay: enregistrer(c, sansPile), name: "Bien" }, { headers: entete(1) });
+    await t.call("POST", "/api/pilepoil/submit", { replay: enregistrer(c, unPile), name: "Pile" }, { headers: entete(2) });
     const board = await t.call("GET", `/api/pilepoil/day/${DATE}/board`);
-    expect((board.body.top as { name: string }[]).map((l) => l.name)).toEqual(["Vif", "Lent"]);
+    expect((board.body.top as { name: string }[]).map((l) => l.name)).toEqual(["Pile", "Bien"]);
+  });
+
+  it("refuse une rediffusion impossible (un appui pendant la pause) avant de rien écrire", async () => {
+    const t = await monter();
+    const c = dailyPilepoil(JOUR);
+    const [p] = joueurScripte(c.jauges, () => 30000);
+    const r = await t.call("POST", "/api/pilepoil/submit", { replay: enregistrer(c, [p!, p! + 1]), name: "Pressé" }, { headers: entete(1) });
+    expect(r.body.error).toBe("invalid_replay");
+    expect(await t.db.first("SELECT COUNT(*) AS n FROM resultats_jeu WHERE jeu = 'pilepoil'")).toEqual({ n: 0 });
+  });
+
+  it("un rejeu coûte peu et la rediffusion est courte (mesure)", () => {
+    const c = dailyPilepoil(JOUR);
+    const appuis = joueurScripte(c.jauges, () => 30000);
+    const code = enregistrer(c, appuis);
+    const debut = performance.now();
+    for (let k = 0; k < 200; k++) contratPilepoil().rejouer({ jour: JOUR, graine: c.graine }, code);
+    const ms = (performance.now() - debut) / 200;
+    console.log(`Pile poil : un rejeu ≈ ${ms.toFixed(3)} ms, rediffusion de ${code.length} caractères (${appuis.length} appuis)`);
+    expect(ms).toBeLessThan(20);
+    expect(code.length).toBeLessThanOrEqual(60);
   });
 
   it("refuse les copies (deux fois les mêmes touches), les illisibles et les autres jours", async () => {
@@ -85,7 +111,7 @@ describe("Pilepoil sur le serveur", () => {
     const c = dailyPilepoil(JOUR);
     const r = await t.call("POST", "/api/pilepoil/submit", { replay: enregistrer(c, []), name: "Rêveur" }, { headers: entete(1) });
     expect(r.status).toBe(200);
-    expect(r.body.score).toEqual(scoreParColonnes(jouer(c, [])));
+    expect(r.body.score).toEqual(scoreParColonnes(jouer(c.jauges, [])));
     expect(r.body.medal ?? null).toBeNull();
   });
 

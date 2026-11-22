@@ -1,72 +1,74 @@
 {
-  "_": "Golden de Pilepoil (lot K4f). Régénérer : npm run golden:pilepoil -w @cdj/pilepoil-sim, seulement en montant la version concernée.",
+  "_": "Golden de Pile poil (lot PA2). Régénérer : npm run golden:pilepoil -w @cdj/pilepoil-sim, seulement en montant la version concernée.",
   "sim": 1,
   "generateur": 1,
   "jours": [
     {
       "date": "2026-11-02",
-      "empreinte": "9db77324"
+      "empreinte": "6d83b675"
     },
     {
       "date": "2026-11-05",
-      "empreinte": "9ca99051"
+      "empreinte": "5e588cdb"
     },
     {
       "date": "2026-11-08",
-      "empreinte": "a12e3eaf"
+      "empreinte": "793bc250"
     },
     {
       "date": "2026-11-11",
-      "empreinte": "4fc799c8"
+      "empreinte": "6c7274c7"
     },
     {
       "date": "2026-11-14",
-      "empreinte": "160edfe5"
+      "empreinte": "25c55849"
     },
     {
       "date": "2026-11-17",
-      "empreinte": "02d7897a"
+      "empreinte": "03d03b91"
     },
     {
       "date": "2026-11-20",
-      "empreinte": "d4c63abd"
+      "empreinte": "62d36be2"
     },
     {
       "date": "2026-11-23",
-      "empreinte": "d3c162fd"
+      "empreinte": "a5e1caaa"
     },
     {
       "date": "2026-11-26",
-      "empreinte": "4ba0e351"
+      "empreinte": "2df9f965"
     },
     {
       "date": "2026-11-29",
-      "empreinte": "cf96a599"
+      "empreinte": "50e05592"
     }
   ],
   "rediffusions": [
     {
-      "nom": "joueur-vif",
+      "nom": "joueur-precis",
       "date": "2026-11-02",
       "g": 1,
-      "code": "AQEBAJeiASQGJwguKSUBKyktLiYRLQwoGSoaLg0mEykWLh8qKioEJhwuDSkZKQQ",
+      "code": "AQEBAJeiAd0EvwWEBqAHlQjFCZILkgzdDc8P",
       "resultat": {
-        "touches": 20,
-        "dernier": 832,
+        "score": 2625,
+        "piles": 10,
+        "enchaineMax": 10,
         "ratees": 0,
-        "ticks": 900
+        "ticks": 2065
       }
     },
     {
-      "nom": "joueur-lent",
+      "nom": "joueur-distrait",
       "date": "2026-11-02",
       "g": 1,
-      "code": "AQEBAJeiAR0HCQYoCC8pUikuLhgSDxFXGRkbEhovDTwXChYvHysqUhwvDRoaEBk",
+      "code": "AQEBAJeiAdgEtQWUFYEWkCaPJ7w3",
       "resultat": {
-        "touches": 15,
-        "dernier": 800,
-        "ratees": 5,
-        "ticks": 900
+        "score": 337,
+        "piles": 0,
+        "enchaineMax": 0,
+        "ratees": 4,
+        "ticks": 7166
       }
     },
     {
@@ -75,10 +77,11 @@
       "g": 1,
       "code": "AQEBAJeiAQ",
       "resultat": {
-        "touches": 0,
-        "dernier": 900,
-        "ratees": 0,
-        "ticks": 900
+        "score": 0,
+        "piles": 0,
+        "enchaineMax": 0,
+        "ratees": 10,
+        "ticks": 18660
       }
     }
   ]

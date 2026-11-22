@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-3163 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3172 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -4083,37 +4083,30 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `accueil.phrase.unique` | À remplacer : une phrase d'accroche pour le thème « Du jour ». | To replace: a tagline for the “Daily” theme. |
+| `accueil.phrase.unique` | À remplacer (lot de la plateforme : mentions) : Arrête le curseur pile sur la cible. | To replace (platform lot: legal notice): Stop the cursor right on the target. |
 
 ### bilan (`bilan.*`, `apps/pilepoil/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `bilan.cause` | Le temps est écoulé | Time is up |
-| `bilan.touches` | Touches réussies | Hits landed |
-| `bilan.theme` | Thème | Theme |
-| `bilan.vide` | Ligne vide (ignorée) | Empty line (ignored) |
-| `bilan.duree` | Durée de la partie | Game length |
-| `bilan.dureeValeur` | 30 s | 30 s |
-| `bilan.pilepoil` | Total à viser | Total to aim for |
+| `bilan.piles` | « Pile » | “Pile” |
+| `bilan.enchaine` | Plus long enchaînement | Longest chain |
+| `bilan.ratees` | Ratées | Missed |
+| `bilan.surDix` | {n} sur 10 | {n} out of 10 |
 
 ### Commandes (`commandes.*`, `apps/pilepoil/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `commandes.action.gauche` | Curseur à gauche | Cursor left |
-| `commandes.action.droite` | Curseur à droite | Cursor right |
-| `commandes.action.haut` | Curseur en haut | Cursor up |
-| `commandes.action.bas` | Curseur en bas | Cursor down |
-| `commandes.action.toucher` | Toucher la case | Hit the square |
+| `commandes.action.arreter` | Arrêter le curseur | Stop the cursor |
 
 ### Comment jouer (`aide.*`, `apps/pilepoil/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `aide.point1` | À remplacer : le but du jeu en une phrase. | To replace: the goal of the game in one sentence. |
-| `aide.point2` | À remplacer : ce que fait le joueur, en une phrase. | To replace: what the player does, in one sentence. |
-| `aide.point3` | À remplacer : comment les égalités se départagent. | To replace: how ties are broken. |
+| `aide.point1` | À remplacer (lot de la plateforme : mentions) : 10 jauges. Le curseur va et vient : touche l'écran (ou {arreter}) pour l'arrêter. | To replace (platform lot: legal notice): 10 gauges. The cursor sweeps back and forth: tap the screen (or {arreter}) to stop it. |
+| `aide.point2` | À remplacer (lot de la plateforme : mentions) : Au centre de la cible : 100 points. Pile au centre : bonus, qui grimpe si tu enchaînes. | To replace (platform lot: legal notice): Centre of the target: 100 points. Dead centre: a bonus, which grows if you chain them. |
+| `aide.point3` | À remplacer (lot de la plateforme : mentions) : De jauge en jauge, ça accélère et la cible rétrécit. Les trois dernières bougent. | To replace (platform lot: legal notice): Gauge after gauge, it speeds up and the target shrinks. The last three move. |
 
 ### kit (`kit.*`, `apps/pilepoil/src/catalogue.*.ts`)
 
@@ -4213,20 +4206,61 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
 | `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
 
+### mot (`mot.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `mot.pile` | PILE ! | PILE! |
+| `mot.bien` | BIEN | GOOD |
+| `mot.touche` | OUF | PHEW |
+| `mot.rate` | RATÉ | MISS |
+
 ### Page (titre, chargement) (`page.*`, `apps/pilepoil/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
 | `page.titre` | Pile poil — Du Jour | Pile poil — Du Jour |
 
+### Partage de la journée (`partage.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `partage.score` | {n} pts | {n} pts |
+| `partage.piles` | pile ×{n} | pile ×{n} |
+
+### partie (`partie.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `partie.bouge` | LA CIBLE BOUGE | THE TARGET MOVES |
+| `partie.points` | +{n} | +{n} |
+| `partie.pointsBonus` | +{n} +{b} | +{n} +{b} |
+| `partie.zero` | 0 | 0 |
+| `partie.consigne.toucher` | Touche l'écran pour arrêter le curseur | Tap the screen to stop the cursor |
+| `partie.consigne.touche` | Appuie pour arrêter le curseur | Press to stop the cursor |
+
+### Partie (surimpressions) (`hud.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.valeur` | {n} | {n} |
+| `hud.score` | {n} points | {n} points |
+| `hud.enchaine` | PILE ×{n} | PILE ×{n} |
+
 ### scene (`scene.*`, `apps/pilepoil/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `scene.aria` | Plateau de jeu (texte à remplacer) | Game board (text to replace) |
+| `scene.aria` | Pile poil : appuie pour arrêter le curseur sur la cible | Pile poil: press to stop the cursor on the target |
+
+### score (`score.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `score.valeur` | {n} | {n} |
 
 ### Thèmes (`theme.*`, `apps/pilepoil/src/catalogue.*.ts`)
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `theme.unique` | Du jour (à remplacer) | Daily (to replace) |
+| `theme.unique` | Dix jauges | Ten gauges |

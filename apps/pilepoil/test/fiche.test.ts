@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION, dailyPilepoil, numeroPilepoil, PREMIER_JOUR_PILEPOIL, VARIANTE } from "@cdj/pilepoil-sim";
+import { PILEPOIL_GENERATOR_VERSION, PILEPOIL_SIM_VERSION, dailyPilepoil, numeroPilepoil, PREMIER_JOUR_PILEPOIL } from "@cdj/pilepoil-sim";
 import { parseDay } from "@cdj/core";
 import { CATALOGUE_PILEPOIL } from "../src/catalogue";
 import { definitionDeParty, THEME_UNIQUE } from "@cdj/kit/jeu/types";
 import { DEFINITION } from "../src/definition";
 import { FICHE } from "../src/fiche";
 
-// Lot K4f — le client de « Pile poil » dit ce que dit sa fiche (les fiches ne se lisent pas à l'exécution : le jeu passe son nom, son préfixe, ses colonnes ; ce test garde l'accord).
+// Lots K4f et PA2 — le client de « Pile poil » dit ce que dit sa fiche (les fiches ne se lisent pas à l'exécution : le jeu passe son nom, son préfixe, ses colonnes ; ce test garde l'accord).
 const fiche = JSON.parse(readFileSync(new URL("../../../config/jeux/pilepoil.json", import.meta.url), "utf8")) as {
   id: string;
   nom: { fr: string };
@@ -55,8 +55,17 @@ describe("« Pile poil » : le client suit sa fiche", () => {
     expect(complete.sansMedaille).toBe(true);
     expect(complete.sansFantome).toBe(true);
     expect(dailyPilepoil(J).graine).toBeGreaterThan(0);
-    const exemple = VARIANTE.score({ touches: 17, dernier: 300 });
-    expect(DEFINITION.formatScore(exemple, "fr", (cle) => cle)).toBe(VARIANTE.formatScore(exemple, "fr"));
-    expect(DEFINITION.scorePartage(exemple, "en", (cle) => cle)).toBe(VARIANTE.scorePartage(exemple, "en"));
+    // Le score s'écrit par le catalogue (les points, au format de la langue) ; la ligne à partager ajoute les « pile ».
+    const t = (cle: string, p?: Readonly<Record<string, string | number>>) => `${cle}:${p?.n ?? ""}`;
+    expect(DEFINITION.formatScore([1167, 5], "fr", t)).toBe("score.valeur:1167");
+    expect(DEFINITION.scorePartage([1167, 5], "en", t)).toBe("partage.score:1167");
+    expect(DEFINITION.extrasPartage!([1167, 5], "fr", t)).toEqual(["partage.piles:5"]);
+    expect(DEFINITION.extrasPartage!([80, 0], "fr", t)).toEqual([]);
+  });
+  it("une seule commande (Espace, Entrée, le bouton A) ; `?debug&tune` n'est jamais classé", () => {
+    expect(DEFINITION.actions).toEqual([{ id: "arreter", clavier: ["Space", "Enter"], manette: "b0" }]);
+    expect(DEFINITION.classable!("?debug&tune")).toBe(false);
+    expect(DEFINITION.classable!("?debug")).toBe(true);
+    expect(DEFINITION.classable!("")).toBe(true);
   });
 });

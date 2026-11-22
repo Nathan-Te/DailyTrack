@@ -113,7 +113,7 @@ test.describe("les écrans du kit : mise en page", () => {
       await expect(page.locator("#jeu-pause")).toBeVisible();
       await verifier(page, "la pause", taille);
       await page.locator("#jeu-reprendre").click();
-      await page.evaluate(() => window.__jeu.avancer(6000)); // le temps est écoulé : l'arrivée
+      await page.evaluate(() => window.__jeu.avancer(20000)); // sans appui, les dix jauges filent : l'arrivée
       await expect(page.locator("#jeu-fin")).toBeVisible();
       await verifier(page, "la fin de partie", taille);
       await context.close();

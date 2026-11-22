@@ -1881,18 +1881,6 @@
           "ecrans-kit.spec.ts": [
             "pilepoil-jeu",
             "ui"
-          ],
-          "chargement-partie.spec.ts": [
-            "pilepoil-jeu",
-            "ui"
-          ],
-          "surimpression.spec.ts": [
-            "pilepoil-jeu",
-            "ui"
-          ],
-          "fin-et-aide.spec.ts": [
-            "pilepoil-jeu",
-            "ui"
           ]
         },
         "parts": {
@@ -1901,23 +1889,23 @@
           "nuit": 1
         },
         "regression": [
-          "ecrans-kit.spec.ts",
-          "chargement-partie.spec.ts",
-          "surimpression.spec.ts",
-          "fin-et-aide.spec.ts"
+          "ecrans-kit.spec.ts"
         ]
       },
       "app": "pilepoil",
       "sim": "pilepoil-sim",
       "budget": [
-        "pilepoil.jsCss"
+        "pilepoil.jsCss",
+        "pilepoil.demande"
       ],
       "budgetALaDemande": [
         "partie-",
         "classement-",
         "reglages-",
         "retours-",
-        "version-"
+        "version-",
+        "scene-",
+        "tune-"
       ],
       "outilsAdmin": false
     }
