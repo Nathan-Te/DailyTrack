@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 /** L'identité de la catégorie (`POLICE_PARTY` et `MOTIF_PARTY` de `@cdj/core/fiche` : un test les compare). */
 export const POLICE_PARTY = "Lilita One";
-export const MOTIF_PARTY = "losanges";
+export const MOTIF_PARTY = "confettis";
 
 const DOSSIER_MODELES = join(dirname(fileURLToPath(import.meta.url)), "modele-party");
 

@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-3047 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3049 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -204,6 +204,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.sim_version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.version` | Une nouvelle version du jeu est disponible : recharge la page. | A new version of the game is out: reload the page. |
 | `erreur.no_ghost` | Pas de fantôme à montrer. | No ghost to show. |
+| `erreur.not_party_of_the_day` | Pas le jeu Party du jour. | Free play: not today's Party game. |
 | `erreur.not_ranked` | Ce fantôme se débloque quand tu es classé ce jour-là. | This ghost unlocks once you are ranked that day. |
 | `erreur.invalid_session` | Session du Salon invalide. | Invalid Room session. |
 | `erreur.unknown_session` | Cette session du Salon est terminée. | This Room session is over. |
@@ -502,6 +503,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `classement.egalitePoints` | Aux points. À égalité : le premier arrivé à ce score. | By points. Tie: whoever got there first. |
 | `classement.vues.aria` | Vues du classement | Leaderboard views |
 | `classement.vues.arcade` | Arcade | Arcade |
+| `classement.vues.party` | Party | Party |
 | `classement.vue.cumul` | Cumulé | Combined |
 | `classement.separation` | Un jeu sur deux | One game out of two |
 | `classement.veille` | ‹ Veille | ‹ Previous day |

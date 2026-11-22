@@ -115,7 +115,7 @@ export function mesureTower(dist = join(ROOT, "apps/tower/dist/assets")) {
  * préfixes de fichiers, `essai-` pour `essai-<empreinte>.js`) — c'est le champ de fiche « sa façon de mesurer son chargement ».
  */
 export const JEUX_A_MESURE_PROPRE = ["track", "jump", "tower"];
-export const A_LA_DEMANDE_PAR_DEFAUT = ["catalogue.en-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "amisClassement-", "retoursJeu-", "message-", "suite-", "tune-", "verify-", "admin-"];
+export const A_LA_DEMANDE_PAR_DEFAUT = ["catalogue.en-", "interrupteur-", "manette-", "commandesEcran-", "demarrage-", "panneauMusique-", "liensCommunauteJeu-", "classementAmis-", "amisClassement-", "retoursJeu-", "message-", "suite-", "party-", "tune-", "verify-", "admin-"];
 /**
  * Les lignes de budget qu'un jeu neuf obtient d'office (les autres demandent leur propre mesure). Lot K8 : **sa fiche peut en déclarer d'autres, « à la demande »** (`budget.demande` : `{ nom, prefixes }`,
  * la ligne `<id>.<nom>` = la somme gzip des fichiers JS et CSS dont le nom commence par l'un des préfixes) : aucune retouche de ce script pour un jeu qui charge un gros morceau à la demande.

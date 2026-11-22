@@ -213,8 +213,12 @@ function barreDesVues(t: T, c: Classement | null): HTMLElement {
     return b;
   });
   // Lot A3 : le séparateur « Arcade » avant le premier onglet d'un jeu d'arcade (hors de l'ordre de tabulation : seuls les onglets y sont).
-  const premierArcade = liste.findIndex((o) => o.arcade);
-  barre.append(...boutons.flatMap((b, i) => (i === premierArcade ? [el("span", { classe: "classement-vues__sep", attrs: { role: "presentation" }, texte: t.t("classement.vues.arcade") }), b] : [b])));
+  // Lots A3 et PA1b : le séparateur « Arcade » avant le premier onglet d'arcade, « Party » avant celui du jeu Party du jour (hors de l'ordre de tabulation : seuls les onglets y sont).
+  const groupe = (i: number) => (liste[i]?.arcade ? "arcade" : liste[i]?.party ? "party" : null);
+  barre.append(...boutons.flatMap((b, i) => {
+    const g = groupe(i);
+    return g && g !== groupe(i - 1) ? [el("span", { classe: "classement-vues__sep", attrs: { role: "presentation" }, texte: t.t(`classement.vues.${g}`) }), b] : [b];
+  }));
   return barre;
 }
 

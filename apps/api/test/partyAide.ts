@@ -12,7 +12,9 @@ export const SIM = 1;
 export const GEN = 1;
 const LIMITES = { maxCaracteres: 600, sims: [SIM], generateurs: [GEN] };
 
-export const fichePartie = {
+/** Lot PA1b : la fiche d'un jeu Party jouet de dossier `id` (le tour de rôle a besoin de plusieurs jeux). */
+export const fichePartieDe = (id: string) => ({ ...fichePartieBase, id, code: id }) as unknown as FicheServeur;
+const fichePartieBase = {
   id: "partyjouet",
   code: "partyjouet",
   etatDepart: "off",
@@ -29,7 +31,8 @@ export const fichePartie = {
     format: "entier",
   },
   rejeu: { unitesServeur: 1, maxTicks: 1000 },
-} as unknown as FicheServeur;
+};
+export const fichePartie = fichePartieDe("partyjouet");
 
 interface Mesure {
   points: number;
@@ -58,6 +61,8 @@ const contrat = (): ContratParty<Rejeu, Mesure> => ({
   score: (m) => ({ points: m.points }),
   entrees: (r) => `partyjouet|${r.charge.join(",")}`,
 });
+/** Un jeu Party jouet de dossier `id` (lot PA1b : le tour de rôle). */
+export const partyJouetDe = (id: string) => definirJeuParty<Rejeu, Mesure, never>({ fiche: fichePartieDe(id), nom: id }, () => contrat()) as GameDefinition<never>;
 export const defPartyJouet = definirJeuParty<Rejeu, Mesure, never>({ fiche: fichePartie, nom: "PartyJouet" }, () => contrat()) as GameDefinition<never>;
 export const rediffusion = (charge: number[], jour = D_ESSAI) => encoderEnveloppe({ sim: SIM, g: GEN, contenu: { jour }, charge });
 

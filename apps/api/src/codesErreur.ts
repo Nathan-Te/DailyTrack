@@ -45,6 +45,7 @@ export const CODES_ERREUR = {
   invalid_view: { status: 400, sens: "Portail, classement du jour : `vue` n'est ni `cumul` ni le dossier d'un jeu qui existe ce jour-là (lot A1)." },
   unknown_day: { status: 404, sens: "Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu." },
   day_closed: { status: 409, sens: "Envoi pour un jour dont le classement est figé (jour passé, après la grâce de 10 minutes)." },
+  not_party_of_the_day: { status: 409, sens: "Jeu Party (lot PA1b) : ce jeu n'est pas le jeu Party du jour de la partie (tour de rôle des jeux Party) : seul le jeu du jour a un classement, les autres se jouent librement ; l'envoi est refusé." },
   day_started: { status: 409, sens: "Admin, planning : ce jour a déjà commencé, son circuit ne peut plus être remplacé." },
   too_far: { status: 400, sens: "Admin, planning : jour trop loin dans le futur (plus de PLANNING_HORIZON jours)." },
   invalid_variant: { status: 400, sens: "Admin, planning : variante hors de 0 à MAX_VARIANT." },

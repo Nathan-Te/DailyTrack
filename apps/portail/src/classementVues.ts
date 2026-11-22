@@ -31,6 +31,8 @@ export interface Onglet {
   nom?: string;
   /** Lot A3 : l'onglet d'un jeu d'arcade (après le séparateur « Arcade »). */
   arcade?: true;
+  /** Lot PA1b : l'onglet du jeu Party du jour (après l'arcade, sous le séparateur « Party »). */
+  party?: true;
 }
 
 /**
@@ -38,8 +40,8 @@ export interface Onglet {
  * n'est jamais dans « Cumulé » ; il garde ses vues Tous, Amis, Mon groupe et Groupes.
  */
 export function onglets(jeux: readonly { jeu: string; site: string; nom: string; categorie?: "arcade" | "party" }[]): Onglet[] {
-  const un = (j: (typeof jeux)[number]): Onglet => ({ vue: j.site, jeu: j.jeu, nom: j.nom, ...(j.categorie === "arcade" || j.categorie === "party" ? { arcade: true as const } : {}) });
-  const horsJour = (j: (typeof jeux)[number]) => j.categorie === "arcade" || j.categorie === "party"; // lot PA1 : l'onglet d'un jeu Party vient après l'arcade (même séparateur)
+  const un = (j: (typeof jeux)[number]): Onglet => ({ vue: j.site, jeu: j.jeu, nom: j.nom, ...(j.categorie === "arcade" ? { arcade: true as const } : j.categorie === "party" ? { party: true as const } : {}) });
+  const horsJour = (j: (typeof jeux)[number]) => j.categorie === "arcade" || j.categorie === "party"; // lot PA1b : l'onglet du jeu Party du jour vient après l'arcade, sous son propre séparateur « Party »
   return [{ vue: VUE_CUMUL }, ...jeux.filter((j) => !horsJour(j)).map(un), ...jeux.filter((j) => j.categorie === "arcade").map(un), ...jeux.filter((j) => j.categorie === "party").map(un)];
 }
 

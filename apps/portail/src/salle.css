@@ -504,6 +504,17 @@
   background: repeating-linear-gradient(135deg, var(--dj-encre) 0 16px, var(--dj-salle) 16px 32px);
   box-shadow: 5px 5px 0 var(--dj-terre);
 }
+/* Lot PA1b : la section « Party », sous l'arcade : la même salle, au fond de confettis (même trame que le motif de la catégorie) au lieu des rayures. */
+.salle-party {
+  background:
+    radial-gradient(circle at 20% 25%, var(--dj-salle) 0 3px, transparent 3px) 0 0 / 34px 34px,
+    radial-gradient(circle at 70% 65%, var(--dj-salle) 0 2px, transparent 2px) 0 0 / 22px 26px,
+    radial-gradient(circle at 40% 85%, var(--dj-salle) 0 4px, transparent 4px) 0 0 / 46px 40px,
+    var(--dj-encre);
+}
+.salle-etiquette__party[data-party="classe"] {
+  font-weight: 800;
+}
 .salle-arcade__tete {
   display: flex;
   align-items: center;

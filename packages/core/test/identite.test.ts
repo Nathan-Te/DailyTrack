@@ -131,6 +131,8 @@ describe("l'identité de chaque jeu", () => {
       const fond = fondDuMotif(motif, ["#B8D8F4", "#AEC9E2"]);
       expect(fond, motif).toContain("#b8d8f4");
       if (motif === "uni") expect(fond).toBe("#b8d8f4");
+      // Lot PA1b : les confettis sont des pastilles (`radial-gradient`) à arrêt franc (`#ton 0 3px,transparent 3px` : le même rayon des deux côtés) — jamais un dégradé qui s'estompe.
+      else if (motif === "confettis") expect(fond, motif).toMatch(/^(radial-gradient\(circle at \d+% \d+%,#aec9e2 0 (\d+)px,transparent \2px\) 0 0\/\d+px \d+px,){3}#b8d8f4$/);
       else expect(fond, motif).toMatch(/repeating-linear-gradient|linear-gradient\(45deg,#aec9e2 25%,transparent 25% 75%/);
     }
   });

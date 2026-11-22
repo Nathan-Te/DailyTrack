@@ -13,6 +13,8 @@ export interface ClassementJeu {
   top: LigneJeu[];
   me: LigneJeu | null;
   generation?: number;
+  /** Lot PA1b — un jeu Party seulement : classé ce jour-là (`classe`) et, sinon, la prochaine date où il le sera (`prochain`, `AAAA-MM-JJ`). Absent pour les autres jeux. */
+  party?: { classe: boolean; prochain: string | null };
 }
 export interface EnvoiJeu {
   accepted: true;

@@ -107,7 +107,8 @@ export async function monterGroupes(zone: HTMLElement, o: OptionsGroupes): Promi
       b.addEventListener("click", () => o.surVue(v));
       // Lot A3 : les jeux d'arcade viennent après un séparateur « Arcade ».
       const premierArcade = c.arcade?.[0] === v;
-      return premierArcade ? [el("span", { classe: "classement-vues__sep", attrs: { role: "presentation" }, texte: t("classement.vues.arcade") }), b] : [b];
+      const premierParty = c.party?.[0] === v; // lot PA1b : puis « Party »
+      return premierArcade || premierParty ? [el("span", { classe: "classement-vues__sep", attrs: { role: "presentation" }, texte: t(premierArcade ? "classement.vues.arcade" : "classement.vues.party") }), b] : [b];
     }),
   );
   // Les places gagnées ou perdues depuis la dernière visite (par jour et par vue ; seulement sur un jour ouvert).

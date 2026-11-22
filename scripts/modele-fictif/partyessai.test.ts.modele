@@ -1,0 +1,37 @@
+import { encoderEnveloppe } from "@cdj/core/enveloppe";
+import { jeuPartyDuJour } from "@cdj/core/jeux";
+import { describe, expect, it } from "vitest";
+import { GAMES } from "../src/registry";
+import { D_ESSAI } from "./jeuNeufAide";
+import { MIDI, partyJouetDe } from "./partyAide";
+import { DAY_MS, makeApi, ouvrirJeu, playerId, TEST_DB } from "./helpers";
+
+// Lot PA1b — **la preuve du tour de rôle sur le jeu Party fictif** (fichier écrit par `scripts/jeu-fictif.mjs` dans la copie du dépôt, jamais dans le dépôt) : `partyessai` partage le tour de rôle avec un second jeu
+// Party jouet ; le jour où il est en tête il est envoyé et classé, un autre jour l'envoi est refusé par `not_party_of_the_day`. L'horloge est maîtrisée (`t.clock`) : aucune date du calendrier en dur au-delà du jour
+// d'essai commun des tests ; le jeu du jour attendu est celui que la fonction pure du tour de rôle calcule pour les mêmes jeux et les mêmes dates d'ouverture.
+
+const AUTRE = partyJouetDe("partyautre");
+const rediffusion = (jour: number) => encoderEnveloppe({ sim: 1, g: 1, contenu: { jour }, charge: [10] });
+
+describe(`jeu Party fictif : classé le jour où il est en tête, refusé un autre jour (${TEST_DB})`, () => {
+  it("partyessai est classé quand son tour vient et refusé le jour où le jeu Party jouet est en tête", { timeout: 60_000 }, async () => {
+    const t = await makeApi({ seed: false, games: [...GAMES, AUTRE] });
+    t.clock.now = MIDI;
+    await t.call("GET", "/api/health");
+    await ouvrirJeu(t, "partyessai", D_ESSAI - 5);
+    await ouvrirJeu(t, AUTRE.code, D_ESSAI - 3);
+    const lice = [{ site: "partyessai", depuis: D_ESSAI - 5 }, { site: AUTRE.code, depuis: D_ESSAI - 3 }];
+    const statuts: number[] = [];
+    for (let i = 0; i < 2; i++) {
+      const jour = D_ESSAI + i;
+      t.clock.now = MIDI + i * DAY_MS;
+      const enTete = jeuPartyDuJour(lice, jour);
+      expect((await t.call("GET", "/api/jeux")).body.party.jeu).toBe(enTete);
+      const r = await t.call("POST", "/api/partyessai/submit", { replay: rediffusion(jour), name: "Fictif" }, { headers: { "X-Player-Id": playerId(1) } });
+      if (enTete === "partyessai") expect(r.status).toBe(200);
+      else expect(r).toMatchObject({ status: 409, body: { error: "not_party_of_the_day" } });
+      statuts.push(r.status);
+    }
+    expect(statuts.slice().sort()).toEqual([200, 409]); // deux jeux, deux jours : un jour classé, un jour refusé
+  });
+});

@@ -70,6 +70,8 @@ export interface ClassementGroupes {
   vues: string[];
   /** Lot A3 : parmi `vues`, celles des jeux d'arcade (après le séparateur « Arcade »). Absent : aucune. */
   arcade?: string[];
+  /** Lot PA1b : la vue du jeu Party du jour (sous le séparateur « Party »). */
+  party?: string[];
   min: number;
   groupes: (LigneGroupe & { rang: number; score: number })[];
   moins: LigneGroupe[];

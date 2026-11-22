@@ -89,7 +89,7 @@ export function melanger(couleur: string, avec: string, part: number): string {
 /** Les deux tons d'un motif : la teinte du jeu, et la même un peu plus sombre. */
 export const tonsDuMotif = (fond: string): [string, string] => [fond.toUpperCase(), melanger(fond, ENCRE_DU_MOTIF, PART_ENCRE_DU_MOTIF)];
 
-/** Le fond d'un motif (valeur de `background`) : rayures, lignes, quadrillage et losanges se dessinent en CSS net, avec des arrêts francs (jamais de dégradé) ; `uni` est la teinte seule. */
+/** Le fond d'un motif (valeur de `background`) : rayures, lignes, quadrillage, losanges et confettis se dessinent en CSS net, avec des arrêts francs (jamais de dégradé) ; `uni` est la teinte seule. */
 export function fondDuMotif(motif: Motif, [t1, t2]: [string, string]): string {
   const [c1, c2] = [t1.toLowerCase(), t2.toLowerCase()];
   switch (motif) {
@@ -101,6 +101,8 @@ export function fondDuMotif(motif: Motif, [t1, t2]: [string, string]): string {
       return `repeating-linear-gradient(0deg,${c1} 0 22px,${c2} 22px 23px)`;
     case "quadrillage":
       return `repeating-linear-gradient(0deg,${c2} 0 1px,transparent 1px 24px),repeating-linear-gradient(90deg,${c2} 0 1px,transparent 1px 24px),${c1}`;
+    case "confettis": // lot PA1b : le motif de la catégorie Party — des pastilles du second ton, deux trames décalées sur des mailles premières entre elles (jamais de dégradé : arrêts francs)
+      return `radial-gradient(circle at 20% 25%,${c2} 0 3px,transparent 3px) 0 0/34px 34px,radial-gradient(circle at 70% 65%,${c2} 0 2px,transparent 2px) 0 0/22px 26px,radial-gradient(circle at 40% 85%,${c2} 0 4px,transparent 4px) 0 0/46px 40px,${c1}`;
     case "losanges":
       return `linear-gradient(45deg,${c2} 25%,transparent 25% 75%,${c2} 75%) 0 0/24px 24px,linear-gradient(45deg,${c2} 25%,transparent 25% 75%,${c2} 75%) 12px 12px/24px 24px,${c1}`;
   }

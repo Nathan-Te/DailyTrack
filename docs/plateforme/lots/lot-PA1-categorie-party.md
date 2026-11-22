@@ -1,6 +1,6 @@
 # Lot PA1 (plateforme, kit et serveur) — La catégorie « Party » et le jeu Party du jour
 
-**État : la partie 1 (catégorie et moule) est faite ; la partie 2 (jeu du jour, classement, portail, mentions) n'est PAS faite** — arrêt prévu par le prompt. Le lot n'est donc pas terminé.
+**État : la partie 1 (catégorie et moule) est faite ; la partie 2 (jeu du jour, classement, portail, mentions) est le lot PA1b** (`lot-PA1b-jeu-party-du-jour.md`).
 
 ## À savoir d'abord
 - **Le seed** (`docs/party/seed.md`, versé tel quel après coup : il n'était pas joint au premier envoi) confirme ce lot : identité allégée, « pas de générateur, pas de thèmes, pas de robot, pas de jours figés : une graine suffit ». Restent ouverts chez lui (à trancher en partie 2) : la règle du tour de rôle (le prompt retient « dans l'ordre des jeux `on`, par date d'ouverture, en boucle »), le record personnel (appareil seulement, selon le prompt), le nom et la couleur de la catégorie à l'écran.

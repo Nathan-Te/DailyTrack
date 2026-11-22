@@ -34,6 +34,11 @@ export interface RequestInfo {
    * (`hidden = 1` et `apercu = 1`, jamais lu par un classement public). Posé par `api.ts` ; absent partout ailleurs.
    */
   apercu?: boolean;
+  /**
+   * Lot PA1b — **le tour de rôle des jeux Party**, posé par `api.ts` à chaque requête d'un jeu (jamais lu ailleurs) : `duJour(jour)` est le dossier du jeu Party de ce jour (`null` sans jeu en lice) et `prochain(site)` le
+   * prochain jour où ce jeu sera en tête (`AAAA-MM-JJ`, `null` s'il n'est pas en lice). En aperçu (`apercu`) tous les jeux Party du registre sont en lice. Seul un jeu Party le lit (module des jeux).
+   */
+  party?: { duJour(jour: number): string | null; prochain(site: string): string | null };
 }
 
 /** La plateforme, telle qu'un jeu la voit : écrite une fois pour tous les jeux. */
