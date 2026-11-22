@@ -66,10 +66,14 @@
 - **Ne pas modifier** les visions (`docs/seed.md`, `docs/*/seed*.md`, `docs/plateforme/seed-phase-*.md`) ni la charte : c'est Nathan qui le fait.
 
 ## Où on en est
-- Squelette de « Cibles », `off`, seed vide.
+- Lot PA2 : le jeu de la maquette, jouable et rejoué par le serveur (rejeu ≈ 0,08 ms, rediffusion de 34 caractères) ; `off`.
+- Scène Canvas 2D, HUD en surimpression, sons de synthèse, vibration, `?debug&tune` avec export JSON.
+- Étiquette rose `#F6B3A4` / coque `#B8473A` ; illustration livrée (`apps/pilepoil/public/illustration.svg`) mais « à choisir » dans la fiche (moule : README du lot PA2).
+- Réplique et « Comment jouer » encore préfixés « À remplacer » : attendent les mentions légales.
 
 ## Prochain lot
-Le seed, puis les maquettes (§ 7).
+Plateforme : mentions `pilepoil:*`, exemption Party du test d'identité ; puis réglages de Nathan (export `?debug&tune`).
 
 ## Décisions en attente
-- Nathan : le seed et la teinte de l'étiquette.
+- Nathan : les réglages (`?debug&tune`), `attenteMax` (15 s), Entrée partagée avec « Recommencer ».
+- Plateforme : les manques du moule listés dans `docs/pilepoil/lots/lot-PA2-pile-poil.md`.
