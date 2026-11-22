@@ -57,7 +57,7 @@ describe("les tables dessinées (lot PBT1) : trois tables et leur miroir, six di
       expect(p.emplacements.filter((e) => e.permis.length === 1 && e.permis[0] === "trou"), `${p.id} : un trou`).toHaveLength(1);
       // aucun emplacement n'est tiré : un seul module permis partout
       for (const e of p.emplacements) expect(new Set(e.permis).size, `${p.id}`).toBe(1);
-      expect(p.emplacements.length, p.id).toBeLessThanOrEqual(5);
+      expect(p.emplacements.length, p.id).toBeLessThanOrEqual(p.id === "A" ? 6 : 5); // A : la paire de mini-bumpers du haut droit (retour de Nathan du 22/11)
     }
   });
   it("il y a six dispositions (chaque table de face puis en miroir) ; sur 400 jours, deux jours consécutifs n'ont jamais la même, jonction des cycles comprise ; et sur 5 000 jours aussi", () => {
@@ -146,7 +146,11 @@ describe("le miroir : la table reflétée exactement autour de l'axe (x → 368 
         const U = 368 * 4096;
         const image = (a: { x: number; y: number }[], b: { x: number; y: number }[]): void => {
           expect(b.length).toBe(a.length);
-          a.forEach((q, i) => expect([Math.abs(b[i]!.x - (U - q.x)) <= 1, b[i]!.y === q.y], `${theme}:${plan}`).toEqual([true, true]));
+          // l'image d'une paire (les mini-bumpers) est la même paire, rangée dans l'autre ordre : on compare triés
+          const tri = (l: { x: number; y: number }[]): { x: number; y: number }[] => [...l].sort((u, v) => u.x - v.x || u.y - v.y);
+          const ia = tri(a.map((q) => ({ x: U - q.x, y: q.y })));
+          const ib = tri(b);
+          ia.forEach((q, i) => expect([Math.abs(ib[i]!.x - q.x) <= 1, ib[i]!.y === q.y], `${theme}:${plan}`).toEqual([true, true]));
         };
         image(f.bumpers, m.bumpers);
         image(f.trous, m.trous);
@@ -200,8 +204,8 @@ describe("la table du jour", () => {
       if (c.theme === "volcan") expect(c.modules.filter((m) => m === "geyser")).toHaveLength(1);
       if (c.theme === "espace") expect(new Set(c.modules.filter((m) => m.startsWith("portail"))).size).toBe(2);
     }
-    // le module « mini » (deux petits bumpers) n'est plus posé que par le plan d'essai : le mini-batteur de la table C est un batteur
-    expect([...vus].sort()).toEqual(MODULES.filter((m) => m !== "mini").sort());
+    // le module « mini » (deux petits bumpers) est posé en haut à droite de la table A (retour de Nathan du 22/11) ; le mini-batteur de la table C est un batteur
+    expect([...vus].sort()).toEqual([...MODULES].sort());
   });
   it("le thème imposé (essai) donne la table de ce thème, et la table du jour est inchangée s'il est le sien", () => {
     const c = dailyPinball(PREMIER);

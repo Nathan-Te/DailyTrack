@@ -16,8 +16,8 @@ const poseDe = (p: Partie, theme: ThemePinball, emplacement: number): { x: numbe
 describe("les éléments de chaque table sont aux coordonnées dessinées", () => {
   it("A : trois bumpers (152, 152), (214, 152), (183, 192) ; le tir central (190, 285) ; la banque du flanc droit (dessin : cibles en x = 329, y = 340, 366, 392, fond en x = 340 ; posée à (+6, −6) : x = 335, y = 334, 360, 386, fond en x = 346) ; le spinner du couloir de l'orbite (36, 275)", () => {
     const p = table("A");
-    expect(centres(p.table.bumpers)).toEqual([[152, 152], [214, 152], [183, 192]]);
-    expect(p.table.bumpers.every((b) => px(b.r) === 17)).toBe(true);
+    expect(centres(p.table.bumpers)).toEqual([[152, 152], [214, 152], [183, 192], [252, 250], [300, 250]]); // les trois bumpers dessinés, puis la paire de mini-bumpers du haut droit (retour de Nathan du 22/11)
+    expect(p.table.bumpers.map((b) => px(b.r))).toEqual([17, 17, 17, 12, 12]); // trois bumpers de 17 px, la paire de mini-bumpers de 12 px
     expect(poseDe(p, "foire", 0)).toEqual({ x: 190, y: 285 });
     expect(centres(p.table.plateaux)).toEqual([[190, 285]]);
     const banque = p.table.banques[0]!.map((k) => p.table.murs[k]!);
@@ -70,7 +70,7 @@ describe("les éléments de chaque table sont aux coordonnées dessinées", () =
       const e = table(plan.id, "espace");
       expect(centres(e.table.trousNoirs)).toEqual([[c.x, c.y]]);
       expect(centres(e.table.portails).sort()).toEqual([[c.x - 30, c.y], [c.x + 30, c.y]].sort());
-      expect(e.table.bumpers).toHaveLength(3);
+      expect(e.table.bumpers).toHaveLength(plan.id === "A" ? 5 : 3); // A : plus la paire de mini-bumpers
       expect(e.table.bumpers.filter((b) => b.mobile)).toHaveLength(1);
       expect(e.table.bumpers[2]!.mobile).toBeDefined();
       expect(centres(table(plan.id, "ocean").table.tourbillons)).toEqual([[c.x, c.y]]);

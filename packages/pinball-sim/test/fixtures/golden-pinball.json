@@ -15,15 +15,16 @@
         "asteroide",
         "cibles",
         "spinner",
+        "mini",
         "portailA",
         "portailB"
       ],
-      "empreinte": "47024623",
+      "empreinte": "db438830",
       "seuils": {
-        "bronze": 562100,
-        "silver": 1311500,
-        "gold": 2248200,
-        "author": 3747000
+        "bronze": 465100,
+        "silver": 1085200,
+        "gold": 1860300,
+        "author": 3100500
       }
     },
     {
@@ -36,14 +37,15 @@
         "trou",
         "bumpers",
         "cibles",
-        "spinner"
+        "spinner",
+        "mini"
       ],
-      "empreinte": "3545593e",
+      "empreinte": "89523275",
       "seuils": {
-        "bronze": 610800,
-        "silver": 1425100,
-        "gold": 2443000,
-        "author": 4071700
+        "bronze": 558700,
+        "silver": 1303600,
+        "gold": 2234700,
+        "author": 3724500
       }
     },
     {
@@ -76,9 +78,10 @@
         "trou",
         "bumpers",
         "cibles",
-        "spinner"
+        "spinner",
+        "mini"
       ],
-      "empreinte": "70293b14"
+      "empreinte": "db41fe27"
     },
     {
       "date": "2026-11-14",
@@ -105,10 +108,11 @@
         "asteroide",
         "cibles",
         "spinner",
+        "mini",
         "portailA",
         "portailB"
       ],
-      "empreinte": "9967f073"
+      "empreinte": "79025da0"
     },
     {
       "date": "2026-11-20",
@@ -121,14 +125,15 @@
         "bumpers",
         "cibles",
         "spinner",
+        "mini",
         "coulee"
       ],
-      "empreinte": "1bf2e173",
+      "empreinte": "8a9f3650",
       "seuils": {
-        "bronze": 184400,
-        "silver": 430200,
-        "gold": 737500,
-        "author": 1229200
+        "bronze": 217800,
+        "silver": 508100,
+        "gold": 871000,
+        "author": 1451700
       }
     },
     {
@@ -204,9 +209,9 @@
       "nom": "robot-30-secondes",
       "date": "2026-11-20",
       "g": 9,
-      "code": "AQoJAKmiAZIFjRTuNcUCiBWpAoRAoQvYBNECrjitA5AW_QHiKuEBlibHAoBF2QHeat8B2CjrAaYpoQKESv8B4CSJAtA9vxY",
+      "code": "AQoJAKmiAZIFjRTuNcUCmBadAohW3wHOb6ELhArfAfodiQKsF_EB-hipApgq5QG8JKECoHKLAvZD5QGKWeEBuivfAQ",
       "resultat": {
-        "score": 10180,
+        "score": 8020,
         "ticks": 540000,
         "billes": 2,
         "multMax": 1
@@ -216,12 +221,12 @@
       "nom": "robot-volcan",
       "date": "2026-11-20",
       "g": 9,
-      "code": "AQoJAKmiAbAIsRSMSALrAQO6cKEL9gTxAZpKmwKuYesBwCjZAfZNowu4CtcThEkC6wEDuh_ZAeAYgwLkILUCgibZAeA_mwLmJ9kB_iTBBLwq3wHKKfEByh3ZAe4h7QHIG-sBuBr_A6oo1wP6X6EC0hmhC54GswKINPUTnja5AvA7tQLGQ98B4iaHA_or5RK-Nf8G3A-jC_4EnQLkKe0BqBCnApYi2QGYIfcB9BPlDAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL1gLfAcwT5QGcJQLrAQPEKd8B1hjhAbYcowumCIkC0DD_BMAToQuEB6kKxg2hC_IC8gzFBAoLCgsKC70G_gabApIe-wKAEKMLzgn9AYQ3oQveB6ELtgTXBuoRowuIHYMC_COJBvoq7QGgF9kB9iuPApJGlwL0RNkBshqbAtwu1xP4SALrAQP0G_8Byg7ZAfAZ3wHgS6cC8jyhC4gIoQKSReUB-CenAg",
+      "code": "AQoJAKmiAbAIsRTASZUClBXbAcotsQSeH6MLsASzA8Yr3wGyP6MLjgbbAYaOAb0KkDT7ArAtgwK8HqUDgGiTFKQ23wH4EqcCliu5AoRbtwPqF4UC2imlFMgzpwKwUaELiAUC6wEDzlShC8gH4QH4JL0DhiTfAdIk9RPuNacCqB_fAYIVrwLKLwLlAQOaYqELqATtA9wvoQu2BKMLngf9Ao4NoROEN6cClhkC5QEDgDjLEAoL1gLfAYAV3wGqG98Bsh2hC8IJoQuCCKELsCHjBfIHLtsB9wwKCwoLCgsKCwoLCgsKC9gH3wGIFdsBsCShC7wE7wn8DYEDmg6hC8YEoQv0CP0B0BfVA-AN4QGkJ5sC7hqJAqwjAuUBA8wc6wHcG9sBniqDAtwmoQvcDeEU9jGzApQhiQOIHsUD8CvfAaw_owvQBtsBojSbAqgr9wHUGN8BgBbhAfYroQv2CMcCzjjLFpIw5QE",
       "resultat": {
-        "score": 652070,
+        "score": 280660,
         "ticks": 540000,
-        "billes": 1,
-        "multMax": 4
+        "billes": 2,
+        "multMax": 2
       }
     },
     {
@@ -264,10 +269,10 @@
       "nom": "robot-multibilles",
       "date": "2026-11-17",
       "g": 9,
-      "code": "AQoJAKaiAZIFjRTSXuUB9jffAf4N6wj6HbcD2M0BoQu6BLMCihPfAeYNvwnEEQLrAQPWHQLrAQPqDdcI4BmjC9AGqQLUId8KsBe_FqBXowLcOdMCgh3xAbo75QLKJO0BjB6VApYQkQToQtsBmg7rB6YbowvGCP8BxhD9AcgW2wH6HvMB_iqXBKob5QGgDgLlAQOQFvcBpBjlAaxF8wH-D6cC6EDBFY5ooQuYBrkC0hf5Ae44iQKGEusE4BKBA6IxoQL4Ld8BhCWJAupE2wGyDs0HxBujC7AHkQL6KZkD_ByhC9QGmwKiFtkB7mKhC9YJ7QHsEqEC_BOhC8YEoQuwBIUC-iObAu4wkQLgKeMWiE39AeBJowv4EKML6AnnAbIP2wG4F98BzC-dAtBQ3wGqJf8BljGhC5wEoQuaCYsC-CHjBYA3xQPSK9cFjhqJAtYRoQuWEPUCrArvDQoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC7AoiwK4DKML1gmkCIMD4w0KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC94EnwPUEKML7gnnAZ4HuQOyFaML6AyLArgXAuUBA94W2QHKHowCjQHjEAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgvwFuUBphWXAuwJ3wHEIaML1AahC9IEoQuAB6ML2jrbAcw3oQu4COUBriLtA4wWowu-BoUC9hDfAcwv7QH0Dt8BjiyhAuxD4QHyHuUBwg_fAZoa0QiQE6ELyAatAowW-QGyJPMBgCqhC5wE5QHoI5EE6CAC6wEDkE_fAb4V_wHSEOsB7g_nAc4stxfeXIUCijKLAsAijwL-M60CjBvrAfINqQLWLfkBwDKjC6IKAuUBA4IY4wOyLOsBrlmjC6ILhQKKEP0BqD0C6wEDgBajC9oYoQvgBqcC0BX5AYw52QGaE5MXoE2hC-AEkQLkKtcW7EnzAYosuQOGGaMLxAnhAYgaAusBA6A7gwKURfkBzkCjC-gJ4QGmG7UC3DPbAfgboQvaCQLrAQOESqML3AnzAewVAokCA74RAusBA4gdiQLgQ-EB-i7tFM6NAaELwAT7ApAM-QsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL2iiLApQMowu2B9MFiAeYBJ0CzQYKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4wKiwK2KPkBkBqLBZYdowuoBdsBuhb9AbAWowvaCQLlAQP4EKML0gShC7oy4QHQLp0PCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL-ASjC5QGiwK-OaML6g2hC_A-owuQCOcBlA6hArwPoQvaBK0D_Cn5AcYy7QHEFIMCrh_ZAZJAlwLsJZkEoCbnBpIWiwKgKLcXjlSjC-YK8wGgF_EBvjbBAvQeowvEBaELlAiHA6xIowvcBpECwhLfAegpoQvuBeUB4iDlAaQTqQLSRqECqBChC6wFoQvQCJsCoimjC_AEoQuCCJMDxEijC4YH_wHwEOUB3IQBowvGCOcBsg7fAeAohQLcLJUC8BDdAsJF8QG8ELsCrE6BBNweiwLAKrkW5EzDA_gYgwLcEaEL4hH_A94g_QL0Lo8TlFH5AbAu7QHoDt8Bsi3lBaAPgwb-HIsC7iv1FthKhQLMPb0DvDzVA5ZEowucBIkI1BWDArAS4QagF6ELqAS3A6QL5Q8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLsCiLAqwMowuICecByhmHDgoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoACwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4sK8gejC_w7owveCqELhArVCZoYowvII7EXnEzbA5wZiQL0EdsG9BehC7YGrQK2FvkB-A_tBrBDowv8CgLrAQP-UoUCkpEBowuwBKML7guhC8gJ3wGQDtUE2CWJAsQvoQvkBOkCtEejC5IH_wGeEqELqhyjC8oJ5wGmDrcJ4BmjC9wJ5wHKDu8I0BijC-4J4QHqLvcB4hHfAcIP2QGKFuUB2k6JBZQXoQvGBJ8D9EijC6QH-QGKEOUB-g_nAfAqsxOGPK0C5l2hC9AFhwPKSKML-gaFAvAQ6wHoD-cBli3xEv43lwLULaECrkTbAY4O8QfWG6MLmgntAaYO5QH6OKcC3kTbAeRP2QGiFekTsjaRAuoruQLARIUC5irfAcAl3wGWROEBvCG_AoQqnQ8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLpCiLAr4MowvyB6MLsgHTDAoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC4gF9QLMF6ML6AapApYfoQuwBKMLsgmjC-wK_QLQIKELqgqjC4AHlwK2CdkBpB3OAaML3wMKCwoLCgsKCwoLCgsKCwoLCgvaBfsNCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwrLEwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoCCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoL_QKgFOUB7A3_AfAUowukEKML7AejC_YNvQOqDvUQCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLhiijC_IH7QHeJaELhAehC6oK_wGcJaELrAb5AaQS6wHoD-cB-gGLDwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC-oYqQ8KCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLxDanA74VowuwCqMLjg6hC5oL3wGEDr0H3BeJAvQRoQv0BaELxgShC6IX4QGwLPsTwjTzAagf3wG6KLsErA_XA6ZgowviBosC-hHrAdYmoQvwDuEB6g3xAcYRowucGaELxgSlA-JIowvwBakC7BX3AdIooQuuBKELugSNCeYFnxSERIUIqjmtBfYd-QGaI_sC8EejC8AI5wGaDt8B9DWhAupE2wHgJ5UCikThAYQl2QHwRLUCmCXbAeZOoQs",
+      "code": "AQoJAKaiAZIFjRTSXuUBsjXZAfINuQaSSaMLjAf_AcwQ5QGSR4cXpjDtAfwz7xOmONkB4gyjAvg1zxSQT_cB8EHbAeBVowu8Cd8BjA2nA8gi4QGIDuUBhl7hAawOyQnYI4UChhKhC7gk_wHkEOUB7hb3DwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKCwoLCgsKC7YoiwKCEvMB6hChC9IEoQvyCaEL4ASFAuwZowuWDaELwgnfAYIOgwKeEoMC-i2jC5ITowvANeEBkmGjC6gE5QHaVaMLgAf_AZQR5QHKKeUB3hDZAdwd3wHAK9kBuELnAf4i-QGoEZ0F0hTzAfgn3wGkDwLZAQOkQ-kD3A7ZAfAOowuKDNcT8lLhAd4N4QOCLJEE3kSjC6YFoQu6BOEGsBiDAvoknQLMF4kDvByLAvY14QHKFP0B9j6xBLA2AusBA6QZ4QH2F7UCniSbAsAUpwP8OOEBmh3ZAdQn6wGGeNkB-BXxAeoO2wH8GesB3A_nAYZBgxbGNNkB-BUC2QEDhA3PA_46-QGO5AGjAtBR_wHSH-UB7g_tAZIpoxWsTesB5lXzAewP9QjYI-EBuA6TCawh-QHUD-UB9BXbAYIYowuEHKELxgSxA9YN5xS6NbUC-C3rAZRWiQKSKrkC6kTbAaAO5Qf8IP8BxhDlAcwu9QLGCasRCgsKCwoLCgsKCwoLCgsKCwoLqiiLAoQRrwKaG6ML_AijC8gPpQm2EKMLwBGjC6AMowuqCqML0gShC8gEowuiBKELpAnxBIgLAusBA8gP8QGgGqEL0B6dAtgNoQuiCqELqAehC-APxQLyEqELqgTJB6IGvxb27AHbAZQaowesF6EL4AanAqwV8wH2F9sB-Bb5AbJmowvACOcBxA7lAaI33wH4DeEH_huhC5AHgwL0J-8DwiLzAZ4P5QHkXKML5AjnAcIxowvmB4UCjhrfAcpIwQK6GaEC7BaHBJYlAuUBA9oMjwXIP5sC3hCTA_ZEows",
       "resultat": {
-        "score": 4236790,
-        "ticks": 344428,
+        "score": 1102820,
+        "ticks": 147312,
         "billes": 0,
         "multMax": 6
       }

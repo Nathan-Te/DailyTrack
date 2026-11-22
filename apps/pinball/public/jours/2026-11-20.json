@@ -6,10 +6,10 @@
   "sim": 10,
   "bot": 9,
   "seuils": {
-    "bronze": 184400,
-    "silver": 430200,
-    "gold": 737500,
-    "author": 1229200
+    "bronze": 217800,
+    "silver": 508100,
+    "gold": 871000,
+    "author": 1451700
   },
   "contenu": {
     "theme": "volcan",
@@ -21,8 +21,9 @@
       "bumpers",
       "cibles",
       "spinner",
+      "mini",
       "coulee"
     ],
-    "empreinte": "1bf2e173"
+    "empreinte": "8a9f3650"
   }
 }

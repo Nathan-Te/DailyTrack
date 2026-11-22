@@ -67,7 +67,7 @@
 
 ## Où on en est
 - Pinball (arcade, `off`, branché par le kit) ; dernier README de lot : PBT1 (21/11), les trois tables dessinées avec Nathan (A, B, C, chacune en miroir : 24 tables, le jour tire le thème, la table et le miroir), PR brouillon.
-- Verrou et bouche de l'orbite redessinés sur l'éventail du geste (option 1 de Nathan) ; fenêtres de tir ≥ 30 ms partout, 24 tables valides ; versions sim 10, générateur 9, robot 9.
+- Retours du 22/11 traités : lanceur libre en miroir (garde `lanceurBloque`), paire de mini-bumpers en haut à droite de A ; verrou et bouche de l'orbite redessinés sur l'éventail du geste (option 1 de Nathan) ; fenêtres de tir ≥ 30 ms partout, 24 tables valides ; versions sim 10, générateur 9, robot 9.
 - Non vérifié : le jeu n'a pas été joué à la main (URL de test dans le README) ; poids : `pinball.rendu` et `pinball.demande` à moins de 1 Ko du plafond.
 - « Rayon 25 au plus » de l'élément de la mission (table A) non appliqué ; banque inclinée de −26,6° au lieu de −28° (pixels entiers).
 
@@ -76,5 +76,4 @@
 
 ## Décisions en attente
 - Nathan : valider les écarts avec le dessin (tableau du README de PBT1 : verrous de A et C devant les batteurs, bouche de l'orbite large, banques et guides retouchés dans les 15 px) en jouant les URL du README.
-- Nathan : **le haut de la table A est vide** (le verrou dessiné en haut à droite ne se vise pas : il est devant les batteurs) — que mettre en haut ? (README de PBT1, « Retour de Nathan du 22/11 »).
 - Nathan : le rayon de l'élément de la mission (table A, « 25 au plus ») ; le relèvement chiffré des budgets `pinball.rendu` / `pinball.demande` si un prochain lot en a besoin.

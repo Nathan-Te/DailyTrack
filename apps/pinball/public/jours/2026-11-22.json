@@ -6,10 +6,10 @@
   "sim": 10,
   "bot": 9,
   "seuils": {
-    "bronze": 280300,
-    "silver": 653900,
-    "gold": 1121000,
-    "author": 1868400
+    "bronze": 274600,
+    "silver": 640600,
+    "gold": 1098200,
+    "author": 1830400
   },
   "contenu": {
     "theme": "ocean",
@@ -20,8 +20,9 @@
       "trou",
       "bumpers",
       "cibles",
-      "spinner"
+      "spinner",
+      "mini"
     ],
-    "empreinte": "38b62a2a"
+    "empreinte": "497c6b99"
   }
 }

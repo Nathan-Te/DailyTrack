@@ -183,6 +183,8 @@ export const PLANS: readonly Plan[] = [
       bumpers(183, 165, [[152, 152], [214, 152], [183, 192]]),
       { x: 335, y: 360, banque: banqueDuFlanc(335, [334, 360, 386], 346, 316, 402), permis: ["cibles"] },
       spinnerDuCouloir(36, 275),
+      // Retour de Nathan du 22/11 (« le haut de A est vide ») : le verrou dessiné ici ne se visait pas ; une paire de mini-bumpers remplit le haut droit
+      { x: 276, y: 250, permis: ["mini"] },
     ],
     extras: { espace: portails(190, 285), volcan: [{ x: 36, y: 300, permis: ["coulee"], sansMurs: true }] },
     guides: [guideDeLOrbite(328)],
