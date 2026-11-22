@@ -152,6 +152,27 @@ export function billesCoincees(contenu: Contenu, base: Reglages = REGLAGES): Rap
 }
 
 /**
+ * **Le couloir du lanceur est libre** (lot PBT1) : une bille lancée à chaque charge de 500 à 1 000 sort du couloir (son centre passe à gauche de x = 340) sans s'arrêter ni retomber. Retour de Nathan (22/11) : sur la table B de
+ * l'Espace en miroir, la bouche de l'orbite, reflétée, entrait dans le couloir du lanceur et arrêtait la bille — « il semble ne pas y avoir assez de force ». Rend la première charge qui échoue, ou `null`.
+ */
+export function lanceurBloque(contenu: Contenu, base: Reglages = REGLAGES): number | null {
+  const reglages: Reglages = { ...base, sauvee: 0 };
+  for (let charge = 500; charge <= 1000; charge += 100) {
+    const p = new Partie(contenu, reglages);
+    p.regler(LANCEUR, true);
+    while (p.charge < charge && p.dansLanceur) p.avancer();
+    p.regler(LANCEUR, false);
+    let sortie = false;
+    for (let pas = 0; pas < 1500 && p.billes === NB_BILLES && !p.finie && !sortie; pas++) {
+      p.avancer();
+      if (!p.dansLanceur && p.x < 340 * UNITE) sortie = true;
+    }
+    if (!sortie) return charge;
+  }
+  return null;
+}
+
+/**
  * **Ce que la bille a touché**, module par module (voir l'en-tête) : `pas(partie)` est appelée après chaque pas d'une partie de cette table. `touches` : les noms (`nomDuModule`) des modules touchés, `mission` : une
  * partie a réussi la mission du thème.
  */

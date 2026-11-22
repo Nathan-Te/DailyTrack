@@ -28,7 +28,7 @@ const reds = [
   // Lot PB4 : les tables du robot portent les éléments des thèmes (volcan : geyser et coulée ; espace : trou noir, portails, astéroïde ; foire : manège ; océan : tourbillon), et leur mission est réussie par le robot
   { nom: "robot-30-secondes", jour: jours[6]!, evenements: robot(jours[6]!, 18000) },
   // Lot PBT1 : les quatre robots jouent quatre dispositions différentes (A, B en miroir, C, B : orbite et porte, rampe, mini-batteur)
-  { nom: "robot-volcan", jour: jourDe("volcan", "A"), evenements: robot(jourDe("volcan", "A"), 72000) },
+  { nom: "robot-volcan", jour: jourDe("volcan", "A"), evenements: robot(jourDe("volcan", "A"), 72000, 3) },
   { nom: "robot-espace", jour: jourDe("espace", "B", true), evenements: robot(jourDe("espace", "B", true), 72000) },
   { nom: "robot-foire", jour: jourDe("foire", "C"), evenements: robot(jourDe("foire", "C"), 72000) },
   { nom: "robot-ocean", jour: jourDe("ocean", "B"), evenements: robot(jourDe("ocean", "B"), 72000) },

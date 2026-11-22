@@ -130,7 +130,7 @@ const ANGLES = [180, 160, 140, 120, 100, 90];
  * Nathan : le pied du couloir de 32 px, à 370 px du batteur, ne donnait que 5 ms) : elle recueille les tirs directs et ceux qui rebondissent sur le mur gauche. La porte (`porteDuCouloir`) la ferme, 26 px plus bas.
  */
 export const guideDeLOrbite = (yBas: number): DefGuide => ({ genre: "orbite", points: [[52, yBas], ...ANGLES.map((a) => arc(a, 144))] });
-export const orbiteDuCouloir = (xm: number, ym: number, hauteur: number, demi = 38): DefRail => ({
+export const orbiteDuCouloir = (xm: number, ym: number, hauteur: number, demi = 34): DefRail => ({
   genre: "orbite",
   points: [[xm, ym], [xm - 4, ym - 34], [36, ym - 68], ...ANGLES.map((a) => arc(a, 160))],
   hauteur,
@@ -187,8 +187,8 @@ export const PLANS: readonly Plan[] = [
     extras: { espace: portails(190, 285), volcan: [{ x: 36, y: 300, permis: ["coulee"], sansMurs: true }] },
     guides: [guideDeLOrbite(328)],
     rampes: [],
-    orbite: orbiteDuCouloir(52, 340, 20),
-    porte: porteDuCouloir(52, 340, 64),
+    orbite: orbiteDuCouloir(54, 340, 20),
+    porte: porteDuCouloir(54, 340, 64),
   },
   {
     // Table B « Rampe et orbite » (les flippers des années 90, simplifié) : l'orbite gauche (bouche à y = 330), la banque en diagonale en haut à gauche (tournée vers le batteur droit), le tir central, le verrou, et la
@@ -204,8 +204,8 @@ export const PLANS: readonly Plan[] = [
     extras: { espace: portails(176, 300), volcan: [{ x: 36, y: 295, permis: ["coulee"], sansMurs: true }] },
     guides: [guideDeLOrbite(328), { genre: "bouche", points: [[250, 322], [272, 300]] }, { genre: "bouche", points: [[311, 332], [304, 310]] }],
     rampes: [{ genre: "rampe", points: [[286, 310], [302, 206], [310, 176], [326, 196], [332, 300], [332, 540]], hauteur: 32, demiPorte: 17 }],
-    orbite: orbiteDuCouloir(52, 340, 20),
-    porte: porteDuCouloir(52, 340, 64),
+    orbite: orbiteDuCouloir(54, 340, 20),
+    porte: porteDuCouloir(54, 340, 64),
     aiguillage: { rampe: 0, partie: 450 },
   },
   {

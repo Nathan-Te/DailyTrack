@@ -6,7 +6,7 @@ import { REGLAGES, type Reglages } from "./reglages";
 import { jouerRobotEnTranches } from "./robot";
 import type { Seuils } from "./types";
 import { fenetresDeTir, obstaclesDansLaZone, type FenetresDeTir, type ObstacleDansLaZone } from "./tir";
-import { billesCoincees, SuiviModules, tirsDisperses, type RapportBilles } from "./validation";
+import { billesCoincees, lanceurBloque, SuiviModules, tirsDisperses, type RapportBilles } from "./validation";
 
 // LES SEUILS DES MÉDAILLES (lot PB4, définitifs) — seed : « Le robot joue la table du jour plusieurs parties fixées d'avance. Ses scores donnent les seuils Bronze, Argent, Or et Diamant, en pourcentages réglés par
 // Nathan. Les seuils sont figés avec la table. » Le robot (`robot.ts`) joue `PARTIES_DU_ROBOT` parties de `DUREE_PARTIE_ROBOT` pas, chacune avec sa graine d'imprécision fixée d'avance (`graineDuRobot`) :
@@ -154,6 +154,9 @@ export function* analyserTableEnTranches(contenu: Contenu, reglages: Reglages = 
   if (billes.coincee) raisons.push(`bille coincée : lâchée en (${billes.coincee.x}, ${billes.coincee.y}) à (${billes.coincee.vx}, ${billes.coincee.vy}) px/s`);
   for (const m of manquants) raisons.push(`module jamais touché : ${m}`);
   if (!suivi.mission) raisons.push("mission jamais réussie");
+  // lot PBT1 : une bille lancée doit sortir du couloir du lanceur (rien de la table, reflétée ou non, n'y entre)
+  const bloque = lanceurBloque(contenu, reglages);
+  if (bloque !== null) raisons.push(`lanceur bloqué à la charge ${bloque}`);
   // lot PBG3 : la porte doit s'ouvrir (par la banque ou l'orbite, jouées par le robot) et être franchie au moins une fois
   const aPorte = new Partie(contenu, reglages).table.passage !== null;
   if (aPorte && !suivi.porteOuverte) raisons.push("porte jamais ouverte");

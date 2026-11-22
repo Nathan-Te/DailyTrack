@@ -6,10 +6,10 @@
   "sim": 10,
   "bot": 9,
   "seuils": {
-    "bronze": 439300,
-    "silver": 1025000,
-    "gold": 1757200,
-    "author": 2928700
+    "bronze": 184400,
+    "silver": 430200,
+    "gold": 737500,
+    "author": 1229200
   },
   "contenu": {
     "theme": "volcan",

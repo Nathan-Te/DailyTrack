@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EV_COULEE, EV_ORBITE, EV_SPINNER, PLANS, UNITE, Partie, POINTS, dailyPinball, type ThemePinball } from "../src/index";
+import { EV_COULEE, EV_ORBITE, EV_SPINNER, PLANS, UNITE, Partie, POINTS, cleDeTable, dailyPinball, lanceurBloque, toutesLesTables, type ThemePinball } from "../src/index";
 import { avancer } from "./aide";
 
 // LES TROIS TABLES DESSINÉES (lot PBT1) : A « Classique », B « Rampe et orbite », C « Mini-batteur » — leurs éléments sont aux coordonnées dessinées avec Nathan (version de gauche, en pixels de la table : x de 20 à 348,
@@ -173,5 +173,11 @@ describe("l'orbite : un couloir où roulent le spinner et la coulée, puis un ra
     }
     expect(ev & EV_ORBITE).toBe(0);
     expect(p.railsFaits[0]).toBe(0);
+  });
+});
+
+describe("le couloir du lanceur est libre (retour de Nathan du 22/11 : table B de l'Espace en miroir)", () => {
+  it.each(toutesLesTables().map((c) => [cleDeTable(c), c] as const))("%s : la bille lancée de la charge 500 à 1 000 sort du couloir", (_cle, c) => {
+    expect(lanceurBloque(c)).toBeNull();
   });
 });

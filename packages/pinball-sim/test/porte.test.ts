@@ -37,9 +37,9 @@ describe("la porte : un passage incliné fermé par un battant", () => {
     for (const plan of PLANS_DU_JOUR) {
       const t = partiePlan(plan).table;
       expect([t.passage!.sensUnique, t.passage!.murs], plan).toEqual([true, 0]);
-      // le battant est horizontal, de l'arc... du mur gauche (x = 20) à x = 84, 26 px sous la bouche du rail de l'orbite
+      // le battant est horizontal, de l'arc... de x = 22 à x = 86 (centré sur la bouche, x = 54), 26 px sous la bouche du rail de l'orbite
       const b = t.passage!.battant;
-      expect([b.ay === b.by, Math.min(b.ax, b.bx) / UNITE, Math.max(b.ax, b.bx) / UNITE], plan).toEqual([true, 20, 84]);
+      expect([b.ay === b.by, Math.min(b.ax, b.bx) / UNITE, Math.max(b.ax, b.bx) / UNITE], plan).toEqual([true, 22, 86]);
       const orbite = t.portes.find((g) => t.rails[g.rail]!.genre === "orbite")!;
       expect(Math.round((b.ay - orbite.y) / UNITE), plan).toBe(26);
     }

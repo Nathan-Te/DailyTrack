@@ -17,7 +17,7 @@
 | **Rush** | arcade · `off` | BR-A2 — Rush : le niveau, la lumière et… (09/11) | 20/11 |
 | **Vertige** | arcade · `off` | V3 — « Vertige » : le niveau du jour, le… (13/11) | 20/11 |
 | **Gravity** | arcade · `off` | GR7 — Gravity : plus vite, plus varié, de… (18/11) | 20/11 |
-| **Pinball** | arcade · `off` | PBT1 — Pinball : les trois tables dessinées… (21/11) | 21/11 |
+| **Pinball** | arcade · `off` | PBT1 — Pinball : les trois tables dessinées… (21/11) | 22/11 |
 
 ## Plateforme
 - **Dernier lot** : PA1 (plateforme, kit et serveur) — La catégorie « Party » et le jeu Party du jour — 21/11 (`lot-PA1-categorie-party.md`).
@@ -134,7 +134,7 @@
 ## Pinball — arcade
 - **Fiche** : état de départ `off`, premier jour 2026-11-02 ; identité complète. Production et recette : `/admin/` › Jeux.
 - **Dernier lot** : PBT1 — Pinball : les trois tables dessinées avec Nathan — 21/11 (`lot-PBT1-tables.md`).
-- **Passation** : mise à jour le 21/11 (`docs/pinball/passation.md`).
+- **Passation** : mise à jour le 22/11 (`docs/pinball/passation.md`).
 - **Où on en est** :
   - Pinball (arcade, `off`, branché par le kit) ; dernier README de lot : PBT1 (21/11), les trois tables dessinées avec Nathan (A, B, C, chacune en miroir : 24 tables, le jour tire le thème, la table et le miroir), PR brouillon.
   - Verrou et bouche de l'orbite redessinés sur l'éventail du geste (option 1 de Nathan) ; fenêtres de tir ≥ 30 ms partout, 24 tables valides ; versions sim 10, générateur 9, robot 9.
@@ -143,4 +143,5 @@
 - **Prochain lot** : à compléter par la conversation du jeu (le README de PBT1 n'annonce pas de suite ; budgets de poids à relever ou à alléger d'abord).
 - **Décisions en attente (Nathan)** : 
   - Nathan : valider les écarts avec le dessin (tableau du README de PBT1 : verrous de A et C devant les batteurs, bouche de l'orbite large, banques et guides retouchés dans les 15 px) en jouant les URL du README.
+  - Nathan : **le haut de la table A est vide** (le verrou dessiné en haut à droite ne se vise pas : il est devant les batteurs) — que mettre en haut ? (README de PBT1, « Retour de Nathan du 22/11 »).
   - Nathan : le rayon de l'élément de la mission (table A, « 25 au plus ») ; le relèvement chiffré des budgets `pinball.rendu` / `pinball.demande` si un prochain lot en a besoin.

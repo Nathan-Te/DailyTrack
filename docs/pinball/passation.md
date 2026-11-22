@@ -76,4 +76,5 @@
 
 ## Décisions en attente
 - Nathan : valider les écarts avec le dessin (tableau du README de PBT1 : verrous de A et C devant les batteurs, bouche de l'orbite large, banques et guides retouchés dans les 15 px) en jouant les URL du README.
+- Nathan : **le haut de la table A est vide** (le verrou dessiné en haut à droite ne se vise pas : il est devant les batteurs) — que mettre en haut ? (README de PBT1, « Retour de Nathan du 22/11 »).
 - Nathan : le rayon de l'élément de la mission (table A, « 25 au plus ») ; le relèvement chiffré des budgets `pinball.rendu` / `pinball.demande` si un prochain lot en a besoin.
