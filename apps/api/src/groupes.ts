@@ -97,6 +97,8 @@ interface VueGroupes {
   vue: string;
   /** Lot A3 : la vue d'un jeu d'arcade (après le séparateur « Arcade » des onglets). */
   arcade?: true;
+  /** Lot PA1b : la vue du jeu Party du jour (après l'arcade, sous le séparateur « Party »). */
+  party?: true;
   sens: Sens;
   /** Lot U6 : `trio` — les trois membres dont le résultat compte (du meilleur au moins bon), de quoi dessiner leurs photos sur le podium ; lus dans la requête d'appartenance, aucune lecture de plus. */
   classes: { id: string; nom: string; avatar: string | null; rang: number; score: number; classesN: number; trio: MembreDuTrio[] }[];
@@ -395,12 +397,12 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
       }
       return m;
     };
-    const vueDe = (nom: string, sens: Sens, resultats: Iterable<ResultatMembre>, arcade = false): VueGroupes => {
+    const vueDe = (nom: string, sens: Sens, resultats: Iterable<ResultatMembre>, categorie: "arcade" | "party" | false = false): VueGroupes => {
       const lignes = [...parGroupe(resultats)].map(([id, r]) => ({ id, score: scoreDuGroupe(r, sens) }));
       const { classes: cl, moins } = classerLesGroupes(lignes, sens);
       return {
         vue: nom,
-        ...(arcade ? { arcade: true as const } : {}),
+        ...(categorie === "arcade" ? { arcade: true as const } : categorie === "party" ? { party: true as const } : {}),
         sens,
         classes: cl.map((g) => ({ id: g.id, nom: meta.get(g.id)!.nom, avatar: meta.get(g.id)!.avatar, rang: g.rang, score: g.score.score!, classesN: g.score.classes, trio: g.score.retenus.flatMap((m) => (membres.has(m) ? [membres.get(m)!] : [])) })),
         moins: moins.map((g) => ({ id: g.id, nom: meta.get(g.id)!.nom, avatar: meta.get(g.id)!.avatar, classesN: g.score.classes })),
@@ -412,7 +414,7 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     for (const j of ouverts) {
       if (v.estHauteur(j)) {
         const h = c.hauteurs?.find((x) => x.jeu === j.code);
-        jours.push(vueDe(j.portail.site, "hauteur", (h?.classes ?? []).map((x) => ({ id: x.playerId, valeur: x.score?.valeur ?? 0, at: x.at })), v.estHorsJournee(j, day)));
+        jours.push(vueDe(j.portail.site, "hauteur", (h?.classes ?? []).map((x) => ({ id: x.playerId, valeur: x.score?.valeur ?? 0, at: x.at })), v.estHorsJournee(j, day) ? (v.categorieEcrite(j, day).categorie ?? "arcade") : false));
       } else {
         const g = c.jeux.indexOf(j.code);
         jours.push(vueDe(j.portail.site, "temps", g < 0 ? [] : c.parJeu[g]!.map((l) => ({ id: l.id, valeur: l.resultats[g]!.tempsMs, at: l.resultats[g]!.at }))));
@@ -448,7 +450,7 @@ export function createGroupes(platform: Platform, vue: () => VuePartagee, avatar
     if (!un) throw new HttpError(400, "invalid_view", "Vue attendue : cumul ou le dossier d'un jeu de ce jour");
     const ouvert = vue().jourOuvert(day);
     return new WithHeaders(
-      { date: formatDay(day), ouvert, vue: un.vue, sens: un.sens, vues: jours.map((x) => x.vue), ...(jours.some((x) => x.arcade) ? { arcade: jours.filter((x) => x.arcade).map((x) => x.vue) } : {}), min: CLASSES_MIN, groupes: un.classes.map((g) => ({ rang: g.rang, id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), score: g.score, classes: g.classesN, trio: g.trio.map((m) => ({ ref: m.ref, pseudo: m.pseudo, ...(m.avatar ? { avatar: m.avatar } : {}) })) })), moins: un.moins.map((g) => ({ id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), classes: g.classesN })) },
+      { date: formatDay(day), ouvert, vue: un.vue, sens: un.sens, vues: jours.map((x) => x.vue), ...(jours.some((x) => x.arcade) ? { arcade: jours.filter((x) => x.arcade).map((x) => x.vue) } : {}), ...(jours.some((x) => x.party) ? { party: jours.filter((x) => x.party).map((x) => x.vue) } : {}), min: CLASSES_MIN, groupes: un.classes.map((g) => ({ rang: g.rang, id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), score: g.score, classes: g.classesN, trio: g.trio.map((m) => ({ ref: m.ref, pseudo: m.pseudo, ...(m.avatar ? { avatar: m.avatar } : {}) })) })), moins: un.moins.map((g) => ({ id: g.id, nom: g.nom, ...(g.avatar ? { avatar: g.avatar } : {}), classes: g.classesN })) },
       { "Cache-Control": "public, max-age=15, s-maxage=30" },
     );
   }

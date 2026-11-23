@@ -9,6 +9,7 @@ import { commandesDuJeu } from "./commandes";
 import { ecrireBilan, type BilanEcrit } from "./bilan";
 import { creerFondFin } from "./fondFin";
 import { creerSurimpression } from "./surimpression";
+import { etatParty, texteParty } from "./party";
 import { creerTenues } from "./tenues";
 import { creerVibreur, creerVolumeEffets, lireReglages } from "./reglagesJoueur";
 import type { CodeMedaille, ContextePartie, PartieDuJeu } from "./types";
@@ -42,7 +43,8 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const commandes = commandesDuJeu(fiche, def, c.i18n);
   const reglages = lireReglages(c, d.stockage);
   const reduit = reglages.mouvement === "reduit" || (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const classable = !c.archive && !c.essai;
+  const libre = etatParty.libre; // lot PA1b : un jeu Party que le serveur a dit hors de son jour (`party.ts`, toujours faux pour un autre jeu)
+  const classable = !c.archive && !c.essai && !libre; // lot PA1b : un jeu Party hors de son jour est libre, jamais envoyé
   const sansFantome = def.sansFantome === true; // lot « manques de Blocks » : ni bouton, ni commande, ni rediffusion du Diamant
   const volumeEffets = creerVolumeEffets(() => lireReglages(c, d.stockage));
   const vibrer = creerVibreur(() => lireReglages(c, d.stockage), typeof navigator === "undefined" ? null : navigator, d.tactile);
@@ -263,6 +265,10 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
       const r = d.records.proposer(d.stockage, c.date, { score: resultat.score, medaille: med, rediffusion: resultat.rediffusion });
       nouveau = r.nouveau;
       if (nouveau) d.envoi.offrir();
+    } else if (libre && !c.archive && !c.essai) {
+      // Lot PA1b : jeu libre — le record reste sur l'appareil (`<id>:records`), jamais envoyé : noté « envoyé » pour que la file ne le réclame pas.
+      nouveau = d.records.proposer(d.stockage, c.date, { score: resultat.score, medaille: null, rediffusion: resultat.rediffusion }).nouveau;
+      if (nouveau) d.records.noterEnvoye(d.stockage, c.date, resultat.score);
     }
     dessinerFin(med, nouveau);
     desabonner = d.envoi.surChangement(() => dessinerFin(med, nouveau));
@@ -305,7 +311,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     const premier = resultat.score[0] ?? 0;
     const suivante = s ? (["bronze", "silver", "gold", "author"] as const).find((m) => (sens === "desc" ? s[m] > premier : s[m] < premier)) : undefined;
     const encore = s && suivante ? el("p", { classe: "jeu-message", attrs: { id: "jeu-fin-encore" }, texte: t("kit.fin.medaille.encore", { medaille: c.i18n.t(`medaille.${TYPE[suivante]}`), reste: Math.abs(s[suivante] - premier) }) }) : null;
-    const rang = el("p", { classe: "jeu-fin__rang", attrs: { id: "jeu-fin-rang", role: "status" }, texte: lu ? t("kit.fin.rang", { rang: lu.rank, n: lu.participants }) + (lu.improved ? ` · ${t("kit.fin.record.nouveau")}` : lu.deja ? "" : ` · ${t("kit.fin.record.pasMieux")}`) : classable ? (messageEnvoi() || t("kit.fin.rang.attente")) : t(c.archive ? "kit.fin.archive" : "kit.fin.essai") });
+    const rang = el("p", { classe: "jeu-fin__rang", attrs: { id: "jeu-fin-rang", role: "status" }, texte: lu ? t("kit.fin.rang", { rang: lu.rank, n: lu.participants }) + (lu.improved ? ` · ${t("kit.fin.record.nouveau")}` : lu.deja ? "" : ` · ${t("kit.fin.record.pasMieux")}`) : classable ? (messageEnvoi() || t("kit.fin.rang.attente")) : c.archive ? t("kit.fin.archive") : libre && !c.essai ? texteParty("kit.party.finLibre", c.i18n.langue) : t("kit.fin.essai") });
     const pseudo = e.statut === "name" ? formulairePseudo(e.code, e.suggestions) : null;
     const partager = bouton1("jeu-partager", "kit.fin.partager", () => void partagerLigne(med, lu?.rank, lu?.participants));
     const etatPartage = el("p", { classe: "jeu-message", attrs: { id: "jeu-partage-etat", role: "status" } });

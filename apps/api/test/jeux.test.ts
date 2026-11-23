@@ -60,7 +60,10 @@ describe(`interrupteur des jeux : les états (${TEST_DB})`, () => {
     const t = await makeApi({ games: [...GAMES, fauxJeu()] });
     const r = await t.call("GET", "/api/jeux");
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ jeux: { track: "on", jump: "on", tower: "off", lune: "off", ...autresEteints } }); // lot K4e : un jeu neuf des fiches naît `off`
+    // Lot PA1b : `party` n'existe que si le registre a un jeu Party (le jeu fictif de la CI) ; aucun n'est `on` ici : pas de jeu du jour.
+    const { party, ...corps } = r.body;
+    expect(corps).toEqual({ jeux: { track: "on", jump: "on", tower: "off", lune: "off", ...autresEteints } }); // lot K4e : un jeu neuf des fiches naît `off`
+    expect(party === undefined || party.jeu === null).toBe(true);
     // Le jeu inconnu refuse tout, Track et Jump marchent.
     expect(await t.call("GET", "/api/lune/info")).toMatchObject({ status: 404, body: { error: "game_unavailable" } });
     expect((await t.call("GET", `/api/day/${DATE}`)).status).toBe(200);

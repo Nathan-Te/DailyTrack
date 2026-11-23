@@ -209,12 +209,11 @@ export interface PeauJeu {
  * et `accueil.phrase.unique`, la fiche n'a aucun thème), ni seuils, ni médailles, ni fantôme du Diamant (pas de robot). `brancherJeu` la complète (`definitionDeParty`) : le jeu n'écrit que sa simulation, son rendu et ses textes.
  */
 export type DefinitionJeuParty<C> = Omit<DefinitionJeu<C>, "themeDuJour" | "seuils" | "medaille" | "rediffusionDiamant" | "sansMedaille" | "sansFantome">;
-/** Lot PA1 — le thème d'un jeu Party (le seul). */
-export const THEME_UNIQUE = "unique";
-/** Lot PA1 — la définition complète d'un jeu Party : un thème, aucune médaille, aucun fantôme (`seuils`, `medaille` et `rediffusionDiamant` ne sont jamais appelées : `sansMedaille`, `sansFantome`). */
-export function definitionDeParty<C>(d: DefinitionJeuParty<C>): DefinitionJeu<C> {
-  return { ...d, themeDuJour: () => THEME_UNIQUE, seuils: () => ({ author: 0, gold: 0, silver: 0, bronze: 0 }), medaille: () => null, rediffusionDiamant: () => "", sansMedaille: true, sansFantome: true };
-}
+/**
+ * Lot PA1 — le thème d'un jeu Party (le seul) et sa définition complète (un thème, aucune médaille, aucun fantôme : `seuils`, `medaille` et `rediffusionDiamant` ne sont jamais appelées). **Lot PA1b : elles vivent dans `party.ts`**
+ * (morceau à la demande : le premier chargement d'un jeu du jour ne les porte plus) ; ce fichier les réexporte pour les tests et le moule.
+ */
+export { definitionDeParty, THEME_UNIQUE } from "./party";
 
 export interface CataloguesJeu {
   /** Le français : celui du kit et du jeu, réunis. */

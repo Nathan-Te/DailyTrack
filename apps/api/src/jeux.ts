@@ -1,6 +1,6 @@
 import { formatDay, parseDay } from "@cdj/core";
 import { parisDayStart } from "@cdj/clock";
-import { compteLe as compteDansPeriodes, etatDe, liveFromDe, lirePeriodes, periodesApres, type EtatJeu, type PeriodeJeu } from "@cdj/core/jeux";
+import { compteLe as compteDansPeriodes, debutDePeriode, etatDe, jeuPartyDuJour, liveFromDe, lirePeriodes, periodesApres, prochainJourParty, type CategorieJeu, type EtatJeu, type JeuPartyEnLice, type PeriodeJeu } from "@cdj/core/jeux";
 import { WithHeaders } from "./cache";
 import { FICHES_SERVEUR } from "./fiches.generated";
 import { HttpError } from "./errors";
@@ -44,6 +44,9 @@ export interface JeuInterrupteur {
   /** Le dossier du jeu sur le site : la clé de l'interrupteur et de l'adresse d'aperçu. */
   site: string;
   nom: string;
+  /** Lot PA1b : la catégorie (crochet `portail`) et le premier jour du jeu : le tour de rôle des jeux Party (`party`, plus bas) ne compte que ceux de catégorie `party`. */
+  categorie?: CategorieJeu;
+  premierJour?: number;
   /** Les instructions qui effacent les résultats rangés à part par l'aperçu (quand le jeu passe `on`) : ils ne deviennent jamais publics. */
   viderApercu?: () => Statement[];
   /** Lot N3 : le nombre de joueurs qui ont un résultat ce jour-là (une seule requête indexée, un nombre et jamais une ligne de joueur) ; absent : le jeu n'a pas de crochet d'administration (`null` dans la liste). */
@@ -192,9 +195,13 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
     await platform.readHitAddress(info, "jx", JEUX_LECTURES_PAR_ADRESSE);
     await charger();
-    const corps = { jeux: Object.fromEntries(jeux.map((j) => [j.site, etat(j.site)])) };
+    const apercu = apercuDePr(req);
+    const jourParis = platform.today();
+    const tour = party(jourParis, apercu);
+    // Lot PA1b : `party` n'existe que si le registre a un jeu Party ; `date` dit le jour de Paris du calcul (la réponse est gardée 30 s : un client compare avant de s'en servir).
+    const corps = { jeux: Object.fromEntries(jeux.map((j) => [j.site, etat(j.site)])), ...(tour ? { party: { date: formatDay(jourParis), ...tour } } : {}) };
     // Un aperçu de PR voit les jeux comme `on` pour les montrer (badge « Brouillon ») : la réponse dépend alors de l'hôte, jamais mise en cache partagé.
-    if (apercuDePr(req)) return new WithHeaders({ ...corps, apercu: true }, { "Cache-Control": "no-store" });
+    if (apercu) return new WithHeaders({ ...corps, apercu: true }, { "Cache-Control": "no-store" });
     // `max-age=0` : le navigateur revalide à chaque ouverture ; `s-maxage=30` : le cache de Firebase Hosting, partagé par tous les joueurs, garde la réponse 30 s (comme le message en direct).
     return new WithHeaders(corps, { "Cache-Control": `public, max-age=0, s-maxage=${JEUX_CACHE_S}` });
   }
@@ -245,6 +252,38 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     const f = ficheDe(site);
     const premier = g.etat === "on" && f?.etatDepart === "on" && f.premierJour ? parseDay(f.premierJour) : null;
     return premier === null ? g.modifieLe : parisDayStart(premier);
+  }
+
+  // --- Lot PA1b : le tour de rôle des jeux Party ---------------------------------------------------------------------------------------------------
+  // **Le jeu Party d'un jour** se calcule à partir du seul numéro du jour et des jeux Party qui **comptent ce jour-là** (périodes `[du, au)` de l'interrupteur, lot P) : un jeu ouvert ou fermé en cours de journée
+  // compte à partir du lendemain, donc ne change pas le jeu du jour commencé ; aucune table, un jour passé se recalcule à l'identique. L'ordre est celui des dates d'ouverture (début de la période du jour), puis du
+  // dossier. **En aperçu** (aperçu de PR, clé d'aperçu), tous les jeux Party du registre sont en lice, dès leur premier jour : un jeu en brouillon se montre alors « classé aujourd'hui » quand son tour vient.
+  const aPartie = jeux.some((j) => j.categorie === "party");
+  /** Les jeux Party en lice ce jour-là. */
+  function partyEnLice(jour: number, tout: boolean): JeuPartyEnLice[] {
+    return jeux.flatMap((j): JeuPartyEnLice[] => {
+      if (j.categorie !== "party") return [];
+      if (tout) return j.premierJour !== undefined && j.premierJour <= jour ? [{ site: j.site, depuis: j.premierJour }] : [];
+      const depuis = debutDePeriode(lignes.get(j.site)?.periodes ?? [], jour);
+      return depuis === null ? [] : [{ site: j.site, depuis }];
+    });
+  }
+  /** Le dossier du jeu Party de ce jour, ou `null` (à lire après `charger()`). */
+  const partyDuJour = (jour: number, tout = false): string | null => jeuPartyDuJour(partyEnLice(jour, tout), jour);
+  /** Le prochain jour (après `jour`) où ce jeu sera en tête, si les jeux en lice restent ceux de demain (un jeu ouvert aujourd'hui y est, un jeu fermé aujourd'hui n'y est plus). */
+  const partyProchain = (site: string, jour: number, tout = false): string | null => {
+    const d = prochainJourParty(partyEnLice(jour + 1, tout), site, jour);
+    return d === null ? null : formatDay(d);
+  };
+  /** Ce que `GET /api/jeux` et `GET /api/portail/jour` écrivent : le jeu du jour et la prochaine date de chaque jeu Party en lice ; `undefined` tant que le registre n'a aucun jeu Party (la forme d'avant, bancs inchangés). */
+  function party(jour: number, tout = false): { jeu: string | null; prochains: Record<string, string> } | undefined {
+    if (!aPartie) return undefined;
+    const prochains: Record<string, string> = {};
+    for (const j of partyEnLice(jour + 1, tout)) {
+      const d = partyProchain(j.site, jour, tout);
+      if (d !== null) prochains[j.site] = d;
+    }
+    return { jeu: partyDuJour(jour, tout), prochains };
   }
 
   async function lister(): Promise<unknown> {
@@ -378,6 +417,9 @@ export function createJeux(platform: Platform, jeux: readonly JeuInterrupteur[])
     etat,
     compteLe,
     liveFrom,
+    partyDuJour,
+    partyProchain,
+    party,
     garde,
     apercuDePr,
     routePublique,

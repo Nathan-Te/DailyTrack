@@ -124,6 +124,8 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
 
   // Lot D4 — **un jeu sans table de niveaux garde le sien dans `meta`** (`contrat.garderEnBase`) : la clé dit le jeu et le jour, la valeur la **version du code** qui l'a calculé (`platform.revision`), la règle et la ligne du
   // contrat. Une autre version du code (un robot de seuils ou un générateur modifié) ne relit jamais ce que l'ancienne a gardé : elle recalcule. Une base où `meta` est vidée (remise à zéro) recalcule aussi.
+  // Lot PA1b : un jeu Party (catégorie de la fiche ; les fiches générées ne le typent pas tant qu'aucun jeu Party n'existe au registre).
+  const estParty = (fiche.categorie as string) === "party";
   const dansMeta = !tableNiveaux && contrat.garderEnBase === true;
   const versionDuCode = platform.revision ?? "local";
   const cleMeta = (day: number): string => `niveau:${fiche.code}:${formatDay(day)}`;
@@ -282,7 +284,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
 
   const ligne = (rank: number, brute: LigneBrute): unknown => contrat.ligneClassement!(rank, versFiche(adaptateur, brute));
 
-  async function board(day: number, me: string | null): Promise<unknown> {
+  async function board(day: number, me: string | null, info?: RequestInfo): Promise<unknown> {
     if (contrat.tableau) {
       // Point d'extension : le jeu met le classement en forme (Jump : `levelId`, `deaths`, un niveau lu seulement s'il y a des classés).
       const [count, rows, own] = await Promise.all([participants(day), db.all<LigneBrute>(sql.top, [day, config.top]), me ? db.first<LigneBrute>(sql.moi, [day, me]) : Promise.resolve(null)]);
@@ -304,7 +306,9 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       platform.generation(),
     ]);
     const mine = own && me ? ligne(await rankOf(day, scoreDe(versFiche(adaptateur, own)), Number(own.submitted_at), me), own) : null;
-    return { date: formatDay(day), open: isOpen(day), participants: count, top: rows.map((r, i) => ligne(i + 1, r)), me: mine, generation };
+    // Lot PA1b : un jeu Party dit **avant la partie** s'il est classé ce jour-là (`party.classe`) et, sinon, quand il le sera (`prochain`, `AAAA-MM-JJ`, `null` s'il n'est pas en lice) : la forme des autres jeux n'a pas ce champ.
+    const tour = estParty ? { party: { classe: info?.party?.duJour(day) === fiche.id, prochain: info?.party?.prochain(fiche.id) ?? null } } : {};
+    return { date: formatDay(day), open: isOpen(day), participants: count, top: rows.map((r, i) => ligne(i + 1, r)), me: mine, generation, ...tour };
   }
 
   /** Vrai si le score `a` passe strictement devant le score gardé `b` : la première colonne qui diffère décide (dans le sens de la fiche). */
@@ -403,6 +407,8 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       jour = j;
       if (jour > today()) throw new HttpError(409, "not_daily", "Ce jour n'est pas encore sorti");
       if (!isOpen(jour)) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé : seul le jour en cours se classe");
+      // Lot PA1b : **seul le jeu Party du jour est classé** (le jour de la partie, donc la veille pendant la grâce : celui de la veille) ; un autre jeu Party refuse, avant tout rejeu, par un code de la liste.
+      if (estParty && info.party?.duJour(jour) !== fiche.id) throw new HttpError(409, "not_party_of_the_day", "Ce jeu Party n'est pas le jeu Party de ce jour : seul le jeu du jour se classe");
       niveau = await getNiveau(jour);
       contrat.memeContenu!(r, niveau);
       // Lot D2 (C5) : un renvoi déjà accepté répond ici, **après** les contrôles du jour et du contenu (une autre version reste refusée) et **avant** le joueur, les copies, le plafond de rejeux et le rejeu.
@@ -532,7 +538,7 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
         }
         const day = dayOf(date);
         const open = isOpen(day);
-        if (m[2] === "/board") return new WithHeaders(await board(day, headerPlayer(req, false)), cacheHeaders({ open, perPlayer: true }));
+        if (m[2] === "/board") return new WithHeaders(await board(day, headerPlayer(req, false), info), cacheHeaders({ open, perPlayer: true }));
         if (m[2] === "/first") return new WithHeaders(await premier(day, headerPlayer(req, false)), cacheHeaders({ open, perPlayer: true }));
         if (m[2] !== undefined) return new WithHeaders(await fantome(day, headerPlayer(req, true)!), cacheHeaders({ open, perPlayer: true }));
         return new WithHeaders(await getInfo(day), cacheHeaders({ open, perPlayer: false }));

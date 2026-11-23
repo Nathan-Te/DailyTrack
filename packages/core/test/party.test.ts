@@ -72,3 +72,46 @@ describe("graine du jour (lot PA1)", () => {
     expect(graineDuJour("fete", 20500)).toBe(1006564898);
   });
 });
+
+// --- Lot PA1b : le tour de rôle ---------------------------------------------------------------------------------------------------------------
+import { debutDePeriode, jeuPartyDuJour, ordreParty, prochainJourParty, type PeriodeJeu } from "../src/jeux";
+
+describe("le tour de rôle des jeux Party (lot PA1b)", () => {
+  const J = 20_000; // un numéro de jour quelconque : aucune date du calendrier en dur
+  it("sans jeu en lice : pas de jeu du jour", () => {
+    expect(jeuPartyDuJour([], J)).toBeNull();
+    expect(prochainJourParty([], "a", J)).toBeNull();
+  });
+  it("l'ordre est celui des dates d'ouverture, puis du dossier", () => {
+    expect(ordreParty([{ site: "c", depuis: 5 }, { site: "b", depuis: 3 }, { site: "a", depuis: 5 }])).toEqual(["b", "a", "c"]);
+  });
+  it("un seul jeu en lice est le jeu de tous les jours", () => {
+    for (let d = J; d < J + 5; d++) expect(jeuPartyDuJour([{ site: "a", depuis: 1 }], d)).toBe("a");
+  });
+  it("les jeux passent à tour de rôle, en boucle, sans table : N jours de suite, chacun une fois", () => {
+    const lice = [{ site: "a", depuis: 1 }, { site: "b", depuis: 2 }, { site: "c", depuis: 3 }];
+    const vus = Array.from({ length: 6 }, (_, i) => jeuPartyDuJour(lice, J + i));
+    expect(new Set(vus.slice(0, 3)).size).toBe(3);
+    expect(vus.slice(3)).toEqual(vus.slice(0, 3));
+  });
+  it("le prochain jour en tête est celui où le tour de rôle le rend", () => {
+    const lice = [{ site: "a", depuis: 1 }, { site: "b", depuis: 2 }, { site: "c", depuis: 3 }];
+    for (const site of ["a", "b", "c"]) {
+      const d = prochainJourParty(lice, site, J)!;
+      expect(d).toBeGreaterThan(J);
+      expect(d).toBeLessThanOrEqual(J + 3);
+      expect(jeuPartyDuJour(lice, d)).toBe(site);
+    }
+    expect(prochainJourParty(lice, "inconnu", J)).toBeNull();
+  });
+  it("un jeu ouvert en cours de journée ne change pas le jeu du jour commencé (il compte dès le lendemain)", () => {
+    // Un jeu activé au jour J reçoit la période [J + 1, ∞) : au jour J il n'est pas en lice.
+    const periodes: PeriodeJeu[] = [[J + 1, null]];
+    expect(debutDePeriode(periodes, J)).toBeNull();
+    expect(debutDePeriode(periodes, J + 1)).toBe(J + 1);
+    // Fermé au jour J : sa période se ferme au lendemain, le jour J reste le sien.
+    const fermee: PeriodeJeu[] = [[J - 10, J + 1]];
+    expect(debutDePeriode(fermee, J)).toBe(J - 10);
+    expect(debutDePeriode(fermee, J + 1)).toBeNull();
+  });
+});
