@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION, VARIANTE, dailyCibles, enregistrer, jouer, scoreParColonnes } from "@cdj/cibles-sim";
+import { CIBLES_GENERATOR_VERSION, CIBLES_SIM_VERSION, COLONNES_CLASSEMENT, dailyCibles, enregistrer, jouer, joueurVif, scoreParColonnes } from "@cdj/cibles-sim";
 import { describe, expect, it } from "vitest";
 import { ESSAIS_CIBLES } from "../scripts/cibles-essais";
 import { crc32Hex } from "../src/identity";
@@ -7,15 +7,15 @@ import { GAMES } from "../src/registry";
 import { DAY_MS, makeApi, ouvrirJeu, playerId, type TestApi } from "./helpers";
 
 // Lot PA1 — le jeu Party de départ (copié de « Cibles », lot K4f), sur le contrat minimal d'un jeu neuf et la table commune `resultats_jeu` : le serveur sert le contenu du jeu (serveur = jeu), rejoue, classe dans le sens de la fiche
-// (les colonnes de la fiche : celles de la variante du jeu, `variante.ts`), refuse les copies et les rediffusions abîmées, range l'aperçu à part, efface un joueur, filtre « Mon groupe » et lit le jour figé de l'image.
-// SQLite et libSQL (`file:`), jamais Turso. Ce test passe pour les deux variantes (score, temps) : ce qui diffère passe par `VARIANTE`.
+// (les colonnes de la fiche : `COLONNES_CLASSEMENT`, `partie.ts`), refuse les copies et les rediffusions abîmées, range l'aperçu à part, efface un joueur, filtre « Mon groupe » et lit le jour figé de l'image.
+// SQLite et libSQL (`file:`), jamais Turso.
 
 const JOUR = daysFromCivil(2026, 11, 10);
 const DATE = formatDay(JOUR);
 const MIDI = JOUR * DAY_MS + 12 * 3_600_000;
 const VERSIONS = { simVersion: CIBLES_SIM_VERSION, generatorVersion: CIBLES_GENERATOR_VERSION };
 const entete = (n: number) => ({ "X-Player-Id": playerId(n) });
-const PREMIERE = VARIANTE.fiche.colonnes[0]!;
+const PREMIERE = COLONNES_CLASSEMENT[0];
 const hotePr = { "X-Forwarded-Host": "site-recette--pr-12-0123abcd.web.app" };
 
 async function monter(options: { copies?: boolean; frozen?: Record<string, unknown>; adminToken?: string } = {}): Promise<TestApi> {
@@ -63,7 +63,7 @@ describe("Cibles sur le serveur", () => {
   it("à score égal, le plus rapide passe devant (le départage de la fiche)", async () => {
     const t = await monter();
     const c = dailyCibles(JOUR);
-    const avecDelai = (delai: number) => enregistrer(c, VARIANTE.joueur(c, () => delai));
+    const avecDelai = (delai: number) => enregistrer(c, joueurVif(c, () => delai));
     await t.call("POST", "/api/cibles/submit", { replay: avecDelai(20), name: "Lent" }, { headers: entete(1) });
     await t.call("POST", "/api/cibles/submit", { replay: avecDelai(15), name: "Vif" }, { headers: entete(2) });
     const board = await t.call("GET", `/api/cibles/day/${DATE}/board`);
@@ -76,6 +76,10 @@ describe("Cibles sur le serveur", () => {
     const copie = await envoyer(t, 3, 1);
     expect(copie.body.error).toBe("replay_copy");
     expect((await t.call("POST", "/api/cibles/submit", { replay: "pas-une-rediffusion", name: "Zéro" }, { headers: entete(4) })).body.error).toBe("invalid_replay");
+    // Lot PA1c : deux parties sans aucune touche ne sont pas des copies l'une de l'autre (une rediffusion sans entrée n'est jamais comparée).
+    const vide = enregistrer(dailyCibles(JOUR), []);
+    expect((await t.call("POST", "/api/cibles/submit", { replay: vide, name: "Vide1" }, { headers: entete(6) })).status).toBe(200);
+    expect((await t.call("POST", "/api/cibles/submit", { replay: vide, name: "Vide2" }, { headers: entete(7) })).status).toBe(200);
     const autreJour = enregistrer(dailyCibles(JOUR - 1), []);
     expect((await t.call("POST", "/api/cibles/submit", { replay: autreJour, name: "Hier" }, { headers: entete(5) })).status).toBe(409);
   });
@@ -102,14 +106,21 @@ describe("Cibles sur le serveur", () => {
 
   it("aperçu de PR : la partie est rangée à part, n'est dans aucun classement ; effacée quand le jeu passe `on`", async () => {
     const t = await makeApi({ seed: false, games: GAMES, allowCopies: true, environment: "recette" });
-    t.clock.now = MIDI;
+    // Lot PA1c — en aperçu, tous les jeux Party du registre sont en lice à tour de rôle (lot PA1b) et un seul est classé chaque jour : un autre jeu Party (celui d'un autre lot, un jeu fictif de la CI) peut être le jeu du jour.
+    // Le test ne suppose donc jamais un seul jeu Party : il cherche, avec l'horloge maîtrisée, le premier jour où son jeu est en tête (le tour de rôle n'a jamais plus d'un cycle d'attente par jeu).
+    let jour = JOUR;
+    for (; jour < JOUR + 16; jour++) {
+      t.clock.now = jour * DAY_MS + 12 * 3_600_000;
+      if ((await t.call("GET", `/api/cibles/day/${formatDay(jour)}/board`, undefined, { headers: hotePr })).body.party?.classe) break;
+    }
+    expect(jour, "ce jeu est le jeu Party du jour un des jours cherchés").toBeLessThan(JOUR + 16);
     await t.call("GET", "/api/health");
-    const rep = ESSAIS_CIBLES.partie(JOUR, VERSIONS, 2).rediffusion;
+    const rep = ESSAIS_CIBLES.partie(jour, VERSIONS, 2).rediffusion;
     expect((await t.call("POST", "/api/cibles/submit", { replay: rep, name: "Joueur1" }, { headers: entete(1) })).body.error).toBe("game_unavailable"); // `off`, sans la clé d'un aperçu
     const r = await t.call("POST", "/api/cibles/submit", { replay: rep, name: "Joueur1" }, { headers: { ...entete(1), ...hotePr } });
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(await t.db.first("SELECT hidden, apercu FROM resultats_jeu WHERE jeu = 'cibles' AND player_id = ?", [playerId(1)])).toEqual({ hidden: 1, apercu: 1 });
-    expect((await t.call("GET", `/api/cibles/day/${DATE}/board`, undefined, { headers: { ...hotePr, ...entete(2) } })).body).toMatchObject({ participants: 0, top: [] });
+    expect((await t.call("GET", `/api/cibles/day/${formatDay(jour)}/board`, undefined, { headers: { ...hotePr, ...entete(2) } })).body).toMatchObject({ participants: 0, top: [] });
   });
 
   it("effacement d'un joueur : ses parties (crochet `erase`), le classement se recalcule sans lui", async () => {

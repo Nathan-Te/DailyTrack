@@ -418,7 +418,8 @@ export function creerJeu<Niveau, Rejeu, Mesure>(platform: Platform, config: Conf
       await joueur();
       // 7. Copies (lot R9) : refusées avant d'écrire quoi que ce soit, pas même le joueur ; le même joueur qui renvoie sa propre partie n'est pas concerné.
       hash = await inputsHash(contrat.entrees!(r));
-      await refuserCopies(jour, hash, contrat.empreinteAuteur(niveau), playerId);
+      // Lot PA1c : une partie sans aucune entrée (un jeu Party sans appui) a les entrées de toutes les parties sans entrée : ce n'est la copie de personne, elle n'est jamais comparée.
+      if (!contrat.sansEntree?.(r)) await refuserCopies(jour, hash, contrat.empreinteAuteur(niveau), playerId);
       // 8. Le plafond de rejeux, puis le rejeu : la seule source du résultat.
       mesure = await rejouer(niveau, body.replay as string, r);
     }

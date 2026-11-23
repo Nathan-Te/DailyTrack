@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validerFiche } from "@cdj/core/fiche";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { ENTREES_MECANIQUES, TEINTES, choisirTeinte, cloner, construirePassation, etatDuJeu, fichesExistantes, fichiersDuModele, lireOptions, planifier, portsLibres, principal, renommer, resume, verifierId } from "../../../scripts/nouveau-jeu.mjs";
+import { ENTREES_MECANIQUES, PAGES_MENTIONS, REPERE_MENTIONS, TEINTES, ajouterAuxMentions, choisirTeinte, cloner, construirePassation, etatDuJeu, fichesExistantes, fichiersDuModele, lireOptions, planifier, portsLibres, principal, renommer, resume, verifierId } from "../../../scripts/nouveau-jeu.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { classer, contient } from "../../../scripts/kit-bout-en-bout.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
@@ -120,8 +120,8 @@ describe("le plan à blanc, sur le dépôt réel", () => {
     expect(plan.fiche.categorie).toBe("arcade");
     expect(validerFiche(plan.fiche, "banctest")).toEqual([]);
   });
-  for (const classement of ["score", "temps"] as const) {
-    it(`lot PA1 : \`--categorie party\` (« ${classement} ») : une fiche Party valide sans thèmes ni jours figés, un jeu sans générateur de niveaux, sans robot et sans médailles`, async () => {
+  for (const classement of ["score"] as const) {
+    it(`lot PA1 : \`--categorie party\` (« ${classement} », le seul classement d'un jeu Party depuis le lot PA1c) : une fiche Party valide sans thèmes ni jours figés, un jeu sans générateur de niveaux, sans robot et sans médailles`, async () => {
       const plan = await planifier(lireOptions(["--id", "banctest", "--categorie", "party", "--classement", classement, "--a-blanc", "--sans-commandes"]));
       expect(validerFiche(plan.fiche, "banctest")).toEqual([]);
       expect(plan.fiche).toMatchObject({ categorie: "party", themes: [], identite: { police: POLICE_PARTY, motif: MOTIF_PARTY, illustration: "à choisir", aujourdhui: false }, musique: { scenes: ["menu"] } });
@@ -130,6 +130,20 @@ describe("le plan à blanc, sur le dépôt réel", () => {
       const chemins: string[] = plan.creations.map((f: { chemin: string }) => f.chemin);
       // Rien de ce que la catégorie n'a pas : ni générateur de niveaux, ni bot, ni médailles, ni thèmes, ni jours figés, ni script d'empreinte ou de figement.
       expect(chemins.filter((f) => /generateur|\/bot\.ts|medailles|themes\.ts|\/jours\.ts|figer|empreintes|public\/jours/.test(f))).toEqual([]);
+      // Lot PA1c : ni `variante.ts` (le classement au score est dans `partie.ts`), ni les trois specs du kit, ni les essais du témoin (`?debug&chargement|hud|bilan|dessins`, les clés `bilan.*`, la surimpression de la scène).
+      expect(chemins.filter((f) => /variante|chargement-partie|surimpression\.spec|fin-et-aide/.test(f))).toEqual([]);
+      expect(chemins).toContain("packages/banctest-sim/src/partie.ts");
+      expect(plan.fiche.e2e.specs).not.toHaveProperty("fin-et-aide.spec.ts");
+      expect(plan.fiche.e2e.regression).toEqual(["ecrans-kit.spec.ts"]);
+      for (const spec of ["chargement-partie.spec.ts", "surimpression.spec.ts", "fin-et-aide.spec.ts"]) expect(plan.fiche.e2e.specs, spec).not.toHaveProperty(spec);
+      const durees = JSON.parse(plan.creations.find((f: { chemin: string }) => f.chemin === "apps/banctest/e2e/durees.json").contenu);
+      expect(Object.keys(durees.secondes).sort()).toEqual(["classement.spec.ts", "determinisme.spec.ts", "ecrans-kit.spec.ts", "partie.spec.ts", "poids.spec.ts"]);
+      const contenu = (chemin: string): string => plan.creations.find((f: { chemin: string }) => f.chemin === chemin).contenu;
+      expect(contenu("apps/banctest/src/definition.ts")).not.toMatch(/essai\(|VARIANTE|chargerPartie|dessinsAide|hud:/);
+      expect(contenu("apps/banctest/src/scene.ts")).not.toMatch(/VARIANTE|zones|surimpression|majZones/);
+      expect(contenu("apps/banctest/src/catalogue.fr.ts")).not.toContain('"bilan.');
+      expect(contenu("apps/banctest/src/catalogue.en.ts")).not.toContain('"bilan.');
+      for (const f of chemins.filter((x) => /\.(ts|json)$/.test(x))) expect(contenu(f) ?? "", f).not.toMatch(/VARIANTE|\.\/variante/);
       expect(chemins).toEqual(expect.arrayContaining(["packages/banctest-sim/src/tirage.ts", "apps/api/src/banctest.ts"]));
       const texte = (chemin: string): string => plan.creations.find((f: { chemin: string }) => f.chemin === chemin).contenu;
       expect(texte("apps/api/src/banctest.ts")).toContain("definirJeuParty");
@@ -143,6 +157,44 @@ describe("le plan à blanc, sur le dépôt réel", () => {
       expect(chemins.filter((ch) => !zones.some((z) => z.test(ch)) && ch !== "config/jeux/banctest.json")).toEqual([]);
     });
   }
+  it("lot PA1c : un jeu Party n'a pas de variante de classement : `--categorie party --classement temps` est refusé", () => {
+    expect(() => lireOptions(["--id", "banctest", "--categorie", "party", "--classement", "temps"])).toThrow(/se classe au score/);
+    expect(() => lireOptions(["--id", "banctest", "--categorie", "party"])).not.toThrow();
+    expect(() => lireOptions(["--id", "banctest", "--categorie", "jour", "--classement", "temps"])).not.toThrow();
+  });
+  it("lot PA1c : le Dockerfile d'un jeu Party ne copie pas `public/jours` (il n'a pas de jours figés) ; celui d'un jeu du jour le copie", async () => {
+    const copie = async (categorie: string): Promise<string[]> => {
+      const plan = await planifier(lireOptions(["--id", "banctest", "--categorie", categorie, "--a-blanc", "--sans-commandes"]));
+      const e = plan.editions.find((x: { chemin: string }) => x.chemin === "apps/api/Dockerfile");
+      return (e.apres as string).split("\n").filter((l) => /banctest/.test(l) && !l.startsWith("#"));
+    };
+    const party = await copie("party");
+    expect(party).toEqual(["COPY apps/banctest/package.json apps/banctest/", "COPY packages/banctest-sim/package.json packages/banctest-sim/", "COPY packages/banctest-sim packages/banctest-sim"]);
+    expect(await copie("jour")).toContain("COPY apps/banctest/public/jours apps/banctest/public/jours");
+  });
+  it("lot PA1c : le générateur écrit les clés du navigateur du jeu dans les deux pages des mentions légales, avant leur repère, sans rien retirer — pour tout jeu, Party compris", async () => {
+    for (const categorie of ["jour", "party"]) {
+      const plan = await planifier(lireOptions(["--id", "banctest", "--categorie", categorie, "--a-blanc", "--sans-commandes"]));
+      for (const [chemin] of PAGES_MENTIONS as [string, string][]) {
+        const e = plan.editions.find((x: { chemin: string }) => x.chemin === chemin);
+        expect(e, chemin).toBeDefined();
+        const lignes = (e.apres as string).split("\n");
+        const avant = new Set((e.avant as string).split("\n"));
+        expect((e.avant as string).split("\n").filter((l) => !lignes.includes(l)), `${chemin} : une ligne retirée`).toEqual([]);
+        expect(lignes.filter((l) => !avant.has(l))).toHaveLength(1);
+        for (const k of ["…", "records", "reglages", "aide:vu", "identite:vue"]) expect(e.apres, `${chemin} : banctest:${k}`).toContain(`<code>banctest:${k}</code>`.replace("banctest:…</code>", "banctest:…</code>"));
+        const i = lignes.findIndex((l) => l.includes("<code>banctest:records</code>"));
+        expect(lignes[i + 1].trim(), "la phrase est écrite juste avant le repère").toBe(REPERE_MENTIONS);
+      }
+    }
+    // Les deux pages du dépôt ont leur repère (une fois) ; sans lui, le générateur le dit au lieu d'écrire au hasard.
+    for (const [chemin, langue] of PAGES_MENTIONS as [string, string][]) {
+      const page = readFileSync(join(RACINE, chemin), "utf8");
+      expect(page.split(REPERE_MENTIONS).length - 1, chemin).toBe(1);
+      expect(() => ajouterAuxMentions(page.replace(REPERE_MENTIONS, ""), chemin, c, langue)).toThrow(/le générateur doit suivre/);
+      expect(() => ajouterAuxMentions(ajouterAuxMentions(page, chemin, c, langue), chemin, c, langue), "un jeu déjà décrit n'est pas écrit deux fois").toThrow(/déjà décrit/);
+    }
+  });
   it("lot PA1 : l'identité de la catégorie du générateur est celle de `@cdj/core/fiche`, et chaque retouche Party trouve son texte dans le modèle", () => {
     expect({ POLICE_PARTY, MOTIF_PARTY }).toEqual({ POLICE_PARTY: POLICE_FICHE, MOTIF_PARTY: MOTIF_FICHE });
     // `partyTexte` lève si une retouche ne trouve pas son texte : tous les fichiers retouchés passent.

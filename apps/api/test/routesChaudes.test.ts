@@ -18,14 +18,17 @@ import { TEST_DB } from "./helpers";
 //   - routes qui calculent le classement du jour du portail (visiteur sans joueur : 3 ; avec joueur et classement : ≈ 450) : le calcul lit les 1,9 lignes par joueur du jour, **une fois par
 //     fenêtre de 45 s et par instance** (lot I3) → plafond **= 2 lignes par résultat du jour de la référence (333) + 100 = 770** ; au-delà, il se met à lire autre chose que le jour.
 //   - envois (Track, Jump) : 8 et 20 lignes → plafond **100**.
-//   - dans tous les cas : **au plus 10 lignes parcourues sans index** (un `SCAN`), au plus **30 instructions** (chaque instruction est un aller-retour réseau vers Turso).
+//   - dans tous les cas : **au plus 10 lignes parcourues sans index** (un `SCAN`), au plus **20 + une par fiche** instructions (30 avec les 10 fiches du dépôt ; chaque instruction est un aller-retour réseau vers Turso).
 const PLAFOND_LECTURE = 100;
 const PLAFOND_CLASSEMENT_JOUR = 770;
 // Lot K4f : la table `jeux` (une ligne par jeu, lue en entier à chaque instance neuve) compte dans les lignes parcourues : 7 de base + une par jeu de la référence (3 jeux : 10, comme avant ; 4 avec « Cibles » : 11).
 // Lot B0 (mesuré le 04/11/2026) : « portail classement (cumul) » compte 3 requêtes (`jeux`, `planning`, `jump_levels`) qui parcourent chacune autant de lignes que de jeux : 12 avec les 5 fiches du dépôt, 15 avec 6 (le jeu
 // fictif de la CI), soit 3 de plus par jeu. Le plafond suit : **3 par fiche** (15 et 18), avec 3 lignes de marge ; l'ancien `7 + 1 par fiche` ne tenait qu'à 5 fiches (12 pour 12) et cassait au 6ᵉ jeu.
 const PLAFOND_PARCOURUES = 3 * FICHES_SERVEUR.length;
-const PLAFOND_INSTRUCTIONS = 30;
+// Lot PA1c (mesuré le 23/11/2026) : « portail jour (joueur) » lit **les jours joués dans chaque jeu** (une instruction `SELECT day FROM resultats_jeu WHERE jeu = ?` par jeu : la série, la semaine) : 29 instructions avec
+// les 10 fiches du dépôt, 31 avec 12 (le dépôt, le jeu fictif du banc et son jeu Party). Le plafond suit : **20 + 1 par fiche** (30 et 32 : la marge d'une instruction, comme avant ; la base est de 19). L'ancien « 30 » ne tenait qu'à 10 fiches
+// et cassait à la 11ᵉ ; les routes qui lisent par jeu ont leur propre pas (une requête de plus par jeu, jamais par joueur ni par jour : le plafond des lignes lues, lui, reste fixe).
+const PLAFOND_INSTRUCTIONS = 20 + FICHES_SERVEUR.length;
 const CLASSEMENT = new Set(["portail jour (joueur)", "portail classement (cumul)"]);
 
 // La mesure ouvre sa propre base libSQL locale : la faire une fois suffit (le projet « libsql » rejouerait la même chose).

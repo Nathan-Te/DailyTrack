@@ -1,6 +1,22 @@
 // Lot M2 (plateforme) : ÉDITER les commandes — un module À LA DEMANDE (chargé avec l'écran Réglages › Commandes, jamais dans le premier chargement d'un jeu : le jeu ne fait que LIRE
 // ses touches, `commandes.ts`). Une touche déjà prise est ÉCHANGÉE avec l'action qui l'avait ; Échap et Start sont fixes ; « Rétablir » ramène l'origine et retire la clé de stockage.
-import { BOUTON_FIXE, TOUCHE_FIXE, boutonLiaison, cleCommandes, liaisonValide, toucheValide, type Commandes, type Liaison } from "./commandes";
+import { BOUTON_FIXE, TOUCHE_FIXE, VERSION_COMMANDES, boutonLiaison, cleCommandes, liaisonValide, toucheValide, type Commandes, type Liaison } from "./commandes";
+
+/** Les emplacements de l'action, vides compris (`""`) : l'écran des réglages. (Lot PA1c : ce que seul l'écran des commandes lit n'est plus dans la classe du premier chargement.) */
+export function emplacementsDe(c: Commandes, id: string): string[] {
+  const l = [...(c.etat.clavier[id] ?? [])];
+  while (l.length < c.emplacements(id)) l.push("");
+  return l;
+}
+/** Enregistre les choix (`localStorage`, sous `try/catch`) et prévient les abonnés. */
+export function enregistrer(c: Commandes): void {
+  try {
+    c.stockage?.setItem(cleCommandes(c.jeu), JSON.stringify({ v: VERSION_COMMANDES, clavier: c.etat.clavier, manette: c.etat.manette }));
+  } catch {
+    // stockage plein ou refusé : les choix vivent le temps de la page
+  }
+  for (const f of [...c.abonnes]) f();
+}
 
 export type ResultatTouche =
   | { ok: true; echange: { action: string; emplacement: number } | null }
@@ -28,7 +44,7 @@ export function definirTouche(c: Commandes, id: string, emplacement: number, cod
   if (!c.parId.has(id) || emplacement < 0 || emplacement >= c.emplacements(id)) return { ok: false, raison: "inconnue" };
   if (code === TOUCHE_FIXE) return { ok: false, raison: "fixe" };
   if (!toucheValide(code)) return { ok: false, raison: "invalide" };
-  const mien = c.emplacementsDe(id);
+  const mien = emplacementsDe(c, id);
   const ancienne = mien[emplacement] ?? "";
   if (ancienne === code) return { ok: true, echange: null };
   let echange: { action: string; emplacement: number } | null = null;
@@ -39,7 +55,7 @@ export function definirTouche(c: Commandes, id: string, emplacement: number, cod
   } else {
     const autre = c.actionDeTouche(code);
     if (autre) {
-      const siens = c.emplacementsDe(autre);
+      const siens = emplacementsDe(c, autre);
       const i = siens.indexOf(code);
       siens[i] = ancienne; // l'autre action reçoit la touche qu'on remplace (vide si l'emplacement l'était)
       c.etat.clavier[autre] = siens;
@@ -48,7 +64,7 @@ export function definirTouche(c: Commandes, id: string, emplacement: number, cod
   }
   mien[emplacement] = code;
   c.etat.clavier[id] = mien;
-  c.enregistrer();
+  enregistrer(c);
   return { ok: true, echange };
 }
 
@@ -59,10 +75,10 @@ export function definirLiaison(c: Commandes, id: string, liaison: Liaison): Resu
   if (!liaisonValide(liaison)) return { ok: false, raison: "invalide" };
   const avant = c.liaison(id);
   if (avant === liaison) return { ok: true, echange: null };
-  const autre = c.actions.find((a) => c.etat.manette[a.id] === liaison)?.id ?? null;
+  const autre = c.actions.find((a) => a.id !== id && c.liaisons(a.id).includes(liaison))?.id ?? null; // lot PA1c : une des liaisons d'une action qui en a plusieurs compte aussi
   if (autre) c.etat.manette[autre] = avant;
   c.etat.manette[id] = liaison;
-  c.enregistrer();
+  enregistrer(c);
   return { ok: true, echange: autre };
 }
 

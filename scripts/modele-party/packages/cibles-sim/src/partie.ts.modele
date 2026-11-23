@@ -1,0 +1,127 @@
+import { COLONNES, DUREE_TICKS, NB_CASES, NB_CIBLES, TICKS_PAR_SECONDE } from "./constantes";
+import { type Contenu } from "./tirage";
+
+// La partie du jeu Party de départ (lot PA1c : plus de `variante.ts`, un jeu Party se classe au score) : 900 ticks à 30 Hz au plus. À chaque tick, les touches du tick sont appliquées (`toucher`), puis le temps avance
+// (`avancer`). Tout est entier. Une touche compte si elle vise la case de la cible visible à ce tick et que celle-ci n'est pas déjà touchée ; toute autre touche est ignorée (aucune pénalité). Chaque cible reste
+// visible de `d` à `f` (ticks) ; la partie dure 30 s. On classe les cibles touchées (↓), puis le tick de la dernière touche (↑) : **les colonnes de la fiche, le score et les textes du score sont ici**, avec la partie.
+
+export interface Resultat {
+  /** Les cibles touchées. */
+  touches: number;
+  /** Le tick de la dernière touche réussie ; `DUREE_TICKS` quand aucune cible n'a été touchée. */
+  dernier: number;
+  /** Les touches qui n'ont rien touché (information, jamais classée). */
+  ratees: number;
+  /** Les ticks joués (la partie finit au plus à `DUREE_TICKS`). */
+  ticks: number;
+}
+
+export class Partie {
+  tick = 0;
+  touches = 0;
+  ratees = 0;
+  private dernierTick = -1;
+  private readonly prises: boolean[];
+
+  constructor(readonly contenu: Contenu) {
+    this.prises = contenu.cibles.map(() => false);
+  }
+
+  get finie(): boolean {
+    return this.tick >= DUREE_TICKS;
+  }
+
+  /** La cible visible à ce tick (son rang dans le contenu), ou −1. */
+  cibleVisible(): number {
+    return this.contenu.cibles.findIndex((x, i) => !this.prises[i] && this.tick >= x.d && this.tick < x.f);
+  }
+
+  /** Le nombre de cibles pas encore touchées. */
+  ciblesRestantes(): number {
+    return this.prises.filter((p) => !p).length;
+  }
+
+  /** Une touche de la case `c` à ce tick. Rend vrai si elle a touché une cible. */
+  toucher(c: number): boolean {
+    if (this.finie || !Number.isInteger(c) || c < 0 || c >= NB_CASES) return false;
+    const i = this.cibleVisible();
+    if (i >= 0 && this.contenu.cibles[i]!.c === c) {
+      this.prises[i] = true;
+      this.touches++;
+      this.dernierTick = this.tick;
+      return true;
+    }
+    this.ratees++;
+    return false;
+  }
+
+  avancer(): void {
+    if (!this.finie) this.tick++;
+  }
+
+  resultat(): Resultat {
+    return { touches: this.touches, dernier: this.dernierTick < 0 ? DUREE_TICKS : this.dernierTick, ratees: this.ratees, ticks: this.tick };
+  }
+}
+
+/** La case sous un point d'un plateau de `largeur` × `hauteur` (coordonnées ≥ 0), ou −1 hors du plateau. Entier. */
+export function caseAuPoint(x: number, y: number, largeur: number, hauteur: number, lignes: number): number {
+  if (x < 0 || y < 0 || x >= largeur || y >= hauteur) return -1;
+  const col = Math.floor((x * COLONNES) / largeur);
+  const lig = Math.floor((y * lignes) / hauteur);
+  return lig * COLONNES + col;
+}
+
+export interface Touche {
+  tick: number;
+  c: number;
+}
+
+/** Joue une partie entière : les touches dans l'ordre des ticks. */
+export function jouer(contenu: Contenu, touches: readonly Touche[]): Resultat {
+  const p = new Partie(contenu);
+  let k = 0;
+  while (!p.finie) {
+    while (k < touches.length && touches[k]!.tick === p.tick) p.toucher(touches[k++]!.c);
+    p.avancer();
+  }
+  return p.resultat();
+}
+
+// --- Le classement et le texte du score -------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les colonnes de classement de la fiche (`config/jeux/<id>.json`, avant les deux départages ultimes ; `test/cibles.test.ts` garde l'accord). */
+export const COLONNES_CLASSEMENT = [
+  { nom: "touches", sens: "desc" },
+  { nom: "dernier", sens: "asc" },
+] as const;
+/** Le score : les colonnes de classement, dans l'ordre de la fiche. */
+export const scoreDe = (r: Pick<Resultat, "touches" | "dernier">): number[] => [r.touches, r.dernier];
+/** Le score d'un résultat rejoué, par nom de colonne de la fiche : ce que le serveur classe. */
+export const scoreParColonnes = (r: Pick<Resultat, "touches" | "dernier">): Record<string, number> => Object.fromEntries(COLONNES_CLASSEMENT.map((c, i) => [c.nom, scoreDe(r)[i]!]));
+export const formatScore = (score: readonly number[]): string => `${score[0] ?? 0} / ${NB_CIBLES}`;
+export const scorePartage = (score: readonly number[]): string => `${score[0] ?? 0}/${NB_CIBLES}`;
+
+// --- Ce que la scène et les essais lisent -----------------------------------------------------------------------------------------------------------------------------------------------------------
+/** La part de temps qu'il reste à la cible visible (l'anneau qui se resserre), de 0 à 1. */
+export const fractionDe = (p: Pick<Partie, "contenu" | "tick">, rang: number): number => (p.contenu.cibles[rang]!.f - p.tick) / (p.contenu.cibles[rang]!.f - p.contenu.cibles[rang]!.d);
+const minutes = (ticks: number): string => `0:${String(Math.max(0, Math.ceil(ticks / TICKS_PAR_SECONDE))).padStart(2, "0")}`;
+/** Ce que la bande du haut montre : les cibles touchées et le temps qui reste. */
+export const hudDe = (touches: number, tick: number): { principal: string; secondaire: string } => ({ principal: `${touches} / ${NB_CIBLES}`, secondaire: minutes(DUREE_TICKS - tick) });
+/** Un joueur scripté : il touche chaque cible `delai(rang)` ticks après son apparition ; `rate(rang)` : il la laisse filer. Les tests, le golden et les essais s'en servent. */
+export const joueurVif = (c: Contenu, delai: (rang: number) => number, rate: (rang: number) => boolean = () => false): Touche[] =>
+  c.cibles.flatMap((x, i) => {
+    const filee = rate(i); // l'ordre des appels est fixe (le hasard des essais en dépend) : la cible filée, puis son délai
+    const d = delai(i);
+    return filee ? [] : [{ tick: x.d + d, c: x.c }];
+  });
+/** Le joueur lent du golden : il réagit en 14 à 24 ticks, rate une cible sur quatre et tape à côté une fois sur trois. */
+export function joueurLent(c: Contenu): Touche[] {
+  const t: Touche[] = [];
+  c.cibles.forEach((x, i) => {
+    if (i % 4 === 3) return;
+    if (i % 3 === 0) t.push({ tick: x.d + 5, c: (x.c + 1) % 48 });
+    t.push({ tick: x.d + 14 + (i % 11), c: x.c });
+  });
+  return t.sort((a, b) => a.tick - b.tick);
+}

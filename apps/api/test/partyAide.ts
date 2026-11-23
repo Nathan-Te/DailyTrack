@@ -59,7 +59,8 @@ const contrat = (): ContratParty<Rejeu, Mesure> => ({
     return { points: r.charge.reduce((a, b) => a + b, 0) + (graine % 7) };
   },
   score: (m) => ({ points: m.points }),
-  entrees: (r) => `partyjouet|${r.charge.join(",")}`,
+  // Lot PA1c : une charge de zéros est une partie « sans appui » (aucune entrée jouée) : `null`, elle n'est jamais comparée aux autres.
+  entrees: (r) => (r.charge.every((v) => v === 0) ? null : `partyjouet|${r.charge.join(",")}`),
 });
 /** Un jeu Party jouet de dossier `id` (lot PA1b : le tour de rôle). */
 export const partyJouetDe = (id: string) => definirJeuParty<Rejeu, Mesure, never>({ fiche: fichePartieDe(id), nom: id }, () => contrat()) as GameDefinition<never>;

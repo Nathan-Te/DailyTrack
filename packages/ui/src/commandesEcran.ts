@@ -1,6 +1,6 @@
 import { CATALOGUE_COMMANDES } from "./catalogue.commandes";
 import { BOUTON_FIXE, TOUCHE_FIXE, boutonLiaison, nomLiaison, nomTouche, type Commandes } from "./commandes";
-import { definirLiaison, definirTouche, liaisonPoussee, retablir } from "./commandesEdition";
+import { definirLiaison, definirTouche, emplacementsDe, liaisonPoussee, retablir } from "./commandesEdition";
 import feuille from "./commandes.css?url";
 import { el } from "./dom";
 
@@ -167,7 +167,7 @@ export function ecranCommandes(o: OptionsEcranCommandes): EcranCommandes {
   function panneauClavier(): HTMLElement {
     const liste = el("ul", { classe: "dj-commandes__liste" });
     for (const a of commandes.actions) {
-      const emplacements = commandes.emplacementsDe(a.id);
+      const emplacements = emplacementsDe(commandes, a.id);
       const boutons = emplacements.map((code, i) => {
         const enAttente = attente?.type === "clavier" && attente.id === a.id && attente.emplacement === i;
         const texte = enAttente ? txt("commandes.attente") : code ? nom(code) : txt("commandes.touche.vide");
@@ -197,11 +197,11 @@ export function ecranCommandes(o: OptionsEcranCommandes): EcranCommandes {
     for (const a of commandes.actions) {
       if (a.manette === null) continue; // pas de bouton d'origine (courir : stick et croix ; pause : Start) : rien à régler, la ligne fixe est donnée par le jeu
       const enAttente = attente?.type === "manette" && attente.id === a.id;
-      const l = commandes.liaison(a.id);
+      const nom = commandes.nomLiaison(a.id, langue()); // lot PA1c : toutes les liaisons de l'action (« A / B / X / Y »)
       const b = el("button", {
         classe: ["dj-commande__touche", enAttente && "dj-commande__touche--attente"],
-        texte: enAttente ? txt("commandes.attente.manette") : nomLiaison(l, langue()),
-        attrs: { type: "button", "data-focus": `m:${a.id}`, "aria-label": txt("commandes.liaison.changer", { action: nomDe(a.id), touche: nomLiaison(l, langue()) }) },
+        texte: enAttente ? txt("commandes.attente.manette") : nom,
+        attrs: { type: "button", "data-focus": `m:${a.id}`, "aria-label": txt("commandes.liaison.changer", { action: nomDe(a.id), touche: nom }) },
       });
       b.addEventListener("click", () => (enAttente ? finir("", `m:${a.id}`) : attendreBouton(a.id)));
       liste.append(

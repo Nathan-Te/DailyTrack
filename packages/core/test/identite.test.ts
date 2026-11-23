@@ -76,6 +76,7 @@ describe("l'identité de chaque jeu", () => {
   it("`aujourdhui: false` n'est permis qu'aux jeux de la liste d'exemptions (chacun avec sa raison), et la liste n'en garde aucun qui fournit son panneau", () => {
     for (const f of fiches()) {
       if (f.temoin) continue; // le jeu témoin est le modèle du kit : il n'a pas de panneau propre
+      if (f.categorie === "party") continue; // lot PA1c : la fiche impose `aujourdhui: false` à un jeu Party (rien ne change d'un jour à l'autre, `validerFiche`) : ce n'est pas une exemption à justifier
       if (!identiteComplete(f)) continue; // un jeu de départ (identité « à choisir ») ne peut pas être publié : l'exemption se décide avec son identité
       if (f.identite.aujourdhui === false) expect(AUJOURDHUI_EXEMPTES, `${f.id} : fournir le panneau « Aujourd'hui », ou s'inscrire à la liste d'exemptions`).toHaveProperty(f.id);
     }

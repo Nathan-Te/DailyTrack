@@ -1,4 +1,5 @@
 import { daysFromCivil } from "@cdj/core";
+import { jeuPartyDuJour } from "@cdj/core/jeux";
 import { parisDayStart } from "@cdj/clock";
 import type { SqlDb, SqlValue } from "../src/db";
 import { ensureSchemaOn } from "../src/db";
@@ -10,6 +11,20 @@ import { FICHES_SERVEUR } from "../src/fiches.generated";
  * ne les décode. Déterministe (aucun hasard). Sert à `npm run measure:lignes` et au test de garde des routes chaudes (`apps/api/test/routesChaudes.test.ts`).
  */
 export const REFERENCE = { joueurs: 300, jours: 14, /** Un joueur sur `PARTICIPATION` ne joue pas un jour donné de chaque jeu. */ participation: 3, /** Un jeu neuf (lot K4f) : un joueur sur `participationJeuNeuf` y joue un jour donné. */ participationJeuNeuf: 6 };
+
+/**
+ * Lot PA1c — **le tour de rôle des jeux Party de la référence** : chaque jeu Party des fiches est `on` depuis toujours, donc en lice depuis le jour 0 (table `jeux`, ci-dessous) et un seul est classé chaque jour
+ * (`jeuPartyDuJour`, la fonction pure du serveur). Avec deux jeux Party (Pile poil et le jeu que génère « Kit de bout en bout »), chacun n'a de parties que les jours où il est en tête, et une mesure d'envoi se
+ * fait **un jour où il l'est** : il n'y a pas de jour fixe.
+ */
+const PARTY_DE_LA_REFERENCE = FICHES_SERVEUR.filter((f) => f.categorie === "party" && "tableCommune" in f && f.tableCommune === "resultats_jeu").map((f) => ({ site: f.id, depuis: 0 }));
+/** Le jeu `id` est-il classé le jour `jour` dans la référence ? Un jeu Party : le jour où il est le jeu du jour ; tout autre jeu : chaque jour. */
+export const enTeteDansLaReference = (id: string, jour: number): boolean => !PARTY_DE_LA_REFERENCE.some((j) => j.site === id) || jeuPartyDuJour(PARTY_DE_LA_REFERENCE, jour) === id;
+/** Le dernier jour, au plus `jour`, où le jeu `id` est classé dans la référence (un jeu Party : le jour de son tour, dans les derniers jours du tour de rôle ; tout autre jeu : `jour`). */
+export function jourClasseDansLaReference(id: string, jour: number): number {
+  for (let d = jour; d > jour - Math.max(REFERENCE.jours, PARTY_DE_LA_REFERENCE.length); d--) if (enTeteDansLaReference(id, d)) return d;
+  return jour;
+}
 
 export const referenceId = (n: number) => n.toString(16).padStart(32, "0");
 export const referenceNom = (n: number) => `Pilote${String(n).padStart(3, "0")}`;
@@ -59,6 +74,7 @@ export async function construireBaseDeReference(db: SqlDb, today: number, option
         });
       }
       for (const f of jeuxNeufs) {
+        if (!enTeteDansLaReference(f.id, day)) continue; // un jeu Party n'a de parties que les jours où il est le jeu du jour (l'envoi des autres jours est refusé)
         if ((n + 5 * d) % REFERENCE.participationJeuNeuf !== 0) continue; // un jeu neuf a moins de joueurs que les trois premiers : un sur six
         const colonnes = f.classement.colonnes.filter((c) => c.nom !== "submitted_at" && c.nom !== "player_id");
         const cles = [0, 1, 2].map((i) => {
