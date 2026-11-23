@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-3049 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+3172 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -311,6 +311,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `jeu.jump.titre` | JUMP | JUMP |
 | `jeu.tower.nom` | Tower | Tower |
 | `jeu.cibles.nom` | Cibles | Targets |
+| `jeu.pilepoil.nom` | Pile poil | Pile poil |
 | `jeu.pinball.nom` | Pinball | Pinball |
 | `jeu.gravity.nom` | Gravity | Gravity |
 | `jeu.vertige.nom` | Vertige | Vertige |
@@ -684,6 +685,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.jump.accroche` | Un niveau de plateforme par jour, le même pour tous. | One platform level a day, the same for everyone. |
 | `portail.tower.accroche` | Une tour par jour, les mêmes pièces pour tous. | One tower a day, the same pieces for everyone. |
 | `portail.cibles.accroche` | Trente secondes, vingt cibles, les mêmes pour tous. | Thirty seconds, twenty targets, the same for everyone. |
+| `portail.pilepoil.accroche` | À remplacer : l'accroche de Pile poil. | To replace: the tagline of Pile poil. |
 | `portail.pinball.accroche` | À remplacer : l'accroche de Pinball. | To replace: the tagline of Pinball. |
 | `portail.gravity.accroche` | À remplacer : l'accroche de Gravity. | To replace: the tagline of Gravity. |
 | `portail.vertige.accroche` | À remplacer : l'accroche de Vertige. | To replace: the tagline of Vertige. |
@@ -4074,3 +4076,191 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `theme.ocean` | Océan | Ocean |
 | `theme.espace` | Espace | Space |
 | `theme.volcan` | Volcan | Volcano |
+
+## Pile poil
+
+### Accueil (`accueil.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `accueil.phrase.unique` | À remplacer (lot de la plateforme : mentions) : Arrête le curseur pile sur la cible. | To replace (platform lot: legal notice): Stop the cursor right on the target. |
+
+### bilan (`bilan.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `bilan.piles` | « Pile » | “Pile” |
+| `bilan.enchaine` | Plus long enchaînement | Longest chain |
+| `bilan.ratees` | Ratées | Missed |
+| `bilan.surDix` | {n} sur 10 | {n} out of 10 |
+
+### Commandes (`commandes.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `commandes.action.arreter` | Arrêter le curseur | Stop the cursor |
+
+### Comment jouer (`aide.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `aide.point1` | À remplacer (lot de la plateforme : mentions) : 10 jauges. Le curseur va et vient : touche l'écran (ou {arreter}) pour l'arrêter. | To replace (platform lot: legal notice): 10 gauges. The cursor sweeps back and forth: tap the screen (or {arreter}) to stop it. |
+| `aide.point2` | À remplacer (lot de la plateforme : mentions) : Au centre de la cible : 100 points. Pile au centre : bonus, qui grimpe si tu enchaînes. | To replace (platform lot: legal notice): Centre of the target: 100 points. Dead centre: a bonus, which grows if you chain them. |
+| `aide.point3` | À remplacer (lot de la plateforme : mentions) : De jauge en jauge, ça accélère et la cible rétrécit. Les trois dernières bougent. | To replace (platform lot: legal notice): Gauge after gauge, it speeds up and the target shrinks. The last three move. |
+
+### kit (`kit.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `kit.accueil.aria` | Accueil du jeu | Game home |
+| `kit.accueil.jouer` | Jouer | Play |
+| `kit.accueil.aide` | Comment jouer | How to play |
+| `kit.accueil.reglages` | Réglages | Settings |
+| `kit.accueil.archives` | Archives | Archives |
+| `kit.accueil.bientot` | Bientôt | Soon |
+| `kit.accueil.aujourdhui` | Aujourd'hui | Today |
+| `kit.accueil.record` | Ton record | Your record |
+| `kit.accueil.record.aucun` | Pas encore joué aujourd'hui | Not played yet today |
+| `kit.accueil.record.sous` | {medaille} · {envoi} | {medaille} · {envoi} |
+| `kit.accueil.serie` | Ta série | Your streak |
+| `kit.accueil.classement` | Classement du jour | Today's ranking |
+| `kit.accueil.toutLeClassement` | Tout le classement › | Full ranking › |
+| `kit.accueil.prochaine` | Prochaine partie dans | Next game in |
+| `kit.accueil.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `kit.accueil.attente` | Chargement du jeu… | Loading the game… |
+| `kit.accueil.echec` | Le jeu n'a pas pu se charger. Réessaie. | The game could not load. Try again. |
+| `kit.accueil.numero` | Partie n° {numero} · {theme} | Game no. {numero} · {theme} |
+| `kit.accueil.sansNumero` | {theme} | {theme} |
+| `kit.accueil.pasEncore` | Cette partie n'est pas encore sortie : voici celle d'aujourd'hui. | That game is not out yet: here is today's. |
+| `kit.classement.titre` | Classement | Ranking |
+| `kit.classement.vide` | Personne n'est encore classé aujourd'hui. | Nobody is ranked yet today. |
+| `kit.classement.chargement` | Chargement du classement… | Loading the ranking… |
+| `kit.classement.indisponible` | Classement indisponible pour le moment. | Ranking unavailable for now. |
+| `kit.classement.fermer` | Fermer | Close |
+| `kit.pause.aria` | Pause | Pause |
+| `kit.pause.titre` | Pause | Pause |
+| `kit.pause.reprendre` | Reprendre | Resume |
+| `kit.pause.recommencer` | Recommencer | Restart |
+| `kit.pause.aide` | Comment jouer | How to play |
+| `kit.pause.reglages` | Réglages | Settings |
+| `kit.pause.accueil` | Accueil | Home |
+| `kit.pause.retours` | Un bug ? Une idée ? | A bug? An idea? |
+| `kit.pause.mentions` | Mentions légales | Legal notice |
+| `kit.pause.etat` | Score : {score} | Score: {score} |
+| `kit.fin.aria` | Fin de la partie | End of the game |
+| `kit.fin.titre` | Partie terminée | Game over |
+| `kit.fin.rang` | {rang}e sur {n} | {rang} of {n} |
+| `kit.fin.rang.attente` | Classement en cours… | Ranking in progress… |
+| `kit.fin.record.nouveau` | Nouveau record | New record |
+| `kit.fin.record.pasMieux` | Pas mieux que ton record du jour | Not better than today's record |
+| `kit.fin.horsLigne` | Hors ligne, non classé : ta partie sera envoyée. | Offline, not ranked: your game will be sent. |
+| `kit.fin.medailles` | Médailles du jour | Today's medals |
+| `kit.fin.medaille.encore` | {medaille} : encore {reste} | {medaille}: {reste} to go |
+| `kit.fin.partager` | Partager | Share |
+| `kit.fin.partage.copie` | Copié | Copied |
+| `kit.fin.partage.echec` | Copie impossible : sélectionne le texte. | Could not copy: select the text. |
+| `kit.fin.rejouer` | Rejouer | Play again |
+| `kit.fin.accueil` | Accueil | Home |
+| `kit.fin.classement` | Classement | Ranking |
+| `kit.fin.pseudo.label` | Choisis un pseudo pour être classé | Pick a nickname to be ranked |
+| `kit.fin.pseudo.valider` | Valider | Confirm |
+| `kit.fin.pseudo.suggestions` | Libres : | Available: |
+| `kit.fin.archive` | Archive : partie non classée. | Archive: game not ranked. |
+| `kit.fin.essai` | Partie d'essai : non classée. | Practice game: not ranked. |
+| `kit.fin.bilan` | Bilan | Recap |
+| `kit.envoi.enCours` | Envoi en cours… | Sending… |
+| `kit.envoi.attente` | Envoi en attente : ta partie sera prise en compte dès que possible. | Sending is pending: your game will count as soon as possible. |
+| `kit.envoi.deja` | Partie déjà enregistrée. | Game already recorded. |
+| `kit.envoi.version` | Nouvelle version en ligne : recharge la page. | A new version is online: reload the page. |
+| `kit.envoi.refuse` | Partie refusée par le serveur. | Game refused by the server. |
+| `kit.envoi.revoque` | Ce code n'est plus valide. | This code is no longer valid. |
+| `kit.reglages.aria` | Réglages | Settings |
+| `kit.reglages.titre` | Réglages | Settings |
+| `kit.reglages.son` | Son | Sound |
+| `kit.reglages.affichage` | Affichage | Display |
+| `kit.reglages.mouvement` | Animations | Animations |
+| `kit.reglages.mouvement.normal` | Normales | Normal |
+| `kit.reglages.mouvement.reduit` | Réduites | Reduced |
+| `kit.reglages.vibration` | Vibration | Vibration |
+| `kit.reglages.vibration.oui` | Activée | On |
+| `kit.reglages.vibration.non` | Coupée | Off |
+| `kit.reglages.effets` | Volume des effets | Effects volume |
+| `kit.reglages.fantome` | Fantôme au départ | Ghost at the start |
+| `kit.reglages.fantome.aucun` | Aucun | None |
+| `kit.reglages.fantome.meilleure` | Ma meilleure | My best |
+| `kit.reglages.commandes` | Commandes | Controls |
+| `kit.reglages.profil` | Mon profil Du Jour › | My Du Jour profile › |
+| `kit.reglages.mentions` | Mentions légales | Legal notice |
+| `kit.reglages.retours` | Un bug ? Une idée ? | A bug? An idea? |
+| `kit.aide.aria` | Comment jouer | How to play |
+| `kit.aide.titre` | Comment jouer | How to play |
+| `kit.aide.ok` | C'est parti | Let's go |
+| `kit.hud.pause` | Pause | Pause |
+| `kit.hud.fantome` | Fantôme : {nom} | Ghost: {nom} |
+| `kit.fantome.aucun` | aucun | none |
+| `kit.fantome.meilleure` | ma meilleure | my best |
+| `kit.fantome.diamant` | Diamant | Diamond |
+| `kit.commandes.action.pause` | Pause | Pause |
+| `kit.commandes.action.recommencer` | Recommencer | Restart |
+| `kit.commandes.action.fantome` | Fantôme | Ghost |
+| `kit.commandes.tactile` | Au toucher, touche directement l'écran. | On a touch screen, just tap the screen. |
+| `kit.suite.legende` | Jeu suivant du jour | Next game of the day |
+
+### mot (`mot.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `mot.pile` | PILE ! | PILE! |
+| `mot.bien` | BIEN | GOOD |
+| `mot.touche` | OUF | PHEW |
+| `mot.rate` | RATÉ | MISS |
+
+### Page (titre, chargement) (`page.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `page.titre` | Pile poil — Du Jour | Pile poil — Du Jour |
+
+### Partage de la journée (`partage.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `partage.score` | {n} pts | {n} pts |
+| `partage.piles` | pile ×{n} | pile ×{n} |
+
+### partie (`partie.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `partie.bouge` | LA CIBLE BOUGE | THE TARGET MOVES |
+| `partie.points` | +{n} | +{n} |
+| `partie.pointsBonus` | +{n} +{b} | +{n} +{b} |
+| `partie.zero` | 0 | 0 |
+| `partie.consigne.toucher` | Touche l'écran pour arrêter le curseur | Tap the screen to stop the cursor |
+| `partie.consigne.touche` | Appuie pour arrêter le curseur | Press to stop the cursor |
+
+### Partie (surimpressions) (`hud.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `hud.valeur` | {n} | {n} |
+| `hud.score` | {n} points | {n} points |
+| `hud.enchaine` | PILE ×{n} | PILE ×{n} |
+
+### scene (`scene.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `scene.aria` | Pile poil : appuie pour arrêter le curseur sur la cible | Pile poil: press to stop the cursor on the target |
+
+### score (`score.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `score.valeur` | {n} | {n} |
+
+### Thèmes (`theme.*`, `apps/pilepoil/src/catalogue.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `theme.unique` | Dix jauges | Ten gauges |

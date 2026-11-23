@@ -1,0 +1,13 @@
+/* La scène de « Pile poil » (à la demande, avec `scene.ts`) : le Canvas prend tout le plateau, dans ses marges ; le score du HUD en surimpression est à l'encre, comme la maquette (le kit le dessine en papier, pour une scène sombre). */
+.pilepoil-plateau {
+  display: block;
+  flex: none;
+  touch-action: none;
+  cursor: pointer;
+}
+.jeu-surimpression__valeur.pilepoil-score {
+  color: var(--dj-encre);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  text-shadow: 3px 3px 0 var(--jeu-fond, var(--dj-papier));
+}

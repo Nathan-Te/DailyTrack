@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- Lot 53 : application ajoutée à l'écran d'accueil (iPhone) ; marges de sécurité obligatoires (CLAUDE.md) -->
+    <meta name="mobile-web-app-capable" content="yes" /><!-- i18n-ok -->
+    <meta name="apple-mobile-web-app-capable" content="yes" /><!-- i18n-ok -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /><!-- i18n-ok -->
+    <meta name="theme-color" data-jeton-content="dj-encre" />
+    <meta name="robots" content="noindex, nofollow" /><!-- i18n-ok -->
+    <link rel="icon" data-icone-du-jour />
+    <title data-t="page.titre"></title>
+  </head>
+  <body>
+    <!-- Lot K4f : le HTML ne porte aucune chaîne d'interface. `brancherJeu` (@cdj/kit/jeu) construit les écrans en JavaScript, depuis les catalogues (`src/catalogue.*.ts`). -->
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

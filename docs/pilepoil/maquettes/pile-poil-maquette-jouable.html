@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pile poil : maquette jouable</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Lilita+One&display=swap">
+<style>
+:root{--creme:#EDE3CF;--creme2:#E3D6BC;--papier:#FFF6E0;--encre:#2A1E16;--terre:#C2401F;--moutarde:#E8B23A;--gris:#6B5847;--diamant:#4FC3DC;--or:#D9A21B;--argent:#B4B6B9;--rose:#F6B3A4;--rose-coque:#B8473A}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--creme);color:var(--encre);font:15px/1.4 Archivo,sans-serif;display:flex;justify-content:center;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#app{width:100%;max-width:480px;min-height:100%;display:flex;flex-direction:column;position:relative;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.barre{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:3px solid var(--encre)}
+.retour{font:15px 'Archivo Black';background:var(--encre);color:var(--creme);padding:6px 9px 5px;border-radius:3px;box-shadow:3px 3px 0 var(--terre)}
+.etiquette{margin-left:auto;font:13px 'Lilita One';letter-spacing:.6px;background:var(--rose);border:2.5px solid var(--encre);border-radius:4px;padding:3px 8px}
+.jeu{flex:1;display:flex;flex-direction:column;position:relative}
+canvas{display:block;width:100%;flex:1;touch-action:none;cursor:pointer}
+.ecran{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px 20px;text-align:center;background:var(--creme)}
+.ecran[hidden]{display:none}
+.titre{font:64px/0.95 'Lilita One';color:var(--rose-coque);text-shadow:4px 4px 0 var(--encre);letter-spacing:1px;margin:0}
+.titre small{display:block;font:15px Archivo;font-weight:700;color:var(--gris);text-shadow:none;letter-spacing:0;margin-top:10px}
+.illus{width:200px;height:120px}
+.carte{background:var(--papier);border:3px solid var(--encre);border-radius:6px;box-shadow:4px 4px 0 var(--encre);padding:12px 16px;width:100%;max-width:340px;text-align:left}
+.carte p{margin:0 0 6px}
+.carte p:last-child{margin:0}
+.du-jour{display:inline-flex;gap:6px;align-items:center;font:12px 'Archivo Black';letter-spacing:.6px;background:var(--encre);color:var(--moutarde);padding:5px 9px;border-radius:3px}
+.bouton{min-height:52px;min-width:220px;border:3px solid var(--encre);border-radius:5px;background:var(--terre);color:#FFF4E0;font:20px 'Archivo Black';box-shadow:4px 4px 0 var(--encre);cursor:pointer;padding:0 22px}
+.bouton:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--encre)}
+.bouton.second{background:var(--papier);color:var(--encre);font-size:16px;min-height:46px}
+.aide{font-size:13px;color:var(--gris)}
+.score-fin{font:700 54px 'JetBrains Mono';line-height:1}
+.record{font:700 14px Archivo;color:var(--gris)}
+.record b{color:var(--terre)}
+.lampes-fin{display:flex;gap:5px;justify-content:center}
+.lampes-fin i{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--encre)}
+.classement{width:100%;max-width:340px;text-align:left}
+.classement h3{margin:0 0 6px;font:13px 'Archivo Black';letter-spacing:.6px;color:var(--gris)}
+.ligne{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 10px;border:2px solid var(--encre);border-radius:4px;background:var(--papier);margin-bottom:5px;font-weight:700}
+.ligne.toi{background:var(--moutarde)}
+.ligne span:last-child{font-family:'JetBrains Mono'}
+#tune{position:fixed;right:8px;top:8px;width:270px;max-height:calc(100% - 16px);overflow:auto;background:var(--papier);border:3px solid var(--encre);border-radius:6px;padding:10px;font-size:12px;z-index:5;box-shadow:4px 4px 0 var(--encre)}
+#tune[hidden]{display:none}
+#tune h4{margin:0 0 8px;font:14px 'Archivo Black'}
+#tune label{display:grid;grid-template-columns:1fr 58px;gap:4px;align-items:center;margin-bottom:6px}
+#tune input[type=range]{grid-column:1 / -1;width:100%}
+#tune output{font:700 12px 'JetBrains Mono';text-align:right}
+#tune button{font:700 12px Archivo;border:2px solid var(--encre);border-radius:3px;background:var(--creme);padding:5px 8px;margin:4px 4px 0 0;cursor:pointer}
+#tune textarea{width:100%;height:90px;font:11px 'JetBrains Mono';margin-top:6px}
+@media (prefers-reduced-motion:reduce){.bouton:active{transform:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="barre"><span class="retour">‹ DU JOUR</span><span class="etiquette">PARTY</span></div>
+  <div class="jeu">
+    <canvas id="c" aria-label="Pile poil : appuie pour arrêter le curseur sur la cible"></canvas>
+
+    <div class="ecran" id="accueil">
+      <span class="du-jour">★ CLASSÉ AUJOURD'HUI</span>
+      <h1 class="titre">PILE POIL<small>Arrête le curseur pile sur la cible.</small></h1>
+      <svg class="illus" viewBox="0 0 200 120" aria-hidden="true">
+        <g stroke="#2A1E16" stroke-width="4" stroke-linejoin="round">
+          <rect x="10" y="44" width="180" height="40" rx="8" fill="#FFF6E0"/>
+          <rect x="88" y="44" width="40" height="40" fill="#E8B23A"/>
+          <line x1="108" y1="44" x2="108" y2="84" stroke="#C2401F" stroke-width="4"/>
+          <path d="M104 22 h12 l-6 16 z" fill="#C2401F"/>
+          <line x1="110" y1="38" x2="110" y2="92"/>
+        </g>
+        <g fill="#2A1E16"><circle cx="40" cy="104" r="5"/><circle cx="60" cy="104" r="5"/><circle cx="80" cy="104" r="5" fill="#4FC3DC" stroke="#2A1E16" stroke-width="3"/><circle cx="100" cy="104" r="5" fill="#D9A21B" stroke="#2A1E16" stroke-width="3"/><circle cx="120" cy="104" r="5" fill="none" stroke="#2A1E16" stroke-width="3"/><circle cx="140" cy="104" r="5" fill="none" stroke="#2A1E16" stroke-width="3"/><circle cx="160" cy="104" r="5" fill="none" stroke="#2A1E16" stroke-width="3"/></g>
+      </svg>
+      <div class="carte">
+        <p><b>10 jauges.</b> Le curseur va et vient : touche l'écran (ou Espace) pour l'arrêter.</p>
+        <p>Au centre de la cible : <b>100 points</b>. Pile au centre : <b>bonus</b>, qui grimpe si tu enchaînes.</p>
+        <p class="aide">De jauge en jauge, ça accélère et la cible rétrécit. Les trois dernières bougent.</p>
+      </div>
+      <button class="bouton" id="jouer">Jouer</button>
+      <div class="aide" id="infoJour"></div>
+    </div>
+
+    <div class="ecran" id="fin" hidden>
+      <span class="du-jour">★ CLASSÉ AUJOURD'HUI</span>
+      <div class="score-fin" id="scoreFin">0</div>
+      <div class="lampes-fin" id="lampesFin"></div>
+      <div class="record" id="recordFin"></div>
+      <div class="classement" id="classementFin"></div>
+      <button class="bouton" id="rejouer">Rejouer</button>
+      <button class="bouton second" id="versAccueil">Règles</button>
+    </div>
+  </div>
+</div>
+
+<div id="tune" hidden>
+  <h4>Réglages (?tune)</h4>
+  <div id="curseurs"></div>
+  <button id="exporter">Exporter JSON</button><button id="defaut">Valeurs de départ</button>
+  <textarea id="sortie" readonly></textarea>
+</div>
+
+<script>
+// ============================================================
+// Pile poil — maquette jouable (Du Jour, catégorie Party)
+// Simulation en entiers, à pas fixes de 1/120 s : la partie ne dépend
+// que de la graine du jour et des pas où l'on a appuyé. C'est ce que le
+// serveur rejouera : la rediffusion = les 10 pas d'appui.
+// ============================================================
+const params = new URLSearchParams(location.search);
+const DEBUG = params.has('debug');
+const TUNE = params.has('tune');
+
+// ---- Réglages (unités : millièmes de pixel de jauge, pas de 1/120 s) ----
+const DEFAUT = {
+  vitesseDebut: 2200,   // millièmes de jauge par pas (jauge = 1 000 000)
+  vitesseFin: 6200,
+  demiCibleDebut: 120000, // demi-largeur de la cible au début
+  demiCibleFin: 38000,
+  parfait: 9000,        // tolérance du « pile au centre »
+  bonusParfait: 50,     // bonus du premier « pile »
+  bonusEnchaine: 25,    // + par « pile » d'affilée
+  pauseResultat: 66,    // pas d'arrêt entre deux jauges (0,55 s)
+  bougeDes: 8,          // la cible bouge à partir de la jauge n
+  ampliBouge: 160000,   // amplitude du mouvement de la cible
+  vitesseBouge: 30,     // en millièmes de tour par pas
+};
+let R = { ...DEFAUT };
+try { const s = JSON.parse(localStorage.getItem('pilepoil:tune') || 'null'); if (s && TUNE) R = { ...R, ...s }; } catch {}
+
+const JAUGES = 10;
+const LONGUEUR = 1000000;
+
+// ---- Graine du jour (FNV-1a 32 bits, comme graineDuJour de @cdj/core) ----
+function fnv(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
+function hasard(graine) { let a = graine >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0); }; }
+const jourParis = () => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+const JOUR = params.get('jour') || jourParis();
+const GRAINE = params.has('graine') ? Number(params.get('graine')) >>> 0 : fnv(`party:pilepoil:${JOUR}`);
+
+// ---- Le niveau : tiré de la graine, entiers seulement ----
+function tirerJauges(graine, r) {
+  const h = hasard(graine);
+  const lerp = (a, b, i) => a + Math.trunc(((b - a) * i) / (JAUGES - 1));
+  const liste = [];
+  for (let i = 0; i < JAUGES; i++) {
+    const demi = lerp(r.demiCibleDebut, r.demiCibleFin, i);
+    const marge = demi + 60000;
+    const centre = marge + (h() % (LONGUEUR - 2 * marge));
+    const vitesse = lerp(r.vitesseDebut, r.vitesseFin, i) + (h() % 400);
+    const depart = h() % LONGUEUR;
+    const sens = h() % 2 ? 1 : -1;
+    const bouge = i + 1 >= r.bougeDes;
+    const phase = h() % 1000;
+    liste.push({ demi, centre, vitesse, depart, sens, bouge, phase });
+  }
+  return liste;
+}
+
+// Sinus en entiers (table de 1000 pas) pour la cible qui bouge : déterministe partout.
+const SINUS = Array.from({ length: 1000 }, (_, i) => Math.round(Math.sin((i / 1000) * 2 * Math.PI) * 1000));
+
+// ---- La simulation : un état, un pas, un appui ----
+function nouvellePartie(graine, r) {
+  return { r, jauges: tirerJauges(graine, r), i: 0, pas: 0, pasJauge: 0, x: 0, sens: 1, pause: 0, score: 0, enchaine: 0, resultats: [], fini: false, appuis: [] };
+}
+function entrerJauge(e) {
+  const j = e.jauges[e.i];
+  e.x = j.depart; e.sens = j.sens; e.pasJauge = 0;
+}
+function centreCible(e, j) {
+  if (!j.bouge) return j.centre;
+  const angle = (j.phase + e.pasJauge * e.r.vitesseBouge) % 1000;
+  const c = j.centre + Math.trunc((SINUS[angle] * e.r.ampliBouge) / 1000);
+  return Math.max(j.demi, Math.min(LONGUEUR - j.demi, c));
+}
+function pas(e) {
+  if (e.fini) return;
+  e.pas++;
+  if (e.pause > 0) { e.pause--; if (e.pause === 0) { e.i++; if (e.i >= JAUGES) { e.fini = true; return; } entrerJauge(e); } return; }
+  const j = e.jauges[e.i];
+  e.pasJauge++;
+  e.x += e.sens * j.vitesse;
+  if (e.x >= LONGUEUR) { e.x = 2 * LONGUEUR - e.x; e.sens = -1; }
+  if (e.x <= 0) { e.x = -e.x; e.sens = 1; }
+}
+function appuyer(e) {
+  if (e.fini || e.pause > 0) return null;
+  const j = e.jauges[e.i];
+  const c = centreCible(e, j);
+  const ecart = Math.abs(e.x - c);
+  let points = 0, sorte = 'rate', bonus = 0;
+  if (ecart <= j.demi) {
+    points = Math.trunc((100 * (j.demi - ecart)) / j.demi);
+    sorte = ecart <= e.r.parfait ? 'pile' : points >= 70 ? 'bien' : 'touche';
+  }
+  if (sorte === 'pile') { bonus = e.r.bonusParfait + e.enchaine * e.r.bonusEnchaine; e.enchaine++; points = 100; }
+  else e.enchaine = 0;
+  e.score += points + bonus;
+  e.appuis.push(e.pas);
+  const res = { points, bonus, sorte, x: e.x, c, demi: j.demi };
+  e.resultats.push(res);
+  e.pause = e.r.pauseResultat;
+  return res;
+}
+// Ce que fera le serveur : rejouer les appuis, pas à pas, et retrouver le score.
+function rejouer(graine, r, appuis) {
+  const e = nouvellePartie(graine, r); entrerJauge(e);
+  let k = 0;
+  for (let garde = 0; garde < 200000 && !e.fini; garde++) {
+    while (k < appuis.length && appuis[k] === e.pas) { appuyer(e); k++; }
+    pas(e);
+  }
+  return e.score;
+}
+
+// ============================================================
+// Rendu (Canvas 2D) — ne lit que l'état
+// ============================================================
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function taille() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  const b = cv.getBoundingClientRect();
+  W = b.width; H = b.height;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener('resize', taille);
+
+const C = { creme: '#EDE3CF', papier: '#FFF6E0', encre: '#2A1E16', terre: '#C2401F', moutarde: '#E8B23A', gris: '#6B5847', diamant: '#4FC3DC', or: '#D9A21B', argent: '#B4B6B9', rose: '#F6B3A4', coque: '#B8473A' };
+const COULEUR_SORTE = { pile: C.diamant, bien: C.or, touche: C.argent, rate: null };
+const MOT_SORTE = { pile: 'PILE !', bien: 'BIEN', touche: 'OUF', rate: 'RATÉ' };
+
+let partie = null, effets = [], secousse = 0, dernier = null;
+const reduit = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function rect(x, y, w, h, r) { cx.beginPath(); cx.roundRect(x, y, w, h, r); }
+function dessiner(alpha) {
+  cx.fillStyle = C.creme; cx.fillRect(0, 0, W, H);
+  if (!partie) return;
+  const e = partie;
+  const marge = 22, gw = W - marge * 2;
+  const sx = (secousse > 0 && !reduit) ? (Math.random() - 0.5) * secousse : 0;
+  cx.save(); cx.translate(sx, 0);
+
+  // -- haut : score, enchaînement, jauge n/10
+  cx.fillStyle = C.encre; cx.textBaseline = 'alphabetic';
+  cx.font = "700 44px 'JetBrains Mono'"; cx.textAlign = 'left';
+  cx.fillText(String(e.score), marge, 66);
+  cx.font = "700 13px Archivo"; cx.fillStyle = C.gris;
+  cx.fillText('POINTS', marge, 84);
+  cx.textAlign = 'right'; cx.font = "28px 'Lilita One'"; cx.fillStyle = C.encre;
+  cx.fillText(`${Math.min(e.i + 1, JAUGES)}/${JAUGES}`, W - marge, 60);
+  if (e.enchaine >= 2) {
+    cx.font = "16px 'Archivo Black'"; cx.fillStyle = C.terre;
+    cx.fillText(`PILE ×${e.enchaine}`, W - marge, 84);
+  }
+
+  // -- les dix lampes
+  const lr = Math.min(11, (gw - 9 * 8) / 20), lpas = (gw - lr * 2) / 9;
+  for (let k = 0; k < JAUGES; k++) {
+    const x = marge + lr + k * lpas, y = 118;
+    const res = e.resultats[k];
+    cx.beginPath(); cx.arc(x, y, lr, 0, Math.PI * 2);
+    cx.fillStyle = res ? (COULEUR_SORTE[res.sorte] || C.creme) : (k === e.i ? C.papier : C.creme);
+    cx.fill(); cx.lineWidth = k === e.i && !res ? 3.5 : 2.5; cx.strokeStyle = C.encre; cx.stroke();
+    if (res && res.sorte === 'rate') { cx.beginPath(); cx.moveTo(x - lr * .5, y - lr * .5); cx.lineTo(x + lr * .5, y + lr * .5); cx.moveTo(x + lr * .5, y - lr * .5); cx.lineTo(x - lr * .5, y + lr * .5); cx.lineWidth = 2.5; cx.stroke(); }
+  }
+
+  // -- la jauge
+  if (!e.fini) {
+    const j = e.jauges[e.i];
+    const gy = Math.max(190, H * 0.42), gh = 78;
+    const px = (v) => marge + (v / LONGUEUR) * gw;
+    // cartouche
+    rect(marge + 5, gy + 5, gw, gh, 12); cx.fillStyle = C.encre; cx.fill();
+    rect(marge, gy, gw, gh, 12); cx.fillStyle = C.papier; cx.fill();
+    // graduations
+    cx.strokeStyle = 'rgba(42,30,22,.18)'; cx.lineWidth = 2;
+    for (let t = 1; t < 20; t++) { const x = marge + (gw * t) / 20; cx.beginPath(); cx.moveTo(x, gy + gh - (t % 5 ? 12 : 22)); cx.lineTo(x, gy + gh); cx.stroke(); }
+    // cible
+    const c = e.pause > 0 ? dernier.c : centreCible(e, j);
+    const demi = j.demi;
+    cx.fillStyle = C.moutarde; cx.fillRect(px(c - demi), gy, px(c + demi) - px(c - demi), gh);
+    cx.fillStyle = 'rgba(232,178,58,.45)';
+    cx.fillStyle = C.coque; cx.fillRect(px(c) - 2, gy, 4, gh);
+    // trait de la cible (zone « pile »)
+    cx.fillStyle = 'rgba(79,195,220,.55)'; cx.fillRect(px(c - e.r.parfait), gy + gh - 10, Math.max(3, px(c + e.r.parfait) - px(c - e.r.parfait)), 10);
+    // contour
+    rect(marge, gy, gw, gh, 12); cx.lineWidth = 4; cx.strokeStyle = C.encre; cx.stroke();
+    if (j.bouge) { cx.font = "13px 'Archivo Black'"; cx.fillStyle = C.terre; cx.textAlign = 'center'; cx.fillText('LA CIBLE BOUGE', W / 2, gy + gh + 30); }
+    // curseur (interpolé entre deux pas pour la fluidité)
+    let xx = e.x;
+    if (e.pause === 0 && alpha) { const v = j.vitesse * e.sens * alpha; xx = Math.max(0, Math.min(LONGUEUR, e.x + v)); }
+    if (e.pause > 0) xx = dernier.x;
+    const cxp = px(xx);
+    cx.fillStyle = C.terre; cx.strokeStyle = C.encre; cx.lineWidth = 3;
+    cx.beginPath(); cx.moveTo(cxp - 11, gy - 30); cx.lineTo(cxp + 11, gy - 30); cx.lineTo(cxp, gy - 8); cx.closePath(); cx.fill(); cx.stroke();
+    cx.beginPath(); cx.moveTo(cxp, gy - 8); cx.lineTo(cxp, gy + gh + 10); cx.lineWidth = 4; cx.stroke();
+    // résultat de l'appui
+    if (e.pause > 0 && dernier) {
+      cx.textAlign = 'center';
+      const mot = MOT_SORTE[dernier.sorte];
+      const p = 1 - e.pause / e.r.pauseResultat;
+      const s = reduit ? 1 : 1 + Math.max(0, 0.35 - p) * 1.2;
+      cx.save(); cx.translate(W / 2, gy - 62); cx.scale(s, s);
+      cx.font = "46px 'Lilita One'"; cx.lineWidth = 7; cx.strokeStyle = C.encre; cx.lineJoin = 'round';
+      cx.fillStyle = dernier.sorte === 'pile' ? C.diamant : dernier.sorte === 'rate' ? C.argent : dernier.sorte === 'bien' ? C.moutarde : C.papier;
+      cx.strokeText(mot, 0, 0); cx.fillText(mot, 0, 0);
+      cx.restore();
+      cx.font = "700 22px 'JetBrains Mono'"; cx.fillStyle = C.encre;
+      cx.fillText(dernier.points + dernier.bonus > 0 ? `+${dernier.points}${dernier.bonus ? ` +${dernier.bonus}` : ''}` : '0', W / 2, gy + gh + 58);
+    } else if (e.i === 0 && e.pasJauge < 150) {
+      cx.textAlign = 'center'; cx.font = "700 15px Archivo"; cx.fillStyle = C.gris;
+      cx.fillText('Touche l\'écran pour arrêter le curseur', W / 2, gy + gh + 58);
+    }
+  }
+  // particules
+  for (const f of effets) { cx.globalAlpha = Math.max(0, f.vie); cx.fillStyle = f.c; cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, Math.PI * 2); cx.fill(); cx.strokeStyle = C.encre; cx.lineWidth = 1.5; cx.stroke(); }
+  cx.globalAlpha = 1;
+  cx.restore();
+
+  if (DEBUG) {
+    cx.font = "11px 'JetBrains Mono'"; cx.fillStyle = C.gris; cx.textAlign = 'left';
+    cx.fillText(`jour ${JOUR} · graine ${GRAINE} · pas ${e.pas} · appuis [${e.appuis.join(',')}]`, 8, H - 10);
+  }
+}
+
+// ============================================================
+// Boucle à pas fixes + entrées
+// ============================================================
+const PAS_MS = 1000 / 120;
+let acc = 0, avant = 0, enJeu = false;
+function boucle(t) {
+  if (!avant) avant = t;
+  acc += Math.min(100, t - avant); avant = t;
+  while (acc >= PAS_MS && partie && enJeu) { pas(partie); acc -= PAS_MS; if (partie.fini) { finir(); break; } }
+  for (const f of effets) { f.x += f.vx; f.y += f.vy; f.vy += 0.35; f.vie -= 0.025; }
+  effets = effets.filter((f) => f.vie > 0);
+  secousse *= 0.85;
+  dessiner(partie && enJeu ? acc / PAS_MS : 0);
+  requestAnimationFrame(boucle);
+}
+function eclat(res) {
+  if (reduit) return;
+  const n = res.sorte === 'pile' ? 26 : res.sorte === 'bien' ? 12 : 0;
+  const marge = 22, gw = W - marge * 2, gy = Math.max(190, H * 0.42);
+  const x = marge + (res.x / LONGUEUR) * gw;
+  for (let k = 0; k < n; k++) effets.push({ x, y: gy + 20, vx: (Math.random() - 0.5) * 9, vy: -Math.random() * 8 - 2, r: 3 + Math.random() * 4, c: [C.diamant, C.moutarde, C.rose, C.papier][k % 4], vie: 1 });
+  if (res.sorte === 'pile') secousse = 7;
+  if (navigator.vibrate) navigator.vibrate(res.sorte === 'pile' ? [20, 30, 20] : res.sorte === 'rate' ? 60 : 12);
+}
+function agir() {
+  if (!enJeu || !partie) return;
+  const res = appuyer(partie);
+  if (res) { dernier = res; eclat(res); }
+}
+cv.addEventListener('pointerdown', (ev) => { ev.preventDefault(); agir(); });
+addEventListener('keydown', (ev) => {
+  if (ev.repeat) return;
+  if (ev.code === 'Space' || ev.code === 'Enter') {
+    ev.preventDefault();
+    if (enJeu) agir();
+    else if (!document.getElementById('accueil').hidden || !document.getElementById('fin').hidden) lancer();
+  }
+});
+// manette : n'importe quel bouton de face
+let boutonsAvant = [];
+function lireManette() {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const p of pads) {
+    if (!p) continue;
+    const presses = p.buttons.slice(0, 4).map((b) => b.pressed);
+    presses.forEach((b, k) => { if (b && !boutonsAvant[k]) { if (enJeu) agir(); else lancer(); } });
+    boutonsAvant = presses;
+  }
+  requestAnimationFrame(lireManette);
+}
+requestAnimationFrame(lireManette);
+
+// ============================================================
+// Écrans
+// ============================================================
+const $ = (id) => document.getElementById(id);
+function lancer() {
+  partie = nouvellePartie(GRAINE, R); entrerJauge(partie);
+  dernier = null; effets = []; acc = 0; avant = 0;
+  $('accueil').hidden = true; $('fin').hidden = true;
+  enJeu = true;
+}
+const CLE_RECORD = 'pilepoil:records';
+function lireRecord() { try { return JSON.parse(localStorage.getItem(CLE_RECORD) || '{}'); } catch { return {}; } }
+function finir() {
+  enJeu = false;
+  const e = partie;
+  // contrôle du rejeu : le serveur fera exactement ceci
+  const verifie = rejouer(GRAINE, R, e.appuis);
+  if (verifie !== e.score) console.error('Rejeu différent !', verifie, e.score);
+  else if (DEBUG) console.log('Rejeu identique :', verifie, 'appuis', e.appuis);
+  const rec = lireRecord();
+  const ancien = rec[JOUR] || 0;
+  const nouveau = e.score > ancien;
+  if (nouveau) { rec[JOUR] = e.score; try { localStorage.setItem(CLE_RECORD, JSON.stringify(rec)); } catch {} }
+  $('scoreFin').textContent = String(e.score);
+  $('lampesFin').replaceChildren(...e.resultats.map((r) => { const i = document.createElement('i'); i.style.background = COULEUR_SORTE[r.sorte] || 'transparent'; if (r.sorte === 'rate') i.style.borderStyle = 'dashed'; i.title = MOT_SORTE[r.sorte]; return i; }));
+  const piles = e.resultats.filter((r) => r.sorte === 'pile').length;
+  $('recordFin').innerHTML = '';
+  const t = document.createElement('span');
+  t.textContent = nouveau ? `Nouveau record du jour ! ${piles} « pile » sur 10.` : `Ton record du jour : ${ancien}. ${piles} « pile » sur 10.`;
+  if (nouveau) { const b = document.createElement('b'); b.textContent = t.textContent; $('recordFin').append(b); } else $('recordFin').append(t);
+  // classement inventé autour de ton score, pour la maquette
+  const autres = [1180, 1042, 968, 905, 860, 811, 744].map((s) => ({ p: ['Biscotte', 'Gaspard', 'Lenka', 'Marlou', 'Sacha', 'Pépin', 'Zadig'][[1180, 1042, 968, 905, 860, 811, 744].indexOf(s)], s }));
+  const tous = [...autres, { p: 'Toi', s: Math.max(e.score, ancien), toi: true }].sort((a, b) => b.s - a.s);
+  const ma = tous.findIndex((x) => x.toi);
+  const montres = tous.slice(0, 3).concat(ma > 2 ? [tous[ma]] : []);
+  const cl = $('classementFin'); cl.replaceChildren();
+  const h = document.createElement('h3'); h.textContent = `CLASSEMENT DU JOUR · ${ma + 1}e SUR ${tous.length}`; cl.append(h);
+  for (const x of montres) {
+    const d = document.createElement('div'); d.className = 'ligne' + (x.toi ? ' toi' : '');
+    const r = document.createElement('span'); r.textContent = String(tous.indexOf(x) + 1);
+    const n = document.createElement('span'); n.textContent = x.p;
+    const s = document.createElement('span'); s.textContent = String(x.s);
+    d.append(r, n, s); cl.append(d);
+  }
+  $('fin').hidden = false;
+  $('rejouer').focus();
+}
+$('jouer').addEventListener('click', lancer);
+$('rejouer').addEventListener('click', lancer);
+$('versAccueil').addEventListener('click', () => { $('fin').hidden = true; $('accueil').hidden = false; });
+$('infoJour').textContent = `Partie du ${JOUR.split('-').reverse().join('/')} · la même pour tout le monde aujourd'hui`;
+
+// ============================================================
+// ?tune : réglages et export JSON
+// ============================================================
+if (TUNE) {
+  $('tune').hidden = false;
+  const LIBELLES = {
+    vitesseDebut: ['Vitesse, 1re jauge', 500, 6000, 50], vitesseFin: ['Vitesse, 10e jauge', 1000, 12000, 50],
+    demiCibleDebut: ['Demi-cible, 1re', 20000, 250000, 1000], demiCibleFin: ['Demi-cible, 10e', 8000, 150000, 1000],
+    parfait: ['Tolérance « pile »', 1000, 30000, 500], bonusParfait: ['Bonus du pile', 0, 200, 5], bonusEnchaine: ['+ par pile d\'affilée', 0, 100, 5],
+    pauseResultat: ['Pause entre jauges (pas)', 20, 160, 2], bougeDes: ['La cible bouge dès la jauge', 1, 11, 1],
+    ampliBouge: ['Amplitude du mouvement', 0, 400000, 5000], vitesseBouge: ['Vitesse du mouvement', 0, 120, 1],
+  };
+  const zone = $('curseurs');
+  for (const [k, [lib, min, max, step]] of Object.entries(LIBELLES)) {
+    const l = document.createElement('label');
+    const s = document.createElement('span'); s.textContent = lib;
+    const o = document.createElement('output'); o.textContent = R[k];
+    const i = document.createElement('input'); i.type = 'range'; i.min = min; i.max = max; i.step = step; i.value = R[k];
+    i.addEventListener('input', () => { R[k] = Number(i.value); o.textContent = i.value; try { localStorage.setItem('pilepoil:tune', JSON.stringify(R)); } catch {} });
+    l.append(s, o, i); zone.append(l);
+  }
+  $('exporter').addEventListener('click', () => { $('sortie').value = JSON.stringify(R, null, 2); $('sortie').select(); });
+  $('defaut').addEventListener('click', () => { try { localStorage.removeItem('pilepoil:tune'); } catch {} location.reload(); });
+}
+
+taille();
+requestAnimationFrame(boucle);
+if (params.has('auto')) lancer();
+</script>
+</body>
+</html>

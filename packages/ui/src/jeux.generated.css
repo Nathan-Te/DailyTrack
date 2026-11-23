@@ -48,3 +48,11 @@
 .dj-cartouche--pinball {
   background: #962170;
 }
+.jeu-etiquette--pilepoil {
+  --jeu-fond: #F6B3A4;
+  --jeu-coque: #B8473A;
+  --jeu-police: "Lilita One", "Archivo", sans-serif;
+}
+.dj-cartouche--pilepoil {
+  background: #B8473A;
+}

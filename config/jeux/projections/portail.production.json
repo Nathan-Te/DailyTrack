@@ -185,6 +185,18 @@
       "categorie": "arcade",
       "format": "entier",
       "illustration": true
+    },
+    {
+      "id": "pilepoil",
+      "accroche": "portail.pilepoil.accroche",
+      "nomsThemes": {
+        "fr": {},
+        "en": {}
+      },
+      "cumul": false,
+      "categorie": "party",
+      "format": "entier",
+      "illustration": true
     }
   ]
 }

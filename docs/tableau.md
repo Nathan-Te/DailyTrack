@@ -18,6 +18,7 @@
 | **Vertige** | arcade · `off` | V3 — « Vertige » : le niveau du jour, le… (13/11) | 20/11 |
 | **Gravity** | arcade · `off` | GR7 — Gravity : plus vite, plus varié, de… (18/11) | 20/11 |
 | **Pinball** | arcade · `off` | PBR1 — Pinball : un robot des médailles 4,5… (18/11) | 20/11 |
+| **Pile poil** | party · `off` | PA2 — « Pile poil », le premier jeu Party… (22/11) | 22/11 |
 
 ## Plateforme
 - **Dernier lot** : PA1b (plateforme, serveur, kit et portail) — Le jeu Party du jour — 21/11 (`lot-PA1b-jeu-party-du-jour.md`).
@@ -144,3 +145,17 @@
 - **Décisions en attente (Nathan)** : 
   - Nathan : monter ou non `PINBALL_BOT_VERSION` (PBR1 : non, pour ne pas changer l'empreinte des jours protégés ; une ligne à changer pour garder la trace).
   - Nathan : si 3,3 s d'attente reste trop, passer les tranches du calcul du navigateur de 4 ms à 8 ms toutes les 16 ms (divise l'attente par deux ; hors périmètre de PBR1, non fait).
+
+## Pile poil — party
+- **Fiche** : état de départ `off`, premier jour 2026-11-02 ; identité complète. Production et recette : `/admin/` › Jeux.
+- **Dernier lot** : PA2 — « Pile poil », le premier jeu Party (pilote du moule) — 22/11 (`lot-PA2-pile-poil.md`).
+- **Passation** : mise à jour le 22/11 (`docs/pilepoil/passation.md`).
+- **Où on en est** :
+  - Lot PA2 : le jeu de la maquette, jouable et rejoué par le serveur (rejeu ≈ 0,08 ms, rediffusion de 34 caractères) ; `off`.
+  - Scène Canvas 2D, HUD en surimpression, sons de synthèse, vibration, `?debug&tune` avec export JSON.
+  - Étiquette rose `#F6B3A4` / coque `#B8473A`, illustration (`apps/pilepoil/public/illustration.svg`) ; CI rouge sur trois points de plateforme (README du lot PA2).
+  - Réplique et « Comment jouer » encore préfixés « À remplacer » : attendent les mentions légales.
+- **Prochain lot** : Plateforme : mentions `pilepoil:*`, exemption Party du test d'identité ; puis réglages de Nathan (export `?debug&tune`).
+- **Décisions en attente (Nathan)** : 
+  - Nathan : les réglages (`?debug&tune`), `attenteMax` (15 s), Entrée partagée avec « Recommencer ».
+  - Plateforme : les manques du moule listés dans `docs/pilepoil/lots/lot-PA2-pile-poil.md`.

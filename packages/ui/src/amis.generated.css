@@ -29,3 +29,8 @@
   --sel-actif-fond: var(--dj-encre);
   --sel-actif-texte: #F6A2D8;
 }
+.dj-amis-selecteur.dj-amis-selecteur--pilepoil {
+  --sel-fond: #F6B3A4;
+  --sel-actif-fond: var(--dj-encre);
+  --sel-actif-texte: #F6B3A4;
+}
