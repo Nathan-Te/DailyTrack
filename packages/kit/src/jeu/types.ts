@@ -87,8 +87,11 @@ export interface BilanPartie {
 export interface PartieDuJeu {
   /** Un pas de la simulation (appelé `ticksParSeconde` fois par seconde, jamais pendant la pause). */
   avancer(): void;
-  /** Dessine l'état courant (à chaque image). */
-  dessiner(): void;
+  /**
+   * Dessine l'état courant (à chaque image). Lot PA1c : `avancement` est **la part du pas suivant déjà écoulée** (de 0 à 1) — de quoi interpoler ce qui se déplace entre deux pas sans horloge à soi ; il reste figé en pause,
+   * en fin de partie et en mode manuel (`?debug&manuel`). Un jeu qui ne l'utilise pas écrit `dessiner(): void` comme avant.
+   */
+  dessiner(avancement: number): void;
   finie(): boolean;
   /**
    * Facultatif (lot B6) : la partie est jouée (plus de coup possible) mais `finie()` ne l'est pas encore parce que le jeu montre sa fin (« Plus de place ! » chez Blocks). Le kit fait **retomber la musique**
@@ -179,8 +182,9 @@ export interface DefinitionJeu<C> {
   /**
    * Lot PG1 — **où est le HUD** : `"barre"` (défaut) : le score et la ligne dans la barre du haut, comme aujourd'hui ; `"surimpression"` : le jeu écrit son HUD **sur le plateau**, dans les zones que le kit pose
    * (`OptionsPartie.zones`), et le texte de la barre (`PartieDuJeu.hud()`) n'est plus visible — il reste dans la page, lu par la pause et les lecteurs d'écran. La barre garde ses boutons (fantôme, pause).
+   * Lot PA1c : `"surimpression-claire"` — la même, **pour une scène claire** : l'encre sur le papier (`jeu-surimpression--clair`) au lieu du papier sur l'encre, lisible au contraste AA.
    */
-  hud?: "barre" | "surimpression";
+  hud?: "barre" | "surimpression" | "surimpression-claire";
   /**
    * Lot K9 — **l'orientation que le plein écran verrouille** (accueil, HUD de la partie, pause) : `"actuelle"` (défaut : celle du moment, un jeu qui se joue en portrait y reste), `"portrait"` ou `"paysage"`
    * (un jeu qui ne se joue qu'à l'horizontale). Choix du jeu, dans sa définition et non dans sa fiche : c'est une affaire de rendu, qui ne change ni le classement ni les projections de la fiche.

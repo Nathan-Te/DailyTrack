@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Commandes, boutonLiaison, cleCommandes, liaisonTenue, nomLiaison, nomTouche, type ActionCommande, type Stockage } from "../src/commandes";
-import { axeLiaison, definirLiaison, definirTouche, estDorigine, liaisonPoussee, retablir } from "../src/commandesEdition";
+import { axeLiaison, definirLiaison, definirTouche, emplacementsDe, estDorigine, liaisonPoussee, retablir } from "../src/commandesEdition";
 
 const ACTIONS: readonly ActionCommande[] = [
   { id: "gauche", clavier: ["ArrowLeft", "KeyA"], manette: "a0-" },
@@ -17,7 +17,7 @@ describe("commandes réglables (lot M2)", () => {
     const c = new Commandes("essai", ACTIONS, memoire());
     expect(c.touches("sauter")).toEqual(["Space", "ArrowUp", "KeyW"]);
     expect(c.emplacements("pause")).toBe(2);
-    expect(c.emplacementsDe("pause")).toEqual(["KeyP", ""]);
+    expect(emplacementsDe(c, "pause")).toEqual(["KeyP", ""]);
     expect(c.liaison("sauter")).toBe("b0");
     expect(estDorigine(c)).toBe(true);
   });
@@ -144,5 +144,80 @@ describe("commandes réglables (lot M2)", () => {
     expect(nomLiaison("b7", "en")).toBe("RT");
     expect(nomLiaison("a0-", "fr")).toBe("Stick gauche ←");
     expect(nomLiaison(null, "fr")).toBe("—");
+  });
+});
+
+// Lot PA1c — un jeu à une commande : plusieurs liaisons de manette pour une action, plusieurs touches, `recommencer` sans touche ; les réglages déjà enregistrés restent valides.
+describe("plusieurs liaisons, une action sans touche (lot PA1c)", () => {
+  const FACES = ["b0", "b1", "b2", "b3"] as const;
+  const UNE_COMMANDE: readonly ActionCommande[] = [
+    { id: "jouer", clavier: ["Space", "Enter", "KeyX"], manette: FACES },
+    { id: "recommencer", clavier: [], manette: null }, // le jeu redéclare l'action du kit : aucune touche
+    { id: "pause", clavier: ["KeyP"], manette: null },
+  ];
+  const pad = (...appuyes: number[]) => ({ buttons: Array.from({ length: 16 }, (_, i) => ({ pressed: appuyes.includes(i) })), axes: [0, 0, 0, 0] });
+
+  it("n'importe quel bouton de face déclenche l'action ; le nom les donne toutes ; le stockage ne garde que la première", () => {
+    const c = new Commandes("un", UNE_COMMANDE, memoire());
+    expect(c.liaisons("jouer")).toEqual(FACES);
+    expect(c.liaison("jouer")).toBe("b0"); // celle que l'écran des commandes montre et remplace
+    for (const b of [0, 1, 2, 3]) expect(c.enfonceeManette("jouer", pad(b)), `b${b}`).toBe(true);
+    expect(c.enfonceeManette("jouer", pad(4))).toBe(false);
+    expect(c.enfonceeManette("jouer", pad())).toBe(false);
+    expect(c.nomLiaison("jouer", "fr")).toBe("A / B / X / Y");
+    expect(c.parametres("fr")["m_jouer"]).toBe("A / B / X / Y");
+    expect(c.nomLiaison("recommencer", "fr")).toBe("—");
+    expect(c.etat.manette["jouer"]).toBe("b0");
+    expect(estDorigine(c)).toBe(true);
+    expect(c.liaisons("pause")).toEqual([]);
+  });
+
+  it("remplacer la liaison ne garde que la nouvelle ; une liaison d'une autre action échange sa place, y compris un des boutons de face", () => {
+    const c = new Commandes("un", [...UNE_COMMANDE, { id: "special", clavier: ["KeyZ"], manette: "b5" }], memoire());
+    expect(definirLiaison(c, "jouer", boutonLiaison(7))).toEqual({ ok: true, echange: null });
+    expect(c.liaisons("jouer")).toEqual(["b7"]);
+    expect(c.enfonceeManette("jouer", pad(1))).toBe(false);
+    expect(estDorigine(c)).toBe(false);
+    retablir(c);
+    expect(c.liaisons("jouer")).toEqual(FACES);
+    // « special » prend B (b1), un des quatre boutons de face de « jouer » : « jouer » ne le garde pas aussi
+    expect(definirLiaison(c, "special", boutonLiaison(1))).toEqual({ ok: true, echange: "jouer" });
+    expect(c.liaisons("special")).toEqual(["b1"]);
+    expect(c.liaison("jouer")).toBe("b5"); // elle reçoit le bouton que « special » quitte
+    expect(c.liaisons("jouer")).toEqual(["b5"]);
+  });
+
+  it("une action déclarée sans touche peut le rester : `coherent` l'accepte, et le réglage enregistré est relu tel quel au rechargement", () => {
+    const stockage = memoire();
+    const c = new Commandes("un", UNE_COMMANDE, stockage);
+    expect(c.touches("recommencer")).toEqual([]);
+    expect(emplacementsDe(c, "recommencer")).toEqual(["", ""]);
+    // le joueur règle « jouer » (une touche changée, la liaison remplacée) : l'enregistrement est relu, pas écarté
+    definirTouche(c, "jouer", 0, "KeyV");
+    definirLiaison(c, "jouer", boutonLiaison(6));
+    const relu = new Commandes("un", UNE_COMMANDE, stockage);
+    expect(relu.touches("jouer")).toEqual(["KeyV", "Enter", "KeyX"]);
+    expect(relu.liaisons("jouer")).toEqual(["b6"]);
+    expect(relu.touches("recommencer")).toEqual([]);
+    // un réglage d'avant (format inchangé : une liaison, des touches), déjà enregistré, reste valide
+    const ancien = memoire({ [cleCommandes("un")]: JSON.stringify({ v: 1, clavier: { jouer: ["KeyV", "Enter", "KeyX"], recommencer: ["", ""], pause: ["KeyP", ""] }, manette: { jouer: "b0", recommencer: null, pause: null } }) });
+    const lu = new Commandes("un", UNE_COMMANDE, ancien);
+    expect(lu.touches("jouer")).toEqual(["KeyV", "Enter", "KeyX"]);
+    expect(lu.liaisons("jouer")).toEqual(FACES); // la première liaison d'origine gardée : toutes celles de l'origine
+    // …mais une touche d'une action qui en avait d'origine ne peut pas être retirée, ni une touche partagée acceptée
+    for (const o of [{ jouer: ["", "", ""] }, { jouer: ["KeyP", "", ""] }]) {
+      const c2 = new Commandes("un", UNE_COMMANDE, memoire({ [cleCommandes("un")]: JSON.stringify({ v: 1, clavier: o, manette: {} }) }));
+      expect(c2.touches("jouer")).toEqual(["Space", "Enter", "KeyX"]);
+    }
+    // une touche posée sur l'action sans touche est gardée (le joueur le veut) et relue
+    definirTouche(c, "recommencer", 0, "KeyR");
+    expect(new Commandes("un", UNE_COMMANDE, stockage).touches("recommencer")).toEqual(["KeyR"]);
+  });
+
+  it("deux actions dont les liaisons se recouvrent (un bouton de face déjà pris) sont refusées en bloc, comme une liaison en double", () => {
+    const deux: readonly ActionCommande[] = [{ id: "a", clavier: ["KeyA"], manette: ["b0", "b1"] }, { id: "b", clavier: ["KeyB"], manette: "b3" }];
+    const c = new Commandes("d", deux, memoire({ [cleCommandes("d")]: JSON.stringify({ v: 1, clavier: {}, manette: { b: "b1" } }) }));
+    expect(c.liaison("b")).toBe("b3"); // b1 est une liaison de « a » : l'enregistrement est écarté
+    expect(c.liaisons("a")).toEqual(["b0", "b1"]);
   });
 });

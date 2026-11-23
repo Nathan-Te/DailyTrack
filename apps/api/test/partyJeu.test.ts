@@ -50,6 +50,19 @@ describe("jeu Party : le niveau est la graine du jour (lot PA1)", () => {
     expect(board.body.top.map((l: { name: string }) => l.name)).toEqual(["Joueur2", "Joueur1"]);
   });
 
+  it("copies (lot PA1c) : deux parties sans aucune entrée ne sont pas des copies l'une de l'autre ; deux parties qui ont joué les mêmes entrées le sont", async () => {
+    const t = await makeApi({ seed: false, games: [...GAMES, def], allowCopies: false });
+    t.clock.now = MIDI;
+    await ouvrirJeu(t, def.code);
+    const envoi = (n: number, charge: number[]) => t.call("POST", "/api/partyjouet/submit", { replay: rediffusion(charge), name: `Joueur${n}` }, { headers: entete(n) });
+    expect((await envoi(1, [0])).status).toBe(200);
+    expect((await envoi(2, [0])).status).toBe(200); // aucune entrée : jamais comparée (avant PA1c : 409 `replay_copy`)
+    expect((await envoi(3, [0, 0, 0])).status).toBe(200);
+    expect((await envoi(4, [7, 3])).status).toBe(200);
+    expect((await envoi(5, [7, 3])).body).toMatchObject({ error: "replay_copy" }); // le reste de la règle ne change pas
+    expect((await envoi(6, [3, 7])).status).toBe(200); // les mêmes octets dans un autre ordre : une autre partie
+  });
+
   it("refuse une rediffusion d'un autre jour ou d'une autre version, par les codes de la liste", async () => {
     const t = await monter();
     const refus = async (replay: string) => (await t.call("POST", "/api/partyjouet/submit", { replay, name: "Nowy" }, { headers: entete(1) })).body;

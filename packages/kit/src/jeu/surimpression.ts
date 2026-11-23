@@ -14,13 +14,14 @@ export interface Surimpression {
 }
 
 /** Les quatre zones, vides. `aria-hidden` : ce que le jeu y écrit répète la barre, que les lecteurs d'écran lisent déjà. */
-export function creerSurimpression(): Surimpression {
+export function creerSurimpression(claire = false): Surimpression {
   const zone = (nom: string): HTMLElement => el("div", { classe: `jeu-surimpression__zone jeu-surimpression__${nom}`, attrs: { "data-zone": nom } });
   const hautGauche = zone("haut-gauche");
   const centre = zone("centre");
   const hautDroite = zone("haut-droite");
   const annonce = el("div", { classe: "jeu-surimpression__annonce", attrs: { "data-zone": "annonce" } });
-  const racine = el("div", { classe: "jeu-surimpression", attrs: { "aria-hidden": "true" } }, hautGauche, centre, hautDroite, annonce);
+  // Lot PA1c : `claire` (`hud: "surimpression-claire"`) — une scène claire : encre sur papier au lieu de papier sur encre (`jeu-surimpression--clair`, `ecrans.css`).
+  const racine = el("div", { classe: claire ? "jeu-surimpression jeu-surimpression--clair" : "jeu-surimpression", attrs: { "aria-hidden": "true" } }, hautGauche, centre, hautDroite, annonce);
   const zones: ZonesSurimpression = { hautGauche, centre, hautDroite, annonce };
   return { racine, zones, vider: () => Object.values(zones).forEach((z) => z.replaceChildren()) };
 }

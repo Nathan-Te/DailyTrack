@@ -340,6 +340,13 @@
 .jeu-surimpression__annonce:empty {
   display: none;
 }
+/* Lot PA1c — la variante pour une scène CLAIRE (`hud: "surimpression-claire"`) : le texte posé sur le plateau est d'encre, avec l'ombre de papier ; la pastille et le cartouche (encre sur papier, papier sur encre) sont déjà lisibles sur n'importe quel fond. */
+.jeu-surimpression--clair {
+  color: var(--dj-encre);
+}
+.jeu-surimpression--clair .jeu-surimpression__valeur {
+  text-shadow: 3px 3px 0 var(--dj-papier);
+}
 /* ce que le kit offre pour écrire dans les zones : un grand nombre, une pastille d'encre, un cartouche de papier */
 .jeu-surimpression__valeur {
   font-size: clamp(var(--dj-taille-24), 8vmin, var(--dj-taille-38));

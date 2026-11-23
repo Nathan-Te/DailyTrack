@@ -53,7 +53,7 @@ export const contratCibles = (): ContratParty<Rejeu, Mesure> => ({
     }
   },
   score: (m) => scoreParColonnes(m), // les colonnes de la fiche, selon la variante du jeu (`variante.ts`)
-  entrees: (r) => texteDesEntrees(r.touches),
+  entrees: (r) => (r.touches.length === 0 ? null : texteDesEntrees(r.touches)), // lot PA1c : une partie sans aucune touche n'est la copie de personne (`null` : jamais comparée)
   mesures: (m) => ({ ratees: m.ratees }),
   ticksParSeconde: 30,
 });

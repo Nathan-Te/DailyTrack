@@ -30,9 +30,18 @@ export interface ActionCommande {
   readonly id: string;
   /** Touches d'origine (`event.code`). */
   readonly clavier: readonly string[];
-  /** Liaison d'origine de la manette (`null` : aucune). */
-  readonly manette: Liaison | null;
+  /**
+   * Liaison(s) d'origine de la manette (`null` : aucune). Lot PA1c : **plusieurs liaisons** (« n'importe quel bouton de face » : `["b0", "b1", "b2", "b3"]`) déclenchent toutes l'action ; la première est celle que l'écran des
+   * commandes montre et que le joueur remplace (la remplacer, c'est ne garder que la nouvelle). Le stockage ne change pas : il garde cette seule liaison, ou `null`.
+   */
+  readonly manette: Liaison | readonly Liaison[] | null;
 }
+/** Les liaisons qui déclenchent l'action dans l'état `e` : celles de l'origine tant que la première est gardée (lot PA1c), sinon la seule que le joueur a posée. */
+const actives = (c: Commandes, e: Etat, id: string): readonly Liaison[] => {
+  const l = e.manette[id];
+  const o = [c.parId.get(id)?.manette].flat() as Liaison[]; // l'origine : une liaison, une liste, ou aucune
+  return l ? (l === o[0] ? o : [l]) : [];
+};
 
 /** Une touche qui peut être posée sur une action : pas fixe, un `event.code` plausible. */
 export function toucheValide(code: unknown): code is string {
@@ -92,20 +101,15 @@ export class Commandes {
   parametres(langue: "fr" | "en"): Record<string, string> {
     const p: Record<string, string> = {};
     for (const a of this.actions) {
-      p[a.id] = this.texteTouches(a.id, langue);
+      const n = this.nomsTouches(a.id, langue); // les touches écrites pour une phrase : « Espace, ↑ ou Z »
+      p[a.id] = n.length < 2 ? (n[0] ?? "—") : `${n.slice(0, -1).join(", ")} ${langue === "fr" ? "ou" : "or"} ${n[n.length - 1]}`;
       p[`m_${a.id}`] = this.nomLiaison(a.id, langue);
     }
     return p;
   }
   /** Le nom du bouton de la manette pour une action. */
   nomLiaison(id: string, langue: "fr" | "en"): string {
-    return nomLiaison(this.liaison(id), langue);
-  }
-  /** Les touches d'une action écrites pour une phrase : « Espace, ↑ ou Z » (`separateur` : « ou » / « or »). */
-  texteTouches(id: string, langue: "fr" | "en"): string {
-    const n = this.nomsTouches(id, langue);
-    if (n.length < 2) return n[0] ?? "—";
-    return `${n.slice(0, -1).join(", ")} ${langue === "fr" ? "ou" : "or"} ${n[n.length - 1]}`;
+    return this.liaisons(id).map((l) => nomLiaison(l, langue)).join(" / ") || "—";
   }
 
   // --- stockage -------------------------------------------------------------------------------------------------------------------------------
@@ -114,66 +118,45 @@ export class Commandes {
     const manette: Record<string, Liaison | null> = {};
     for (const a of this.actions) {
       clavier[a.id] = [...a.clavier];
-      manette[a.id] = a.manette;
+      manette[a.id] = [a.manette].flat()[0] ?? null;
     }
     return { clavier, manette };
   }
 
   /** Un stockage absent, vide, abîmé ou d'un autre format ramène les touches d'origine, sans erreur. Une action inconnue ou une valeur invalide est ignorée. */
   private charger(): Etat {
-    const e = this.origine();
     try {
-      const brut = this.stockage?.getItem(cleCommandes(this.jeu));
-      if (!brut) return e;
-      const d: unknown = JSON.parse(brut);
-      if (!d || typeof d !== "object" || (d as { v?: unknown }).v !== VERSION_COMMANDES) return e;
-      const { clavier, manette } = d as { clavier?: unknown; manette?: unknown };
-      const lu: Etat = this.origine();
-      if (clavier && typeof clavier === "object") {
+      const d = JSON.parse(this.stockage?.getItem(cleCommandes(this.jeu)) ?? "null") as { v?: unknown; clavier?: Record<string, unknown>; manette?: Record<string, unknown> } | null;
+      if (d?.v === VERSION_COMMANDES) {
+        const lu = this.origine();
         for (const a of this.actions) {
-          const v = (clavier as Record<string, unknown>)[a.id];
-          if (Array.isArray(v) && v.length <= this.emplacements(a.id) && v.every((c) => c === "" || toucheValide(c))) {
-            const l = v.map(String);
-            while (l.length < this.emplacements(a.id)) l.push("");
-            lu.clavier[a.id] = l;
-          }
+          const v = d.clavier?.[a.id];
+          const n = this.emplacements(a.id);
+          if (Array.isArray(v) && v.length <= n && v.every((c) => c === "" || toucheValide(c))) lu.clavier[a.id] = [...v.map(String), ...Array<string>(n - v.length).fill("")];
+          const m = d.manette?.[a.id];
+          if (m === null || liaisonValide(m)) lu.manette[a.id] = m;
         }
+        if (this.coherent(lu)) return lu;
       }
-      if (manette && typeof manette === "object") {
-        for (const a of this.actions) {
-          const v = (manette as Record<string, unknown>)[a.id];
-          if (v === null || liaisonValide(v)) lu.manette[a.id] = v;
-        }
-      }
-      return this.coherent(lu) ? lu : e;
     } catch {
-      return e;
+      // illisible : les touches d'origine
     }
+    return this.origine();
   }
 
-  /** Un fichier modifié à la main qui lie une touche à deux actions, laisse une action sans touche ou prend Start est refusé en bloc : touches d'origine. */
+  /**
+   * Un fichier modifié à la main qui lie une touche à deux actions, laisse sans touche une action qui en avait d'origine, ou prend Start est refusé en bloc : touches d'origine. Lot PA1c : une action déclarée **sans touche**
+   * (`recommencer` d'un jeu à une commande) peut le rester ; une liaison de manette n'est comptée qu'une fois, plusieurs liaisons d'une même action comprises.
+   */
   private coherent(e: Etat): boolean {
     const vues = new Set<string>();
     for (const a of this.actions) {
       const l = e.clavier[a.id]!.filter(Boolean);
-      if (!l.length || l.some((c) => vues.size === vues.add(c).size)) return false;
+      if ((!l.length && a.clavier.length) || l.some((c) => vues.size === vues.add(c).size)) return false;
     }
     const liaisons = new Set<string>();
-    for (const a of this.actions) {
-      const l = e.manette[a.id];
-      if (l && (l === boutonLiaison(BOUTON_FIXE) || liaisons.size === liaisons.add(l).size)) return false;
-    }
+    for (const a of this.actions) for (const l of actives(this, e, a.id)) if (l === boutonLiaison(BOUTON_FIXE) || liaisons.size === liaisons.add(l).size) return false;
     return true;
-  }
-
-  /** Enregistre les choix (`localStorage`, sous `try/catch`) et prévient les abonnés. */
-  enregistrer(): void {
-    try {
-      this.stockage?.setItem(cleCommandes(this.jeu), JSON.stringify({ v: VERSION_COMMANDES, clavier: this.etat.clavier, manette: this.etat.manette }));
-    } catch {
-      // stockage plein ou refusé : les choix vivent le temps de la page
-    }
-    for (const f of [...this.abonnes]) f();
   }
 
   /** Appelé après chaque changement (les aides se redessinent). Rend la fonction qui se désabonne. */
@@ -191,14 +174,12 @@ export class Commandes {
   touches(id: string): readonly string[] {
     return (this.etat.clavier[id] ?? []).filter(Boolean);
   }
-  /** Les emplacements de l'action, vides compris (`""`) : l'écran des réglages. */
-  emplacementsDe(id: string): string[] {
-    const l = [...(this.etat.clavier[id] ?? [])];
-    while (l.length < this.emplacements(id)) l.push("");
-    return l;
-  }
   liaison(id: string): Liaison | null {
     return this.etat.manette[id] ?? null;
+  }
+  /** Les liaisons qui déclenchent l'action (lot PA1c : plusieurs pour « n'importe quel bouton de face »). */
+  liaisons(id: string): readonly Liaison[] {
+    return actives(this, this.etat, id);
   }
   /** L'action qui porte cette touche (ou `null`). */
   actionDeTouche(code: string): string | null {
@@ -211,12 +192,7 @@ export class Commandes {
   }
   /** Vrai si la manette tient la liaison de l'action. */
   enfonceeManette(id: string, pad: { buttons: ArrayLike<{ pressed: boolean; value?: number }>; axes: ArrayLike<number> }): boolean {
-    const l = this.liaison(id);
-    return l ? liaisonTenue(l, pad) : false;
-  }
-  /** Tout est-il d'origine ? (le bouton « Rétablir » se grise). */
-  estDorigine(): boolean {
-    return JSON.stringify(this.etat) === JSON.stringify(this.origine());
+    return this.liaisons(id).some((l) => liaisonTenue(l, pad));
   }
 }
 

@@ -135,6 +135,8 @@ export interface ContratJeu<Niveau, Rejeu, Mesure> {
   memeContenu?(rejeu: Rejeu, niveau: Niveau): void;
   /** Les entrées effectivement jouées, en texte canonique (le module en prend l'empreinte SHA-256 pour refuser les copies). */
   entrees?(rejeu: Rejeu): string;
+  /** Lot PA1c — **la partie n'a joué aucune entrée** (un jeu Party sans appui) : ses entrées sont celles de toute autre partie sans entrée, ce ne sont pas des copies — le module ne la compare jamais (ni à l'auteur, ni à une partie classée). Facultatif : absent = toute partie est comparée. */
+  sansEntree?(rejeu: Rejeu): boolean;
   /** Le rejeu, la seule source du résultat. Le module a déjà compté `unitesRejeu` dans le plafond global. Lève `RefusJeu` pour une partie refusée. */
   rejouer?(niveau: Niveau, texte: string): Promise<Mesure>;
   /**

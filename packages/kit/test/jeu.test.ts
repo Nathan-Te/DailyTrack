@@ -8,6 +8,7 @@ import { CATALOGUE_KIT_PLURIELS_EN } from "../src/jeu/catalogue.en";
 import { CATALOGUE_KIT_EN, CATALOGUE_KIT_FR, CATALOGUE_KIT_PLURIELS_FR } from "../src/jeu/catalogue";
 import { creerVibreur, creerVolumeEffets, lireReglages, volumeEffetsLu } from "../src/jeu/reglagesJoueur";
 import { commandesDuJeu } from "../src/jeu/commandes";
+import { enregistrer } from "@cdj/ui/src/commandesEdition";
 import { ligneParDefaut } from "../src/partage";
 import { baseApi, choisirJour, lireOptions, serieLocale } from "../src/jeu/session";
 
@@ -215,5 +216,38 @@ describe("les pluriels du kit", () => {
   });
   it("l'accueil a son bouton « Archives » (désactivé, « Bientôt ») et le panneau « Aujourd'hui »", () => {
     for (const c of [CATALOGUE_KIT_FR, CATALOGUE_KIT_EN]) for (const k of ["kit.accueil.archives", "kit.accueil.bientot", "kit.accueil.aujourdhui"]) expect(c).toHaveProperty([k]);
+  });
+});
+
+// Lot PA1c — un jeu à une commande : `recommencer` redéclaré sans touche remplace celui du kit (aucune touche en double) ; une action peut avoir plusieurs liaisons de manette ; `dessiner` reçoit l'avancement entre deux pas.
+describe("un jeu à une commande (lot PA1c)", () => {
+  const fiche = { id: "une-commande", nom: "Essai", colonnes: [{ nom: "score", sens: "desc" as const }], themes: ["a"], prefixe: "une-commande:", premierJour: "2026-11-02" };
+  const i18n = { parametresCommuns: () => undefined, langue: "fr" } as never;
+  it("`recommencer` redéclaré sans touche remplace celui du kit (Entrée reste à l'action du jeu) ; les liaisons de face déclenchent l'action ; un jeu qui ne redéclare rien garde Entrée et B2", () => {
+    const store = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    const def = { actions: [{ id: "jouer", clavier: ["Space", "Enter"], manette: ["b0", "b1", "b2", "b3"] }, { id: "recommencer", clavier: [], manette: null }], sansFantome: true } as never;
+    const c = commandesDuJeu(fiche, def, i18n);
+    expect(c.actions.filter((a) => a.id === "recommencer")).toHaveLength(1);
+    expect(c.actionDeTouche("Enter")).toBe("jouer");
+    expect(c.touches("recommencer")).toEqual([]);
+    expect(c.liaisons("jouer")).toEqual(["b0", "b1", "b2", "b3"]);
+    expect(c.liaisons("recommencer")).toEqual([]);
+    // le réglage enregistré (une touche changée) est relu au rechargement : aucune touche sur deux actions, donc rien n'est écarté
+    c.etat.clavier["jouer"] = ["KeyV", "Enter"];
+    enregistrer(c);
+    const autre = commandesDuJeu({ ...fiche, id: "une-commande-2" }, def, i18n);
+    expect(autre.touches("jouer")).toEqual(["Space", "Enter"]);
+    const classique = commandesDuJeu({ ...fiche, id: "classique" }, { actions: [{ id: "poser", clavier: ["Space"], manette: "b0" }], sansFantome: true } as never, i18n);
+    expect(classique.actionDeTouche("Enter")).toBe("recommencer");
+    expect(classique.liaison("recommencer")).toBe("b2");
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+  });
+  it("la partie donne `dessiner` l'avancement entre deux pas (0 à 1), figé quand rien n'avance, et le type l'annonce", () => {
+    const partie = readFileSync(join(__dirname, "../src/jeu/partie.ts"), "utf8");
+    expect(partie).toContain("avancement = Math.min(1, acc / pas);");
+    expect(partie).toContain("partie.dessiner(avancement);");
+    expect(partie).not.toMatch(/partie\.dessiner\(\)/);
+    expect(readFileSync(join(__dirname, "../src/jeu/types.ts"), "utf8")).toContain("dessiner(avancement: number): void;");
   });
 });
