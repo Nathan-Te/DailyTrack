@@ -4,7 +4,7 @@ import { CAMERA_DEFAUT, CameraRush, facteurDeCadrage } from "../src/camera";
 import { directionDeVisee, pointSurLeSol } from "../src/visee";
 
 // La caméra et la visée au sol, sans navigateur : de la géométrie.
-describe("la caméra haute et lointaine (lot BR0c)", () => {
+describe("la caméra : le cadrage de la cible (lot BR-A3 ; haute et lointaine aux lots BR0c et BR1)", () => {
   const ASPECT = 1920 / 1080;
   const poser = (cx: number, cz: number, golem: { x: number; z: number } | null, garder: Parameters<CameraRush["but"]>[5] = [], aspect = ASPECT) => {
     const r = new CameraRush();
@@ -15,26 +15,26 @@ describe("la caméra haute et lointaine (lot BR0c)", () => {
     const p = new Vector3(x, y, z).project(c);
     return [p.x, p.y];
   };
-  it("regarde le sol sous 41° avec un champ de 25° depuis 34 m, par défaut (lot BR1 : 41°, pour voir le corps du chevalier) (on voit presque toute l'arène)", () => {
-    expect(CAMERA_DEFAUT).toEqual({ angle: 41, distance: 34, champ: 25 });
+  it("regarde le sol sous 33° avec un champ de 35° depuis 19 m, par défaut (lot BR-A3 : le cadrage de la cible ; 41°, 25°, 34 m avant)", () => {
+    expect(CAMERA_DEFAUT).toEqual({ angle: 33, distance: 19, champ: 35 });
     const c = poser(0, 5, null);
     const dir = new Vector3();
     c.getWorldDirection(dir);
-    expect(Math.round((Math.asin(-dir.y) * 180) / Math.PI)).toBe(41);
-    expect(c.fov).toBe(25);
+    expect(Math.round((Math.asin(-dir.y) * 180) / Math.PI)).toBe(33);
+    expect(c.fov).toBe(35);
   });
-  it("le chevalier (1,5 m) fait environ 8 % de la hauteur de l'écran à 16:9 : la cible", () => {
+  it("le chevalier (1,5 m) fait 9 à 13 % de la hauteur de l'écran à 16:9 : la taille qu'il a sur la cible (~12 %)", () => {
     const c = poser(0, 0, null);
     const [, bas] = ndc(c, 0, 0, 0);
     const [, haut] = ndc(c, 0, 1.5, 0);
     const part = (haut - bas) / 2; // la hauteur de l'écran vaut 2 en coordonnées d'écran
-    expect(part).toBeGreaterThan(0.06);
-    expect(part).toBeLessThan(0.1);
+    expect(part).toBeGreaterThan(0.09);
+    expect(part).toBeLessThan(0.13);
   });
-  it("presque toute l'arène (rayon 11,5 m) tient dans l'image à 16:9 depuis le centre : les bords nord, est et ouest, et le sol jusqu'à 9 m au sud", () => {
+  it("depuis le centre à 16:9 : le muret du nord et ce qui est AU-DELÀ (le décor hors aire de jeu, à 17 m) sont dans l'image, l'arène d'est en ouest à 8 m aussi", () => {
     const c = poser(0, 0, null);
-    for (const [x, z] of [[-11.4, 0], [11.4, 0], [0, -11.4], [0, 9], [-8, 8], [8, 8]] as const) {
-      const [sx, sy] = ndc(c, x, 0, z);
+    for (const [x, y, z] of [[0, 0, -11.4], [0, 0, -17], [-8, 0, 0], [8, 0, 0], [0, 0, 6]] as const) {
+      const [sx, sy] = ndc(c, x, y, z);
       expect(Math.abs(sx)).toBeLessThan(1);
       expect(Math.abs(sy)).toBeLessThan(1);
     }
@@ -65,14 +65,15 @@ describe("la caméra haute et lointaine (lot BR0c)", () => {
   it("ne recule pas quand tout tient déjà, et jamais de plus de 25 %", () => {
     const r = new CameraRush();
     const sans = r.but(CAMERA_DEFAUT, ASPECT, 0, 0, null, []);
-    expect(sans.distance).toBeCloseTo(34, 5);
+    expect(sans.distance).toBeCloseTo(CAMERA_DEFAUT.distance, 5);
     const loin = r.but(CAMERA_DEFAUT, ASPECT, 0, 9, { x: 0, z: -11 }, [{ x: 0, z: -11, haut: 6.5, r: 3.2 }]);
-    expect(loin.distance).toBeGreaterThanOrEqual(34);
-    expect(loin.distance).toBeLessThanOrEqual(34 * 1.25 + 1e-9);
+    expect(loin.distance).toBeGreaterThanOrEqual(CAMERA_DEFAUT.distance);
+    expect(loin.distance).toBeLessThanOrEqual(CAMERA_DEFAUT.distance * 1.25 + 1e-9);
   });
   it("un écran étroit (portrait) s'éloigne pour garder 11 m de sol dans la largeur", () => {
     const r = new CameraRush();
-    expect(r.but(CAMERA_DEFAUT, 0.3, 0, 0, null, []).distance).toBeGreaterThan(60);
+    const d = r.but(CAMERA_DEFAUT, 0.3, 0, 0, null, []).distance;
+    expect(2 * d * Math.tan((CAMERA_DEFAUT.champ * Math.PI) / 360) * 0.3).toBeGreaterThanOrEqual(11 - 1e-9);
   });
   it("facteurDeCadrage vaut 1 quand tout tient", () => {
     const c = new PerspectiveCamera(25, ASPECT);

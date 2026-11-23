@@ -16,6 +16,7 @@ import { DUREE_TICKS, SCENARIOS, TICKS_PAR_SECONDE, type Scenario } from "@cdj/r
 //   · `?scenario=fin&temps=65000` (lot BR4) : l'écran de fin, tout de suite, à ce temps (en millisecondes) sur le niveau du jour (`&jour=`) : pour le juger sans jouer ;
 //   · `?qualite=haute|basse` (lot BR0c) : le niveau de rendu (haute : ombres portées, contour et bloom en post-traitement ; basse : ombres en disques, contour par coque). Sans le paramètre, haute avec un passage automatique en basse si les images par seconde chutent.
 //   · `?scenario=bestiaire-monstres` (lot BR6) : les sept monstres et un élite de chaque, figés, côte à côte (`&theme=`) ; `?scenario=camp&ennemis=cracheur,chaman,porte-bouclier,totem` : un camp composé à la main (`&elite=1` : l'un d'eux est un élite, `&competence=`) ; `?scenario=epreuve` : directement la salle d'épreuve du jour ;
+//   · `&modeles=0` (lot BR-A3) : sans les modèles tiers de l'essai de style (s'ils ont été convertis sur la machine : `npm run modeles-tiers -w @cdj/rush`), pour comparer avant / après ;
 // Une partie d'essai n'est JAMAIS classée (`classable` de la définition) ; la rediffusion d'un scénario nomme le scénario et le serveur la refuse.
 export interface Essai {
   scenario: Scenario | null;
@@ -50,12 +51,14 @@ export interface Essai {
   nv: number;
   /** Les sensations collées dans l'adresse (JSON brut), ou `null`. */
   sensations: unknown;
+  /** Lot BR-A3 : charger les modèles tiers s'ils sont là (`public/modeles-tiers/`) ; `&modeles=0` garde les formes procédurales. Jamais sur la production. */
+  modeles: boolean;
   /** Vrai dès qu'une option d'essai change la partie : elle n'est alors pas classable. */
   essai: boolean;
 }
 
 export function lireEssai(search: string, restreint: boolean): Essai {
-  const vide: Essai = { scenario: null, jour: null, carte: null, medailles: null, fin: null, fantome: false, phase2: false, boss: null, competence: null, monstres: 0, ennemis: [], elite: false, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, essai: false };
+  const vide: Essai = { scenario: null, jour: null, carte: null, medailles: null, fin: null, fantome: false, phase2: false, boss: null, competence: null, monstres: 0, ennemis: [], elite: false, tune: false, fps: false, qualite: null, reglages: null, ameliorations: [], nv: 2, sensations: null, modeles: false, essai: false };
   if (restreint) return vide;
   const q = new URLSearchParams(search);
   const nom = q.get("scenario") ?? "";
@@ -104,6 +107,7 @@ export function lireEssai(search: string, restreint: boolean): Essai {
     ameliorations,
     nv: nv >= 2 ? nv : 2,
     sensations,
+    modeles: q.get("modeles") !== "0",
     essai: scenario !== null || q.has("competence") || ameliorations.length > 0 || jour !== null || carte !== null || medailles !== null || fin !== null || q.get("fantome") === "1" || (debug && q.has("tune")) || reglages !== null,
   };
 }
