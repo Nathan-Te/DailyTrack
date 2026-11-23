@@ -20,6 +20,7 @@ Une ligne par dossier ; le texte long (contenu, particularités, Tower, Cibles) 
 | `packages/vertige-sim` · `apps/vertige` | simulation ; le jeu — jeu neuf, branché sur la plateforme par le kit (`brancherJeu`), `off` jusqu'à ce que Nathan le publie | Vertige | index `docs/vertige/consignes.md` |
 | `packages/gravity-sim` · `apps/gravity` | simulation ; le jeu — jeu neuf, branché sur la plateforme par le kit (`brancherJeu`), `off` jusqu'à ce que Nathan le publie | Gravity | index `docs/gravity/consignes.md` |
 | `packages/pinball-sim` · `apps/pinball` | simulation ; le jeu — jeu neuf, branché sur la plateforme par le kit (`brancherJeu`), `off` jusqu'à ce que Nathan le publie | Pinball | index `docs/pinball/consignes.md` |
+| `packages/pilepoil-sim` · `apps/pilepoil` | kit | Pile poil | `docs/pilepoil/consignes.md` |
 | `packages/cibles-sim` · `apps/cibles` | « Cibles » : le jeu témoin, modèle du générateur de jeu | témoin | `docs/cibles/consignes.md` |
 | `apps/api` | serveur de la plateforme (registre, identité, classements, Salon, profil, portail, admin), déploiement, recette | **partagée** | `apps/api/CLAUDE.md` |
 | `packages/core` · `packages/clock` | socle sans logique de jeu ; jour de Paris | **partagée** | `packages/core/CLAUDE.md` · `apps/api/CLAUDE.md` « Jour de Paris » |

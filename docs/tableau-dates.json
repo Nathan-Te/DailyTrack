@@ -130,6 +130,7 @@
     "docs/lots/lot-Q1-qualite-bridage.md": "2026-11-05",
     "docs/lots/lot-R17-salon-serveur-test-stable.md": "2026-11-18",
     "docs/lots/lot-V2-track-variete-des-circuits.md": "2026-10-29",
+    "docs/pilepoil/lots/lot-PA2-pile-poil.md": "2026-11-22",
     "docs/pinball/lots/lot-PB0-creation.md": "2026-11-14",
     "docs/pinball/lots/lot-PB1-simulation.md": "2026-11-15",
     "docs/pinball/lots/lot-PB2-rendu.md": "2026-11-15",
@@ -285,7 +286,12 @@
     "docs/blocks/passation.md": {"empreinte":"fe960f7a7f8f","jour":"2026-11-20"},
     "docs/gravity/passation.md": {"empreinte":"94ccd18c8ce8","jour":"2026-11-20"},
     "docs/jump/passation.md": {"empreinte":"607965a6b347","jour":"2026-11-20"},
+<<<<<<< HEAD
     "docs/pinball/passation.md": {"empreinte":"4fbd811b018e","jour":"2026-11-23"},
+=======
+    "docs/pilepoil/passation.md": {"empreinte":"4f5772d9630b","jour":"2026-11-22"},
+    "docs/pinball/passation.md": {"empreinte":"c4e48fa922e4","jour":"2026-11-20"},
+>>>>>>> origin/main
     "docs/plateforme/passation.md": {"empreinte":"8d0e48377135","jour":"2026-11-21"},
     "docs/rush/passation.md": {"empreinte":"817af8b16644","jour":"2026-11-20"},
     "docs/tower/passation.md": {"empreinte":"6a3b8c8125ee","jour":"2026-11-20"},

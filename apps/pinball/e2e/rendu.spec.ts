@@ -99,7 +99,13 @@ test.describe("Pinball : le rendu", () => {
       const appels = await page.evaluate(() => (window as unknown as { __vibre?: unknown[] }).__vibre?.length ?? 0);
       if (reglage === "oui") {
         expect(compte, "le robot frappe la bille au batteur").toBeGreaterThan(0);
-        expect(appels).toBe(compte);
+        // lot PBT1 : sur les tables dessinées le robot franchit la porte de l'orbite dans ces 9 000 pas (une vibration de 40 ms par passage) et le poteau peut renvoyer la bille (60 ms) : on les compte, à côté des frappes de batteur ; ni mission ni multibille ici (elles vibrent aussi)
+        const autres = await page.evaluate(() => {
+          const q = window.__pinball!.partie();
+          return { vibrantes: q.passages + q.sauvetages, silencieux: !q.missionFaite && q.niveau === 1 && q.multibilles === 0 };
+        });
+        expect(autres.silencieux, "ni mission ni multibille dans ces pas").toBe(true);
+        expect(appels).toBe(compte + autres.vibrantes);
       } else {
         expect(appels).toBe(0);
       }

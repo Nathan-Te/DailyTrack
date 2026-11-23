@@ -20,6 +20,9 @@
       "path": "packages/cibles-sim"
     },
     {
+      "path": "packages/pilepoil-sim"
+    },
+    {
       "path": "packages/pinball-sim"
     },
     {
@@ -63,6 +66,9 @@
     },
     {
       "path": "apps/cibles"
+    },
+    {
+      "path": "apps/pilepoil"
     },
     {
       "path": "apps/pinball"

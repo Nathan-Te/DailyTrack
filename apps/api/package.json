@@ -39,6 +39,7 @@
     "@cdj/sim": "*",
     "@cdj/tower-sim": "*",
     "@cdj/cibles-sim": "*",
+    "@cdj/pilepoil-sim": "*",
     "@cdj/pinball-sim": "*",
     "@cdj/gravity-sim": "*",
     "@cdj/vertige-sim": "*",
