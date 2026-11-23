@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BOUTON_FIXE, Commandes, TOUCHE_FIXE, cleCommandes } from "@cdj/ui/src/commandes";
-import { definirLiaison, definirTouche, retablir } from "@cdj/ui/src/commandesEdition";
+import { definirLiaison, definirTouche, estDorigine, retablir } from "@cdj/ui/src/commandesEdition";
 import { ACTIONS_TOWER, cleAction } from "../src/commandes";
 import { CATALOGUE_TOWER } from "../src/catalogue";
 
@@ -78,7 +78,7 @@ describe("changer une touche : échange, touches fixes, rétablir", () => {
     expect(definirLiaison(c, "tourner", `b${BOUTON_FIXE}`)).toMatchObject({ ok: false, raison: "fixe" });
     expect(definirLiaison(c, "tourner", "b10")).toEqual({ ok: true, echange: null });
     retablir(c);
-    expect(c.estDorigine()).toBe(true);
+    expect(estDorigine(c)).toBe(true); // lot PA1c : la méthode de la classe (premier chargement) est devenue la fonction de l’édition (à la demande)
   });
 });
 

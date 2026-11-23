@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { rapportContraste } from "@cdj/ui/src/contraste";
 import { couleurValide, fondDuTheme } from "../src/jeu/peau";
 
 // Lot « écrans du kit » — la peau d'un jeu : ce qui est pur (validation des couleurs, décor par thème) et la feuille des écrans (jetons seulement, échelle d'espacement). Le DOM est essayé par `apps/cibles/e2e/ecrans-kit.spec.ts`.
@@ -48,5 +49,26 @@ describe("les feuilles des écrans du kit (jeu.css : l'accueil, premier chargeme
     const gen = lire("packages/ui/src/identites/cibles.generated.css"); // lot K5 : la peau de chaque jeu est dans son fichier (alias `identite-du-jeu.css`)
     expect(gen).toMatch(/\.jeu-etiquette--cibles\s*\{[^}]*--jeu-fond:[^}]*--jeu-coque:[^}]*--jeu-police:/);
     for (const jeu of ["track", "jump", "tower", "cibles", "blocks", "rush"]) expect(css, jeu).not.toMatch(new RegExp(`\\b${jeu}\\b`, "i"));
+  });
+});
+
+// Lot PA1c — la surimpression pour une scène claire (`hud: "surimpression-claire"`) : l'encre sur le papier, lisible au contraste AA ; le kit donne la classe, le jeu ne retouche rien.
+describe("la surimpression pour une scène claire (lot PA1c)", () => {
+  const css = sansCommentaires(lire("packages/kit/src/jeu/ecrans.css"));
+  const jeton = (nom: string): string => new RegExp(`--dj-${nom}:\\s*(#[0-9A-Fa-f]{6})`).exec(lire("packages/ui/src/jetons.css"))![1]!;
+  it("la variante écrit le texte en encre et son ombre en papier (la base : papier, ombre d'encre) ; jetons seulement", () => {
+    expect(css).toMatch(/\.jeu-surimpression--clair\s*\{\s*color:\s*var\(--dj-encre\);\s*\}/);
+    expect(css).toMatch(/\.jeu-surimpression--clair \.jeu-surimpression__valeur\s*\{\s*text-shadow:\s*3px 3px 0 var\(--dj-papier\);\s*\}/);
+    expect(css).toMatch(/\.jeu-surimpression\s*\{[^}]*color:\s*var\(--dj-papier\)/);
+    expect(css).toMatch(/\.jeu-surimpression__valeur\s*\{[^}]*text-shadow:\s*3px 3px 0 var\(--dj-encre\)/);
+  });
+  it("le texte d'encre sur son ombre de papier atteint 4,5:1 (AA), comme le papier sur l'encre de la variante d'origine", () => {
+    expect(rapportContraste(jeton("encre"), jeton("papier"))).toBeGreaterThanOrEqual(4.5);
+  });
+  it("le kit pose la classe pour `hud: \"surimpression-claire\"`, jamais pour `\"surimpression\"`, et le type la permet", () => {
+    const partie = lire("packages/kit/src/jeu/partie.ts");
+    expect(partie).toContain('def.hud === "surimpression" || def.hud === "surimpression-claire" ? creerSurimpression(def.hud === "surimpression-claire")');
+    expect(lire("packages/kit/src/jeu/surimpression.ts")).toContain('claire ? "jeu-surimpression jeu-surimpression--clair" : "jeu-surimpression"');
+    expect(lire("packages/kit/src/jeu/types.ts")).toContain('hud?: "barre" | "surimpression" | "surimpression-claire"');
   });
 });

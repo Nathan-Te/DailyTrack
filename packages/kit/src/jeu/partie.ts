@@ -2,7 +2,6 @@ import "./ecrans.css"; // lot « écrans du kit » : la feuille des écrans à l
 import { readPlayerId, type OuAnnonce } from "@cdj/profile";
 import { barreJeu, bouton, boutonFantome, boutonPleinEcran, cheminMentions, creerCadre, el, medaille as medailleUi, type Jeu, type TraducteurCommun, type TypeMedaille } from "@cdj/ui";
 import { padPourLeJeu } from "@cdj/ui/src/manetteLien";
-import { liaisonTenue } from "@cdj/ui/src/commandes";
 import { suivantDisponible } from "../fantome";
 import { ligneParDefaut, textePartage, adresseDePartage } from "../partage";
 import { commandesDuJeu } from "./commandes";
@@ -64,7 +63,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   const pauseBtn = el("button", { classe: "jeu-hud__bouton jeu-hud__pause", attrs: { type: "button", id: "jeu-hud-pause", "aria-label": t("kit.hud.pause") }, texte: "II" });
   pauseBtn.addEventListener("click", () => ouvrirPause());
   pauseBtn.addEventListener("pointerup", () => pauseBtn.blur());
-  const surimpression = def.hud === "surimpression" ? creerSurimpression() : null; // lot PG1 : le HUD sur le plateau ; le texte de la barre n'est plus visible (`ecrans.css`), il reste lu
+  const surimpression = def.hud === "surimpression" || def.hud === "surimpression-claire" ? creerSurimpression(def.hud === "surimpression-claire") : null; // lot PG1 : le HUD sur le plateau ; le texte de la barre n'est plus visible (`ecrans.css`), il reste lu
   const scene = el("div", { classe: surimpression ? "jeu-scene jeu-scene--surimpression" : "jeu-scene", attrs: { id: "jeu-scene" } }, el("div", { classe: "jeu-hud" }, el("div", { classe: "jeu-hud__gauche" }, principal), el("div", { classe: "jeu-hud__centre" }, secondaire), el("div", { classe: "jeu-hud__droite" }, pleinEcranBtn, ...(fantomeBtn ? [fantomeBtn] : []), pauseBtn)), plateau);
   c.o.racine.append(scene);
 
@@ -100,6 +99,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
   let phase: "jeu" | "pause" | "fin" = "jeu";
   let manuel = c.options.manuel;
   let acc = 0;
+  let avancement = 0; // lot PA1c : la part du pas suivant déjà écoulée (0 à 1), donnée à `dessiner` : un jeu interpole sans horloge à lui
   let dernier = performance.now();
   let resultat: { score: number[]; rediffusion: string } | null = null;
   const pas = 1000 / def.ticksParSeconde;
@@ -118,9 +118,10 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
         partie.avancer();
         acc -= pas;
       }
+      avancement = Math.min(1, acc / pas); // figé en pause, en fin de partie et en mode manuel : rien n'avance
     }
     dernier = now;
-    partie.dessiner();
+    partie.dessiner(avancement);
     majHud();
     if (phase === "jeu" && partie.finEnCours?.()) fondFin.retomber(); // la partie est jouée, sa fin se montre encore : la musique retombe
     if (phase === "jeu" && partie.finie()) terminer();
@@ -167,8 +168,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     const maintenant = new Set<string>();
     if (pad) {
       for (const a of [...def.actions, ...(sansFantome ? [{ id: "recommencer" }] : [{ id: "recommencer" }, { id: "fantome" }])]) {
-        const l = commandes.liaison(a.id);
-        if (l && liaisonTenue(l, pad)) maintenant.add(a.id);
+        if (commandes.enfonceeManette(a.id, pad)) maintenant.add(a.id); // lot PA1c : n'importe laquelle des liaisons de l'action
       }
       // La croix et le stick déplacent (fixes), comme les flèches : les actions `gauche`, `droite`, `haut` et `bas` du jeu, si elles existent.
       const dirs: [string, boolean][] = [["gauche", (pad.axes[0] ?? 0) < -0.5 || !!pad.buttons[14]?.pressed], ["droite", (pad.axes[0] ?? 0) > 0.5 || !!pad.buttons[15]?.pressed], ["haut", (pad.axes[1] ?? 0) < -0.5 || !!pad.buttons[12]?.pressed], ["bas", (pad.axes[1] ?? 0) > 0.5 || !!pad.buttons[13]?.pressed]];
@@ -399,6 +399,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
     partie = nouvelle();
     phase = "jeu";
     acc = 0;
+    avancement = 0;
     dernier = performance.now();
     fondFin.reinitialiser();
     c.musique.baisser(0.6);
@@ -414,7 +415,7 @@ export async function demarrerPartie<C>(c: ContextePartie<C>): Promise<void> {
       manuel: (oui = true) => void (manuel = oui),
       avancer(n) {
         for (let i = 0; i < n && !partie.finie(); i++) partie.avancer();
-        partie.dessiner();
+        partie.dessiner(avancement); // lot PA1c : en mode manuel l’avancement reste figé
         majHud();
         if (phase === "jeu" && partie.finie()) terminer();
       },

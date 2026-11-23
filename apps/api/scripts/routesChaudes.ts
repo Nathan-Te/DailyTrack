@@ -7,7 +7,7 @@ import { chargerRapier } from "@cdj/tower-sim/rapier";
 import { createApi } from "../src/api";
 import type { ClientCompte, Comptage } from "../src/comptage";
 import type { SqlDb } from "../src/db";
-import { referenceId } from "./baseDeReference";
+import { jourClasseDansLaReference, referenceId } from "./baseDeReference";
 import { jouerScripte } from "./tower-aide";
 import { FICHES_SERVEUR } from "../src/fiches.generated";
 import { ESSAIS_DES_JEUX_NEUFS } from "./essais.generated";
@@ -43,6 +43,8 @@ interface RouteSpec {
   /** Numéro du joueur de la référence qui appelle (en-tête `X-Player-Id`), ou un identifiant précis. */
   joueur?: number | string;
   corps?: (today: number) => unknown;
+  /** Lot PA1c : le jour de Paris de la mesure (horloge maîtrisée) s'il n'est pas `today` — un jeu Party n'est classé que le jour où il est en tête ; absent : `today`. */
+  jour?: number;
 }
 
 export const ROUTES_CHAUDES: RouteSpec[] = [
@@ -109,15 +111,18 @@ async function routesDesJeuxNeufs(chaud: ReturnType<typeof createApi>, today: nu
   for (const f of FICHES_SERVEUR.filter((x) => ESSAIS_DES_JEUX_NEUFS[x.id] !== undefined)) {
     const info = await chaud.handle(new Request(`http://mesure.local/api/${f.id}/info`), { clientKey: "198.51.100.7" });
     const versions = (await info.json()) as { simVersion: number; generatorVersion: number };
+    // Lot PA1c : un jeu Party n'accepte un envoi que le jour où il est le jeu du jour (`not_party_of_the_day` sinon) ; avec deux jeux Party, ce n'est pas `today` pour les deux : chaque jeu se mesure un jour de son tour.
+    const jour = jourClasseDansLaReference(f.id, today);
     specs.push(
-      { nom: `${f.id} classement du jour`, methode: "GET", chemin: (d) => `/api/${f.id}/day/${d}/board`, joueur: 5 },
-      { nom: `${f.id} profil /api/${f.id}/me`, methode: "GET", chemin: () => `/api/${f.id}/me`, joueur: 5 },
+      { nom: `${f.id} classement du jour`, methode: "GET", chemin: (d) => `/api/${f.id}/day/${d}/board`, joueur: 5, jour },
+      { nom: `${f.id} profil /api/${f.id}/me`, methode: "GET", chemin: () => `/api/${f.id}/me`, joueur: 5, jour },
       {
         nom: `${f.id} envoi d'une partie`,
         methode: "POST",
         chemin: () => `/api/${f.id}/submit`,
         joueur: "ffffffffffffffffffffffffffff0004",
-        corps: () => ({ replay: ESSAIS_DES_JEUX_NEUFS[f.id]!.partie(today, versions, 777_001).rediffusion, name: "Nouveau joueur" }),
+        corps: () => ({ replay: ESSAIS_DES_JEUX_NEUFS[f.id]!.partie(jour, versions, 777_001).rediffusion, name: "Nouveau joueur" }),
+        jour,
       },
     );
   }
@@ -126,14 +131,15 @@ async function routesDesJeuxNeufs(chaud: ReturnType<typeof createApi>, today: nu
 
 export async function mesurerRoutes(db: SqlDb, compte: ClientCompte, today: number): Promise<MesureRoute[]> {
   const date = formatDay(today);
-  const clock = parisDayStart(today) + 12 * 3_600_000;
+  const midiDe = (jour: number) => parisDayStart(jour) + 12 * 3_600_000;
+  let clock = midiDe(today); // l'horloge maîtrisée de la mesure : `today`, ou le jour de tour d'un jeu Party (`RouteSpec.jour`)
   rapierMesure ??= await chargerRapier();
   // Production : rien n'est permis de plus qu'au serveur réel (`allowCopies` faux : la vérification des copies fait partie du coût d'un envoi).
   const neuve = () => createApi({ db, now: () => clock, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
   const appel = async (api: ReturnType<typeof createApi>, r: RouteSpec) => {
     const headers: Record<string, string> = r.corps ? { "Content-Type": "application/json" } : {};
     if (r.joueur !== undefined) headers["X-Player-Id"] = typeof r.joueur === "number" ? referenceId(r.joueur) : r.joueur;
-    const res = await api.handle(new Request(`http://mesure.local${r.chemin(date)}`, { method: r.methode, headers, body: r.corps ? JSON.stringify(r.corps(today)) : undefined }), { clientKey: "198.51.100.7" });
+    const res = await api.handle(new Request(`http://mesure.local${r.chemin(formatDay(r.jour ?? today))}`, { method: r.methode, headers, body: r.corps ? JSON.stringify(r.corps(today)) : undefined }), { clientKey: "198.51.100.7" });
     await res.text();
     return res.status;
   };
@@ -150,6 +156,7 @@ export async function mesurerRoutes(db: SqlDb, compte: ClientCompte, today: numb
     // (donc avec chaque jeu neuf ajouté aux fiches) : un artefact de la mesure, pas le coût d'un envoi. Hors comptage (`remettre` suit).
     await db.run("DELETE FROM rate");
     compte.remettre();
+    clock = midiDe(r.jour ?? today);
     const api = neuve();
     const statut = await appel(api, spec);
     const froid = resume(compte.comptage);

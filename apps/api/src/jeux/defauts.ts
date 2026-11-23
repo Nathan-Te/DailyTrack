@@ -37,6 +37,8 @@ export interface ContratMinimal<Niveau, Rejeu extends RejeuNeuf, Mesure> {
   seuils(niveau: Niveau): SeuilsMedailles | null;
   /** Les entrées effectivement jouées, en texte canonique : le module en prend l'empreinte pour refuser les copies. */
   entrees(rejeu: Rejeu): string;
+  /** Lot PA1c : la partie n'a joué aucune entrée (jeu Party) : elle n'est jamais comparée aux autres (voir `ContratJeu.sansEntree`). Facultatif. */
+  sansEntree?(rejeu: Rejeu): boolean;
 
   // --- Facultatifs : jamais obligatoires -------------------------------------------------------------------------------------------------
   /**
@@ -177,6 +179,7 @@ export function contratDeFiche<Niveau, Rejeu extends RejeuNeuf, Mesure>(fiche: F
       if (r.g !== attendu) throw new RefusJeu("version", `Une nouvelle version du jeu est disponible : recharge la page (générateur ${r.g})`);
     },
     entrees: (r) => c.entrees(r),
+    ...(c.sansEntree ? { sansEntree: (r: Rejeu) => c.sansEntree!(r) } : {}),
     rejouer: async (niveau, texte) => c.rejouer(niveau, texte),
     rejouee(_niveau, r, mesure) {
       const score = { ...c.score(mesure) };

@@ -23,8 +23,11 @@ export interface ContratParty<Rejeu extends RejeuNeuf, Mesure> {
   rejouer(niveau: NiveauParty, texte: string): Mesure | Promise<Mesure>;
   /** Les colonnes de classement de la fiche (sans les deux départages ultimes). */
   score: ContratMinimal<NiveauParty, Rejeu, Mesure>["score"];
-  /** Les entrées effectivement jouées, en texte canonique (l'empreinte refuse les copies). */
-  entrees: ContratMinimal<NiveauParty, Rejeu, Mesure>["entrees"];
+  /**
+   * Les entrées effectivement jouées, en texte canonique (l'empreinte refuse les copies) ; **`null` quand la partie n'a joué aucune entrée** (aucun appui) : deux parties sans entrée ne sont pas des copies l'une de l'autre,
+   * le module ne les compare jamais (lot PA1c). Le reste de la règle des copies ne change pas.
+   */
+  entrees(rejeu: Rejeu): string | null;
   mesures?: ContratMinimal<NiveauParty, Rejeu, Mesure>["mesures"];
   ticksParSeconde?: number;
 }
@@ -38,7 +41,8 @@ export function contratMinimalDeParty<Rejeu extends RejeuNeuf, Mesure>(code: str
     rejouer: c.rejouer,
     score: c.score,
     seuils: () => null, // pas de médaille (les médailles des jeux Party ne sont pas décidées : PA1, hors périmètre)
-    entrees: c.entrees,
+    entrees: (r) => c.entrees(r) ?? "", // le texte d'une partie sans entrée (l'empreinte est gardée avec le résultat) : `sansEntree` dit qu'elle n'est jamais comparée
+    sansEntree: (r) => c.entrees(r) === null,
     contenuPublic: (niveau) => ({ graine: niveau.graine }),
     ...(c.mesures ? { mesures: c.mesures } : {}),
     ...(c.ticksParSeconde !== undefined ? { ticksParSeconde: c.ticksParSeconde } : {}),

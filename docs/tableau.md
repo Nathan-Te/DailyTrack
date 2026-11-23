@@ -8,7 +8,7 @@
 
 | Zone | Fiche | Dernier lot | Passation |
 |---|---|---|---|
-| **Plateforme** | — | PA1b (plateforme, serveur, kit et portail)… (21/11) | 21/11 |
+| **Plateforme** | — | PA1c (plateforme, kit) — Le moule Party,… (23/11) | 23/11 |
 | **Track** | jour · `on` | R17 (Track, CI) — le test du Salon serveur… (18/11) | 20/11 |
 | **Jump** | jour · `on` | 33 — Incident du 06/11/2026 : le niveau du… (06/11) | 20/11 |
 | **Tower** | arcade · `off` | T9 — Les visuels : décors, bonus et malus,… (02/11) | 20/11 |
@@ -21,13 +21,13 @@
 | **Pile poil** | party · `off` | PA2 — « Pile poil », le premier jeu Party… (22/11) | 22/11 |
 
 ## Plateforme
-- **Dernier lot** : PA1b (plateforme, serveur, kit et portail) — Le jeu Party du jour — 21/11 (`lot-PA1b-jeu-party-du-jour.md`).
-- **Passation** : mise à jour le 21/11 (`docs/plateforme/passation.md`).
+- **Dernier lot** : PA1c (plateforme, kit) — Le moule Party, corrigé d'après Pile poil — 23/11 (`lot-PA1c-moule-party-corrige.md`).
+- **Passation** : mise à jour le 23/11 (`docs/plateforme/passation.md`).
 - **Où on en est** :
-  - Plateforme (portail, serveur `apps/api`, socle, kit, recette, production) ; dernier README de lot : PA1b (21/11), le jeu Party du jour (tour de rôle calculé du jour, seul le jeu du jour classé, section « Party » du portail, mentions) ; avant : PA1 (partie 1, 21/11), la catégorie `party` ; puis : O1 (20/11), le tableau de bord `docs/tableau.md` ; U6 (18/11), un seul format de classement.
+  - Plateforme (portail, serveur `apps/api`, socle, kit, recette, production) ; dernier README de lot : PA1c (23/11), le moule Party corrigé d'après « Pile poil » (plusieurs jeux Party au registre, mentions écrites par le générateur, copies sans entrée, commandes, surimpression claire, `dessiner(avancement)`) ; avant : PA1b (21/11), le jeu Party du jour ; PA1 (21/11), la catégorie `party` ; puis : O1 (20/11), le tableau de bord `docs/tableau.md` ; U6 (18/11), un seul format de classement.
   - L'état d'ensemble est dans `docs/plateforme/synthese.md` et `docs/orchestration.md` ; les jeux ont chacun leur passation (`docs/<jeu>/passation.md`) et `docs/tableau.md` les rassemble.
   - Repris le 20/11 (lot O1) des README de lots et des CLAUDE.md ; à compléter par la conversation de la plateforme.
-- **Prochain lot** : PA2, « Pile poil » (`docs/party/seed.md`), le premier vrai jeu Party : il rend visibles la section « Party » et l'onglet, que l'aperçu d'une PR ne montre pas tant qu'aucun jeu Party n'existe au registre (le lot PA1b ne les prouve que sur le jeu fictif de la CI). Puis le lobby (étape 2 du seed) et les médailles des jeux Party.
+- **Prochain lot** : PA2b (le jeu « Pile poil » sur le moule corrigé : retirer les préfixes « À remplacer », `entrees` qui rend `null` sans appui, `recommencer` sans touche, `hud: "surimpression-claire"`, `dessiner(avancement)`), puis le lobby (étape 2 du seed `docs/party/seed.md`) et les médailles des jeux Party.
 - **Décisions en attente (Nathan)** : 
   - Nathan : relever le plafond `portail.classement` de 57 à 60 Ko (proposé par U6, marge de 711 o ; `docs/plateforme/budgets.md` n'est pas modifié).
   - Plateforme (U6) : porter les seuils des médailles sur un jour passé est un petit lot serveur, si Nathan veut les seuils partout.

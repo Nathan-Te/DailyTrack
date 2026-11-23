@@ -59,9 +59,8 @@ COPY apps/jump/public/levels apps/jump/public/levels
 # Lot K4f : la simulation de Cibles (le serveur rejoue ses parties) et ses jours figés.
 COPY packages/cibles-sim packages/cibles-sim
 COPY apps/cibles/public/jours apps/cibles/public/jours
-# Pile poil : sa simulation (le serveur rejoue ses parties) et ses jours figés.
+# Pile poil : sa simulation (le serveur rejoue ses parties) ; un jeu Party n'a pas de jours figés (lot PA1c).
 COPY packages/pilepoil-sim packages/pilepoil-sim
-COPY apps/pilepoil/public/jours apps/pilepoil/public/jours
 # Pinball : sa simulation (le serveur rejoue ses parties) et ses jours figés.
 COPY packages/pinball-sim packages/pinball-sim
 COPY apps/pinball/public/jours apps/pinball/public/jours

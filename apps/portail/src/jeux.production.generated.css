@@ -15,52 +15,8 @@
 .jeu-etiquette--gravity{--jeu-motif:repeating-linear-gradient(0deg,#ffb892 0 22px,#f0ad89 22px 23px)}
 .jeu-etiquette--pinball{--jeu-motif:repeating-linear-gradient(45deg,#f6a2d8 0 10px,#e899ca 10px 20px)}
 .jeu-etiquette--pilepoil{--jeu-motif:radial-gradient(circle at 20% 25%,#e8a99a 0 3px,transparent 3px) 0 0/34px 34px,radial-gradient(circle at 70% 65%,#e8a99a 0 2px,transparent 2px) 0 0/22px 26px,radial-gradient(circle at 40% 85%,#e8a99a 0 4px,transparent 4px) 0 0/46px 40px,#f6b3a4}
-.admin-zone.admin-zone--blocks {
-  background: #B8D8F4;
-  color: var(--dj-encre);
-}
-.nouveautes-zone.nouveautes-zone--blocks {
-  background: #B8D8F4;
-  color: var(--dj-encre);
-}
-.admin-zone.admin-zone--rush {
-  background: #D9C4F0;
-  color: var(--dj-encre);
-}
-.nouveautes-zone.nouveautes-zone--rush {
-  background: #D9C4F0;
-  color: var(--dj-encre);
-}
-.admin-zone.admin-zone--vertige {
-  background: #F7C59F;
-  color: var(--dj-encre);
-}
-.nouveautes-zone.nouveautes-zone--vertige {
-  background: #F7C59F;
-  color: var(--dj-encre);
-}
-.admin-zone.admin-zone--gravity {
-  background: #FFB892;
-  color: var(--dj-encre);
-}
-.nouveautes-zone.nouveautes-zone--gravity {
-  background: #FFB892;
-  color: var(--dj-encre);
-}
-.admin-zone.admin-zone--pinball {
-  background: #F6A2D8;
-  color: var(--dj-encre);
-}
-.nouveautes-zone.nouveautes-zone--pinball {
-  background: #F6A2D8;
-  color: var(--dj-encre);
-}
-.admin-zone.admin-zone--pilepoil {
-  background: #F6B3A4;
-  color: var(--dj-encre);
-}
-.nouveautes-zone.nouveautes-zone--pilepoil {
-  background: #F6B3A4;
+:where(.admin-zone, .nouveautes-zone)[class*="classement-vue--"] {
+  background: var(--vue-teinte);
   color: var(--dj-encre);
 }
 /* L'étiquette générique sur l'étagère : le numéro et le thème sous le nom, l'accroche sur deux lignes réservées ; en cartouche compacte, le nom et le numéro côte à côte. */

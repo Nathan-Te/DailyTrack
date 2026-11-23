@@ -1,29 +1,35 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, graineDuJour } from "@cdj/core";
 import {
   CIBLES_GENERATOR_VERSION,
   COLONNES,
+  COLONNES_CLASSEMENT,
   DUREE_TICKS,
   ErreurGenerateur,
   LIGNES,
   MAX_TOUCHES,
   NB_CASES,
   NB_CIBLES,
-  VARIANTE,
+  Partie,
   caseAuPoint,
   dailyCibles,
   decoderRediffusion,
   empreinteContenu,
   encoderRediffusion,
   enregistrer,
+  formatScore,
   jouer,
+  joueurVif,
   rejouer,
+  scoreDe,
+  scoreParColonnes,
   tirerCibles,
 } from "../src/index";
 
-// Un jeu Party (lot PA1) : le « niveau » d'un jour est sa graine ; le jeu en tire ses cibles. Ce que vaut le tirage, la partie et la rediffusion, quelle que soit la variante de classement.
+// Un jeu Party (lot PA1) : le « niveau » d'un jour est sa graine ; le jeu en tire ses cibles. Ce que vaut le tirage, la partie, son classement et la rediffusion. Lot PA1c : plus de `variante.ts` — un jeu Party se classe au score, ses règles sont dans `partie.ts`.
 const J = daysFromCivil(2026, 11, 4);
-const vif = (c: ReturnType<typeof dailyCibles>) => VARIANTE.joueur(c, () => 12);
+const vif = (c: ReturnType<typeof dailyCibles>) => joueurVif(c, () => 12);
 
 describe("le tirage du jour : la graine, rien d'autre", () => {
   it("est déterministe, change d'un jour à l'autre, et ne dépend que de la graine", () => {
@@ -56,7 +62,35 @@ describe("le tirage du jour : la graine, rien d'autre", () => {
   });
 });
 
-describe("la partie (ce qui vaut pour toutes les variantes)", () => {
+describe("la partie", () => {
+  it("compte une cible touchée dans sa fenêtre, ignore le reste", () => {
+    const p = new Partie(dailyCibles(J));
+    const x = p.contenu.cibles[0]!;
+    while (p.tick < x.d - 1) p.avancer();
+    expect(p.toucher(x.c)).toBe(false); // pas encore apparue
+    p.avancer();
+    expect(p.toucher((x.c + 1) % NB_CASES)).toBe(false); // mauvaise case
+    expect(p.toucher(x.c)).toBe(true);
+    expect(p.toucher(x.c)).toBe(false); // déjà touchée
+    const r = p.resultat();
+    expect({ touches: r.touches, dernier: r.dernier, ratees: r.ratees }).toEqual({ touches: 1, dernier: x.d, ratees: 3 });
+  });
+  it("la partie dure 30 s ; une touche après la cible ne compte plus", () => {
+    const c = dailyCibles(J);
+    expect(jouer(c, vif(c)).ticks).toBe(DUREE_TICKS);
+    const x = c.cibles[0]!;
+    expect(jouer(c, [{ tick: x.f, c: x.c }]).touches).toBe(0);
+    expect(jouer(c, [{ tick: x.f - 1, c: x.c }]).touches).toBe(1);
+  });
+  it("classe les cibles touchées (↓) puis le tick de la dernière (↑), dans les colonnes de la fiche, et écrit son score", () => {
+    expect(scoreDe({ touches: 17, dernier: 300 })).toEqual([17, 300]);
+    expect(scoreParColonnes({ touches: 17, dernier: 300 })).toEqual({ touches: 17, dernier: 300 });
+    expect(formatScore([17])).toBe(`17 / ${NB_CIBLES}`);
+    const fiche = JSON.parse(readFileSync(new URL("../../../config/jeux/cibles.json", import.meta.url), "utf8")) as { classement: { colonnes: { nom: string; sens: string }[]; unite: string; format: string } };
+    expect(fiche.classement.colonnes.slice(0, COLONNES_CLASSEMENT.length)).toEqual(COLONNES_CLASSEMENT);
+    expect(fiche.classement.colonnes.slice(COLONNES_CLASSEMENT.length).map((k) => k.nom)).toEqual(["submitted_at", "player_id"]);
+    expect({ unite: fiche.classement.unite, format: fiche.classement.format }).toEqual({ unite: "points", format: "entier" });
+  });
   const c = dailyCibles(J);
   it("une partie vide finit avec zéro touche et le départage maximal", () => {
     const r = jouer(c, []);
