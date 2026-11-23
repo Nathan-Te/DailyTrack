@@ -160,7 +160,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
         el(
           "ul",
           { classe: "admin-apercu__lignes" },
-          ...c.lignes.map((l) => el("li", {}, el("span", { classe: ["admin-zone", l.zone && `admin-zone--${l.zone}`], texte: l.zone ? NOM_DE_ZONE[l.zone] : "?" }), el("span", { texte: (langue === "fr" ? l.fr : l.en) || "—" }))),
+          ...c.lignes.map((l) => el("li", {}, el("span", { classe: ["admin-zone", l.zone && `admin-zone--${l.zone} classement-vue--${l.zone}`], texte: l.zone ? NOM_DE_ZONE[l.zone] : "?" }), el("span", { texte: (langue === "fr" ? l.fr : l.en) || "—" }))),
         ),
       );
     zone.replaceChildren(el("h3", { classe: "admin-sous-titre", texte: "Aperçu, tel que les joueurs le voient" }), el("div", { classe: "admin-apercu__langues" }, carte("fr"), carte("en")));
@@ -379,7 +379,7 @@ export async function vueNouveautes(ctx: Contexte): Promise<Node[]> {
               el(
                 "li",
                 {},
-                x.malformee ? el("span", { classe: "admin-pastille admin-pastille--probleme", texte: "à retoucher" }) : el("span", { classe: ["admin-zone", x.zone && `admin-zone--${x.zone}`], texte: x.zone ? NOM_DE_ZONE[x.zone] : "?" }),
+                x.malformee ? el("span", { classe: "admin-pastille admin-pastille--probleme", texte: "à retoucher" }) : el("span", { classe: ["admin-zone", x.zone && `admin-zone--${x.zone} classement-vue--${x.zone}`], texte: x.zone ? NOM_DE_ZONE[x.zone] : "?" }),
                 el("span", { texte: x.malformee ? x.brut : `${x.fr} // ${x.en || "…"}` }),
               ),
             ),

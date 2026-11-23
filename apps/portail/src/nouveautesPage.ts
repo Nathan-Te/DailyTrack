@@ -56,7 +56,7 @@ function article(t: T, n: Nouveaute): HTMLElement {
         el(
           "li",
           { classe: "nouveautes-ligne", attrs: { "data-zone": l.zone ?? "" } },
-          l.zone ? el("span", { classe: ["nouveautes-zone", `nouveautes-zone--${l.zone}`], texte: NOM_DE_ZONE[l.zone] }) : null,
+          l.zone ? el("span", { classe: ["nouveautes-zone", `nouveautes-zone--${l.zone} classement-vue--${l.zone}`], texte: NOM_DE_ZONE[l.zone] }) : null,
           el("span", { classe: "nouveautes-ligne__texte", texte: dans(l, langue) }),
         ),
       ),

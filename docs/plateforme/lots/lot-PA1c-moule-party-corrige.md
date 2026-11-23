@@ -19,8 +19,8 @@ Détails : `docs/regles/kit/commandes-surimpression-et-avancement-lot-pa1c.md`, 
 - Jetons : `packages/kit/CLAUDE.md` +1 ligne (renvoi) ; session Track 53 868 → 53 920 (plafond 54 000).
 - Bancs de réponses : inchangés (réponses des jeux existants identiques).
 
-## Reste rouge : à décider par Nathan
-- **`portail.classement` : 57,08 Ko pour 57 Ko (83 o) dans la copie de « Kit de bout en bout » (trois jeux générés)**, identique avant ce lot : Pile poil a ajouté 170 o à cette page, chaque jeu de plus en coûte ≈ 130 (JS de la fiche + 4 règles CSS). Le dépôt lui-même est à 56 693 o. Non corrigé (relever un plafond est à Nathan ; le relèvement 57 → 60 Ko proposé par U6 règle aussi ce cas). Tant qu'il est rouge, le job s'arrête à cette étape : l'e2e Chromium des trois jeux générés ne tourne pas dans ce job (vérifié à part : `--jeux essaiparty`).
+## Budget du portail (trouvé par la CI de la PR)
+- **`portail.classement` : 57,08 Ko pour 57 Ko (83 o) dans la copie de « Kit de bout en bout » à trois jeux générés**, déjà rouge avant ce lot (Pile poil y a ajouté 170 o ; chaque jeu de plus coûtait ≈ 130 o). Corrigé sans relever le plafond : les étiquettes de zone (panneau d'administration, nouveautés) étaient **deux règles CSS par jeu** dans la feuille de chaque page du portail ; elles sont **une seule règle** (`:where(.admin-zone, .nouveautes-zone)[class*="classement-vue--"]`, teinte = `--vue-teinte` déjà écrit par jeu ; `ficheSorties.ts`, les deux pages qui posent la classe : `adminDiffusion.ts`, `nouveautesPage.ts`). Dépôt : 56 693 → 56 636 o ; la copie passe (budgets verts).
 - Un test de Tower (`apps/tower/test/commandes.test.ts`) appelle `estDorigine(c)` de l'édition au lieu de la méthode retirée (même assertion).
 - PA2b : `entrees` de Pile poil doit rendre `null` sans appui (sinon deux parties vides restent des copies), puis `recommencer` sans touche, `surimpression-claire`, `dessiner(avancement)` ; le `public/jours/.gitkeep` de Pile poil devient inutile.
 

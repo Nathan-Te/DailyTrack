@@ -153,12 +153,9 @@ function cssPortail(fiches: readonly FicheJeu[]): string {
   const teintes = fiches.map((f) => `.classement-vue--${f.id}{--vue-teinte:${f.etiquette.fond}}\n`).join("");
   const profil = teintes + pourLeProfil(fiches).map((f) => reglesDIdentite(f, f.etiquette.dessin !== "generique")).join("");
   if (g.length === 0) return ENTETE_CSS("portail") + profil;
-  const zones = g
-    .map(
-      (f) =>
-        `.admin-zone.admin-zone--${f.zoneNouveautes} {\n  background: ${f.etiquette.fond};\n  color: var(--dj-encre);\n}\n.nouveautes-zone.nouveautes-zone--${f.zoneNouveautes} {\n  background: ${f.etiquette.fond};\n  color: var(--dj-encre);\n}\n`,
-    )
-    .join("");
+  // Lot PA1c — **une seule règle pour les étiquettes de zone de tous les jeux** (avant : deux règles par jeu, dans la feuille de chaque page du portail, ≈ 25 o gzip par jeu) : la zone d'un jeu est son id (`zoneNouveautes`), l'étiquette
+  // porte aussi `classement-vue--<id>` (ci-dessus : `--vue-teinte` = la teinte de la fiche). `:where` garde la règle au plus bas : les règles écrites à la main des jeux livrés (`admin.css`, `portail.css`, importées après) l'emportent.
+  const zones = `:where(.admin-zone, .nouveautes-zone)[class*="classement-vue--"] {\n  background: var(--vue-teinte);\n  color: var(--dj-encre);\n}\n`;
   return (
     ENTETE_CSS("portail") +
     profil +
