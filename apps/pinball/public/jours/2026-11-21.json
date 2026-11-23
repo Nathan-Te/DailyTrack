@@ -2,26 +2,28 @@
   "format": 1,
   "jeu": "pinball",
   "date": "2026-11-21",
-  "g": 8,
-  "sim": 9,
-  "bot": 8,
+  "g": 9,
+  "sim": 10,
+  "bot": 9,
   "seuils": {
-    "bronze": 367200,
-    "silver": 856700,
-    "gold": 1468700,
-    "author": 2447800
+    "bronze": 1697900,
+    "silver": 3961700,
+    "gold": 6791500,
+    "author": 11319100
   },
   "contenu": {
     "theme": "espace",
-    "plan": "boucle",
+    "plan": "B",
+    "miroir": false,
     "modules": [
       "trouNoir",
       "trou",
       "asteroide",
-      "portailB",
+      "cibles",
+      "spinner",
       "portailA",
-      "mini"
+      "portailB"
     ],
-    "empreinte": "11d596ca"
+    "empreinte": "a940e8d5"
   }
 }

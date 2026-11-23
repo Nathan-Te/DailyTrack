@@ -8,7 +8,7 @@ const golden = JSON.parse(readFileSync(new URL("./fixtures/golden-pinball.json",
   sim: number;
   generateur: number;
   bot: number;
-  jours: { date: string; theme: string; plan: string; modules: string[]; empreinte: string; seuils?: unknown }[];
+  jours: { date: string; theme: string; plan: string; miroir: boolean; modules: string[]; empreinte: string; seuils?: unknown }[];
   rediffusions: { nom: string; date: string; g: number; code: string; resultat: { score: number; ticks: number; billes: number; multMax: number } }[];
 };
 
@@ -19,7 +19,7 @@ describe("golden de Pinball", () => {
   it.each(golden.jours.map((j) => [j.date, j]))("la table du %s a le thème, les modules et l'empreinte de référence, et les seuils du robot quand le golden en porte", (_date, j) => {
     const ref = j as (typeof golden.jours)[number];
     const c = dailyPinball(parseDay(ref.date)!);
-    expect({ theme: c.theme, plan: c.plan, modules: c.modules, empreinte: empreinteContenu(c) }).toEqual({ theme: ref.theme, plan: ref.plan, modules: ref.modules, empreinte: ref.empreinte });
+    expect({ theme: c.theme, plan: c.plan, miroir: c.miroir, modules: c.modules, empreinte: empreinteContenu(c) }).toEqual({ theme: ref.theme, plan: ref.plan, miroir: ref.miroir, modules: ref.modules, empreinte: ref.empreinte });
     if (ref.seuils) expect(seuilsDuRobot(c)).toEqual(ref.seuils); // le robot (13 s, 30 s sur une machine de CI) : un jour de chaque thème
   }, 120_000);
   it("le golden porte les seuils du robot d'un jour de chaque thème", () => {
@@ -54,9 +54,9 @@ describe("golden de Pinball", () => {
     });
     expect(missions.length, "la mission est réussie par le robot sur les quatre tables").toBe(4);
   });
-  it("lot PBG1 : les rediffusions du robot jouent quatre plans différents, et y réussissent des rails et un combo", () => {
+  it("lot PBT1 : les rediffusions du robot jouent quatre dispositions différentes (A, B, B en miroir, C), et y réussissent des rails et un combo", () => {
     const refs = golden.rediffusions.filter((r) => r.nom.startsWith("robot-") && r.nom !== "robot-30-secondes" && r.nom !== "robot-deblocages" && !r.nom.startsWith("robot-multibilles"));
-    expect(refs.map((r) => dailyPinball(parseDay(r.date)!, r.g).plan).sort()).toEqual(["boucle", "bretelle", "doublette", "tremplin"]);
+    expect(refs.map((r) => { const c = dailyPinball(parseDay(r.date)!, r.g); return `${c.plan}${c.miroir ? "'" : ""}`; }).sort()).toEqual(["A", "B", "B'", "C"]);
     let combo = 0;
     for (const r of refs) {
       const p = new Partie(dailyPinball(parseDay(r.date)!, r.g));

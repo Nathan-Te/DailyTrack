@@ -153,8 +153,8 @@ test.describe("Pinball : le HUD en surimpression", () => {
   });
 
   test("un rail mené à son bout : « + points » à l'afficheur (ceux que la simulation compte) et le combo monte au rail suivant dans le délai", async ({ browser }) => {
-    // la partie du robot sur la « Doublette » de l'Océan ce jour-là (graine 0) : on cherche, dans la simulation (Node), le premier rail mené à son bout et le premier combo
-    const contenu = dailyPinball(parseDay(JOUR)!, undefined, "ocean", "doublette"); // lot PBL1 : l'Océan (le robot de l'Espace y perd ses billes en 70 s et ne chaîne plus deux rails)
+    // la partie du robot sur la table B de l'Océan ce jour-là (graine 0) : on cherche, dans la simulation (Node), le premier rail mené à son bout et le premier combo
+    const contenu = dailyPinball(parseDay(JOUR)!, undefined, "ocean", "B"); // lot PBL1 : l'Océan (le robot de l'Espace y perd ses billes en 70 s et ne chaîne plus deux rails)
     const robot = jouerRobot(contenu, graineDuRobot(0), { maxTicks: 216000 });
     const p = new Partie(contenu);
     let k = 0;
@@ -170,7 +170,7 @@ test.describe("Pinball : le HUD en surimpression", () => {
     }
     expect(premier, "le robot mène un rail à son bout").not.toBeNull();
     expect(combo, "et il en enchaîne deux").not.toBeNull();
-    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&robot&theme=ocean&plan=doublette");
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&robot&theme=ocean&plan=B");
     await lancer(page);
     await page.evaluate((pas) => window.__jeu.avancer(pas + 1), premier!.pas);
     await expect(page.locator(".pinball-hud__chiffres")).toHaveText(`+${grouper(premier!.gain, "fr")}`);
@@ -184,7 +184,7 @@ test.describe("Pinball : le HUD en surimpression", () => {
 
   // --- Lot PBG2 : le verrou, la multibille et le niveau de la mission dans le HUD.
   test("le verrou : deux billes à verrouiller et le niveau, « Verrou allumé » en moutarde quand la mission est réussie ; pendant la multibille la bande du bas dit « MULTIBILLE » et le prochain jackpot ; ensuite la mission revient au niveau 2", async ({ browser }) => {
-    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1&qualite=basse&essai=verrou&plan=doublette&theme=espace");
+    const { context, page } = await appareil(browser, "/?debug&manuel&tactile=1&qualite=basse&essai=verrou&plan=B&theme=espace");
     await page.setViewportSize({ width: 390, height: 844 });
     await lancer(page);
     const verrou = page.locator(".pinball-verrou");

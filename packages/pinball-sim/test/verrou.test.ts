@@ -5,7 +5,7 @@ import { JOUR_ESSAI, avancer, enJeu } from "./aide";
 // LE VERROU ET LA MULTIBILLE (lot PBG2) : la mission réussie allume le verrou (le trou du plan) ; une bille qui y entre y reste et une nouvelle arrive au lanceur sans coûter de bille ; la deuxième lance la multibille
 // (trois billes en jeu, les deux verrouillées lâchées l'une après l'autre, quelques secondes de bille sauvée) ; une bille perdue pendant la multibille ne coûte rien ; elle finit à une seule bille et la mission revient au niveau suivant.
 
-const partie = (theme: ThemePinball = "ocean", plan = "doublette", r: Reglages = REGLAGES): Partie => new Partie(dailyPinball(JOUR_ESSAI, PINBALL_GENERATOR_VERSION, theme, plan), r);
+const partie = (theme: ThemePinball = "ocean", plan = "B", r: Reglages = REGLAGES): Partie => new Partie(dailyPinball(JOUR_ESSAI, PINBALL_GENERATOR_VERSION, theme, plan), r);
 /** Le centre du trou du verrou, en pixels. */
 const trou = (p: Partie): { x: number; y: number } => {
   const t = p.table.trous[p.table.verrou]!;
@@ -21,7 +21,7 @@ const dansLeTrou = (p: Partie): Partie => {
   return enJeu(p, x, y, 0, 10);
 };
 /** Une partie dont la mission est réussie et le verrou allumé (comme la mission le fait). */
-const verrouAllume = (theme: ThemePinball = "ocean", plan = "doublette", r: Reglages = REGLAGES): Partie => {
+const verrouAllume = (theme: ThemePinball = "ocean", plan = "B", r: Reglages = REGLAGES): Partie => {
   const p = partie(theme, plan, r);
   p.compteur = p.but - 1;
   // le centre du tourbillon : la bille y est gardée, c'est la plongée qui compte
@@ -35,7 +35,7 @@ const verrouAllume = (theme: ThemePinball = "ocean", plan = "doublette", r: Regl
   return p;
 };
 const lancerMulti = (r: Reglages = REGLAGES): Partie => {
-  const p = verrouAllume("ocean", "doublette", r);
+  const p = verrouAllume("ocean", "B", r);
   for (let i = 0; i < 2; i++) {
     dansLeTrou(p);
     p.avancer();
@@ -45,7 +45,7 @@ const lancerMulti = (r: Reglages = REGLAGES): Partie => {
 
 describe("le verrou", () => {
   it("chaque plan du jour a un verrou : le trou du deuxième emplacement ; le plan d'essai n'en a pas", () => {
-    for (const plan of ["doublette", "tremplin", "bretelle", "boucle"]) for (const theme of ["foire", "ocean", "espace", "volcan"] as const) expect(partie(theme, plan).table.verrou, `${theme}:${plan}`).toBeGreaterThanOrEqual(0);
+    for (const plan of ["A", "B", "C"]) for (const theme of ["foire", "ocean", "espace", "volcan"] as const) expect(partie(theme, plan).table.verrou, `${theme}:${plan}`).toBeGreaterThanOrEqual(0);
     expect(new Partie(dailyPinball(JOUR_ESSAI, PINBALL_GENERATOR_VERSION, "foire", "classique")).table.verrou).toBe(-1);
   });
 

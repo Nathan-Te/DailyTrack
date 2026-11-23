@@ -4,7 +4,7 @@ import { avancer, enJeu, partiePlan } from "./aide";
 
 // LE LANCEUR AUTOMATIQUE EN MULTIBILLE (lot PBL1) : pendant la multibille, toute bille qui attend dans le couloir du lanceur — celle qu'amène le verrou au départ, ou une bille revenue par le couloir — se charge toute seule
 // et part à pleine puissance. Le joueur n'a rien à tenir (la commande du lanceur n'y change rien) ; hors multibille, le lanceur ne change pas (il attend le joueur).
-const partie = () => partiePlan("doublette", "foire", { 3: "mini", 4: "mini" });
+const partie = () => partiePlan("B", "foire", { 3: "mini", 4: "mini" });
 /** Pas pour charger à fond : `lanceurCharge` par seconde, 1 000 de charge. */
 const PAS_CHARGE = Math.ceil((1000 * 600) / REGLAGES.lanceurCharge) + 5;
 
@@ -81,7 +81,7 @@ describe("le lanceur part tout seul pendant la multibille", () => {
 
   it("quand la multibille finit, une bille que le lanceur chargeait attend de nouveau le joueur (jamais un départ à demi-puissance)", () => {
     const r = copierReglages();
-    const p = partiePlan("doublette", "foire", { 3: "mini", 4: "mini" }, r);
+    const p = partiePlan("B", "foire", { 3: "mini", 4: "mini" }, r);
     p.lancerLaMultibille();
     avancer(p, 200); // la charge est à moitié
     expect(p.dansLanceur).toBe(true);

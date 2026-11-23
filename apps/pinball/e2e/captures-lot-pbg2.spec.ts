@@ -5,14 +5,14 @@ import { appareil, lancer } from "./appareil";
 // Un OUTIL, jamais lancé en CI (`captures-*.spec.ts` est ignoré sans `CAPTURES=1`, lot R13) : les images et la mesure du lot PBG2 (le verrou, la multibille, le jackpot) pour Nathan.
 //   CAPTURES=1 DOSSIER=/chemin npx playwright test captures-lot-pbg2 -g "verrou"      (dans `apps/pinball`, après `npm run build`) → le verrou allumé puis une bille verrouillée, haute et basse qualité, 390 × 844
 //   CAPTURES=1 DOSSIER=/chemin npx playwright test captures-lot-pbg2 -g "multibille"  → la multibille (trois billes) et un jackpot, haute et basse qualité
-//   CAPTURES=1 MESURE=1 PLAN=doublette npx playwright test captures-lot-pbg2 -g mesure → la fluidité EN MULTIBILLE, comme au PBV1 (fil principal, processeur ralenti ×4, 390 × 844, bloom compris), sur le plan donné
+//   CAPTURES=1 MESURE=1 PLAN=B npx playwright test captures-lot-pbg2 -g mesure → la fluidité EN MULTIBILLE, comme au PBV1 (fil principal, processeur ralenti ×4, 390 × 844, bloom compris), sur le plan donné
 const dossier = process.env.DOSSIER ?? "captures";
 const prefixe = process.env.PREFIXE ?? "pbg2";
 const THEMES: ThemePinball[] = ["foire", "ocean", "espace", "volcan"];
 
 for (const qualite of ["haute", "basse"] as const) {
   test(`verrou foire ${qualite} 390 × 844`, async ({ browser }) => {
-    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=doublette&theme=foire&qualite=${qualite}&essai=verrou`);
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=B&theme=foire&qualite=${qualite}&essai=verrou`);
     await page.setViewportSize({ width: 390, height: 844 });
     await lancer(page);
     await page.evaluate(() => window.__pinball!.contours(false));
@@ -27,7 +27,7 @@ for (const qualite of ["haute", "basse"] as const) {
     await context.close();
   });
   test(`multibille espace ${qualite} 390 × 844`, async ({ browser }) => {
-    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=doublette&theme=espace&qualite=${qualite}&essai=multibille`);
+    const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=B&theme=espace&qualite=${qualite}&essai=multibille`);
     await page.setViewportSize({ width: 390, height: 844 });
     await lancer(page);
     await page.evaluate(() => window.__pinball!.contours(false));
@@ -41,7 +41,7 @@ for (const qualite of ["haute", "basse"] as const) {
 // La fluidité en multibille : trois billes en jeu, collisions comprises, le plan le plus chargé.
 for (const theme of process.env.MESURE ? THEMES : []) {
   test(`mesure ${theme}`, async ({ browser }) => {
-    const plan = process.env.PLAN ?? "doublette";
+    const plan = process.env.PLAN ?? "B";
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=1&plan=${plan}&theme=${theme}&qualite=haute&essai=multibille`);
     await page.setViewportSize({ width: 390, height: 844 });
     await lancer(page);

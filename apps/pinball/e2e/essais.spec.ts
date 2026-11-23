@@ -85,28 +85,31 @@ test.describe("Pinball : le robot joue (?robot)", () => {
     await context.close();
   });
 
-  test("`?plan=` : l'accueil nomme le plan demandé et ses rails ; avec `?theme=`, le thème aussi ; un plan inconnu est ignoré", async ({ browser }) => {
+  test("`?plan=` : l'accueil nomme la table demandée et ses rails ; avec `?theme=`, le thème aussi ; `?miroir` le dit ; une table inconnue est ignorée", async ({ browser }) => {
     const jour = parseDay(JOUR)!;
     const duJour = dailyPinball(jour);
-    const noms: Record<string, string> = { doublette: "Doublette", tremplin: "Tremplin", bretelle: "Bretelle", boucle: "Boucle" };
-    const autre = Object.keys(noms).find((p) => p !== duJour.plan)!;
+    const noms: Record<string, string> = { A: "Classique", B: "Rampe et orbite", C: "Mini-batteur" };
+    const autre = duJour.plan === "B" ? "C" : "B"; // lot PBT1 : B (une rampe et l'orbite) ou C (une rampe, pas d'orbite)
     const a = await appareil(browser, `/?debug&manuel&tactile=0&qualite=basse&plan=${autre}`);
-    await expect(a.page.locator(".p-plan")).toHaveText(`Plan : ${noms[autre]}`);
-    // les rails du plan sont de la liste des modules présents (au nom du thème du jour)
+    await expect(a.page.locator(".p-plan")).toHaveText(`Table : ${noms[autre]}`);
+    // les rails de la table sont de la liste des modules présents (au nom du thème du jour)
     await expect(a.page.locator(".p-module").filter({ hasText: /Montagnes russes|Toboggan|Tube orbital|Wagonnet/ })).toHaveCount(1);
-    await expect(a.page.locator(".p-module").filter({ hasText: /Grand huit|Courant|Orbite|Galerie/ })).toHaveCount(1);
+    await expect(a.page.locator(".p-module").filter({ hasText: /Grand huit|Courant|Orbite|Galerie/ })).toHaveCount(autre === "B" ? 1 : 0);
     await a.context.close();
     const b = await appareil(browser, `/?debug&manuel&tactile=0&qualite=basse&plan=${autre}&theme=volcan`);
-    await expect(b.page.locator(".p-plan")).toHaveText(`Plan : ${noms[autre]}`);
+    await expect(b.page.locator(".p-plan")).toHaveText(`Table : ${noms[autre]}`);
     await expect(b.page.locator(".p-module").filter({ hasText: "Wagonnet" })).toHaveCount(1);
     await b.context.close();
+    const m = await appareil(browser, `/?debug&manuel&tactile=0&qualite=basse&plan=A&miroir`);
+    await expect(m.page.locator(".p-plan")).toHaveText("Table : Classique (en miroir)");
+    await m.context.close();
     const c = await appareil(browser, "/?debug&manuel&tactile=0&qualite=basse&plan=inconnu");
-    await expect(c.page.locator(".p-plan")).toHaveText(`Plan : ${noms[duJour.plan]}`);
+    await expect(c.page.locator(".p-plan")).toHaveText(`Table : ${noms[duJour.plan]}${duJour.miroir ? " (en miroir)" : ""}`);
     await c.context.close();
   });
 
   test("`?plan=` + `?robot` : le robot joue le plan demandé (ses événements sont ceux de la simulation sur ce plan), et la partie n'est pas classable", async ({ browser }) => {
-    const plan = "tremplin";
+    const plan = "C";
     const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&qualite=basse&robot&plan=${plan}`);
     await lancer(page);
     const PAS = 6000;
@@ -184,7 +187,7 @@ test.describe("Pinball : les sons (?debug&sons)", () => {
 test.describe("Pinball : la porte, le poteau et l'aiguillage (?essai=porte, ?essai=poteau)", () => {
   for (const qualite of ["basse", "haute"] as const) {
     test(`?essai=porte : la porte est ouverte et le plan en a une, rendu ${qualite}`, async ({ browser }) => {
-      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&qualite=${qualite}&plan=doublette&theme=foire&essai=porte`);
+      const { context, page } = await appareil(browser, `/?debug&manuel&tactile=0&qualite=${qualite}&plan=B&theme=foire&essai=porte`);
       const erreurs: string[] = [];
       page.on("pageerror", (e) => erreurs.push(e.message));
       await lancer(page);

@@ -7,27 +7,38 @@ const table = (plan: string, theme: "foire" | "ocean" | "espace" | "volcan" = "f
 const etat = (o: Partial<{ passageOuvert: number; lampes: [boolean, boolean]; sauveurTick: number; tick: number }>) => ({ passageOuvert: 0, lampes: [false, false] as [boolean, boolean], sauveurTick: -100000, tick: 1000, reglages: REGLAGES, ...o });
 
 describe("la géométrie de la porte", () => {
-  it.each(IDS_PLANS)("%s : un battant, deux murs de la profondeur du plan, une flèche dans le passage", (plan) => {
-    // lot PBL2 : la porte ferme la bouche d'une orbite ; sa largeur et sa profondeur sont celles du plan (`porteDeLOrbite`)
+  it.each(["A", "B"])("%s : un battant de 64 px sur la bouche de l'orbite, sans murs, et la flèche 13 px derrière lui, côté de la bouche (lot PBT1)", (plan) => {
     const def = planDe(plan).porte!;
     const g = geoPorte(table(plan))!;
     expect(Math.hypot(g.b.x - g.a.x, g.b.y - g.a.y)).toBeCloseTo(def.largeur, 0);
-    expect(g.murs).toHaveLength(2);
-    for (const m of g.murs) expect(Math.hypot(m.x1 - m.x0, m.y1 - m.y0)).toBeCloseTo(def.profondeur, 0);
-    // la flèche est entre les deux murs, à mi-profondeur
-    expect(Math.hypot(g.fleche.x - g.x, g.fleche.y - g.y)).toBeCloseTo(def.profondeur / 2, 0);
+    expect(def.largeur).toBe(64);
+    expect(g.murs).toHaveLength(0);
+    expect(g.b.y).toBeCloseTo(g.a.y, 3); // horizontal
+    // la flèche est entre le battant et la bouche (au-dessus du battant), tournée vers le haut
+    expect(Math.hypot(g.fleche.x - g.x, g.fleche.y - g.y)).toBeCloseTo(13, 0);
+    expect(g.fleche.y).toBeLessThan(g.y);
+    expect(Math.sin(g.fleche.a)).toBeCloseTo(-1, 3);
+  });
+  it("la table C n'a pas de porte ; en miroir, la porte de A et B est de l'autre côté de l'axe", () => {
+    expect(geoPorte(table("C"))).toBeNull();
+    for (const plan of ["A", "B"]) {
+      const face = geoPorte(table(plan))!;
+      const miroir = geoPorte(new Partie(dailyPinball(20800, undefined, "foire", plan, true)).table)!;
+      expect(miroir.x).toBeCloseTo(368 - face.x, 3);
+      expect(miroir.y).toBeCloseTo(face.y, 3);
+    }
   });
   it("le plan d'essai n'a ni porte ni aiguillage", () => {
-    const t = new Partie({ jour: 0, g: 6, theme: "foire", plan: "classique", modules: ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"] }).table;
+    const t = new Partie({ jour: 0, g: 6, theme: "foire", plan: "classique", miroir: false, modules: ["spinner", "bumpers", "cibles", "cibles", "trou", "mini"] }).table;
     expect(geoPorte(t)).toBeNull();
     expect(geoAiguillage(t)).toBeNull();
   });
   it("le battant ouvert se rabat contre son mur : son bout libre fait un quart de tour (80°) autour du pivot, sans changer de longueur", () => {
-    const g = geoPorte(table("bretelle"))!;
+    const g = geoPorte(table("B"))!;
     const ferme = boutLibre(g, 0);
     expect([ferme.x, ferme.y]).toEqual([g.b.x, g.b.y]);
     const ouvert = boutLibre(g, 1);
-    expect(Math.hypot(ouvert.x - g.a.x, ouvert.y - g.a.y)).toBeCloseTo(planDe("bretelle").porte!.largeur, 2);
+    expect(Math.hypot(ouvert.x - g.a.x, ouvert.y - g.a.y)).toBeCloseTo(planDe("B").porte!.largeur, 2);
     // l'angle entre le battant fermé et ouvert : 1,4 rad
     const a0 = Math.atan2(ferme.y - g.a.y, ferme.x - g.a.x);
     const a1 = Math.atan2(ouvert.y - g.a.y, ouvert.x - g.a.x);
@@ -65,7 +76,10 @@ describe("la sortie du poteau, fonction du pas", () => {
 });
 
 describe("la lame de l'aiguillage", () => {
-  it.each(IDS_PLANS)("%s : trois angles — le long de la rampe, vers le verrou, vers l'élément du thème — et une couleur de flèche par trajet", (plan) => {
+  it("la table A n'a pas d'aiguillage (pas de rampe)", () => {
+    expect(geoAiguillage(table("A"))).toBeNull();
+  });
+  it.each(["B", "C"])("%s : trois angles — le long de la rampe, vers le verrou, vers l'élément du thème — et une couleur de flèche par trajet", (plan) => {
     const g = geoAiguillage(table(plan, "ocean"))!;
     expect(g.versVerrou).not.toBeNull();
     expect(g.versElement).not.toBeNull();

@@ -31,7 +31,7 @@ export interface GeoPorte {
   /** Les deux bouts du battant fermé : `a` est le pivot, autour duquel il s'ouvre ; `b` son bout libre. */
   a: { x: number; y: number };
   b: { x: number; y: number };
-  /** Les deux murs du passage (de leur bout sur le battant à leur fond). */
+  /** Les deux murs du passage (de leur bout sur le battant à leur fond) ; aucun pour la porte d'une table dessinée (lot PBT1). */
   murs: readonly { x0: number; y0: number; x1: number; y1: number }[];
   /** La flèche de la porte : devant son entrée (côté d'où la bille arrive), tournée dans le sens du passage. */
   fleche: { x: number; y: number; a: number };
@@ -47,7 +47,8 @@ export function geoPorte(t: Table): GeoPorte | null {
   const ny = g.ny / NORME;
   const prof = px(g.profondeur);
   const [[ax, ay], [bx, by]] = g.bouts;
-  const murs = [[ax, ay], [bx, by]].map(([x, y]) => ({ x0: px(x!), y0: px(y!), x1: px(x!) - ux * prof, y1: px(y!) - uy * prof }));
+  // lot PBT1 : la porte d'une table dessinée est posée sur la bouche de l'orbite, sans murs (les guides du couloir en font office)
+  const murs = g.murs === 0 ? [] : [[ax, ay], [bx, by]].map(([x, y]) => ({ x0: px(x!), y0: px(y!), x1: px(x!) - ux * prof, y1: px(y!) - uy * prof }));
   return {
     x: px(g.x),
     y: px(g.y),
@@ -59,8 +60,8 @@ export function geoPorte(t: Table): GeoPorte | null {
     a: { x: px(ax), y: px(ay) },
     b: { x: px(bx), y: px(by) },
     murs,
-    // dans le passage, à mi-profondeur : la flèche qui monte vers le battant
-    fleche: { x: px(g.x) - ux * prof * 0.5, y: px(g.y) - uy * prof * 0.5, a: Math.atan2(uy, ux) },
+    // dans le passage, à mi-profondeur : la flèche qui monte vers le battant ; sans murs (la porte de l'orbite), 13 px derrière lui, côté de la bouche
+    fleche: g.murs === 0 ? { x: px(g.x) + ux * 13, y: px(g.y) + uy * 13, a: Math.atan2(uy, ux) } : { x: px(g.x) - ux * prof * 0.5, y: px(g.y) - uy * prof * 0.5, a: Math.atan2(uy, ux) },
   };
 }
 

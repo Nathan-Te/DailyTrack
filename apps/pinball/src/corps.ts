@@ -1027,7 +1027,7 @@ export function creerCorps(canvas: HTMLCanvasElement, partie: Partie, o: Options
   if (rails.rayonne) sceneLueur.add(new Mesh(rails.rayonne.geometry, rails.rayonne.material));
   aLiberer.push(...rails.liberables);
   // les petites lampes du décor, allumées : sur les flancs de l'arc et sur les lance-pierres (une seule instance de dessin ; leur lueur, une vague qui court, change chaque image)
-  const decor = lampesDecor();
+  const decor = lampesDecor(t);
   const lampes = new InstancedMesh(geo(new SphereGeometry(4, 14, 8)), new MeshBasicMaterial({ color: "#ffffff" }), decor.length);
   aLiberer.push(lampes.material as Material);
   const placeur = new Noeud();
